@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
 import { EASE_OUT_EXPO } from '../../utils/motion';
 
@@ -22,8 +22,8 @@ export default function NiraStep({ onNext, onEdit, onAgentFallback }) {
   const [state, setState] = useState(() => {
     if (!signup.niraResult) return 'running';
     if (signup.niraResult === 'partial') return 'partial';
-    if (signup.niraResult === 'match') return 'done';
-    return 'done';
+    if (signup.niraResult === 'match') return 'verified';
+    return 'nomatch';
   });
 
   useEffect(() => {
@@ -45,22 +45,21 @@ export default function NiraStep({ onNext, onEdit, onAgentFallback }) {
           niraTrackingId: res.trackingId,
         });
         if (res.result === 'match') {
-          // Show a confirmation beat so the user sees the verdict before
-          // the flow advances — prevents the "did something just happen?"
-          // confusion of a silent auto-advance.
+          // Show a confirmation beat before the flow advances. The advance
+          // itself is handled by the effect below (keyed on state==='verified')
+          // so it also fires when the user re-enters NIRA with a persisted match.
           setState('verified');
-          setTimeout(() => { if (!cancelled) onNext(); }, 1100);
         } else if (res.result === 'partial') {
           // Don't auto-advance on a partial match — surface the mismatch so
           // the user can decide to fix it or proceed flagged-for-review.
           setState('partial');
         } else {
-          setState('done');
+          setState('nomatch');
         }
       } catch (err) {
         if (cancelled) return;
         signup.patch({ niraResult: 'no-match' });
-        setState('done');
+        setState('nomatch');
         void err;
       }
     })();
@@ -68,7 +67,16 @@ export default function NiraStep({ onNext, onEdit, onAgentFallback }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const result = signup.niraResult;
+  // The "Identity verified" beat auto-advances — no manual Continue. Runs for a
+  // fresh match AND when the user re-enters NIRA with a persisted match (e.g.
+  // navigating forward again after going back), so it never stalls on the beat.
+  const advance = useRef(onNext);
+  advance.current = onNext;
+  useEffect(() => {
+    if (state !== 'verified') return undefined;
+    const timer = setTimeout(() => advance.current(), 1600);
+    return () => clearTimeout(timer);
+  }, [state]);
 
   /* ── Verified: brief confirmation before auto-advance ───────────────── */
   if (state === 'verified') {
@@ -82,7 +90,7 @@ export default function NiraStep({ onNext, onEdit, onAgentFallback }) {
           transition={{ duration: 0.5, ease: EASE_OUT_EXPO }}
         >
           <svg viewBox="0 0 56 56" width="56" height="56" fill="none" aria-hidden="true">
-            <circle cx="28" cy="28" r="26" stroke="currentColor" strokeWidth="2.5"/>
+            <circle className={own.iconRing} cx="28" cy="28" r="26" stroke="currentColor" strokeWidth="2.5"/>
             <motion.path
               d="M17 28l7 7 15-16"
               stroke="currentColor"
@@ -106,17 +114,14 @@ export default function NiraStep({ onNext, onEdit, onAgentFallback }) {
   }
 
   /* ── Running: use the wait to educate about pension benefits ────────── */
-  if (state === 'running' || !result) {
+  if (state === 'running') {
     return (
       <div className={styles.card}>
-        <span className={styles.eyebrow}>Step 3 · Verification</span>
+        <span className={styles.eyebrow}>Step 3 · NIRA check</span>
         <h2 className={styles.heading}>
           {isAgent ? 'Verifying with NIRA' : 'Verifying your identity with NIRA'}
         </h2>
-        <EducationalLoader
-          title="Checking NIRA records"
-          subtitle="While we verify your details, here's something worth knowing."
-        />
+        <EducationalLoader />
       </div>
     );
   }
@@ -134,7 +139,7 @@ export default function NiraStep({ onNext, onEdit, onAgentFallback }) {
           transition={{ duration: 0.5, ease: EASE_OUT_EXPO }}
         >
           <svg viewBox="0 0 56 56" width="56" height="56" fill="none" aria-hidden="true">
-            <circle cx="28" cy="28" r="26" stroke="currentColor" strokeWidth="2.5"/>
+            <circle className={own.iconRing} cx="28" cy="28" r="26" stroke="currentColor" strokeWidth="2.5"/>
             <path d="M28 16v14M28 38v2" stroke="currentColor" strokeWidth="3" strokeLinecap="round"/>
           </svg>
         </motion.div>
@@ -190,7 +195,7 @@ export default function NiraStep({ onNext, onEdit, onAgentFallback }) {
         transition={{ duration: 0.5, ease: EASE_OUT_EXPO }}
       >
         <svg viewBox="0 0 56 56" width="56" height="56" fill="none" aria-hidden="true">
-          <circle cx="28" cy="28" r="26" stroke="currentColor" strokeWidth="2.5"/>
+          <circle className={own.iconRing} cx="28" cy="28" r="26" stroke="currentColor" strokeWidth="2.5"/>
           <path d="M19 19l18 18M37 19L19 37" stroke="currentColor" strokeWidth="3" strokeLinecap="round"/>
         </svg>
       </motion.div>

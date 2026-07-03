@@ -9,6 +9,7 @@ import {
   amtToSlider,
   deriveInvestmentGrowth,
   deriveEmployerSplit,
+  txDisplayAmount,
   FREQUENCY,
 } from '../finance';
 
@@ -274,5 +275,29 @@ describe('finance utils', () => {
       expect(deriveEmployerSplit({ netBalance: 0 }, { own: 0, employer: 0 }))
         .toEqual({ own: 0, employer: 0, total: 0 });
     });
+  });
+});
+
+describe('txDisplayAmount', () => {
+  it('keeps inflows positive (contribution, claim payout)', () => {
+    expect(txDisplayAmount({ type: 'contribution', amount: 10000 })).toBe(10000);
+    expect(txDisplayAmount({ type: 'claim', amount: 500000 })).toBe(500000);
+  });
+
+  it('renders premiums as OUTFLOWS even though they are stored positive', () => {
+    // The whole point of the helper: premiums are money out, not money received.
+    expect(txDisplayAmount({ type: 'premium', amount: 2000 })).toBe(-2000);
+    expect(txDisplayAmount({ type: 'insurance_premium', amount: 8500 })).toBe(-8500);
+  });
+
+  it('normalises withdrawals to negative regardless of stored sign', () => {
+    expect(txDisplayAmount({ type: 'withdrawal', amount: 40000 })).toBe(-40000);
+    expect(txDisplayAmount({ type: 'withdrawal', amount: -40000 })).toBe(-40000);
+  });
+
+  it('is defensive about missing / non-numeric amounts and null rows', () => {
+    expect(txDisplayAmount({ type: 'contribution' })).toBe(0);
+    expect(txDisplayAmount({ type: 'premium', amount: 'x' })).toBe(0);
+    expect(txDisplayAmount(null)).toBe(0);
   });
 });

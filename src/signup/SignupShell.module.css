@@ -1,152 +1,50 @@
+/* Fixed-height signup shell — the topbar + 3-stage stepper (SignupTopbar) and
+   the page footer stay put; the body between them is the scroll container. Each
+   step card is its natural height: centered when it fits, scrolled into view
+   (top reachable) when it's taller than the viewport. */
 .page {
   position: relative;
-  min-height: 100vh;
+  height: 100dvh;
   display: flex;
   flex-direction: column;
+  overflow: hidden;
   background:
     radial-gradient(900px 500px at 50% 0%, rgba(94, 99, 168, 0.08) 0%, transparent 60%),
     linear-gradient(180deg, var(--color-cloud) 0%, #EEF0F8 100%);
   color: var(--color-slate);
 }
 
-/* ── Header ──────────────────────────────────────────────────────────── */
-.header {
-  background: rgba(255, 255, 255, 0.85);
-  backdrop-filter: blur(12px);
-  border-bottom: 1px solid color-mix(in srgb, var(--color-indigo) 6%, transparent);
-  position: sticky;
-  top: 0;
-  z-index: 20;
-}
-
-.headerInner {
-  max-width: 960px;
-  margin: 0 auto;
-  padding: var(--space-3) var(--space-6);
-  display: grid;
-  grid-template-columns: auto 1fr auto;
-  align-items: center;
-  gap: var(--space-4);
-  min-height: 60px;
-}
-
-.brand {
-  display: inline-flex;
-  align-items: center;
-}
-
-.brand img {
-  height: 28px;
-  width: auto;
-}
-
-/* ── Step meta (ring + label) ────────────────────────────────────────── */
-.stepMeta {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.6rem;
-  justify-self: center;
-  font-variant-numeric: tabular-nums;
-}
-
-/* Progress ring — 28px SVG with a lavender track + indigo arc that
-   animates its stroke-dashoffset. A number (or check icon) sits in the
-   center. Replaces the separate counter-pill and segmented ladder. */
-.ring {
-  position: relative;
-  width: 28px;
-  height: 28px;
-  color: var(--color-indigo);
-  flex-shrink: 0;
-}
-
-.ring svg {
-  display: block;
-  overflow: visible;
-}
-
-.ringTrack {
-  color: rgba(94, 99, 168, 0.18);
-}
-
-.ringFill {
-  color: var(--color-indigo);
-}
-
-.ringCenter {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  pointer-events: none;
-}
-
-.ringNum {
-  font-family: var(--font-display);
-  font-size: 11px;
-  font-weight: 800;
-  color: var(--color-indigo);
-  letter-spacing: -0.02em;
-  line-height: 1;
-}
-
-.ring[data-paused] .ringFill { color: var(--color-status-warning); }
-.ring[data-paused] .ringNum { color: #8B5A00; }
-
-.ring[data-complete] .ringFill { color: var(--color-green); }
-.ring[data-complete] .ringTrack { color: rgba(46, 139, 87, 0.18); }
-.ring[data-complete] .ringCenter { color: var(--color-green); }
-
-.stepLabel {
-  display: inline-block;
-  color: var(--color-indigo);
-  font-weight: 700;
-  font-family: var(--font-display);
-  font-size: var(--text-sm);
-  letter-spacing: -0.01em;
-  line-height: 1.2;
-}
-
-.stepLabel[data-paused] {
-  color: #8B5A00;
-}
-
-.stepLabel[data-complete] {
-  color: var(--color-green);
-}
-
-.exit {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 36px;
-  height: 36px;
-  border-radius: var(--radius-full);
-  color: var(--color-gray);
-  background: color-mix(in srgb, var(--color-indigo) 4%, transparent);
-  transition: background 0.2s ease, color 0.2s ease;
-}
-
-.exit:hover {
-  background: color-mix(in srgb, var(--color-indigo) 10%, transparent);
-  color: var(--color-indigo);
-}
-
-
-/* ── Body ────────────────────────────────────────────────────────────── */
+/* ── Body: vertically + horizontally centered, no page scroll ──────────── */
 .body {
   flex: 1;
-  display: flex;
-  justify-content: center;
-  padding: var(--space-5) var(--space-6) var(--space-8);
-}
-
-.bodyInner {
-  width: 100%;
-  max-width: 560px;
+  min-height: 0;
   display: flex;
   flex-direction: column;
+  align-items: center;
+  padding: var(--space-5) var(--space-6) 0;
+  /* The body is the scroll container: short steps stay vertically centered via
+     the bodyInner's auto margins; tall steps scroll (Continue reachable). The
+     legal footer is the last child of this flow — NOT a pinned bar — so it sits
+     at the bottom on short steps and scrolls away with the content on tall ones. */
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+/* The step host. Establishes the `signupcanvas` named container so the shared
+   step cards (Step.module.css) get the self-signup 8px-corner + width-tier
+   treatment WITHOUT leaking into the agent `onboardcanvas` wizard. Auto margins
+   center it when there's room; the body scrolls when it overflows. */
+.bodyInner {
+  width: 100%;
+  max-width: var(--canvas-max, 560px);
+  /* Vertical auto margins center the card when there's spare height and collapse
+     to 0 when it overflows, so the card top stays reachable as the body scrolls.
+     Horizontal centering comes from the body's align-items: center. */
+  margin-block: auto;
+  display: flex;
+  flex-direction: column;
+  container: signupcanvas / inline-size;
+  transition: max-width 0.22s ease;
 }
 
 /* Programmatic focus on step-change should not paint a visible ring — this
@@ -157,6 +55,7 @@
 
 .back {
   align-self: flex-start;
+  flex: 0 0 auto;
   display: inline-flex;
   align-items: center;
   gap: 0.5rem;
@@ -176,51 +75,21 @@
 
 /* ── Footer ──────────────────────────────────────────────────────────── */
 .footer {
-  padding: var(--space-6);
+  flex-shrink: 0;
+  align-self: stretch;
+  padding: var(--space-4) var(--space-6) var(--space-5);
   font-family: var(--font-body);
   font-size: var(--text-xs);
   color: var(--color-gray);
   text-align: center;
-  border-top: 1px solid color-mix(in srgb, var(--color-indigo) 5%, transparent);
 }
 
 /* ── Mobile ──────────────────────────────────────────────────────────── */
 @media (max-width: 640px) {
-  .headerInner {
-    padding: var(--space-2) var(--space-4);
-    gap: var(--space-3);
-    min-height: 52px;
-  }
-
-  .stepMeta {
-    justify-self: end;
-    gap: 0.45rem;
-  }
-
-  .stepLabel {
-    /* Truncate label on small screens so it doesn't wrap the header */
-    max-width: 120px;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-
-  .brand img {
-    height: 24px;
-  }
-
   .body {
-    padding: var(--space-4) var(--space-4) var(--space-8);
+    padding: var(--space-4) var(--space-4) 0;
   }
-
   .footer {
-    padding: var(--space-4);
-  }
-}
-
-/* Very small screens — hide the step label; the ring alone carries progress */
-@media (max-width: 420px) {
-  .stepLabel {
-    display: none;
+    padding: var(--space-3) var(--space-4) var(--space-4);
   }
 }

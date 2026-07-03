@@ -3,6 +3,7 @@ import { motion, useReducedMotion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { EASE_OUT_EXPO } from '../../utils/motion';
 import { formatUGX } from '../../utils/currency';
+import { txDisplayAmount } from '../../utils/finance';
 
 import { formatDate } from '../../utils/date';
 import { useCurrentSubscriber, useSubscriberTransactions } from '../../hooks/useSubscriber';
@@ -13,19 +14,20 @@ import SkeletonRow from '../../components/SkeletonRow';
 import { goBackOrFallback } from '../shell/navigation';
 import styles from './ActivityPage.module.css';
 
-// Client-side sign filters. Incoming = money received (amount > 0);
-// Outgoing = money sent (amount < 0). No backend round-trip — the full
+// Client-side sign filters. Incoming = money received; Outgoing = money sent.
+// Sign is taken from txDisplayAmount so insurance premiums (stored positive but
+// actually outflows) classify as Outgoing. No backend round-trip — the full
 // transaction list is already cached.
 const FILTERS = [
   { id: 'all',      label: 'All',      test: () => true },
-  { id: 'incoming', label: 'Incoming', test: (t) => t.amount > 0 },
-  { id: 'outgoing', label: 'Outgoing', test: (t) => t.amount < 0 },
+  { id: 'incoming', label: 'Incoming', test: (t) => txDisplayAmount(t) > 0 },
+  { id: 'outgoing', label: 'Outgoing', test: (t) => txDisplayAmount(t) < 0 },
 ];
 
-// Map a transaction onto a human label for the row. Incoming contributions
-// read as "Received"; outgoing withdrawals/claims read as "Sent".
+// Map a transaction onto a human label for the row. Inflows (contributions /
+// claim payouts) read as "Received"; outflows (withdrawals / premiums) as "Sent".
 function rowLabel(tx) {
-  if (tx.amount > 0) return 'Received';
+  if (txDisplayAmount(tx) > 0) return 'Received';
   return 'Sent';
 }
 
@@ -70,8 +72,9 @@ export default function ActivityPage() {
     let outflow = 0;
     allTx.forEach((t) => {
       if (txYear(t) !== thisYear) return;
-      if (t.amount > 0) inflow += t.amount;
-      else outflow += Math.abs(t.amount);
+      const signed = txDisplayAmount(t);
+      if (signed > 0) inflow += signed;
+      else outflow += Math.abs(signed);
     });
     return { inflow, outflow, net: inflow - outflow };
   }, [allTx, thisYear]);
@@ -175,7 +178,8 @@ export default function ActivityPage() {
           ) : (
             <ul className={styles.list}>
               {visible.map((tx, i) => {
-                const incoming = tx.amount > 0;
+                const signed = txDisplayAmount(tx);
+                const incoming = signed > 0;
                 return (
                   <li key={tx.id} className={styles.row} data-zebra={i % 2 === 1 || undefined}>
                     <div className={styles.main}>
@@ -193,7 +197,7 @@ export default function ActivityPage() {
                     <div className={styles.figures}>
                       <span className={styles.amount} data-tone={incoming ? 'in' : 'out'}>
                         {incoming ? '+ ' : '− '}
-                        {formatUGX(Math.abs(tx.amount), { compact: false })}
+                        {formatUGX(Math.abs(signed), { compact: false })}
                       </span>
                       <span className={styles.date}>
                         {formatDate(tx.date, { variant: 'short' })}

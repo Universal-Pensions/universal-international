@@ -31,7 +31,7 @@ const PURPOSES = [
 ];
 
 const RECIPIENTS = [
-  { id: 'urbra',    label: 'URBRA (Uganda Retirement Benefits Regulatory Authority)' },
+  { id: 'urbra',    label: 'URBRA' },
   { id: 'fund',     label: 'The pension fund manager' },
   { id: 'kyc',      label: 'KYC verification providers' },
 ];
@@ -58,7 +58,9 @@ export default function ConsentStep({ onActivate }) {
 
   return (
     <div className={`${styles.card} ${own.consentCard}`}>
-      <span className={styles.eyebrow}>Step 8 · Consent</span>
+      {/* No "Step N · Consent" eyebrow — the subscriber topbar sub-label and the
+          agent metaBar step counter already show the step position; an in-card
+          copy just duplicated it. */}
       <h2 className={styles.heading}>{isAgent ? 'Consent & data use' : 'One last thing before payment'}</h2>
       <p className={styles.subtext}>
         {isAgent
@@ -104,19 +106,30 @@ export default function ConsentStep({ onActivate }) {
             </li>
           ))}
         </ul>
-        <p className={own.footnote}>
-          We do not sell your data. You can request access, correction, or deletion at any time — contact our data protection officer at <strong>privacy@universalpensions.com</strong>.
-        </p>
       </div>
 
-      <div className={own.consentBox} data-checked={signup.consent || undefined}>
-        <label className={own.consentRow}>
-          <input
-            type="checkbox"
-            className={own.checkbox}
-            checked={signup.consent}
-            onChange={(e) => handleToggle(e.target.checked)}
-          />
+      {/* Full-width footnote: a non-panel child, so it spans 1 / -1 below the
+          3-column panel grid in both container layouts (signupcanvas + onboardcanvas). */}
+      <p className={own.footnote}>
+        We do not sell your data. You can request access, correction, or deletion at any time — contact our data protection officer at <strong>privacy@universalpensions.com</strong>.
+      </p>
+
+      {/* The whole box is the clickable label. The native checkbox is visually
+          hidden (still focusable) and drives the custom indigo .ck box; consent
+          gating + timestamp logging are unchanged. */}
+      <label className={own.consentBox} data-checked={signup.consent || undefined}>
+        <input
+          type="checkbox"
+          className={own.checkbox}
+          checked={signup.consent}
+          onChange={(e) => handleToggle(e.target.checked)}
+        />
+        <span className={own.ck} aria-hidden="true">
+          <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M4 12l5 5L20 6" />
+          </svg>
+        </span>
+        <div className={own.consentBody}>
           <span className={own.consentText}>
             I consent to Universal Pensions processing my personal data for the purposes above, and sharing it with the recipients listed, under Uganda’s <strong>Data Protection and Privacy Act, 2019</strong>. I have read the{' '}
             <a
@@ -139,29 +152,23 @@ export default function ConsentStep({ onActivate }) {
               Privacy Policy
             </a>.
           </span>
-        </label>
 
-        <AnimatePresence>
-          {signup.consent && signup.consentTimestamp && (
-            <motion.div
-              key="ts"
-              className={own.timestamp}
-              initial={{ opacity: 0, y: 4 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: 4 }}
-              transition={{ duration: 0.25, ease: EASE_OUT_EXPO }}
-            >
-              <svg aria-hidden="true" viewBox="0 0 16 16" width="12" height="12" fill="none">
-                <circle cx="8" cy="8" r="7" stroke="currentColor" strokeWidth="1.5"/>
-                <path d="M8 4v4l2.5 1.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
-              </svg>
-              <span>
+          <AnimatePresence>
+            {signup.consent && signup.consentTimestamp && (
+              <motion.span
+                key="ts"
+                className={own.timestamp}
+                initial={{ opacity: 0, y: 4 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: 4 }}
+                transition={{ duration: 0.25, ease: EASE_OUT_EXPO }}
+              >
                 Consent logged {formatLogged(signup.consentTimestamp)} · ID: <strong>{signup.phone ? `+256 ${signup.phone}` : 'pending'}</strong>
-              </span>
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </div>
+              </motion.span>
+            )}
+          </AnimatePresence>
+        </div>
+      </label>
 
       <div className={styles.actions}>
         <button
@@ -188,8 +195,8 @@ export default function ConsentStep({ onActivate }) {
 function BulletCheck() {
   return (
     <span className={own.bullet} aria-hidden="true">
-      <svg viewBox="0 0 12 12" width="9" height="9" fill="none">
-        <path d="M2.5 6l2.5 2.5 4.5-5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+      <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M4 12l5 5L20 6" />
       </svg>
     </span>
   );
@@ -198,7 +205,9 @@ function BulletCheck() {
 function formatLogged(iso) {
   try {
     const d = new Date(iso);
-    return `${d.toUTCString().replace(' GMT', ' UTC')}`;
+    const hh = String(d.getUTCHours()).padStart(2, '0');
+    const mm = String(d.getUTCMinutes()).padStart(2, '0');
+    return `${hh}:${mm} UTC`;
   } catch {
     return iso;
   }

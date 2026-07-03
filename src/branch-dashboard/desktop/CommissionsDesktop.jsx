@@ -1,8 +1,10 @@
 import { useMemo } from 'react';
 import { useBranchScope } from '../../contexts/BranchScopeContext';
-import { useEntityCommissionSummary, useAgentCommissionList } from '../../hooks/useCommission';
+import { useChildren, useChildrenMetrics } from '../../hooks/useEntity';
+import { useEntityCommissionSummary, usePendingDuesByAgent, useSettlementsList } from '../../hooks/useCommission';
 import { formatUGXShort, formatNumber } from '../../utils/currency';
 import ErrorCard from '../../components/feedback/ErrorCard';
+import { deriveBranchAnalytics } from '../analytics/deriveBranchAnalytics';
 import { PageHead, MetricRow, Tile, Card, SectionHead, StatusBadge, Avatar } from '../../employer-dashboard/desktop/ui';
 import { checkIcon, pendingIcon, analyticsIcon } from '../../employer-dashboard/desktop/icons';
 import ui from '../../employer-dashboard/desktop/ui.module.css';
@@ -15,27 +17,62 @@ function settlementPct(paid, due) {
 
 export default function CommissionsDesktop() {
   const { branchId } = useBranchScope();
-  const { data: summary, isError: summaryError, error, refetch } = useEntityCommissionSummary('branch', branchId);
-  const { data: agentList = [], isLoading, isError: listError, refetch: refetchList } = useAgentCommissionList(null);
 
-  const rows = useMemo(
-    () => agentList.filter((a) => a.branchId === branchId),
-    [agentList, branchId],
+  // Same source of truth as CommissionsMobile + the branch Analytics page:
+  // a single deriveBranchAnalytics pass over the branch-filtered settlement +
+  // pending-dues feeds. Previously the desktop read useAgentCommissionList
+  // (network-wide, client-filtered), so per-agent paid/due could diverge from
+  // the other two surfaces.
+  const { data: summary = {}, isError: summaryError, error, refetch: refetchSummary } =
+    useEntityCommissionSummary('branch', branchId);
+  const { data: agentsRaw = [], isError: agentsError, refetch: refetchAgents } =
+    useChildren('branch', branchId);
+  const { data: agentMetricsMap = {} } = useChildrenMetrics('branch', branchId);
+  const { data: pendingDues = [], isError: duesError, refetch: refetchDues } =
+    usePendingDuesByAgent();
+  const { data: settlements = [], isLoading, isError: settlementsError, refetch: refetchSettlements } =
+    useSettlementsList({ branchId });
+
+  const agents = useMemo(
+    () => agentsRaw.map((a) => ({ ...a, metrics: agentMetricsMap[a.id] ?? a.metrics })),
+    [agentsRaw, agentMetricsMap],
   );
 
-  if (summaryError || listError) {
+  const analytics = useMemo(
+    () =>
+      deriveBranchAnalytics({
+        agents,
+        commissionSummary: summary,
+        pendingDuesByAgent: pendingDues,
+        settlements,
+        branchId,
+      }),
+    [agents, summary, pendingDues, settlements, branchId],
+  );
+
+  const rows = useMemo(
+    () =>
+      (analytics.agentsView.leaderboard || [])
+        .map((a) => ({ agentId: a.id, agentName: a.name, totalPaid: a.commissionPaid, totalDue: a.commissionDue }))
+        .filter((r) => r.totalPaid > 0 || r.totalDue > 0)
+        .sort((a, b) => (b.totalPaid + b.totalDue) - (a.totalPaid + a.totalDue)),
+    [analytics],
+  );
+
+  if (summaryError || agentsError || duesError || settlementsError) {
     return (
       <ErrorCard
         title="We couldn't load commissions"
         message={error}
-        onRetry={() => { refetch(); refetchList(); }}
+        onRetry={() => { refetchSummary(); refetchAgents(); refetchDues(); refetchSettlements(); }}
       />
     );
   }
 
-  const totalPaid = summary?.totalPaid || 0;
-  const totalDue = summary?.totalDue || 0;
-  const rate = Math.round(summary?.settlementRate || 0);
+  const { kpis } = analytics.commissionsView;
+  const totalPaid = kpis.paid || 0;
+  const totalDue = kpis.due || 0;
+  const rate = Math.round(kpis.settlementRate || 0);
 
   return (
     <div className={ui.stack}>

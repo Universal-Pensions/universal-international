@@ -38,11 +38,9 @@ export default function AgentFallbackStep({ onExit }) {
         animate={{ scale: 1, opacity: 1 }}
         transition={{ duration: 0.5, ease: EASE_OUT_EXPO }}
       >
-        <svg viewBox="0 0 72 72" width="72" height="72" fill="none" aria-hidden="true">
-          <circle cx="36" cy="36" r="34" stroke="currentColor" strokeWidth="2.5" />
-          <circle cx="30" cy="30" r="4" fill="currentColor" />
-          <circle cx="42" cy="30" r="4" fill="currentColor" />
-          <path d="M24 44c3 4 7.5 6 12 6s9-2 12-6" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" fill="none" />
+        <svg viewBox="0 0 24 24" width="30" height="30" fill="none" aria-hidden="true">
+          <circle cx="12" cy="9" r="3.2" stroke="currentColor" strokeWidth="2" />
+          <path d="M5.5 20c0-3.2 2.9-5 6.5-5s6.5 1.8 6.5 5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" fill="none" />
         </svg>
       </motion.div>
 
@@ -52,7 +50,7 @@ export default function AgentFallbackStep({ onExit }) {
       <p className={`${styles.subtext} textCenter`}>
         {failureReason
           ? failureReason
-          : 'Your onboarding needs a quick in-person check.'} A field agent will contact you shortly to complete verification.
+          : 'NIRA could not verify your identity from the details provided.'} A field agent will contact you shortly to complete verification.
       </p>
 
       <div className={own.ticket} data-loading={loading || undefined}>
@@ -86,14 +84,32 @@ export default function AgentFallbackStep({ onExit }) {
       <div className={own.checklist}>
         <span className={own.checklistLabel}>Keep these ready for the agent</span>
         <ul>
-          <li>Your National ID (Ndaga Muntu) — original card, not a photocopy</li>
-          <li>Your mobile phone with this number active</li>
-          <li>A letter from your LC1 or employer if available (optional, speeds things up)</li>
+          <li>
+            <svg aria-hidden="true" viewBox="0 0 24 24" width="15" height="15" fill="none">
+              <path d="M4 12l5 5L20 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+            Your National ID (Ndaga Muntu) — original card, not a photocopy
+          </li>
+          <li>
+            <svg aria-hidden="true" viewBox="0 0 24 24" width="15" height="15" fill="none">
+              <path d="M4 12l5 5L20 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+            Your mobile phone with this number active
+          </li>
+          <li>
+            <svg aria-hidden="true" viewBox="0 0 24 24" width="15" height="15" fill="none">
+              <path d="M4 12l5 5L20 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+            A letter from your LC1 or employer if available (optional, speeds things up)
+          </li>
         </ul>
       </div>
 
       <div className={styles.actions}>
         <button type="button" className={styles.submit} onClick={onExit}>
+          <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" width="18" height="18">
+            <path d="M19 12H5M11 6l-6 6 6 6" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
           Back to home
         </button>
       </div>

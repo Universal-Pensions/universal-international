@@ -2,12 +2,11 @@ import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { EASE_OUT_EXPO } from '../utils/motion';
 
-import { useSignIn } from '../contexts/SignInContext';
+import { SUPPORT_WHATSAPP_URL } from '../config/env';
 import styles from './CTA.module.css';
 
 export default function CTA() {
   const navigate = useNavigate();
-  const signIn = useSignIn();
 
   return (
     <section className={styles.section} id="start">
@@ -46,13 +45,14 @@ export default function CTA() {
               >
                 Open your account
               </button>
-              <button
-                type="button"
+              <a
+                href={SUPPORT_WHATSAPP_URL}
+                target="_blank"
+                rel="noreferrer"
                 className={styles.secondaryBtn}
-                onClick={() => signIn.open()}
               >
                 Talk to an agent
-              </button>
+              </a>
             </div>
           </div>
 

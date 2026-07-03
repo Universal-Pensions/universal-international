@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
 import { normalizeFrequency, FREQUENCY_LABEL } from '../../utils/finance';
 import { EASE_OUT_EXPO } from '../../utils/motion';
@@ -19,6 +20,7 @@ function formatSchedule(schedule) {
 export default function OnboardingComplete({ subscriberName, awareness, schedule, onAnother, onClose }) {
   const { user } = useAuth();
   const signup = useSignup();
+  const queryClient = useQueryClient();
   const agentId = user?.agentId;
 
   // Persistence status — drives whether the success copy / actions are
@@ -49,12 +51,17 @@ export default function OnboardingComplete({ subscriberName, awareness, schedule
       // idempotently return THIS subscriber's id and insert nothing). The retry
       // button only shows on 'error' (nonce NOT rotated), so retries stay stable.
       signup.rotateSignupNonce();
+      // Refresh the agent's subscriber list + contributions so the new member
+      // appears immediately on a quick nav back (otherwise the cached list is
+      // stale for up to 5 min).
+      queryClient.invalidateQueries({ queryKey: ['agentSubscribers', agentId] });
+      queryClient.invalidateQueries({ queryKey: ['agentContributions', agentId] });
       setStatus('success');
     } catch (err) {
       setStatus('error');
       setErrorMessage(err?.message || "Couldn't create the subscriber. Please retry.");
     }
-  }, [agentId, signup]);
+  }, [agentId, signup, queryClient]);
 
   // Fire on mount: by the time the agent sees this success card, the row is
   // persisted (or an inline retry is shown). The Onboard another / Close

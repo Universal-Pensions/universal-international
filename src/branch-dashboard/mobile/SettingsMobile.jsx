@@ -13,11 +13,11 @@ import styles from './branchMobile.module.css';
  * Password] layout.
  *
  * Data honesty:
- * - Branch ID + District are DISABLED — both come straight off the entity
- *   (id / parentId=districtId) and have no editable write path. District has no
- *   stored display-name field on the branch row, so we surface the district id
- *   read-only rather than fabricate an editable district name. This matches
- *   SettingsDesktop, which omits District altogether.
+ * - Branch ID is DISABLED — it comes straight off the entity (id) and has no
+ *   editable write path. District is OMITTED (matching SettingsDesktop): the
+ *   branch row stores only the district id (parentId, e.g. d-kam-015) with no
+ *   human display-name field, so surfacing it read-only just showed a
+ *   meaningless code.
  * - Password fields are local-only (demo scope): the platform uses mocked OTP
  *   sign-in, so "Update password" confirms via toast without a real RPC,
  *   mirroring the desktop demo-save semantics.
@@ -126,11 +126,10 @@ export default function SettingsMobile() {
             <div className={styles.field} style={{ opacity: 0.7 }}>
               <input id="bs-id" value={branch?.id || branchId || ''} disabled />
             </div>
-
-            <label className={styles.fl} htmlFor="bs-district" style={{ marginTop: 16 }}>District</label>
-            <div className={styles.field} style={{ opacity: 0.7 }}>
-              <input id="bs-district" value={branch?.parentId || ''} disabled />
-            </div>
+            {/* District is intentionally omitted (matches SettingsDesktop): the
+                branch row stores only the district id (e.g. d-kam-015) with no
+                human display-name field, so showing it read-only just surfaced a
+                meaningless code. */}
           </section>
 
           <section className={styles.card} aria-label="Branch manager">

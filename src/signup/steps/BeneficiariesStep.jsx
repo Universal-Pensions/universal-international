@@ -16,8 +16,16 @@ const RELATIONSHIPS = [
   { id: 'other',   label: 'Other' },
 ];
 
-// Donut/legend segment colours for the agent-desktop allocation aside (v3 mockup).
-const ALLOC_COLORS = ['#292867', '#2F8F9D', '#5E63A8', '#D9DCF2', '#2E8B57', '#E6A817'];
+// Donut/legend wedge colours (indigo · teal · lavender first, per the v3 mockup),
+// shared by the self + agent allocation aside. Token-based so they track the theme.
+const ALLOC_COLORS = [
+  'var(--color-indigo)',
+  'var(--color-teal)',
+  'var(--color-lavender)',
+  'var(--color-indigo-soft)',
+  'var(--color-green)',
+  'var(--color-status-warning)',
+];
 
 function newId() {
   return `b-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`;
@@ -173,7 +181,7 @@ export default function BeneficiariesStep({ onNext }) {
       </p>
 
       <BeneficiarySection
-        title="Pension beneficiaries"
+        title={isAgent ? 'Pension beneficiaries' : null}
         list={pensionList}
         onChange={updatePension}
       />
@@ -187,8 +195,13 @@ export default function BeneficiariesStep({ onNext }) {
             checked={signup.insuranceSameAsPension}
             onChange={(e) => toggleSame(e.target.checked)}
           />
+          <span className={own.ck} aria-hidden="true">
+            <svg viewBox="0 0 16 16" width="12" height="12" fill="none">
+              <path d="M3 8l3 3 7-7" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+          </span>
           <div>
-            <span className={own.toggleLabel}>Use the same nominees for my insurance product.</span>
+            <span className={own.toggleLabel}>Use the same nominees for my insurance products</span>
             <span className={own.toggleHint}>
               Uncheck this if you want a different set of beneficiaries for your insurance.
             </span>
@@ -258,7 +271,6 @@ export default function BeneficiariesStep({ onNext }) {
 /* ── Reusable beneficiary section ──────────────────────────────────────── */
 
 function BeneficiarySection({ title, list, onChange }) {
-  const isAgent = useOnboardAudience() === 'agent';
   const total = totalShare(list);
 
   // Agent desktop allocation aside (v3): a per-beneficiary donut + legend.
@@ -271,7 +283,10 @@ function BeneficiarySection({ title, list, onChange }) {
     return `${ALLOC_COLORS[i % ALLOC_COLORS.length]} ${start}% ${Math.min(start + v, 100)}%`;
   });
   const donutBg = `conic-gradient(${
-    (total < 100 ? [...segments, `#EEF0F8 ${total}% 100%`] : segments).join(', ')
+    (total < 100
+      ? [...segments, `color-mix(in srgb, var(--color-indigo) 8%, transparent) ${total}% 100%`]
+      : segments
+    ).join(', ')
   })`;
 
   function updateOne(id, patchObj) {
@@ -356,58 +371,40 @@ function BeneficiarySection({ title, list, onChange }) {
         ))}
       </div>
 
-      {/* Allocation summary — with auto-balance, total is always 100 so this is
-          purely a progress/confirmation affordance. The agent desktop flow shows
-          a per-beneficiary donut + legend (v3 mockup); the subscriber phone flow
-          keeps the compact bar. */}
-      {isAgent ? (
-        <div className={own.allocAside} data-state={total === 100 ? 'ok' : 'under'}>
-          <span className={own.allocLabel}>Allocation</span>
-          <div className={own.donut} style={{ background: donutBg }}>
-            <span className={own.donutHole}>{total}%</span>
-          </div>
-          <ul className={own.legend}>
-            {list.map((b, i) => (
-              <li key={b.id} className={own.legendRow}>
-                <span className={own.legendName}>
-                  <span className={own.legendDot} style={{ background: ALLOC_COLORS[i % ALLOC_COLORS.length] }} />
-                  {b.name.trim() || `Beneficiary ${i + 1}`}
-                </span>
-                <b className={own.legendPct}>{b.share}%</b>
-              </li>
-            ))}
-          </ul>
-        </div>
-      ) : (
-        <div className={own.allocation} data-state={total === 100 ? 'ok' : 'under'}>
-          <div className={own.allocationBar}>
-            <motion.span
-              className={own.allocationFill}
-              animate={{ width: `${Math.min(total, 100)}%` }}
-              transition={{ duration: 0.3, ease: EASE_OUT_EXPO }}
-            />
-          </div>
-          <div className={own.allocationText}>
-            <span className={own.allocationValue}>{total}%</span>
-            <span className={own.allocationRemaining}>
-              {total === 100 ? 'Allocated' : `${100 - total}% to allocate`}
-            </span>
-          </div>
-        </div>
-      )}
-
       <div className={own.rowActions}>
-        <button type="button" className={own.addBtn} onClick={addOne}>
+        <button type="button" className={own.actionBtn} onClick={addOne}>
           <svg aria-hidden="true" viewBox="0 0 16 16" width="12" height="12" fill="none">
             <path d="M8 3v10M3 8h10" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round"/>
           </svg>
           Add beneficiary
         </button>
-        {list.length > 1 && (
-          <button type="button" className={own.linkBtn} onClick={distributeEvenly}>
-            Split evenly
-          </button>
-        )}
+        <button type="button" className={own.actionBtn} onClick={distributeEvenly}>
+          Split evenly
+        </button>
+      </div>
+
+      {/* Allocation donut + legend. With auto-balance the total is always 100, so
+          this is a confirmation affordance. Rendered for every audience; the wide
+          self tier (signupcanvas ≥720) and the agent desktop (onboardcanvas ≥720)
+          float it into a right-hand aside, while narrow widths stack it under the
+          rows. */}
+      <div className={own.allocAside} data-state={total === 100 ? 'ok' : 'under'}>
+        <span className={own.allocLabel}>Allocation</span>
+        <div className={own.donut} style={{ background: donutBg }}>
+          <span className={own.donutHole}>{total}%</span>
+        </div>
+        <ul className={own.legend}>
+          {list.map((b, i) => (
+            <li key={b.id} className={own.legendRow}>
+              <span className={own.legendName}>
+                <span className={own.legendDot} style={{ background: ALLOC_COLORS[i % ALLOC_COLORS.length] }} />
+                {b.name.trim() || `Beneficiary ${i + 1}`}
+              </span>
+              <b className={own.legendPct}>{b.share}%</b>
+            </li>
+          ))}
+        </ul>
+        <p className={own.allocCaption}>Allocated · adds up to 100%</p>
       </div>
     </div>
   );
@@ -417,7 +414,8 @@ function BeneficiaryRow({ index, beneficiary, canRemove, onChange, onShareChange
   return (
     <div className={own.row}>
       <div className={own.rowHeader}>
-        <span className={own.rowIndex}>#{index + 1}</span>
+        <span className={own.rowBadge} aria-hidden="true">{index + 1}</span>
+        <span className={own.rowName}>Beneficiary {index + 1}</span>
         {canRemove && (
           <button type="button" className={own.removeBtn} onClick={onRemove} aria-label={`Remove beneficiary ${index + 1}`}>
             <svg aria-hidden="true" viewBox="0 0 16 16" width="12" height="12" fill="none">
@@ -427,19 +425,19 @@ function BeneficiaryRow({ index, beneficiary, canRemove, onChange, onShareChange
         )}
       </div>
 
-      <div className={styles.field}>
-        <label className={styles.label} htmlFor={`${beneficiary.id}-name`}>Full name</label>
-        <input
-          id={`${beneficiary.id}-name`}
-          className={styles.input}
-          value={beneficiary.name}
-          onChange={(e) => onChange({ name: e.target.value })}
-          placeholder="Their full legal name"
-          autoComplete="off"
-        />
-      </div>
+      <div className={own.fields}>
+        <div className={`${styles.field} ${own.nameField}`}>
+          <label className={styles.label} htmlFor={`${beneficiary.id}-name`}>Full name</label>
+          <input
+            id={`${beneficiary.id}-name`}
+            className={styles.input}
+            value={beneficiary.name}
+            onChange={(e) => onChange({ name: e.target.value })}
+            placeholder="Their full legal name"
+            autoComplete="off"
+          />
+        </div>
 
-      <div className={styles.fieldRow}>
         <div className={styles.field}>
           <label className={styles.label} htmlFor={`${beneficiary.id}-phone`}>Phone</label>
           <div className={styles.phoneGroup}>
@@ -474,38 +472,39 @@ function BeneficiaryRow({ index, beneficiary, canRemove, onChange, onShareChange
             ))}
           </select>
         </div>
-      </div>
 
-      <div className={styles.field}>
-        <label className={styles.label} htmlFor={`${beneficiary.id}-share`}>
-          Share
-          <span className={styles.labelHint}>the rest auto-balances</span>
-        </label>
-        <div className={own.shareRow}>
-          <input
-            id={`${beneficiary.id}-share`}
-            type="number"
-            inputMode="numeric"
-            min={0}
-            max={100}
-            className={own.shareInput}
-            value={beneficiary.share}
-            onChange={(e) => {
-              const raw = e.target.value.replace(/\D/g, '').slice(0, 3);
-              onShareChange(Number(raw) || 0);
-            }}
-            aria-describedby={`${beneficiary.id}-share-hint`}
-          />
-          <span id={`${beneficiary.id}-share-hint`} className="sr-only">
-            Moving this slider automatically adjusts the other beneficiaries so the total stays at 100%.
-          </span>
-          <span className={own.sharePct}>%</span>
-          <div className={own.shareSlider}>
+        <div className={`${styles.field} ${own.shareField}`}>
+          <label className={styles.label} htmlFor={`${beneficiary.id}-share`}>
+            Share
+            <span className={styles.labelHint}>the rest auto-balances</span>
+          </label>
+          <div className={own.sharef}>
+            <div className={own.shareNum}>
+              <input
+                id={`${beneficiary.id}-share`}
+                type="number"
+                inputMode="numeric"
+                min={0}
+                max={100}
+                className={own.shareInput}
+                value={beneficiary.share}
+                onChange={(e) => {
+                  const raw = e.target.value.replace(/\D/g, '').slice(0, 3);
+                  onShareChange(Number(raw) || 0);
+                }}
+                aria-describedby={`${beneficiary.id}-share-hint`}
+              />
+              <span className={own.sharePct}>%</span>
+            </div>
+            <span id={`${beneficiary.id}-share-hint`} className="sr-only">
+              Moving this slider automatically adjusts the other beneficiaries so the total stays at 100%.
+            </span>
             <input
               type="range"
               min={0}
               max={100}
               step={1}
+              className={own.shareRange}
               value={beneficiary.share}
               onChange={(e) => onShareChange(Number(e.target.value))}
               aria-label={`Share for beneficiary ${index + 1}`}

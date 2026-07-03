@@ -604,6 +604,13 @@ export default function OverlayPanel({ onEmployerSelect } = {}) {
   const heroAum = employerAware ? scopedAum : aum;
   const barSubs = employerAware ? scopedSubs : (metrics?.totalSubscribers || 0);
   const barActiveRate = employerAware ? scopedActiveRate : (metrics?.activeRate || 0);
+  // Active/inactive COUNTS come from the actual active count (single rounding),
+  // with inactive as its exact complement — deriving both from the rounded
+  // percentage (barSubs × barActiveRate%) double-rounds and can drift ±25.
+  const barActiveCount = employerAware
+    ? scopedActiveCount
+    : Math.round((metrics?.totalSubscribers || 0) * ((metrics?.activeRate || 0) / 100));
+  const barInactiveCount = Math.max(0, barSubs - barActiveCount);
   // Hide the contributions/withdrawals footer under the Employers scope (no
   // employer per-region contribution figures exist).
   const showMoneyFooter = !employerAware || scope !== SCOPES.EMPLOYERS;
@@ -754,10 +761,10 @@ export default function OverlayPanel({ onEmployerSelect } = {}) {
               </div>
               <div className={styles.activityLabels}>
                 <span className={styles.activityActive}>
-                  {formatNumber(barSubs * (barActiveRate / 100))} active
+                  {formatNumber(barActiveCount)} active
                 </span>
                 <span className={styles.activityInactive}>
-                  {formatNumber(barSubs * ((100 - barActiveRate) / 100))} inactive
+                  {formatNumber(barInactiveCount)} inactive
                 </span>
               </div>
             </div>

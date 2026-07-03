@@ -1,9 +1,10 @@
 /**
- * branchOverviewDerive.js — pure branch-overview derivations, lifted (by copy)
- * from BranchHealthScore.jsx so the DESKTOP Overview page and the desktop Branch
- * Copilot share one truthful source. The mobile hero (BranchHealthScore.jsx)
- * keeps its own identical copy untouched — this module exists so the desktop
- * surfaces never re-implement the score/insight/alert math inconsistently.
+ * branchOverviewDerive.js — pure branch-overview derivations (score, insights,
+ * activity feed) and the single source of truth for them. The desktop Overview
+ * page and the desktop Branch Copilot both read from here so they never
+ * re-implement the score/insight/alert math inconsistently. (The old
+ * BranchHealthScore.jsx that once held this logic was removed; its math lives
+ * here and in deriveBranchAnalytics.js now.)
  *
  * All inputs come from existing hooks:
  *   - metrics: useEntityMetrics('branch', branchId)
@@ -13,7 +14,7 @@
 
 import { formatUGX } from '../../utils/currency';
 
-/* ── Derived metrics (verbatim from BranchHealthScore.deriveMetrics) ── */
+/* ── Derived metrics ── */
 export function deriveMetrics(metrics = {}, agents = []) {
   const totalSubs = metrics.totalSubscribers || 0;
   const activeSubs = Math.round(totalSubs * ((metrics.activeRate || 0) / 100));
@@ -41,7 +42,7 @@ export function deriveMetrics(metrics = {}, agents = []) {
   };
 }
 
-/* ── Score (verbatim from BranchHealthScore.calcScore) ── */
+/* ── Score ── */
 export function calcScore(derived) {
   const { retentionRate, avgPerSub, avgMonthlyGrowth, agentActivity } = derived;
   const avgContribScore = Math.min(100, (avgPerSub / 500_000) * 100);
@@ -87,7 +88,7 @@ export function monthlyContribStat(metrics = {}) {
   return { current, prev, changePct, yoyPct, series: mc };
 }
 
-/* ── Insights (verbatim from BranchHealthScore.generateInsights) ── */
+/* ── Insights ── */
 export function generateInsights(metrics = {}, agents = []) {
   const insights = [];
   if (agents.length > 1) {
@@ -121,8 +122,8 @@ export function generateInsights(metrics = {}, agents = []) {
   return insights.slice(0, 4);
 }
 
-/* ── Activity feed (verbatim from BranchHealthScore.generateActivity, minus the
- *    Math.random jitter so the desktop feed is stable across re-renders). `now`
+/* ── Activity feed (no Math.random jitter, so the desktop feed is stable
+ *    across re-renders). `now`
  *    defaults to Date.now() inside the helper — kept out of the render path so
  *    the component stays pure (matches the mobile hero's pattern). ── */
 export function generateActivity(agents = [], now = Date.now()) {

@@ -105,6 +105,13 @@ export default function CommissionsMobile() {
     );
   }
 
+  // Cold load: without this the settlement-rate hero + KPI pair briefly flash
+  // 0% / UGX 0 before the commission feeds resolve. Hold a spinner until the
+  // first settlements read lands.
+  if (isLoading && settlements.length === 0 && rows.length === 0) {
+    return <div className={styles.loading}><div className={styles.spinner} /></div>;
+  }
+
   const { kpis } = analytics.commissionsView;
   const rate = Math.round(kpis.settlementRate || 0);
   const totalPaid = kpis.paid || 0;

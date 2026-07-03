@@ -65,18 +65,52 @@
 /* ── Source thumbnails ───────────────────────────────────────────────── */
 .thumbs {
   display: flex;
-  gap: 0.5rem;
-  margin-bottom: var(--space-5);
+  align-items: center;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+  margin-bottom: var(--space-4);
 }
 
 .thumb {
   position: relative;
-  flex: 1;
-  aspect-ratio: 85 / 54;
+  width: 84px;
+  height: 52px;
+  flex: 0 0 auto;
   border-radius: var(--radius-md);
   overflow: hidden;
   border: 1px solid var(--color-lavender);
   background: var(--color-slate);
+}
+
+/* Inline auto-fill confidence pill (sits in the thumbnail row) */
+.confidencePill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.25rem 0.6rem;
+  font-family: var(--font-display);
+  font-size: var(--text-xs);
+  font-weight: 700;
+  border-radius: var(--radius-full);
+  background: rgba(46, 139, 87, 0.1);
+  color: var(--color-green);
+}
+
+.confidencePill[data-tone='mid'] {
+  background: rgba(230, 168, 23, 0.12);
+  color: var(--color-kyc-warning-dark);
+}
+
+.confidencePill[data-tone='low'] {
+  background: rgba(220, 53, 69, 0.1);
+  color: var(--color-kyc-error);
+}
+
+.confidenceNote {
+  font-family: var(--font-body);
+  font-size: var(--text-xs);
+  color: var(--color-kyc-warning-dark);
+  margin: -0.25rem 0 var(--space-4);
 }
 
 .thumb img {
@@ -141,11 +175,10 @@
 
 .manualEyebrow {
   font-family: var(--font-display);
-  font-size: var(--text-xs);
-  font-weight: 700;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: var(--color-indigo-soft);
+  font-size: var(--text-base);
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  color: var(--color-indigo);
 }
 
 .manualHint {
@@ -196,18 +229,11 @@
 }
 
 .optionalChip {
-  display: inline-block;
-  margin-left: 0.4rem;
-  padding: 0.08rem 0.45rem;
-  font-family: var(--font-body);
-  font-size: 10px;
+  margin-left: 0.3rem;
+  font-family: var(--font-display);
+  font-size: var(--text-xs);
   font-weight: 600;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
   color: var(--color-indigo-soft);
-  background: rgba(94, 99, 168, 0.1);
-  border-radius: var(--radius-full);
-  vertical-align: 1px;
 }
 
 .comboEmpty {
@@ -240,7 +266,97 @@
     grid-column: 1 / -1;
   }
 
+  /* Gender spans both columns here (= full width in the agent 2-col grid). */
+  .spanTwo {
+    grid-column: span 2;
+  }
+
   .thumbs {
     max-width: 240px;
   }
 }
+
+/* ── Subscriber self-signup Review at the 980px tier (3-column .grid3) ────
+   Mirrors the onboardcanvas spans but for the wider 3-column self-signup form
+   (pairs with the `@container signupcanvas (min-width:720px) .form` grid in
+   Step.module.css). Section dividers / email / actions span all three columns;
+   gender spans two so it shares its row with date-of-birth. */
+@container signupcanvas (min-width: 720px) {
+  .manualHeader,
+  .spanFull {
+    grid-column: 1 / -1;
+  }
+
+  .spanTwo {
+    grid-column: span 2;
+  }
+
+  .thumbs {
+    max-width: 320px;
+  }
+}
+
+/* ── Inline label (text + auto-filled chip / "· optional") ───────────────── */
+.fieldLabel {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+/* OCR-derived fields read on a cloud tint so they're distinct from the manual
+   fields below (mockup `.inp.ocr`). */
+.ocrInput {
+  background: var(--color-cloud);
+}
+
+/* District combobox chevron */
+.comboChevron {
+  position: absolute;
+  right: 0.75rem;
+  top: 24px;
+  transform: translateY(-50%);
+  color: var(--color-gray);
+  pointer-events: none;
+}
+
+/* ── Password strength meter (Review "Strength" field) ───────────────────── */
+.strength {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  min-height: 48px;
+}
+
+.strengthBar {
+  flex: 1;
+  height: 6px;
+  border-radius: var(--radius-full);
+  background: var(--color-lavender);
+  overflow: hidden;
+}
+
+.strengthBar i {
+  display: block;
+  height: 100%;
+  width: 0;
+  border-radius: var(--radius-full);
+  background: var(--color-green);
+  transition: width 0.25s ease, background 0.25s ease;
+}
+
+.strengthBar i[data-tone='low'] { background: var(--color-status-poor); }
+.strengthBar i[data-tone='mid'] { background: var(--color-kyc-warning-dark); }
+.strengthBar i[data-tone='high'] { background: var(--color-green); }
+
+.strengthPill {
+  font-family: var(--font-display);
+  font-size: var(--text-xs);
+  font-weight: 700;
+  white-space: nowrap;
+  color: var(--color-green);
+}
+
+.strengthPill[data-tone='low'] { color: var(--color-status-poor); }
+.strengthPill[data-tone='mid'] { color: var(--color-kyc-warning-dark); }
+.strengthPill[data-tone='none'] { color: var(--color-gray); }

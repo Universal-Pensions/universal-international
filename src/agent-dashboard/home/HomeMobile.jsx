@@ -189,7 +189,7 @@ export default function HomeMobile({ agentId }) {
           <span className={`${styles.rowVal} ${styles.warn}`}>{formatNumber(m.pending)}</span>
           <span className={styles.chev}>{ChevIcon}</span>
         </button>
-        <button type="button" className={styles.listRow} onClick={() => navigate('/dashboard/subscribers')}>
+        <button type="button" className={styles.listRow} onClick={() => navigate('/dashboard/subscribers?filter=active')}>
           <span className={`${styles.rowIc} ${styles.tintIndigo}`}>{PeopleIcon}</span>
           <span className={styles.rowMid}>
             <b>Active subscribers</b>

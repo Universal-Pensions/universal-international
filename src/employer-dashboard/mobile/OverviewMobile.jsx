@@ -12,6 +12,7 @@ import { formatUGX, formatNumber } from '../../utils/currency';
 import { formatDate } from '../../utils/date';
 import { companyFundingLabel } from '../employees/fundingLabel';
 import { deriveEmployerMetrics } from '../overview/employerCopilotContext';
+import { groupInsuranceProducts } from '../../utils/groupInsurance';
 import ErrorCard from '../../components/feedback/ErrorCard';
 import s from './employerMobile.module.css';
 
@@ -59,8 +60,12 @@ export default function OverviewMobile() {
   }
 
   const cfg = employer?.defaultContributionConfig;
-  const cover = Number(cfg?.groupCoverAmount) || 0;
-  const insEnabled = cfg?.insuranceEnabled ?? cover > 0;
+  // Multi-product group insurance (Life / Health / Funeral), employer-funded —
+  // sum cover across all held products so a Health/Funeral-only employer doesn't
+  // read "UGX 0 per member" from the legacy life-only groupCoverAmount.
+  const insProducts = groupInsuranceProducts(cfg);
+  const insEnabled = insProducts.length > 0;
+  const groupCoverPerMember = insProducts.reduce((sum, p) => sum + p.cover, 0);
   const totalContributions = metrics.totalContributions || 0;
   const oldestRun = runs.length ? runs[runs.length - 1] : null;
   const sinceLabel = oldestRun ? formatDate(oldestRun.runAt, { variant: 'short-month-year' }) : null;
@@ -128,7 +133,7 @@ export default function OverviewMobile() {
           <span className={`${s.lIc} ${s.tintTeal}`}>
             <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" aria-hidden="true"><path d="M12 3l7 3v5c0 4.5-3 8-7 10-4-2-7-5.5-7-10V6z" /><path d="M9 12l2 2 4-4" strokeLinecap="round" /></svg>
           </span>
-          <span className={s.lMid}><b>Group life cover</b><small>{insEnabled ? `On · ${formatUGX(cover, { compact: true })} per member` : 'Not set up'}</small></span>
+          <span className={s.lMid}><b>Group insurance</b><small>{insEnabled ? `On · ${formatUGX(groupCoverPerMember, { compact: true })} per member` : 'Not set up'}</small></span>
           <span className={`${s.pill} ${insEnabled ? s.pillOk : s.pillOff}`}><i />{insEnabled ? 'On' : 'Off'}</span>
           <span className={s.chev}>{Chevron}</span>
         </button>

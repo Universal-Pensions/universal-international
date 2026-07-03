@@ -6,12 +6,10 @@ import { formatUGX, formatNumber } from '../../utils/currency';
 import {
   RETIREMENT_AGE,
   MIN_CONTRIBUTION,
-  INSURANCE_PREMIUM_MONTHLY,
-  INSURANCE_COVER,
+  INSURANCE_PRODUCTS,
 } from '../../constants/savings';
-import logo from '../../assets/logo.png';
-import PaymentStep from './PaymentStep';
-import { PillChip, PillChipGroup } from '../../components/PillChip';
+import SignupTopbar from '../SignupTopbar';
+import { PillChipGroup } from '../../components/PillChip';
 import styles from './ContributionSettings.module.css';
 
 export { MIN_CONTRIBUTION };
@@ -26,6 +24,30 @@ const FREQUENCIES = [
 
 const PRESET_AMOUNTS = [10000, 25000, 50000, 100000];
 
+const PAYMENT_METHODS = [
+  { id: 'momo',    label: 'Mobile Money',            description: 'MTN or Airtel — instant confirmation' },
+  { id: 'gateway', label: 'Pay with another method', description: 'Card, bank or wallet — via Pesapal'   },
+];
+
+/** Short per-period suffix for premium chips ("/mo", "/wk", …). */
+const PERIOD_SUFFIX = {
+  [FREQUENCY.WEEKLY]:      'wk',
+  [FREQUENCY.MONTHLY]:     'mo',
+  [FREQUENCY.QUARTERLY]:   'qtr',
+  [FREQUENCY.HALF_YEARLY]: '6mo',
+  [FREQUENCY.ANNUALLY]:    'yr',
+};
+
+/**
+ * Display order for the insurance list (Life, Health, Funeral — the mockup
+ * order). Render-only reorder of INSURANCE_PRODUCTS; the constant and its
+ * premium/cover values are untouched, and the default selection stays life-only.
+ */
+const INSURANCE_DISPLAY_ORDER = ['life', 'health', 'funeral'];
+const ORDERED_INSURANCE = INSURANCE_DISPLAY_ORDER
+  .map((id) => INSURANCE_PRODUCTS.find((p) => p.id === id))
+  .filter(Boolean);
+
 /** Relatable Ugandan milestones — shown at retirement. */
 const MILESTONES = [
   { id: 'land',    cost: 8_000_000, one: 'plot of land',        many: 'plots of land' },
@@ -35,6 +57,10 @@ const MILESTONES = [
 
 function getFreq(frequencyId) {
   return FREQUENCIES.find((f) => f.id === frequencyId) ?? FREQUENCIES[1];
+}
+
+function digitsOnly(str, max = 10) {
+  return String(str).replace(/[^\d]/g, '').slice(0, max);
 }
 
 /**
@@ -63,34 +89,177 @@ function yearsToRetirement(dob) {
   return Math.max(0, RETIREMENT_AGE - ageYears);
 }
 
+function ProductIcon({ id }) {
+  if (id === 'health') {
+    return (
+      <svg viewBox="0 0 24 24" width="18" height="18" fill="none" aria-hidden="true">
+        <rect x="4" y="4" width="16" height="16" rx="3" stroke="currentColor" strokeWidth="1.6" />
+        <path d="M12 8.5v7M8.5 12h7" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" />
+      </svg>
+    );
+  }
+  if (id === 'funeral') {
+    return (
+      <svg viewBox="0 0 24 24" width="18" height="18" fill="none" aria-hidden="true">
+        <path d="M4 20V9l8-5 8 5v11" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round" />
+        <path d="M9.5 20v-5h5v5" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round" />
+      </svg>
+    );
+  }
+  // life — shield + check
+  return (
+    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" aria-hidden="true">
+      <path d="M12 3l7 3v5c0 4.5-3 8-7 10-4-2-7-5.5-7-10V6l7-3z" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round" />
+      <path d="M9 12l2.2 2 3.8-4" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+/** Default insurance selection: life only (preserves the long-standing demo
+ *  default of a single life policy). The user can add Health/Funeral. */
+function resolveInitialInsurance(initial) {
+  if (Array.isArray(initial?.insuranceTypes)) return initial.insuranceTypes;
+  // Legacy single-toggle schedules → life if they opted in, else default to life.
+  if (initial?.includeInsurance === false) return [];
+  return ['life'];
+}
+
 /**
- * Full page for /signup/contribution — renders a single indigo-hero card
- * over a white canvas. Everything fits without scrolling the card.
+ * Payment-method picker — section 05 at the bottom of the (white) contribution
+ * panel. The actual Pay action is the summary aside's CTA; this only collects
+ * the method + momo details. State is owned by ContributionSettings.
+ */
+function PaymentMethodPicker({ method, setMethod, momoProvider, setMomoProvider, momoPhone, setMomoPhone, processing }) {
+  return (
+    <section className={styles.pmtSection} aria-label="How will you pay?">
+      <div className={styles.sectionEyebrow}>How will you pay?</div>
+
+      <PillChipGroup label="Payment method" layout="grid" columns={1} className={styles.pmtMethodList}>
+        {PAYMENT_METHODS.map((m) => {
+          const active = method === m.id;
+          return (
+            <div key={m.id} className={styles.pmtMethodCard} data-active={active}>
+              <button
+                type="button"
+                role="radio"
+                aria-checked={active}
+                className={styles.pmtMethodHeader}
+                onClick={() => setMethod(m.id)}
+                disabled={processing}
+              >
+                <span className={styles.pmtMethodRadio} data-active={active} aria-hidden="true" />
+                <span className={styles.pmtMethodCopy}>
+                  <span className={styles.pmtMethodLabel}>{m.label}</span>
+                  <span className={styles.pmtMethodDesc}>{m.description}</span>
+                </span>
+              </button>
+
+              <AnimatePresence initial={false}>
+                {active && (
+                  <motion.div
+                    key="fields"
+                    className={styles.pmtFields}
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: 'auto', opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    transition={{ duration: 0.26, ease: EASE_OUT_EXPO }}
+                  >
+                    <div className={styles.pmtFieldsInner}>
+                      {m.id === 'momo' && (
+                        <>
+                          <PillChipGroup label="Mobile money provider" layout="grid" columns={2} className={styles.pmtProviderRow}>
+                            {['mtn', 'airtel'].map((p) => (
+                              <button
+                                key={p}
+                                type="button"
+                                role="radio"
+                                aria-checked={momoProvider === p}
+                                className={styles.pmtProviderBtn}
+                                data-active={momoProvider === p}
+                                onClick={() => setMomoProvider(p)}
+                              >
+                                {p === 'mtn' ? 'MTN MoMo' : 'Airtel Money'}
+                              </button>
+                            ))}
+                          </PillChipGroup>
+                          <label className={styles.pmtFieldRow}>
+                            <span className={styles.pmtFieldLabel}>Phone number</span>
+                            <span className={styles.pmtPhoneField}>
+                              <span className={styles.pmtPhonePrefix}>+256</span>
+                              <input
+                                type="tel"
+                                inputMode="numeric"
+                                autoComplete="tel-national"
+                                spellCheck={false}
+                                placeholder="700 000 000"
+                                className={styles.pmtPhoneInput}
+                                value={momoPhone}
+                                onChange={(e) => setMomoPhone(digitsOnly(e.target.value, 10))}
+                              />
+                            </span>
+                          </label>
+                        </>
+                      )}
+
+                      {m.id === 'gateway' && (
+                        <p className={styles.pmtRedirectNote}>
+                          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" aria-hidden="true">
+                            <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="1.6" />
+                            <path d="M12 8v4.5M12 16v.5" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" />
+                          </svg>
+                          You’ll be redirected to Pesapal to complete payment securely.
+                          Supports Visa, Mastercard, bank transfer and major mobile wallets.
+                        </p>
+                      )}
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+          );
+        })}
+      </PillChipGroup>
+
+      <p className={styles.pmtSecure}>
+        <svg viewBox="0 0 24 24" width="12" height="12" fill="none" aria-hidden="true">
+          <path d="M6 11V8a6 6 0 0 1 12 0v3" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+          <rect x="4" y="11" width="16" height="10" rx="2" stroke="currentColor" strokeWidth="1.6" />
+        </svg>
+        Secured — encrypted end-to-end
+      </p>
+    </section>
+  );
+}
+
+/**
+ * Full page for /signup/contribution — the "Plan & pay" stage. Sets the
+ * contribution schedule, insurance products, and payment method on a single
+ * page (no separate payment step), then makes the first contribution.
  */
 export default function ContributionSettings({ initial, dob, phone, collectSchedule = true, onClose, onConfirm }) {
   const [frequency, setFrequency] = useState(initial?.frequency ?? 'monthly');
   const [amountStr, setAmountStr] = useState(initial?.amount ? String(initial.amount) : '');
   const [retirementPct, setRetirementPct] = useState(initial?.retirementPct ?? 80);
-  // Default to ON so every demo signup naturally shows the post-payment
-  // "Download policy certificate" affordance. User can still toggle off
-  // to demo the no-insurance path.
-  const [includeInsurance, setIncludeInsurance] = useState(initial?.includeInsurance ?? true);
+  const [insuranceTypes, setInsuranceTypes] = useState(() => resolveInitialInsurance(initial));
   const [touched, setTouched] = useState(Boolean(initial?.amount));
-  const [view, setView] = useState('setup');
+
+  // Payment state (formerly PaymentStep's) — the picker lives in the summary
+  // aside and the Pay CTA below it shares this state.
+  const [method, setMethod] = useState('momo');
+  const [momoProvider, setMomoProvider] = useState('mtn');
+  const [momoPhone, setMomoPhone] = useState(phone || '');
+  const [processing, setProcessing] = useState(false);
 
   const amountInputRef = useRef(null);
 
-  // Escape returns without saving (from setup view). In the payment view,
-  // Escape backs out to setup so the user does not lose their work.
+  // Escape returns without saving.
   useEffect(() => {
     function onKey(e) {
-      if (e.key !== 'Escape') return;
-      if (view === 'payment') setView('setup');
-      else onClose();
+      if (e.key === 'Escape' && !processing) onClose();
     }
     document.addEventListener('keydown', onKey);
     return () => document.removeEventListener('keydown', onKey);
-  }, [onClose, view]);
+  }, [onClose, processing]);
 
   const amount = parseAmount(amountStr);
   const emergencyPct = 100 - retirementPct;
@@ -102,9 +271,16 @@ export default function ContributionSettings({ initial, dob, phone, collectSched
 
   // ── Projections ────────────────────────────────────────────────
   const freqPerYear = periodsPerYear(freq.id);
-  const insurancePremium = includeInsurance
-    ? Math.round((INSURANCE_PREMIUM_MONTHLY * 12) / freqPerYear)
-    : 0;
+  const perPeriodPremium = (monthly) => Math.round((monthly * 12) / freqPerYear);
+  const selectedProducts = useMemo(
+    () => ORDERED_INSURANCE.filter((p) => insuranceTypes.includes(p.id)),
+    [insuranceTypes],
+  );
+  const periodLabel = PERIOD_SUFFIX[freq.id] ?? 'mo';
+  const insurancePremium = selectedProducts.reduce(
+    (sum, p) => sum + perPeriodPremium(p.premiumMonthly),
+    0,
+  );
   const totalPerPeriod   = hasAmount ? amount + insurancePremium : 0;
   const annualTotal      = hasAmount ? totalPerPeriod * freqPerYear : 0;
 
@@ -128,6 +304,9 @@ export default function ContributionSettings({ initial, dob, phone, collectSched
       .filter((m) => m.count >= 1);
   }, [hasAmount, retirementFV]);
 
+  const momoValid = digitsOnly(momoPhone).length >= 9;
+  const canPay = canConfirm && (method === 'gateway' || momoValid);
+
   function handlePresetClick(value) {
     setAmountStr(String(value));
     setTouched(true);
@@ -135,31 +314,46 @@ export default function ContributionSettings({ initial, dob, phone, collectSched
   }
 
   function handleAmountChange(e) {
-    const digitsOnly = e.target.value.replace(/[^\d]/g, '');
-    setAmountStr(digitsOnly);
+    const digits = e.target.value.replace(/[^\d]/g, '');
+    setAmountStr(digits);
   }
 
-  function handleGoToPayment() {
+  function toggleInsurance(id) {
+    setInsuranceTypes((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
+    );
+  }
+
+  function handlePay() {
     setTouched(true);
-    if (!canConfirm) return;
-    setView('payment');
-  }
+    if (!canPay || processing) return;
+    setProcessing(true);
+    const details =
+      method === 'momo'
+        ? { provider: momoProvider, phone: `+256${digitsOnly(momoPhone)}` }
+        : { gateway: 'pesapal', redirected: true };
 
-  async function handlePaymentComplete({ paymentMethod, paymentDetails }) {
-    // Awaiting + propagating any throw from `onConfirm` (handleConfirm in
-    // ContributionRoute) lets PaymentStep reset its `processing` state on
-    // error — without this, the Pay button stays stuck on "Processing…".
-    await onConfirm({
-      frequency,
-      amount,
-      retirementPct,
-      emergencyPct,
-      includeInsurance,
-      insurancePremium: includeInsurance ? insurancePremium : 0,
-      insuranceCover:   includeInsurance ? INSURANCE_COVER  : 0,
-      paymentMethod,
-      paymentDetails,
-    });
+    // Await onConfirm (handleConfirm in ContributionRoute) so a downstream
+    // failure (RPC / JWT / login) can reset `processing` — otherwise the Pay
+    // button sticks on "Processing…" with no way to retry. On success the
+    // parent unmounts this component, so the catch reset is irrelevant.
+    window.setTimeout(async () => {
+      try {
+        await onConfirm({
+          frequency,
+          amount,
+          retirementPct,
+          emergencyPct,
+          includeInsurance: insuranceTypes.length > 0,
+          insuranceTypes,
+          insurancePremium,
+          paymentMethod: method,
+          paymentDetails: details,
+        });
+      } catch {
+        setProcessing(false);
+      }
+    }, 1200);
   }
 
   // Employer-only invite: collect ONLY the retirement/emergency split — no
@@ -176,24 +370,13 @@ export default function ContributionSettings({ initial, dob, phone, collectSched
     );
   }
 
+  const payLabel = processing
+    ? (method === 'gateway' ? 'Redirecting…' : 'Processing…')
+    : (method === 'gateway' ? 'Continue with Pesapal' : (hasAmount ? `Pay ${formatUGXExact(totalPerPeriod)}` : 'Pay'));
+
   return (
     <main className={styles.page} aria-labelledby="contrib-title">
-      {/* Landing-page-style backdrop: subtle indigo grid + two radial orbs */}
-      <div className={styles.pageBg} aria-hidden="true">
-        <span className={styles.pageOrb1} />
-        <span className={styles.pageOrb2} />
-        <span className={styles.pageGrid} />
-      </div>
-
-      <div className={styles.pageHeader}>
-        <img
-          src={logo}
-          alt="Universal Pensions"
-          className={styles.logo}
-          width={160}
-          height={34}
-        />
-      </div>
+      <SignupTopbar stageKey="plan" />
 
       <div className={styles.shell}>
       <motion.div
@@ -202,17 +385,15 @@ export default function ContributionSettings({ initial, dob, phone, collectSched
         animate={{ opacity: 1, y: 0, scale: 1 }}
         transition={{ duration: 0.5, ease: EASE_OUT_EXPO }}
       >
-        {/* ambient light + grain — purely decorative, lives behind content */}
-        <span className={styles.cardMesh} aria-hidden="true" />
-        <span className={styles.cardGrain} aria-hidden="true" />
-
         {/* ── Header ──────────────────────────────────────────── */}
         <header className={styles.header}>
           <div className={styles.headerText}>
-            <span className={styles.eyebrow}>Contribution setup</span>
-            <h1 id="contrib-title" className={styles.title}>
-              <span className={styles.shimmerText}>Design your savings rhythm</span>
-            </h1>
+            <span className={styles.eyebrow}>Your plan</span>
+            <h1 id="contrib-title" className={styles.title}>Set up your contributions &amp; first payment</h1>
+            <p className={styles.lede}>
+              Choose how you save, then make your first contribution to switch your account on.
+              You can change any of this later.
+            </p>
           </div>
           <button
             type="button"
@@ -227,17 +408,8 @@ export default function ContributionSettings({ initial, dob, phone, collectSched
         </header>
 
         {/* ── Section 1 — Frequency ─────────────────────────────── */}
-        <section className={styles.section} aria-labelledby="freq-heading">
-          <div className={styles.sectionHead}>
-            <span className={styles.sectionIndex}>01</span>
-            <h2 id="freq-heading" className={styles.sectionTitle}>How often?</h2>
-          </div>
-          {/* Rich frequency cards keep their bespoke `.freqCard` styling (column
-              layout + helper + check badge), so they stay native role="radio"
-              buttons rather than the capsule <PillChip>. Wrapping them in
-              <PillChipGroup> still gives the WAI-ARIA radiogroup behaviour
-              (roving tabindex + arrow-key navigation), since the group queries
-              its `[role="radio"]` descendants regardless of element type. */}
+        <section className={styles.section} aria-label="How often?">
+          <div className={styles.sectionEyebrow}>01 · How often?</div>
           <PillChipGroup
             label="Contribution frequency"
             layout="grid"
@@ -270,10 +442,9 @@ export default function ContributionSettings({ initial, dob, phone, collectSched
         </section>
 
         {/* ── Section 2 — Amount ────────────────────────────────── */}
-        <section className={styles.section} aria-labelledby="amt-heading">
-          <div className={styles.sectionHead}>
-            <span className={styles.sectionIndex}>02</span>
-            <h2 id="amt-heading" className={styles.sectionTitle}>How much each time?</h2>
+        <section className={styles.section} aria-label="How much each time?">
+          <div className={styles.sectionEyebrow}>
+            02 · How much each time?
             <span className={styles.sectionAside}>Min {formatUGXExact(MIN_CONTRIBUTION)}</span>
           </div>
 
@@ -326,11 +497,8 @@ export default function ContributionSettings({ initial, dob, phone, collectSched
         </section>
 
         {/* ── Section 3 — Allocation ────────────────────────────── */}
-        <section className={styles.section} aria-labelledby="alloc-heading">
-          <div className={styles.sectionHead}>
-            <span className={styles.sectionIndex}>03</span>
-            <h2 id="alloc-heading" className={styles.sectionTitle}>Split your savings</h2>
-          </div>
+        <section className={styles.section} aria-label="Split your savings">
+          <div className={styles.sectionEyebrow}>03 · Split your savings</div>
 
           <div className={styles.splitHead}>
             <div className={styles.splitSide}>
@@ -374,48 +542,45 @@ export default function ContributionSettings({ initial, dob, phone, collectSched
           </p>
         </section>
 
-        {/* ── Insurance opt-in ─────────────────────────────────── */}
-        <section className={styles.insuranceSection} aria-labelledby="ins-heading">
-          <button
-            type="button"
-            role="switch"
-            aria-checked={includeInsurance}
-            className={styles.insuranceRow}
-            data-active={includeInsurance}
-            onClick={() => setIncludeInsurance((v) => !v)}
-          >
-            <span className={styles.insuranceIcon} aria-hidden="true">
-              <svg viewBox="0 0 24 24" width="18" height="18" fill="none">
-                <path
-                  d="M12 3l7 3v5c0 4.5-3 8-7 10-4-2-7-5.5-7-10V6l7-3z"
-                  stroke="currentColor"
-                  strokeWidth="1.6"
-                  strokeLinejoin="round"
-                />
-                <path
-                  d="M9 12l2.2 2 3.8-4"
-                  stroke="currentColor"
-                  strokeWidth="1.75"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-              </svg>
-            </span>
-            <span className={styles.insuranceCopy}>
-              <span id="ins-heading" className={styles.insuranceTitle}>
-                Add life insurance
-              </span>
-              <span className={styles.insuranceDetail}>
-                {includeInsurance
-                  ? `+${formatUGXExact(insurancePremium)} · ${formatUGXExact(INSURANCE_COVER)} cover`
-                  : `from UGX 500 · UGX ${(INSURANCE_COVER / 1_000_000).toFixed(0)}M cover`}
-              </span>
-            </span>
-            <span className={styles.insuranceToggle} aria-hidden="true">
-              <span className={styles.insuranceToggleKnob} />
-            </span>
-          </button>
+        {/* ── Section 4 — Insurance (multi-product) ─────────────── */}
+        <section className={styles.section} aria-label="Protect your family">
+          <div className={styles.sectionEyebrow}>
+            04 · Protect your family
+            <span className={styles.sectionAside}>optional add-ons</span>
+          </div>
+          <div className={styles.insuranceList}>
+            {ORDERED_INSURANCE.map((p) => {
+              const active = insuranceTypes.includes(p.id);
+              return (
+                <button
+                  key={p.id}
+                  type="button"
+                  role="switch"
+                  aria-checked={active}
+                  className={styles.insuranceRow}
+                  data-active={active}
+                  onClick={() => toggleInsurance(p.id)}
+                >
+                  <span className={styles.insuranceIcon} aria-hidden="true">
+                    <ProductIcon id={p.id} />
+                  </span>
+                  <span className={styles.insuranceCopy}>
+                    <span className={styles.insuranceTitle}>{p.label}</span>
+                    <span className={styles.insuranceDetail}>{p.blurb}</span>
+                  </span>
+                  <span className={styles.insurancePremium}>
+                    {`+${formatUGXExact(perPeriodPremium(p.premiumMonthly))}`}
+                    <small> /{periodLabel}</small>
+                  </span>
+                  <span className={styles.insuranceToggle} aria-hidden="true">
+                    <span className={styles.insuranceToggleKnob} />
+                  </span>
+                </button>
+              );
+            })}
+          </div>
         </section>
+
       </motion.div>
 
       {/* ── Summary / checkout card ──────────────────────────────── */}
@@ -432,9 +597,9 @@ export default function ContributionSettings({ initial, dob, phone, collectSched
         </header>
 
         <div className={styles.summaryHero}>
-          <span className={styles.summaryHeroLabel}>{cadence[0].toUpperCase() + cadence.slice(1)}</span>
           <span className={styles.summaryHeroValue}>
             {hasAmount ? formatUGXExact(totalPerPeriod) : 'UGX —'}
+            {hasAmount && <span className={styles.summaryHeroCadence}> /{periodLabel}</span>}
           </span>
         </div>
 
@@ -463,132 +628,134 @@ export default function ContributionSettings({ initial, dob, phone, collectSched
               {hasAmount ? formatUGXExact(emergencyPerPeriod) : '—'}
             </span>
           </li>
-          {includeInsurance && (
-            <li className={styles.summaryRow}>
+          {selectedProducts.map((p) => (
+            <li key={p.id} className={styles.summaryRow}>
               <span className={styles.summaryRowLabel}>
                 <span className={styles.summaryDot} data-tone="insurance" aria-hidden="true" />
-                Life insurance
+                {p.label}
               </span>
               <span className={styles.summaryRowValue}>
-                {hasAmount ? `+${formatUGXExact(insurancePremium)}` : '—'}
+                {hasAmount ? `+${formatUGXExact(perPeriodPremium(p.premiumMonthly))}` : '—'}
               </span>
             </li>
-          )}
+          ))}
+          <li className={styles.summaryRow} data-due="true">
+            <span className={styles.summaryRowLabel}>Due today</span>
+            <span className={styles.summaryRowValue}>
+              {hasAmount ? formatUGXExact(totalPerPeriod) : '—'}
+            </span>
+          </li>
         </ul>
+        {hasAmount && insurancePremium > 0 && (
+          // The contribution grows the member's savings; the premium pays for
+          // insurance cover and is NOT added to the pension balance. Spell that
+          // out so "Due today" reconciles with the post-signup dashboard balance.
+          <p className={styles.dueNote}>
+            {formatUGXExact(amount)} goes into your savings; {formatUGXExact(insurancePremium)} pays your insurance premium.
+          </p>
+        )}
 
-        {/* ── Swap: plan projection ⇄ payment methods ──────────── */}
-        <AnimatePresence mode="wait" initial={false}>
-          {view === 'setup' ? (
-            <motion.div
-              key="plan"
-              className={styles.summarySwap}
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -8 }}
-              transition={{ duration: 0.28, ease: EASE_OUT_EXPO }}
-            >
-              {/* ── Future value at retirement ──────────────── */}
-              <div className={styles.projection}>
-                <div className={styles.projectionHead}>
-                  <span className={styles.projectionLabel}>At retirement (age {RETIREMENT_AGE})</span>
-                  {retirementYears != null && retirementYears > 0 && (
-                    <span className={styles.projectionYears}>in {retirementYears} yrs</span>
-                  )}
-                </div>
-                <div className={styles.projectionValue}>
-                  {hasAmount && retirementFV > 0 ? formatProjection(retirementFV) : 'UGX —'}
-                </div>
-                {retirementYear && (
-                  <p className={styles.projectionYear}>
-                    You’ll reach age {RETIREMENT_AGE} in <strong>{retirementYear}</strong>
-                  </p>
-                )}
-                <p className={styles.projectionHelp}>
-                  {retirementYears == null
-                    ? 'Add your date of birth to see a projection.'
-                    : retirementYears <= 0
-                      ? 'You’re already at retirement age — contributions stay accessible.'
-                      : `At 10% annual return, compounded monthly — retirement bucket only.`}
-                </p>
-              </div>
-
-              {/* ── What that could buy ─────────────────────── */}
-              {milestones.length > 0 && (
-                <section className={styles.milestones} aria-label="What your retirement savings could buy">
-                  <h3 className={styles.milestonesTitle}>That could buy you…</h3>
-                  <ul className={styles.milestonesList}>
-                    {milestones.map((m) => (
-                      <li key={m.id} className={styles.milestone}>
-                        <span className={styles.milestoneIcon} aria-hidden="true">
-                          {m.id === 'land' && (
-                            <svg viewBox="0 0 24 24" width="18" height="18" fill="none">
-                              <path d="M4 11l8-7 8 7v9a1 1 0 0 1-1 1h-4v-6h-6v6H5a1 1 0 0 1-1-1v-9z"
-                                    stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round" />
-                            </svg>
-                          )}
-                          {m.id === 'tuition' && (
-                            <svg viewBox="0 0 24 24" width="18" height="18" fill="none">
-                              <path d="M3 9l9-4 9 4-9 4-9-4z"
-                                    stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round" />
-                              <path d="M6 11v4.2c0 1.3 2.7 2.3 6 2.3s6-1 6-2.3V11"
-                                    stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
-                              <path d="M21 9v5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
-                            </svg>
-                          )}
-                          {m.id === 'income' && (
-                            <svg viewBox="0 0 24 24" width="18" height="18" fill="none">
-                              <rect x="4" y="5" width="16" height="15" rx="1.5"
-                                    stroke="currentColor" strokeWidth="1.6" />
-                              <path d="M4 10h16M8 3v4M16 3v4"
-                                    stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
-                              <path d="M9 14h6M9 17h4"
-                                    stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
-                            </svg>
-                          )}
-                        </span>
-                        <span className={styles.milestoneCount}>{formatNumber(m.count)}</span>
-                        <span className={styles.milestoneLabel}>
-                          {m.count === 1 ? m.one : m.many}
-                        </span>
-                      </li>
-                    ))}
-                  </ul>
-                  <p className={styles.milestonesNote}>Rough Uganda estimates — actual prices vary.</p>
-                </section>
-              )}
-
-              {/* ── Pay now CTA ─────────────────────────────── */}
-              <button
-                type="button"
-                className={styles.payNow}
-                disabled={!canConfirm}
-                onClick={handleGoToPayment}
-              >
-                <span>Pay now</span>
-                {hasAmount && (
-                  <span className={styles.payNowAmount}>{formatUGXExact(totalPerPeriod)}</span>
-                )}
-              </button>
-            </motion.div>
-          ) : (
-            <motion.div
-              key="payment"
-              className={styles.summarySwap}
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -8 }}
-              transition={{ duration: 0.28, ease: EASE_OUT_EXPO }}
-            >
-              <PaymentStep
-                amount={totalPerPeriod}
-                phone={phone}
-                formatUGX={formatUGXExact}
-                onBack={() => setView('setup')}
-                onComplete={handlePaymentComplete}
-              />
-            </motion.div>
+        {/* ── Future value at retirement ──────────────────────────── */}
+        <div className={styles.projection}>
+          <div className={styles.projectionLabel}>
+            At retirement (age {RETIREMENT_AGE})
+            {retirementYears != null && retirementYears > 0 && ` · in ${retirementYears} yrs`}
+          </div>
+          <div className={styles.projectionValue}>
+            {hasAmount && retirementFV > 0 ? `≈ ${formatProjection(retirementFV)}` : 'UGX —'}
+          </div>
+          {retirementYear && (
+            <p className={styles.projectionYear}>
+              You’ll reach age {RETIREMENT_AGE} in <strong>{retirementYear}</strong>
+            </p>
           )}
-        </AnimatePresence>
+          <p className={styles.projectionHelp}>
+            {retirementYears == null
+              ? 'Add your date of birth to see a projection.'
+              : retirementYears <= 0
+                ? 'You’re already at retirement age — contributions stay accessible.'
+                : `At 10% annual return, compounded monthly — retirement bucket only.`}
+          </p>
+        </div>
+
+        {/* ── What that could buy ─────────────────────────────────── */}
+        {milestones.length > 0 && (
+          <section className={styles.milestones} aria-label="What your retirement savings could buy">
+            <h3 className={styles.milestonesTitle}>That could buy you…</h3>
+            <ul className={styles.milestonesList}>
+              {milestones.map((m) => (
+                <li key={m.id} className={styles.milestone}>
+                  <span className={styles.milestoneIcon} aria-hidden="true">
+                    {m.id === 'land' && (
+                      <svg viewBox="0 0 24 24" width="18" height="18" fill="none">
+                        <path d="M4 11l8-7 8 7v9a1 1 0 0 1-1 1h-4v-6h-6v6H5a1 1 0 0 1-1-1v-9z"
+                              stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round" />
+                      </svg>
+                    )}
+                    {m.id === 'tuition' && (
+                      <svg viewBox="0 0 24 24" width="18" height="18" fill="none">
+                        <path d="M3 9l9-4 9 4-9 4-9-4z"
+                              stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round" />
+                        <path d="M6 11v4.2c0 1.3 2.7 2.3 6 2.3s6-1 6-2.3V11"
+                              stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+                        <path d="M21 9v5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+                      </svg>
+                    )}
+                    {m.id === 'income' && (
+                      <svg viewBox="0 0 24 24" width="18" height="18" fill="none">
+                        <rect x="4" y="5" width="16" height="15" rx="1.5"
+                              stroke="currentColor" strokeWidth="1.6" />
+                        <path d="M4 10h16M8 3v4M16 3v4"
+                              stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+                        <path d="M9 14h6M9 17h4"
+                              stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+                      </svg>
+                    )}
+                  </span>
+                  <span className={styles.milestoneCount}>{formatNumber(m.count)}</span>
+                  <span className={styles.milestoneLabel}>
+                    {m.count === 1 ? m.one : m.many}
+                  </span>
+                </li>
+              ))}
+            </ul>
+            <p className={styles.milestonesNote}>Rough Uganda estimates — actual prices vary.</p>
+          </section>
+        )}
+
+        {/* ── Payment method — lives in the summary aside so it opens inline
+             beside the plan (no separate page / left-column scroll) ───────── */}
+        <PaymentMethodPicker
+          method={method}
+          setMethod={setMethod}
+          momoProvider={momoProvider}
+          setMomoProvider={setMomoProvider}
+          momoPhone={momoPhone}
+          setMomoPhone={setMomoPhone}
+          processing={processing}
+        />
+
+        {/* ── Pay CTA ─────────────────────────────────────────────── */}
+        <button
+          type="button"
+          className={styles.payNow}
+          disabled={!canPay || processing}
+          onClick={handlePay}
+        >
+          {processing ? (
+            <>
+              <span className={styles.pmtSpinner} aria-hidden="true" />
+              <span>{payLabel}</span>
+            </>
+          ) : (
+            <>
+              <span>{payLabel}</span>
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" aria-hidden="true">
+                <path d="M5 12h14M13 6l6 6-6 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </>
+          )}
+        </button>
       </motion.aside>
       </div>
     </main>
@@ -618,12 +785,7 @@ function SplitOnlyView({ retirementPct, emergencyPct, setRetirementPct, onClose,
 
   return (
     <main className={styles.page} aria-labelledby="contrib-title">
-      <div className={styles.pageBg} aria-hidden="true">
-        <span className={styles.pageOrb1} /><span className={styles.pageOrb2} /><span className={styles.pageGrid} />
-      </div>
-      <div className={styles.pageHeader}>
-        <img src={logo} alt="Universal Pensions" className={styles.logo} width={160} height={34} />
-      </div>
+      <SignupTopbar stageKey="plan" />
       <div className={styles.shell}>
         <motion.div
           className={styles.card}
@@ -631,14 +793,10 @@ function SplitOnlyView({ retirementPct, emergencyPct, setRetirementPct, onClose,
           animate={{ opacity: 1, y: 0, scale: 1 }}
           transition={{ duration: 0.5, ease: EASE_OUT_EXPO }}
         >
-          <span className={styles.cardMesh} aria-hidden="true" />
-          <span className={styles.cardGrain} aria-hidden="true" />
           <header className={styles.header}>
             <div className={styles.headerText}>
               <span className={styles.eyebrow}>Almost done</span>
-              <h1 id="contrib-title" className={styles.title}>
-                <span className={styles.shimmerText}>Split your savings</span>
-              </h1>
+              <h1 id="contrib-title" className={styles.title}>Split your savings</h1>
             </div>
             <button type="button" className={styles.closeBtn} aria-label="Close" onClick={onClose}>
               <svg viewBox="0 0 24 24" width="18" height="18" fill="none" aria-hidden="true">
@@ -652,11 +810,8 @@ function SplitOnlyView({ retirementPct, emergencyPct, setRetirementPct, onClose,
             retirement and accessible emergency funds.
           </p>
 
-          <section className={styles.section} aria-labelledby="alloc-heading">
-            <div className={styles.sectionHead}>
-              <span className={styles.sectionIndex}>01</span>
-              <h2 id="alloc-heading" className={styles.sectionTitle}>Retirement vs emergency</h2>
-            </div>
+          <section className={styles.section} aria-label="Retirement vs emergency">
+            <div className={styles.sectionEyebrow}>01 · Retirement vs emergency</div>
             <div className={styles.splitHead}>
               <div className={styles.splitSide}>
                 <span className={styles.splitLabel}>Retirement</span>

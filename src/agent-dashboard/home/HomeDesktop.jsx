@@ -98,9 +98,6 @@ const PortfolioIcon = (
  * (PortfolioCard "Your subscriber book" + active-vs-dormant, a Commissions
  * snapshot, a NotificationCenter, and an Earned KPI) that the mobile Home no
  * longer leads with. This rebuild brings desktop back in line with the phone.
- *
- * E2E contract: the KPI label "Monthly contribution volume" MUST stay present —
- * the agent smoke spec asserts getByText on it at the 1440×900 desktop viewport.
  */
 export default function HomeDesktop() {
   const { agentId } = useAgentScope();

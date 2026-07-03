@@ -4,7 +4,8 @@ import { EASE_OUT_EXPO } from '../../utils/motion';
 
 import { formatUGX } from '../../utils/currency';
 import { formatDate } from '../../utils/date';
-import { deriveInvestmentGrowth, deriveEmployerSplit, periodsPerYear } from '../../utils/finance';
+import { deriveInvestmentGrowth, deriveEmployerSplit, periodsPerYear, txDisplayAmount } from '../../utils/finance';
+import { activeCoverTotal, activePolicies } from '../../utils/policies';
 import { useCountUp } from '../../hooks/useCountUp';
 import { useContributionBreakdown, useSubscriberTransactions } from '../../hooks/useSubscriber';
 import styles from './HomeDesktop.module.css';
@@ -98,6 +99,9 @@ const TX_META = {
   contribution: { label: 'Contribution', dot: 'var(--color-green)' },
   withdrawal: { label: 'Withdrawal', dot: 'var(--color-teal)' },
   premium: { label: 'Insurance premium', dot: 'var(--color-amber)' },
+  // Employer-funded group premium — distinct type so it doesn't fall back to
+  // the contribution meta (green "+"); it's an outflow, not money received.
+  insurance_premium: { label: 'Insurance premium', dot: 'var(--color-amber)' },
   claim: { label: 'Claim payout', dot: 'var(--color-indigo)' },
 };
 
@@ -149,10 +153,12 @@ export default function HomeDesktop({ subscriber }) {
   const retPct = net > 0 ? Math.round((retirement / net) * 100) : 0;
   const emerPct = net > 0 ? 100 - retPct : 0;
 
-  // Insurance cover.
-  const cover = sub.insurance?.cover || 0;
+  // Insurance cover — total ACTIVE cover + premium across ALL products
+  // (life + health + funeral), not the legacy life-only row, so desktop agrees
+  // with mobile Home / Analytics / the Withdrawals hub.
+  const cover = activeCoverTotal(sub);
   const hasCover = cover > 0;
-  const premium = sub.insurance?.premiumMonthly || 0;
+  const premium = activePolicies(sub).reduce((s, p) => s + (Number(p.premiumMonthly) || 0), 0);
   const coverContext = hasCover
     ? (premium > 0 ? `Active · ${formatUGX(premium, { compact: false })}/mo premium` : 'Active cover')
     : 'Not active';
@@ -401,7 +407,8 @@ export default function HomeDesktop({ subscriber }) {
             const isEmpTx = tx.type === 'contribution' && tx.source === 'employer';
             const name = isEmpTx ? 'Employer top-up' : meta.label;
             const dot = isEmpTx ? 'var(--color-indigo-soft)' : meta.dot;
-            const negative = tx.amount < 0;
+            const signed = txDisplayAmount(tx);
+            const negative = signed < 0;
             return (
               <div key={tx.id} className={styles.row}>
                 <span className={styles.tdot} style={{ '--tc': dot }} aria-hidden="true" />
@@ -412,7 +419,7 @@ export default function HomeDesktop({ subscriber }) {
                   </span>
                 </span>
                 <span className={`${styles.rowAmt} ${negative ? styles.rowAmtNeg : styles.rowAmtPos}`}>
-                  {negative ? '−' : '+'}{formatUGX(Math.abs(tx.amount), { compact: false })}
+                  {negative ? '−' : '+'}{formatUGX(Math.abs(signed), { compact: false })}
                 </span>
               </div>
             );

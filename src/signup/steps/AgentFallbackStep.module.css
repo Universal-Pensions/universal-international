@@ -2,29 +2,31 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 96px;
-  height: 96px;
+  width: 60px;
+  height: 60px;
   border-radius: 50%;
-  background: rgba(230, 168, 23, 0.12);
+  background: color-mix(in srgb, var(--color-kyc-pending) 14%, transparent);
   color: var(--color-kyc-pending);
   margin: 0 auto var(--space-4);
 }
 
+/* ── Ticket block (.metarows): bordered, hairline-divided white list ───── */
 .ticket {
-  padding: 1rem 1.1rem;
-  border-radius: var(--radius-md);
-  background: color-mix(in srgb, var(--color-indigo) 4%, transparent);
-  border: 1px solid var(--color-lavender);
-  margin-bottom: var(--space-4);
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
+  margin-bottom: var(--space-4);
+  border: 1px solid var(--color-lavender);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  background: var(--color-white);
+  text-align: left;
 }
 
 .ticket[data-loading] {
   align-items: center;
   justify-content: center;
   min-height: 72px;
+  padding: 1rem;
 }
 
 .ticketLoading {
@@ -54,8 +56,14 @@
   justify-content: space-between;
   align-items: center;
   gap: 1rem;
+  padding: 0.75rem 0.95rem;
+  border-bottom: 1px solid var(--color-lavender);
   font-family: var(--font-body);
   font-size: var(--text-sm);
+}
+
+.ticketRow:last-child {
+  border-bottom: 0;
 }
 
 .ticketLabel {
@@ -64,13 +72,14 @@
 
 .ticketValue {
   font-family: var(--font-display);
-  font-weight: 600;
-  color: var(--color-slate);
+  font-weight: 700;
+  color: var(--color-indigo);
   font-variant-numeric: tabular-nums;
 }
 
 .ticketFallback {
   margin: 0;
+  padding: 0.875rem 0.95rem;
   font-family: var(--font-body);
   font-size: var(--text-sm);
   color: var(--color-slate);
@@ -80,9 +89,10 @@
 .checklist {
   padding: 0.875rem 1rem;
   border-radius: var(--radius-md);
-  background: rgba(94, 99, 168, 0.05);
-  border: 1px solid rgba(94, 99, 168, 0.2);
+  background: var(--color-cloud);
+  border: 1px solid var(--color-lavender);
   margin-bottom: var(--space-4);
+  text-align: left;
 }
 
 .checklistLabel {
@@ -102,27 +112,22 @@
   margin: 0;
   display: flex;
   flex-direction: column;
-  gap: 0.3rem;
+  gap: 0.5rem;
 }
 
 .checklist li {
-  position: relative;
-  padding-left: 1.25rem;
+  display: flex;
+  gap: 0.55rem;
   font-family: var(--font-body);
   font-size: var(--text-sm);
   color: var(--color-slate);
-  line-height: 1.5;
+  line-height: 1.45;
 }
 
-.checklist li::before {
-  content: '';
-  position: absolute;
-  top: 0.6rem;
-  left: 0.25rem;
-  width: 4px;
-  height: 4px;
-  border-radius: 50%;
-  background: var(--color-indigo-soft);
+.checklist li svg {
+  flex: 0 0 auto;
+  margin-top: 1px;
+  color: var(--color-indigo-soft);
 }
 
 @media (prefers-reduced-motion: reduce) {

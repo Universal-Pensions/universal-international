@@ -129,6 +129,21 @@ export default function ReviewStep({ onNext }) {
     return districts.filter((d) => d.name.toLowerCase().includes(q)).slice(0, 20);
   }, [districts, districtQuery]);
 
+  // Live password-strength readout for the Review form's "Strength" field
+  // (mirrors the redesign mockup's strength bar + label).
+  const pwStrength = useMemo(() => {
+    if (!password) return null;
+    let s = 0;
+    if (password.length >= 8) s += 1;
+    if (password.length >= 12) s += 1;
+    if (/[A-Za-z]/.test(password) && /\d/.test(password)) s += 1;
+    if (/[^A-Za-z0-9]/.test(password)) s += 1;
+    if (s <= 1) return { pct: 30, label: 'Weak', tone: 'low' };
+    if (s === 2) return { pct: 60, label: 'Fair', tone: 'mid' };
+    if (s === 3) return { pct: 82, label: 'Good', tone: 'high' };
+    return { pct: 100, label: 'Strong', tone: 'high' };
+  }, [password]);
+
   function markEdited(field) {
     setEdited((prev) => {
       if (prev.has(field)) return prev;
@@ -278,23 +293,10 @@ export default function ReviewStep({ onNext }) {
       <p className={styles.subtext}>
         {isAgent
           ? 'Read from their ID — confirm or correct, then add the district, phone and occupation below.'
-          : 'We read these from your ID. Fix anything we got wrong. Fill in your district, phone number and occupation below.'}
+          : 'We read these from your ID. Fix anything we got wrong, then fill in your district, phone number and occupation below.'}
       </p>
 
-      {confidencePct != null && (
-        <div className={own.confidenceBadge} data-tone={confidenceTone}>
-          <svg aria-hidden="true" viewBox="0 0 16 16" width="14" height="14" fill="none">
-            <circle cx="8" cy="8" r="6.5" stroke="currentColor" strokeWidth="1.5" />
-            <path d="M8 4.5v3.5l2 1.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-          </svg>
-          <span>
-            Auto-fill confidence: <strong>{confidencePct}%</strong>
-            {confidenceTone !== 'high' && ' — please double-check the fields below.'}
-          </span>
-        </div>
-      )}
-
-      {/* Thumbnails */}
+      {/* Source thumbnails + inline auto-fill confidence pill */}
       <div className={own.thumbs}>
         {signup.idFrontPreviewUrl && (
           <div className={own.thumb}>
@@ -308,13 +310,28 @@ export default function ReviewStep({ onNext }) {
             <span className={own.thumbLabel}>Back</span>
           </div>
         )}
+        {confidencePct != null && (
+          <span className={own.confidencePill} data-tone={confidenceTone}>
+            <svg aria-hidden="true" viewBox="0 0 24 24" width="12" height="12" fill="none">
+              <path d="M4 12l5 5L20 6" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+            Auto-fill confidence {confidencePct}%
+          </span>
+        )}
       </div>
+      {confidenceTone && confidenceTone !== 'high' && (
+        <p className={own.confidenceNote} role="status">Please double-check the fields below.</p>
+      )}
 
       <form className={styles.form} onSubmit={handleSubmit} noValidate>
+        <div className={own.manualHeader}>
+          <span className={own.manualEyebrow}>{isAgent ? 'From their ID' : 'From your ID'}</span>
+        </div>
+
         <ReviewField id="full-name" label="Full name" autoFilled={isAutoFilled('fullName')} error={errors.fullName}>
           <input
             id="full-name"
-            className={styles.input}
+            className={`${styles.input} ${own.ocrInput}`}
             value={signup.fullName}
             onChange={(e) => { signup.patch({ fullName: e.target.value }); markEdited('fullName'); }}
             autoComplete="name"
@@ -322,10 +339,10 @@ export default function ReviewStep({ onNext }) {
           />
         </ReviewField>
 
-        <ReviewField id="nin" label="NIN" hint="14 characters — on your ID" autoFilled={isAutoFilled('nin')} error={errors.nin}>
+        <ReviewField id="nin" label="NIN" autoFilled={isAutoFilled('nin')} error={errors.nin}>
           <input
             id="nin"
-            className={styles.input}
+            className={`${styles.input} ${own.ocrInput}`}
             value={signup.nin}
             onChange={(e) => { signup.patch({ nin: e.target.value.toUpperCase().slice(0, 14) }); markEdited('nin'); }}
             maxLength={14}
@@ -336,33 +353,31 @@ export default function ReviewStep({ onNext }) {
           />
         </ReviewField>
 
-        <div className={styles.fieldRow}>
-          <ReviewField id="card-number" label="Card number" autoFilled={isAutoFilled('cardNumber')} error={errors.cardNumber}>
-            <input
-              id="card-number"
-              className={styles.input}
-              value={signup.cardNumber}
-              onChange={(e) => { signup.patch({ cardNumber: e.target.value.toUpperCase().slice(0, 12) }); markEdited('cardNumber'); }}
-              autoComplete="off"
-              spellCheck={false}
-              style={{ letterSpacing: '0.04em', textTransform: 'uppercase' }}
-              data-error={!!errors.cardNumber}
-            />
-          </ReviewField>
+        <ReviewField id="card-number" label="Card number" autoFilled={isAutoFilled('cardNumber')} error={errors.cardNumber}>
+          <input
+            id="card-number"
+            className={`${styles.input} ${own.ocrInput}`}
+            value={signup.cardNumber}
+            onChange={(e) => { signup.patch({ cardNumber: e.target.value.toUpperCase().slice(0, 12) }); markEdited('cardNumber'); }}
+            autoComplete="off"
+            spellCheck={false}
+            style={{ letterSpacing: '0.04em', textTransform: 'uppercase' }}
+            data-error={!!errors.cardNumber}
+          />
+        </ReviewField>
 
-          <ReviewField id="dob" label="Date of birth" autoFilled={isAutoFilled('dob')} error={errors.dob}>
-            <input
-              id="dob"
-              type="date"
-              className={styles.input}
-              value={signup.dob}
-              onChange={(e) => { signup.patch({ dob: e.target.value }); markEdited('dob'); }}
-              data-error={!!errors.dob}
-            />
-          </ReviewField>
-        </div>
+        <ReviewField id="dob" label="Date of birth" autoFilled={isAutoFilled('dob')} error={errors.dob}>
+          <input
+            id="dob"
+            type="date"
+            className={`${styles.input} ${own.ocrInput}`}
+            value={signup.dob}
+            onChange={(e) => { signup.patch({ dob: e.target.value }); markEdited('dob'); }}
+            data-error={!!errors.dob}
+          />
+        </ReviewField>
 
-        <ReviewField id="gender" label="Gender" className={own.spanFull} autoFilled={isAutoFilled('gender')} error={errors.gender}>
+        <ReviewField id="gender" label="Gender" className={own.spanTwo} autoFilled={isAutoFilled('gender')} error={errors.gender}>
           <PillChipGroup label="Gender" layout="grid" columns={3}>
             {GENDERS.map((g) => (
               <PillChip
@@ -379,7 +394,7 @@ export default function ReviewStep({ onNext }) {
         {/* Divider between OCR and manual fields */}
         <div className={own.manualHeader}>
           <span className={own.manualEyebrow}>Not on your ID</span>
-          <span className={own.manualHint}>We need a couple more details from you.</span>
+          <span className={own.manualHint}>{isAgent ? 'We need a couple more details about them.' : 'We need a couple more details from you.'}</span>
         </div>
 
         <ReviewField id="district" label="District" error={errors.districtId}>
@@ -399,6 +414,9 @@ export default function ReviewStep({ onNext }) {
               aria-controls="district-listbox"
               data-error={!!errors.districtId}
             />
+            <svg className={own.comboChevron} aria-hidden="true" viewBox="0 0 24 24" width="15" height="15" fill="none">
+              <path d="M6 9l6 6 6-6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
             {districtOpen && filteredDistricts.length > 0 && (
               <ul id="district-listbox" className={own.comboList} role="listbox">
                 {filteredDistricts.map((d) => (
@@ -433,7 +451,7 @@ export default function ReviewStep({ onNext }) {
           </div>
         </ReviewField>
 
-        <ReviewField id="phone" label="Phone number" hint="used for your mobile-money wallet" error={errors.phone}>
+        <ReviewField id="phone" label="Phone number" error={errors.phone}>
           <div className={styles.phoneGroup} data-error={!!errors.phone}>
             <div className={styles.phonePrefix}>
               <span>&#x1F1FA;&#x1F1EC;</span>
@@ -472,15 +490,17 @@ export default function ReviewStep({ onNext }) {
         <ReviewField
           id="email"
           label="Email"
-          labelHint="optional"
-          hint="we'll send statements here if you add one"
+          labelHint="· optional"
+          hint="We'll send statements here if you add one."
           error={errors.email}
+          className={own.spanFull}
         >
           <input
             id="email"
             type="email"
             inputMode="email"
             className={styles.input}
+            style={{ maxWidth: '360px' }}
             value={signup.email}
             onChange={(e) => {
               signup.patch({ email: e.target.value });
@@ -496,8 +516,8 @@ export default function ReviewStep({ onNext }) {
         {/* Divider before the password section — same visual language as the
             OCR → manual divider above. */}
         <div className={own.manualHeader}>
-          <span className={own.manualEyebrow}>Create your password</span>
-          <span className={own.manualHint}>You'll use this to sign in alongside your phone.</span>
+          <span className={own.manualEyebrow}>{isAgent ? 'Create their password' : 'Create your password'}</span>
+          <span className={own.manualHint}>{isAgent ? 'They’ll use this to sign in alongside their phone.' : 'You’ll use this to sign in alongside your phone.'}</span>
         </div>
 
         <ReviewField id="password" label="Password" error={errors.password}>
@@ -561,6 +581,17 @@ export default function ReviewStep({ onNext }) {
           </div>
         </ReviewField>
 
+        <ReviewField id="pw-strength" label="Strength" optional>
+          <div className={own.strength}>
+            <div className={own.strengthBar}>
+              <i style={{ width: `${pwStrength ? pwStrength.pct : 0}%` }} data-tone={pwStrength?.tone || 'none'} />
+            </div>
+            <span className={own.strengthPill} data-tone={pwStrength?.tone || 'none'}>
+              {pwStrength ? pwStrength.label : '—'}
+            </span>
+          </div>
+        </ReviewField>
+
         <div className={styles.actions}>
           <button type="submit" className={styles.submit}>Continue</button>
         </div>
@@ -594,13 +625,8 @@ function EyeOffIcon() {
 function ReviewField({ id, label, hint, labelHint, optional, autoFilled, error, className, children }) {
   return (
     <div className={className ? `${styles.field} ${className}` : styles.field}>
-      <div className={own.labelRow}>
-        <label className={styles.label} htmlFor={id} id={`${id}-label`}>
-          {label}
-          {labelHint && <span className={own.optionalChip}>{labelHint}</span>}
-          {hint && <span className={styles.labelHint}>{hint}</span>}
-          {!optional && !labelHint && <span className={styles.required}> *</span>}
-        </label>
+      <label className={`${styles.label} ${own.fieldLabel}`} htmlFor={id} id={`${id}-label`}>
+        {label}
         <AnimatePresence>
           {autoFilled && (
             <motion.span
@@ -618,7 +644,10 @@ function ReviewField({ id, label, hint, labelHint, optional, autoFilled, error, 
             </motion.span>
           )}
         </AnimatePresence>
-      </div>
+        {labelHint && <span className={own.optionalChip}>{labelHint}</span>}
+        {hint && <span className={styles.labelHint}>{hint}</span>}
+        {!optional && !labelHint && <span className={styles.required}> *</span>}
+      </label>
       {children}
       {error && <span className={styles.error} role="alert">{error}</span>}
     </div>

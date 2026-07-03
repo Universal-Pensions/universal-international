@@ -153,7 +153,7 @@ export default function OnboardStaffBody({ onClose }) {
   async function downloadTemplate() {
     const typed = form.fullName.trim() || form.phone.trim() || form.email.trim();
     const seedRows = typed
-      ? [{ fullName: form.fullName.trim(), phone: form.phone.trim(), email: form.email.trim() }]
+      ? [{ fullName: form.fullName.trim(), phone: form.phone.trim(), email: form.email.trim(), compensation: form.compensation.trim() }]
       : TEMPLATE_EXAMPLES;
     try {
       await downloadSheet({

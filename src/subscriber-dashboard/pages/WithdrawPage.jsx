@@ -12,6 +12,7 @@ import { MIN_WITHDRAW, RETIREMENT_AGE } from '../../constants/savings';
 import { PillChip, PillChipGroup } from '../../components/PillChip';
 import InlinePayPanel from '../../components/InlinePayPanel';
 import { goBackOrFallback } from '../shell/navigation';
+import ErrorCard from '../../components/feedback/ErrorCard';
 import styles from './WithdrawPage.module.css';
 import flow from './desktopFlow.module.css';
 
@@ -38,7 +39,7 @@ export default function WithdrawPage() {
   const navigate = useNavigate();
   const reduceMotion = useReducedMotion();
   const isDesktop = useIsDesktop();
-  const { data: sub } = useCurrentSubscriber();
+  const { data: sub, isError, error, refetch } = useCurrentSubscriber();
   const { addToast } = useToast();
   const requestWithdrawal = useRequestWithdrawal(sub?.id);
 
@@ -158,6 +159,20 @@ export default function WithdrawPage() {
   const totalPot = emergencyBalance + retirementBalance;
   const lockedPct = totalPot > 0 ? Math.round((lockedRet / totalPot) * 100) : 0;
   const methodHint = method === 'bank' ? 'Bank' : method === 'airtel' ? 'Airtel' : 'MoMo';
+
+  // A cold-start query failure would otherwise render a silent blank/zero
+  // withdrawal form — surface a retry card instead (mirrors HomePage).
+  if (isError) {
+    return (
+      <div className={styles.page}>
+        <ErrorCard
+          title="We couldn't load your account"
+          message={error}
+          onRetry={refetch}
+        />
+      </div>
+    );
+  }
 
   return (
     <div className={styles.page}>

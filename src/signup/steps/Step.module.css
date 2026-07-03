@@ -388,6 +388,50 @@
   }
 }
 
+/* ── Subscriber self-signup: card-scroll + pinned footer ─────────────────
+   Fires ONLY inside SignupShell's `signupcanvas` container (SignupShell.module.css
+   .bodyInner). The agent desktop wizard establishes `onboardcanvas` instead, so
+   none of this matches there — the agent flow keeps its own page-scroll chrome.
+   The card hugs its content and centers; when content exceeds the viewport it
+   scrolls inside the card while the primary actions stay pinned at the bottom. */
+@container signupcanvas (min-width: 1px) {
+  .card {
+    /* Match the redesign mockup's flat 8px corners across the card and every
+       control nested inside it (inputs, dropzones, segments all read
+       --radius-md/lg/xl). Pills keep --radius-full. The card is its natural
+       height and the SignupShell body scrolls when it overflows the viewport,
+       so the primary action at the card bottom is always reachable. */
+    --radius-md: 0.5rem;
+    --radius-lg: 0.5rem;
+    --radius-xl: 0.5rem;
+    border-radius: 0.5rem;
+  }
+
+  /* The mockup headings sit at ~19px / -0.02em — tighter than the app's default
+     24px display heading. Scope the smaller size to the self-signup card. */
+  .heading {
+    font-size: var(--text-xl);
+    letter-spacing: -0.02em;
+  }
+
+  /* The card already animates in at the page level (SignupPage motion.div), so
+     drop the per-child stagger to avoid a double entrance. */
+  .card > * {
+    animation: none;
+  }
+}
+
+/* Wide self-signup steps (Scan-ID 640 / Review 980 / Beneficiaries 980 /
+   Consent 760 / Activated 640): the primary CTA sizes to its content and
+   right-aligns like a form footer instead of stretching the full card width.
+   Narrow centered steps (NIRA/OTP/AML at 460) never reach 600 and keep their
+   focused full-width button. Mirrors the onboardcanvas min-width:600 rule. */
+@container signupcanvas (min-width: 600px) {
+  .actions {
+    align-items: flex-end;
+  }
+}
+
 /* ── Desktop agent onboarding: multi-column form ─────────────────────────
    These rules fire ONLY inside the agent desktop wizard's `onboardcanvas`
    named container (established per-step in OnboardKycFlow.module.css at >=1024px).
@@ -444,6 +488,24 @@
   }
 
   .form > .fieldRow,
+  .form > .actions {
+    grid-column: 1 / -1;
+  }
+}
+
+/* Subscriber self-signup Review at the 980px tier: a 3-column form (the
+   mockup's .grid3). Section dividers, email and the actions span all three
+   columns; gender spans two so it shares a row with date-of-birth. The
+   per-field span classes live in ReviewStep.module.css. Fires only inside the
+   `signupcanvas` container, so the agent desktop 2-col grid above is untouched. */
+@container signupcanvas (min-width: 720px) {
+  .form {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: var(--space-4) var(--space-5);
+    align-items: start;
+  }
+
   .form > .actions {
     grid-column: 1 / -1;
   }

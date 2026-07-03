@@ -56,6 +56,8 @@ function resolve(pathname) {
   if (pathname === '/dashboard/inbox') return { left: 'back', title: 'Inbox', actions: false };
   if (pathname.endsWith('/schedule')) return { left: 'back', title: 'Manage schedule', actions: false };
   if (pathname.startsWith('/dashboard/subscribers/')) return { left: 'back', title: 'Subscriber', actions: true };
+  if (pathname === '/dashboard/commissions/earned') return { left: 'back', title: 'Earned commissions', actions: true };
+  if (pathname === '/dashboard/commissions/owed') return { left: 'back', title: 'Owed commissions', actions: true };
   if (pathname.startsWith('/dashboard/commissions/')) return { left: 'back', title: 'Commissions', actions: true };
   return { left: 'back', title: SECONDARY[pathname] || '', actions: true };
 }

@@ -1,6 +1,12 @@
 // Unit tests for per-product policy derivation (migration 0063 model).
 import { describe, it, expect } from 'vitest';
-import { derivePolicies, derivePolicyStatus } from './policies';
+import {
+  derivePolicies,
+  derivePolicyStatus,
+  activePolicies,
+  activeCoverTotal,
+  activeCoverProductsLabel,
+} from './policies';
 
 const NOW = new Date(2026, 4, 26); // 2026-05-26
 
@@ -76,5 +82,54 @@ describe('derivePolicies', () => {
   it('returns [] without a subscriber or now', () => {
     expect(derivePolicies(null, { now: NOW })).toEqual([]);
     expect(derivePolicies(sub([]), {})).toEqual([]);
+  });
+});
+
+// These read the already-derived `policies` list (type + cover + status), the
+// single source of truth every subscriber cover surface now shares.
+describe('active-cover helpers', () => {
+  const withPolicies = (policies) => ({ id: 'sub-1', policies });
+
+  it('activePolicies returns only status==="active" rows', () => {
+    const s = withPolicies([
+      { type: 'life', cover: 1_000_000, status: 'active' },
+      { type: 'health', cover: 3_000_000, status: 'expired' },
+    ]);
+    expect(activePolicies(s).map((p) => p.type)).toEqual(['life']);
+  });
+
+  it('activeCoverTotal sums cover across ALL active products, ignoring expired', () => {
+    const s = withPolicies([
+      { type: 'life', cover: 1_000_000, status: 'active' },
+      { type: 'health', cover: 3_000_000, status: 'active' },
+      { type: 'funeral', cover: 2_000_000, status: 'expired' },
+    ]);
+    expect(activeCoverTotal(s)).toBe(4_000_000);
+  });
+
+  it('activeCoverTotal is 0 for no policies / null subscriber', () => {
+    expect(activeCoverTotal(withPolicies([]))).toBe(0);
+    expect(activeCoverTotal(null)).toBe(0);
+  });
+
+  it('activeCoverProductsLabel joins active product names', () => {
+    expect(activeCoverProductsLabel(withPolicies([
+      { type: 'life', cover: 1, status: 'active' },
+    ]))).toBe('Life');
+    expect(activeCoverProductsLabel(withPolicies([
+      { type: 'life', cover: 1, status: 'active' },
+      { type: 'health', cover: 1, status: 'active' },
+    ]))).toBe('Life & Health');
+    expect(activeCoverProductsLabel(withPolicies([
+      { type: 'life', cover: 1, status: 'active' },
+      { type: 'health', cover: 1, status: 'active' },
+      { type: 'funeral', cover: 1, status: 'active' },
+    ]))).toBe('Life, Health & Funeral');
+  });
+
+  it('activeCoverProductsLabel is empty when nothing is active', () => {
+    expect(activeCoverProductsLabel(withPolicies([
+      { type: 'life', cover: 1, status: 'expired' },
+    ]))).toBe('');
   });
 });

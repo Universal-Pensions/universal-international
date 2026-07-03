@@ -14,6 +14,7 @@ import Sidebar from './sidebar/Sidebar';
 // `vendor-leaflet` (PR-7 partial — AUDIT-3-*).
 const UgandaMap = lazy(() => import('./map/UgandaMap'));
 import OverlayPanel from './overlay/OverlayPanel';
+import DataCopilotPanel, { AskAiFab } from './overlay/DataCopilotPanel';
 import Breadcrumb from './overlay/Breadcrumb';
 import MetricsRow from './cards/MetricsRow';
 import TopBar from './overlay/TopBar';
@@ -86,6 +87,7 @@ function MobileDrawer({ open, onClose }) {
     setCommissionsOpen,
     setSettingsOpen,
     setViewTicketsOpen,
+    setCopilotOpen,
   } = useDashboard();
 
   useEffect(() => {
@@ -114,6 +116,7 @@ function MobileDrawer({ open, onClose }) {
     setCommissionsOpen(false);
     setSettingsOpen(false);
     setViewTicketsOpen(false);
+    setCopilotOpen(false);
 
     switch (id) {
       case 'overview':
@@ -237,6 +240,8 @@ function DashboardContent() {
     commissionsOpen,
     settingsOpen,
     viewTicketsOpen,
+    copilotOpen,
+    setCopilotOpen,
   } = useDashboard();
   return (
     <>
@@ -260,6 +265,12 @@ function DashboardContent() {
       {commissionsOpen && <CommissionPanel />}
       {settingsOpen && <Settings />}
       {viewTicketsOpen && <ViewTickets />}
+      {/* Ask-AI Network Copilot — additive FAB + slide-in drawer; the map/overlay
+          are untouched. */}
+      <AskAiFab onClick={() => setCopilotOpen(true)} />
+      {copilotOpen && (
+        <DataCopilotPanel open scope="distributor" onClose={() => setCopilotOpen(false)} />
+      )}
     </>
   );
 }

@@ -16,6 +16,8 @@
 //     anchored to the LATEST dated transaction (the seed is MOCK_NOW-anchored,
 //     so building the axis from `new Date()` would drift away from the data).
 
+import { activeCoverTotal, activePolicies } from '../../utils/policies';
+
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
 /** "Apr 26" — a compact month/year axis label. */
@@ -80,9 +82,13 @@ export function deriveSubscriberAnalytics(subscriber, transactions = []) {
   const emergencyBalance = Number(sub.emergencyBalance) || 0;
   const unitsHeld = Number(sub.unitsHeld) || 0;
   const currentUnitValue = Number(sub.currentUnitValue) || 0;
-  const cover = Number(sub.insurance?.cover) || 0;
-  const insuranceStatus = sub.insurance?.status || 'inactive';
-  const premiumMonthly = Number(sub.insurance?.premiumMonthly) || 0;
+  // Cover / premium / status across ALL active products (life + health +
+  // funeral), summed from the derived policies, so Analytics agrees with the
+  // Policies page and Home rather than showing the life-only row.
+  const cover = activeCoverTotal(sub);
+  const activeIns = activePolicies(sub);
+  const insuranceStatus = activeIns.length > 0 ? 'active' : 'inactive';
+  const premiumMonthly = activeIns.reduce((s, p) => s + (Number(p.premiumMonthly) || 0), 0);
 
   // ── Month bucketing over the dated feed ─────────────────────────────────
   // contributions: positive 'contribution' rows; net signed delta: every row

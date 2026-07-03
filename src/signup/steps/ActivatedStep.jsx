@@ -1,6 +1,9 @@
 import { motion } from 'framer-motion';
 import { EASE_OUT_EXPO } from '../../utils/motion';
 import { formatUGX } from '../../utils/currency';
+import { formatDate } from '../../utils/date';
+import { periodsPerYear } from '../../utils/finance';
+import { INSURANCE_PRODUCTS } from '../../constants/savings';
 
 import { formatMemberId } from '../../utils/memberId';
 import { useSignup } from '../SignupContext';
@@ -8,13 +11,6 @@ import { openPolicyCertificate } from '../contribution/insurancePolicyCertificat
 import logoWhite from '../../assets/logo-white.png';
 import styles from './Step.module.css';
 import own from './ActivatedStep.module.css';
-
-function formatDate(iso) {
-  if (!iso) return '—';
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return '—';
-  return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
-}
 
 const GENDER_LABEL = { male: 'Male', female: 'Female', other: 'Other' };
 
@@ -32,19 +28,40 @@ export default function ActivatedStep({ onFinish, snapshot }) {
   const firstName = fullName.trim().split(/\s+/)[0] || 'there';
   const memberId = formatMemberId(phone);
   const enrolmentDate = new Date();
-  const hasInsurance = Boolean(contributionSchedule?.includeInsurance);
 
-  function handleDownloadPolicy() {
+  // Multi-product: one certificate per selected insurance product. Legacy
+  // single-toggle schedules (no insuranceTypes) fall back to life-only.
+  const freqPerYear = periodsPerYear(contributionSchedule?.frequency);
+  const selectedTypes = Array.isArray(contributionSchedule?.insuranceTypes)
+    ? contributionSchedule.insuranceTypes
+    : (contributionSchedule?.includeInsurance ? ['life'] : []);
+  const policies = INSURANCE_PRODUCTS
+    .filter((p) => selectedTypes.includes(p.id))
+    .map((p) => ({
+      id: p.id,
+      // "Life insurance" → "Life" for the certificate title.
+      productLabel: p.label.replace(/\s*insurance$/i, ''),
+      barLabel: p.label,
+      cover: p.cover,
+      premiumPerPeriod: Math.round((p.premiumMonthly * 12) / freqPerYear),
+      // Health is a personal cover with no beneficiary payout; life/funeral pay
+      // out to beneficiaries.
+      showBeneficiaries: p.id !== 'health',
+    }));
+
+  function handleDownloadPolicy(policy) {
     const ok = openPolicyCertificate({
       holderName: fullName,
       memberId,
       dob,
-      cover: contributionSchedule.insuranceCover,
-      premiumPerPeriod: contributionSchedule.insurancePremium,
+      cover: policy.cover,
+      premiumPerPeriod: policy.premiumPerPeriod,
       frequency: contributionSchedule.frequency,
       policyStart: enrolmentDate,
       renewalDate: addYears(enrolmentDate, 1),
       beneficiaries: data.insuranceBeneficiaries ?? [],
+      productLabel: policy.productLabel,
+      showBeneficiaries: policy.showBeneficiaries,
     });
     if (!ok) {
       // Pop-up blocked. Demo-level fallback — no toast context here.
@@ -60,7 +77,7 @@ export default function ActivatedStep({ onFinish, snapshot }) {
         animate={{ scale: 1, opacity: 1 }}
         transition={{ duration: 0.55, ease: EASE_OUT_EXPO }}
       >
-        <svg viewBox="0 0 48 48" width="48" height="48" fill="none" aria-hidden="true">
+        <svg viewBox="0 0 48 48" width="32" height="32" fill="none" aria-hidden="true">
           <motion.circle
             cx="24" cy="24" r="22"
             stroke="currentColor" strokeWidth="2"
@@ -116,10 +133,7 @@ export default function ActivatedStep({ onFinish, snapshot }) {
         </header>
 
         <div className={own.cardBody}>
-          <span className={own.cardFieldLabel}>Member</span>
           <h3 className={own.cardName}>{fullName || 'New Member'}</h3>
-
-          <span className={own.cardFieldLabel} style={{ marginTop: '0.9rem' }}>Member ID</span>
           <p className={own.cardMemberId} translate="no">{memberId}</p>
         </div>
 
@@ -139,33 +153,32 @@ export default function ActivatedStep({ onFinish, snapshot }) {
         </footer>
       </motion.section>
 
-      {/* ── Insurance policy: compact single-row download affordance ────── */}
-      {hasInsurance && (
+      {/* ── Insurance policies: one compact download row per product ─────── */}
+      {policies.map((policy, idx) => (
         <motion.button
+          key={policy.id}
           type="button"
           className={own.policyBar}
-          onClick={handleDownloadPolicy}
+          onClick={() => handleDownloadPolicy(policy)}
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.45, delay: 0.1, ease: EASE_OUT_EXPO }}
+          transition={{ duration: 0.45, delay: 0.1 + idx * 0.06, ease: EASE_OUT_EXPO }}
         >
           <span className={own.policyShield} aria-hidden="true">
-            <svg viewBox="0 0 24 24" width="16" height="16" fill="none">
-              <path d="M12 3l7 3v5c0 4.5-3 8-7 10-4-2-7-5.5-7-10V6l7-3z" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round"/>
-              <path d="M9 12l2.2 2 3.8-4" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round"/>
+            <svg viewBox="0 0 24 24" width="17" height="17" fill="none">
+              <path d="M12 4v10M8 11l4 4 4-4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+              <path d="M5 19h14" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
             </svg>
           </span>
           <span className={own.policyText}>
-            Life insurance · {formatUGX(contributionSchedule.insuranceCover, { compact: false })} cover
+            <span className={own.policyTitle}>
+              {policy.barLabel} · {formatUGX(policy.cover, { compact: false })} cover
+            </span>
+            <span className={own.policySub}>Policy certificate ready</span>
           </span>
-          <span className={own.policyAction}>
-            Download
-            <svg aria-hidden="true" viewBox="0 0 24 24" width="13" height="13" fill="none">
-              <path d="M12 4v12m0 0l-4-4m4 4l4-4M5 20h14" stroke="currentColor" strokeWidth="1.85" strokeLinecap="round" strokeLinejoin="round"/>
-            </svg>
-          </span>
+          <span className={own.policyAction}>Download</span>
         </motion.button>
-      )}
+      ))}
 
       <motion.div
         className={styles.actions}
@@ -174,7 +187,7 @@ export default function ActivatedStep({ onFinish, snapshot }) {
         transition={{ duration: 0.5, delay: 1.2 }}
       >
         <button type="button" className={styles.submit} onClick={onFinish}>
-          Continue
+          Go to my dashboard
           <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" width="18" height="18">
             <path d="M5 12h14M13 6l6 6-6 6" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round"/>
           </svg>

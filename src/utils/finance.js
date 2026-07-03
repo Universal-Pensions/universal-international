@@ -118,6 +118,31 @@ export function parseAmount(str) {
 }
 
 /**
+ * Transaction types that move money OUT of the member (from their pocket or
+ * spent on their behalf). Insurance premiums are stored as positive magnitudes
+ * — like withdrawals were historically — but are outflows, so any activity feed
+ * that classifies rows by sign must treat them as negative.
+ */
+export const TX_OUTFLOW_TYPES = new Set(['withdrawal', 'premium', 'insurance_premium']);
+
+/**
+ * The display-signed amount for a transaction: positive = money in, negative =
+ * money out. Contributions and claim payouts are inflows; withdrawals and
+ * insurance premiums (self-paid `premium` and employer-funded
+ * `insurance_premium`) are outflows regardless of how the row's raw `amount`
+ * happens to be signed. Use this for any in/out classification, running +/−
+ * display, or net-flow arithmetic — NOT for report totals that want the raw
+ * magnitude of a single category (those use Math.abs on `amount` directly).
+ * @param {{type?: string, amount?: number}} tx
+ * @returns {number}
+ */
+export function txDisplayAmount(tx) {
+  const n = Number(tx?.amount) || 0;
+  if (n === 0) return 0; // avoid a -0 result for a zero-magnitude outflow
+  return TX_OUTFLOW_TYPES.has(tx?.type) ? -Math.abs(n) : n;
+}
+
+/**
  * Future value of regular monthly contributions.
  * @param {number} pmt - Monthly payment amount
  * @param {number} years - Number of years

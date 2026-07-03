@@ -19,9 +19,9 @@ export default function PendingReviewStep({ onExit }) {
         animate={{ scale: 1, opacity: 1 }}
         transition={{ duration: 0.5, ease: EASE_OUT_EXPO }}
       >
-        <svg viewBox="0 0 72 72" width="72" height="72" fill="none" aria-hidden="true">
-          <circle cx="36" cy="36" r="34" stroke="currentColor" strokeWidth="2.5"/>
-          <path d="M36 20v18l12 6" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+        <svg viewBox="0 0 72 72" width="30" height="30" fill="none" aria-hidden="true">
+          <circle cx="36" cy="36" r="34" stroke="currentColor" strokeWidth="3"/>
+          <path d="M36 20v18l12 6" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/>
         </svg>
       </motion.div>
 
@@ -64,6 +64,9 @@ export default function PendingReviewStep({ onExit }) {
 
       <div className={styles.actions}>
         <button type="button" className={styles.submit} onClick={onExit}>
+          <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" width="18" height="18">
+            <path d="M19 12H5M11 6l-6 6 6 6" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round"/>
+          </svg>
           Back to home
         </button>
       </div>

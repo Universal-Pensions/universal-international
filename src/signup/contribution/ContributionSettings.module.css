@@ -1,99 +1,42 @@
 /* ──────────────────────────────────────────────────────────────────────
-   Contribution setup — /signup/contribution.
+   Contribution setup — /signup/contribution ("Plan & pay").
 
-   Canvas: white page with the landing-page-style backdrop (60×60 indigo
-   grid + two soft radial orbs, one indigo, one teal). The logo floats
-   above the card as a quiet brand anchor.
-
-   Card: deep indigo hero (BranchHealthScore lineage) with ambient lights
-   + grain. All inputs inside a single card; no inner scroll.
+   Canvas: plain cloud page. The contribution controls live on a FLAT WHITE
+   panel (left); the live summary is a light CLOUD aside (right). Flat 8px
+   corners throughout (0.5rem), 1px lavender hairlines, indigo text — the
+   subscriber-onboarding-redesign mockup language. No dark hero, no mesh,
+   no shimmer.
 ────────────────────────────────────────────────────────────────────── */
 
 .page {
   position: relative;
-  min-height: 100dvh;
-  background: var(--color-white);
-  padding: var(--space-6) var(--space-6);
+  height: 100dvh;
+  background: var(--color-cloud);
   display: flex;
-  align-items: center;
-  justify-content: center;
+  flex-direction: column;
+  /* content scrolls in .shell so the topbar stays pinned at the top */
   overflow: hidden;
   color: var(--color-slate);
 }
 
-/* ── Page backdrop — borrowed from Hero.module.css ─────────────── */
-.pageBg {
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  z-index: 0;
-}
-
-.pageOrb1 {
-  position: absolute;
-  top: -25%;
-  left: -10%;
-  width: 70vw;
-  height: 70vw;
-  max-width: 900px;
-  max-height: 900px;
-  background: radial-gradient(circle at center, rgba(94, 99, 168, 0.12) 0%, transparent 65%);
-  border-radius: 50%;
-}
-
-.pageOrb2 {
-  position: absolute;
-  bottom: -15%;
-  right: -8%;
-  width: 55vw;
-  height: 55vw;
-  max-width: 720px;
-  max-height: 720px;
-  background: radial-gradient(circle at center, rgba(47, 143, 157, 0.1) 0%, transparent 65%);
-  border-radius: 50%;
-}
-
-.pageGrid {
-  position: absolute;
-  inset: 0;
-  background-image:
-    linear-gradient(color-mix(in srgb, var(--color-indigo) 5.5%, transparent) 1px, transparent 1px),
-    linear-gradient(90deg, color-mix(in srgb, var(--color-indigo) 5.5%, transparent) 1px, transparent 1px);
-  background-size: 60px 60px;
-}
-
-/* ── Logo — fixed on the top-left ──────────────────────────────── */
-.pageHeader {
-  position: fixed;
-  top: var(--space-6);
-  left: var(--space-8);
-  z-index: 2;
-  display: flex;
-  align-items: center;
-  justify-content: flex-start;
-}
-
-.logo {
-  height: 38px;
-  width: auto;
-  display: block;
-  opacity: 0.92;
-}
-
-/* ── Shell — two-column layout for main card + summary aside ───── */
+/* ── Shell — scrolling two-column layout: panel + summary aside ──────── */
 .shell {
   position: relative;
   z-index: 1;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
   width: 100%;
-  max-width: 1180px;
+  max-width: 1120px;
+  margin-inline: auto;
+  padding: var(--space-6);
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 400px;
+  grid-template-columns: minmax(0, 1.5fr) 340px;
   gap: var(--space-6);
   align-items: start;
 }
 
-
-/* ── The one card ───────────────────────────────────────────────── */
+/* ── The white panel (left column) ──────────────────────────────────── */
 .card {
   position: relative;
   z-index: 1;
@@ -101,48 +44,16 @@
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 1.5rem;
-  padding: 2rem 2.25rem 1.9rem;
-  background: linear-gradient(145deg, #1B1A4A 0%, var(--color-indigo) 60%, #2F3550 100%);
-  border-radius: var(--radius-xl);
-  box-shadow:
-    0 1px 0 rgba(255, 255, 255, 0.08) inset,
-    0 0 0 1px rgba(94, 99, 168, 0.25) inset,
-    0 24px 80px rgba(27, 26, 74, 0.28),
-    0 60px 140px -30px rgba(27, 26, 74, 0.45);
-  overflow: hidden;
-  isolation: isolate;
-  color: var(--color-white);
+  gap: 1.25rem;
+  padding: var(--space-6) var(--space-6) 1.6rem;
+  background: var(--color-white);
+  border: 1px solid var(--color-lavender);
+  border-radius: 0.5rem;
+  box-shadow: 0 1px 3px rgba(41, 40, 103, 0.08);
+  color: var(--color-slate);
 }
 
-.cardMesh {
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  z-index: 0;
-  background:
-    radial-gradient(ellipse 520px 360px at 0% 30%, rgba(94, 99, 168, 0.28) 0%, transparent 65%),
-    radial-gradient(ellipse 380px 260px at 100% 0%, rgba(47, 143, 157, 0.22) 0%, transparent 70%),
-    radial-gradient(ellipse 320px 260px at 90% 100%, rgba(129, 140, 248, 0.14) 0%, transparent 70%);
-}
-
-.cardGrain {
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  z-index: 0;
-  opacity: 0.35;
-  mix-blend-mode: soft-light;
-  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 0.5 0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
-  background-size: 160px 160px;
-}
-
-.card > *:not(.cardMesh):not(.cardGrain) {
-  position: relative;
-  z-index: 1;
-}
-
-/* ── Header ──────────────────────────────────────────────────────── */
+/* ── Header ──────────────────────────────────────────────────────────── */
 .header {
   display: flex;
   align-items: flex-start;
@@ -158,30 +69,12 @@
 }
 
 .eyebrow {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.45rem;
-  align-self: flex-start;
-  padding: 0.3rem 0.75rem 0.3rem 0.55rem;
   font-family: var(--font-display);
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 700;
-  letter-spacing: 0.14em;
+  letter-spacing: 0.07em;
   text-transform: uppercase;
-  color: rgba(217, 220, 242, 0.9);
-  background: rgba(255, 255, 255, 0.06);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: var(--radius-full);
-  backdrop-filter: blur(6px);
-}
-
-.eyebrow::before {
-  content: "";
-  width: 5px;
-  height: 5px;
-  border-radius: 50%;
-  background: var(--color-green);
-  box-shadow: 0 0 0 3px rgba(46, 139, 87, 0.22), 0 0 10px rgba(46, 139, 87, 0.6);
+  color: var(--color-indigo-soft);
 }
 
 .title {
@@ -191,49 +84,30 @@
   font-weight: 800;
   letter-spacing: -0.03em;
   line-height: 1.1;
+  color: var(--color-indigo);
   text-wrap: balance;
 }
 
-/* Text shimmer — base white stays visible the whole time; a soft
-   lavender highlight slides across the headline as an overlay.
-   Technique: a transparent→highlight→transparent gradient painted on
-   top of a solid white background-color, both clipped to the text. */
-.shimmerText {
-  color: transparent;
-  -webkit-text-fill-color: transparent;
-  background-color: #FFFFFF;
-  background-image: linear-gradient(
-    110deg,
-    transparent 0%,
-    transparent 40%,
-    rgba(196, 201, 255, 0.95) 50%,
-    transparent 60%,
-    transparent 100%
-  );
-  background-size: 250% 100%;
-  background-repeat: no-repeat;
-  background-position: 150% 0;
-  -webkit-background-clip: text;
-  background-clip: text;
-  animation: contribShimmer 4s linear infinite;
-}
-
-@keyframes contribShimmer {
-  0%   { background-position: 150% 0; }
-  100% { background-position: -50% 0; }
+.lede {
+  margin: 0;
+  font-family: var(--font-body);
+  font-size: var(--text-sm);
+  line-height: 1.55;
+  color: var(--color-gray);
+  max-width: 56ch;
 }
 
 .closeBtn {
   flex: none;
-  width: 34px;
-  height: 34px;
+  width: 36px;
+  height: 36px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  background: rgba(255, 255, 255, 0.06);
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: var(--color-white);
+  border: 1px solid var(--color-lavender);
   border-radius: var(--radius-full);
-  color: rgba(217, 220, 242, 0.85);
+  color: var(--color-gray);
   cursor: pointer;
   transition:
     background 0.2s var(--ease-out-expo),
@@ -243,67 +117,47 @@
 }
 
 .closeBtn:hover {
-  background: rgba(255, 255, 255, 0.12);
-  border-color: rgba(255, 255, 255, 0.3);
-  color: var(--color-white);
+  border-color: var(--color-indigo-soft);
+  color: var(--color-indigo);
   transform: rotate(90deg);
 }
 
-/* ── Sections ────────────────────────────────────────────────────── */
+/* ── Sections ────────────────────────────────────────────────────────── */
 .section {
   display: flex;
   flex-direction: column;
-  gap: 0.8rem;
-}
-
-.sectionHead {
-  display: flex;
-  align-items: center;
   gap: 0.7rem;
 }
 
-.sectionIndex {
-  flex: none;
-  width: 24px;
-  height: 24px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
+/* Inline eyebrow header: "01 · How often?" (+ optional inline aside) */
+.sectionEyebrow {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
   font-family: var(--font-display);
-  font-size: 10px;
-  font-weight: 800;
-  letter-spacing: 0.02em;
-  color: rgba(217, 220, 242, 0.9);
-  background: rgba(255, 255, 255, 0.08);
-  border: 1px solid rgba(255, 255, 255, 0.16);
-  border-radius: var(--radius-full);
-  font-variant-numeric: tabular-nums;
-}
-
-.sectionTitle {
-  margin: 0;
-  font-family: var(--font-display);
-  font-size: var(--text-base);
+  font-size: 11px;
   font-weight: 700;
-  letter-spacing: -0.005em;
-  color: var(--color-white);
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--color-indigo-soft);
 }
 
 .sectionAside {
-  margin-left: auto;
+  margin-left: 0.4rem;
   font-family: var(--font-body);
   font-size: var(--text-xs);
-  font-weight: 500;
-  color: rgba(217, 220, 242, 0.55);
-  letter-spacing: 0.01em;
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--color-gray);
   font-variant-numeric: tabular-nums;
 }
 
-/* ── Section 1 — Frequency ──────────────────────────────────────── */
+/* ── Section 1 — Frequency ──────────────────────────────────────────── */
 .freqGrid {
   display: grid;
   grid-template-columns: repeat(5, 1fr);
-  gap: 0.45rem;
+  gap: 0.5rem;
 }
 
 .freqCard {
@@ -311,48 +165,45 @@
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  gap: 0.12rem;
-  padding: 0.7rem 0.75rem 0.75rem;
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: var(--radius-md);
+  gap: 0.1rem;
+  padding: 0.6rem 0.65rem;
+  background: var(--color-white);
+  border: 1.5px solid var(--color-lavender);
+  border-radius: 0.5rem;
   text-align: left;
   cursor: pointer;
   overflow: hidden;
   transition:
     background 0.2s var(--ease-out-expo),
     border-color 0.2s var(--ease-out-expo),
-    transform 0.2s var(--ease-out-expo),
-    box-shadow 0.25s var(--ease-out-expo);
+    transform 0.2s var(--ease-out-expo);
 }
 
 .freqCard:hover:not([data-active="true"]) {
-  background: rgba(255, 255, 255, 0.08);
-  border-color: rgba(255, 255, 255, 0.22);
+  border-color: var(--color-indigo-soft);
+  background: var(--color-cloud);
   transform: translateY(-1px);
 }
 
 .freqCard[data-active="true"] {
-  background: rgba(255, 255, 255, 0.14);
-  border-color: rgba(255, 255, 255, 0.4);
-  box-shadow:
-    0 0 0 1px rgba(255, 255, 255, 0.2) inset,
-    0 0 24px -6px rgba(196, 181, 253, 0.5);
+  background: color-mix(in srgb, var(--color-indigo) 5%, transparent);
+  border-color: var(--color-indigo);
 }
 
 .freqLabel {
   font-family: var(--font-display);
-  font-size: var(--text-sm);
+  font-size: 12.5px;
   font-weight: 700;
-  color: rgba(255, 255, 255, 0.95);
+  color: var(--color-indigo);
   letter-spacing: -0.005em;
   line-height: 1.15;
 }
 
 .freqHelper {
   font-family: var(--font-body);
-  font-size: 10px;
-  color: rgba(217, 220, 242, 0.5);
+  font-size: 10.5px;
+  font-weight: 600;
+  color: var(--color-gray);
   line-height: 1.3;
   white-space: nowrap;
   overflow: hidden;
@@ -361,7 +212,7 @@
 }
 
 .freqCard[data-active="true"] .freqHelper {
-  color: rgba(217, 220, 242, 0.8);
+  color: var(--color-indigo-soft);
 }
 
 .freqCheck {
@@ -379,7 +230,6 @@
   opacity: 0;
   transform: scale(0.6);
   transition: opacity 0.2s var(--ease-out-expo), transform 0.3s var(--ease-out-expo);
-  box-shadow: 0 0 0 3px rgba(46, 139, 87, 0.22), 0 0 10px rgba(46, 139, 87, 0.5);
 }
 
 .freqCard[data-active="true"] .freqCheck {
@@ -387,30 +237,29 @@
   transform: scale(1);
 }
 
-/* ── Section 2 — Amount (redesigned) ────────────────────────────── */
+/* ── Section 2 — Amount ─────────────────────────────────────────────── */
 .amountField {
   display: flex;
   align-items: stretch;
-  background: rgba(0, 0, 0, 0.22);
-  border: 1.5px solid rgba(255, 255, 255, 0.14);
-  border-radius: var(--radius-md);
+  background: var(--color-cloud);
+  border: 1.5px solid var(--color-lavender);
+  border-radius: 0.5rem;
   overflow: hidden;
-  height: 56px;
-  transition: border-color 0.15s ease, background 0.15s ease, box-shadow 0.15s ease;
+  height: 54px;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
 
 .amountField:focus-within {
-  border-color: rgba(196, 181, 253, 0.7);
-  background: rgba(0, 0, 0, 0.3);
-  box-shadow: 0 0 0 3px rgba(196, 181, 253, 0.18);
+  border-color: var(--color-indigo);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-indigo) 8%, transparent);
 }
 
 .amountField[data-error="true"] {
-  border-color: #FB7185;
+  border-color: #C0392B;
 }
 
 .amountField[data-error="true"]:focus-within {
-  box-shadow: 0 0 0 3px rgba(251, 113, 133, 0.18);
+  box-shadow: 0 0 0 3px rgba(192, 57, 43, 0.14);
 }
 
 .amountPrefix {
@@ -418,11 +267,11 @@
   align-items: center;
   padding: 0 1rem;
   font-family: var(--font-display);
-  font-size: var(--text-xs);
+  font-size: var(--text-sm);
   font-weight: 700;
-  letter-spacing: 0.14em;
-  color: rgba(217, 220, 242, 0.75);
-  border-right: 1px solid rgba(255, 255, 255, 0.08);
+  letter-spacing: 0.08em;
+  color: var(--color-indigo-soft);
+  border-right: 1px solid var(--color-lavender);
   white-space: nowrap;
 }
 
@@ -434,16 +283,16 @@
   padding: 0 1rem;
   font-family: var(--font-display);
   font-size: var(--text-xl);
-  font-weight: 700;
+  font-weight: 800;
   letter-spacing: -0.02em;
-  color: var(--color-white);
+  color: var(--color-indigo);
   font-variant-numeric: tabular-nums;
   min-width: 0;
-  caret-color: #C4B5FD;
+  caret-color: var(--color-indigo);
 }
 
 .amountInput::placeholder {
-  color: rgba(217, 220, 242, 0.35);
+  color: var(--color-gray);
   font-weight: 500;
   letter-spacing: 0;
   font-size: var(--text-sm);
@@ -455,29 +304,28 @@
   padding: 0 1rem;
   font-family: var(--font-body);
   font-size: var(--text-xs);
-  font-weight: 500;
-  letter-spacing: 0.04em;
-  color: rgba(217, 220, 242, 0.5);
-  border-left: 1px solid rgba(255, 255, 255, 0.08);
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--color-gray);
+  border-left: 1px solid var(--color-lavender);
   white-space: nowrap;
 }
 
 .presetRow {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 0.4rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
 }
 
 .presetChip {
-  padding: 0 0.6rem;
-  height: 36px;
+  padding: 7px 13px;
   font-family: var(--font-display);
   font-size: var(--text-xs);
   font-weight: 700;
   letter-spacing: 0.01em;
-  color: rgba(217, 220, 242, 0.9);
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: var(--color-gray);
+  background: var(--color-white);
+  border: 1.5px solid var(--color-lavender);
   border-radius: var(--radius-full);
   font-variant-numeric: tabular-nums;
   cursor: pointer;
@@ -485,23 +333,19 @@
     border-color 0.18s var(--ease-out-expo),
     color 0.18s var(--ease-out-expo),
     background 0.18s var(--ease-out-expo),
-    transform 0.18s var(--ease-out-expo),
-    box-shadow 0.2s var(--ease-out-expo);
+    transform 0.18s var(--ease-out-expo);
 }
 
 .presetChip:hover:not([data-active="true"]) {
-  border-color: rgba(255, 255, 255, 0.25);
-  background: rgba(255, 255, 255, 0.08);
+  border-color: var(--color-indigo-soft);
+  background: var(--color-cloud);
   transform: translateY(-1px);
 }
 
 .presetChip[data-active="true"] {
   color: var(--color-white);
-  border-color: rgba(255, 255, 255, 0.4);
-  background: rgba(255, 255, 255, 0.16);
-  box-shadow:
-    0 0 0 1px rgba(255, 255, 255, 0.22) inset,
-    0 0 18px -4px rgba(196, 181, 253, 0.55);
+  background: var(--color-indigo);
+  border-color: var(--color-indigo);
 }
 
 .errorLine {
@@ -511,11 +355,11 @@
   gap: 0.4rem;
   font-family: var(--font-body);
   font-size: var(--text-xs);
-  color: #FB7185;
+  color: #C0392B;
   font-weight: 600;
 }
 
-/* ── Section 3 — Allocation (updated palette) ──────────────────── */
+/* ── Section 3 — Allocation ─────────────────────────────────────────── */
 .splitHead {
   display: flex;
   align-items: flex-end;
@@ -542,13 +386,13 @@
   font-family: var(--font-display);
   font-size: 10px;
   font-weight: 700;
-  letter-spacing: 0.14em;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
-  color: #C4B5FD;
+  color: var(--color-indigo);
 }
 
 .splitLabel[data-tone="teal"] {
-  color: #5EEAD4;
+  color: var(--color-teal);
 }
 
 .splitLabel::before {
@@ -556,13 +400,11 @@
   width: 6px;
   height: 6px;
   border-radius: 50%;
-  background: #C4B5FD;
-  box-shadow: 0 0 8px rgba(196, 181, 253, 0.6);
+  background: var(--color-indigo);
 }
 
 .splitLabel[data-tone="teal"]::before {
-  background: #5EEAD4;
-  box-shadow: 0 0 8px rgba(94, 234, 212, 0.6);
+  background: var(--color-teal);
 }
 
 .splitSide[data-align="right"] .splitLabel {
@@ -571,16 +413,16 @@
 
 .splitPct {
   font-family: var(--font-display);
-  font-size: var(--text-3xl);
+  font-size: var(--text-2xl);
   font-weight: 800;
   letter-spacing: -0.035em;
-  color: var(--color-white);
+  color: var(--color-indigo);
   font-variant-numeric: tabular-nums;
   line-height: 1;
 }
 
 .splitPct[data-tone="teal"] {
-  color: #5EEAD4;
+  color: var(--color-teal);
 }
 
 .splitPct em {
@@ -593,7 +435,7 @@
   opacity: 0.65;
 }
 
-/* Slider — neutral rail so it doesn't duplicate the bar below */
+/* Slider — neutral lavender rail, white indigo-ringed thumb */
 .slider {
   -webkit-appearance: none;
   appearance: none;
@@ -615,31 +457,25 @@
 .slider::-webkit-slider-runnable-track {
   height: 6px;
   border-radius: var(--radius-full);
-  background: rgba(255, 255, 255, 0.14);
-  box-shadow:
-    0 1px 0 rgba(255, 255, 255, 0.08) inset,
-    0 0 0 1px rgba(255, 255, 255, 0.08) inset;
+  background: var(--color-lavender);
 }
 
 .slider::-moz-range-track {
   height: 6px;
   border-radius: var(--radius-full);
-  background: rgba(255, 255, 255, 0.14);
+  background: var(--color-lavender);
 }
 
 .slider::-webkit-slider-thumb {
   -webkit-appearance: none;
   appearance: none;
-  width: 22px;
-  height: 22px;
-  margin-top: -8px;
+  width: 18px;
+  height: 18px;
+  margin-top: -6px;
   border-radius: 50%;
-  background: radial-gradient(circle at 30% 30%, #FFFFFF 0%, #E8EAF6 60%);
-  border: 2.5px solid var(--color-white);
-  box-shadow:
-    0 1px 0 rgba(255, 255, 255, 0.9) inset,
-    0 0 0 3px rgba(196, 181, 253, 0.22),
-    0 4px 12px rgba(0, 0, 0, 0.4);
+  background: var(--color-white);
+  border: 3px solid var(--color-indigo);
+  box-shadow: 0 1px 3px rgba(41, 40, 103, 0.18);
   transition: transform 0.15s var(--ease-out-expo);
 }
 
@@ -648,34 +484,25 @@
 }
 
 .slider::-moz-range-thumb {
-  width: 22px;
-  height: 22px;
+  width: 18px;
+  height: 18px;
   border-radius: 50%;
-  background: #FFFFFF;
-  border: 2.5px solid var(--color-white);
-  box-shadow: 0 0 0 3px rgba(196, 181, 253, 0.22), 0 4px 12px rgba(0, 0, 0, 0.4);
+  background: var(--color-white);
+  border: 3px solid var(--color-indigo);
+  box-shadow: 0 1px 3px rgba(41, 40, 103, 0.18);
 }
 
-.slider:focus-visible::-webkit-slider-thumb {
-  box-shadow: 0 0 0 5px rgba(196, 181, 253, 0.4), 0 4px 12px rgba(0, 0, 0, 0.4);
-}
-.slider:focus-visible::-moz-range-thumb {
-  box-shadow: 0 0 0 5px rgba(196, 181, 253, 0.4), 0 4px 12px rgba(0, 0, 0, 0.4);
-}
-
-/* Proportional bar — vivid lavender + mint, with a subtle gap between */
+/* Proportional bar — indigo retirement + teal emergency */
 .allocBar {
   display: flex;
   width: 100%;
-  height: 12px;
+  height: 10px;
   border-radius: var(--radius-full);
   overflow: hidden;
-  background: rgba(0, 0, 0, 0.22);
+  background: var(--color-cloud);
   gap: 2px;
   padding: 2px;
-  box-shadow:
-    0 1px 0 rgba(255, 255, 255, 0.05) inset,
-    0 0 0 1px rgba(255, 255, 255, 0.06) inset;
+  box-shadow: 0 0 0 1px var(--color-lavender) inset;
 }
 
 .allocFillRetirement,
@@ -688,13 +515,11 @@
 }
 
 .allocFillRetirement {
-  background: linear-gradient(90deg, #8B83F4 0%, #C4B5FD 100%);
-  box-shadow: 0 0 12px -2px rgba(196, 181, 253, 0.55);
+  background: linear-gradient(90deg, var(--color-indigo) 0%, var(--color-indigo-soft) 100%);
 }
 
 .allocFillEmergency {
-  background: linear-gradient(90deg, #2DD4BF 0%, #5EEAD4 100%);
-  box-shadow: 0 0 12px -2px rgba(94, 234, 212, 0.55);
+  background: linear-gradient(90deg, var(--color-teal) 0%, #3DA9B8 100%);
 }
 
 .bucketHelp {
@@ -705,13 +530,13 @@
   gap: 0.45rem;
   font-family: var(--font-body);
   font-size: var(--text-xs);
-  color: rgba(217, 220, 242, 0.75);
+  color: var(--color-gray);
   line-height: 1.4;
 }
 
 .bucketHelp strong {
   font-weight: 700;
-  color: var(--color-white);
+  color: var(--color-indigo);
   letter-spacing: 0.01em;
 }
 
@@ -723,36 +548,34 @@
 }
 
 .bucketDot[data-tone="retirement"] {
-  background: linear-gradient(135deg, #C4B5FD 0%, #8B83F4 100%);
-  box-shadow: 0 0 8px rgba(196, 181, 253, 0.55);
+  background: var(--color-indigo);
 }
 
 .bucketDot[data-tone="emergency"] {
-  background: linear-gradient(135deg, #5EEAD4 0%, #2DD4BF 100%);
-  box-shadow: 0 0 8px rgba(94, 234, 212, 0.55);
+  background: var(--color-teal);
 }
 
 .bucketSep {
-  color: rgba(217, 220, 242, 0.28);
+  color: var(--color-lavender);
   margin: 0 0.1rem;
 }
 
-/* ── Insurance opt-in (bottom of blue card) ─────────────────────── */
-.insuranceSection {
-  margin-top: 0.3rem;
-  padding-top: 1.1rem;
-  border-top: 1px solid rgba(255, 255, 255, 0.1);
+/* ── Section 4 — Insurance (multi-product) ──────────────────────────── */
+.insuranceList {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
 }
 
 .insuranceRow {
   width: 100%;
   display: flex;
   align-items: center;
-  gap: 0.9rem;
-  padding: 0.85rem 1rem;
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: var(--radius-md);
+  gap: 0.7rem;
+  padding: 0.6rem 0.75rem;
+  background: var(--color-white);
+  border: 1.5px solid var(--color-lavender);
+  border-radius: 0.5rem;
   text-align: left;
   cursor: pointer;
   transition:
@@ -760,115 +583,357 @@
     border-color 0.2s var(--ease-out-expo);
 }
 
-.insuranceRow:hover {
-  background: rgba(255, 255, 255, 0.07);
-  border-color: rgba(255, 255, 255, 0.22);
+.insuranceRow:hover:not([data-active="true"]) {
+  border-color: var(--color-indigo-soft);
 }
 
 .insuranceRow[data-active="true"] {
-  background: rgba(196, 181, 253, 0.1);
-  border-color: rgba(196, 181, 253, 0.45);
-  box-shadow: 0 0 0 1px rgba(196, 181, 253, 0.15) inset;
+  border-color: var(--color-indigo);
+  background: color-mix(in srgb, var(--color-indigo) 3%, transparent);
 }
 
 .insuranceIcon {
   flex: none;
-  width: 34px;
-  height: 34px;
+  width: 30px;
+  height: 30px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  background: rgba(255, 255, 255, 0.08);
-  border: 1px solid rgba(255, 255, 255, 0.14);
-  border-radius: var(--radius-md);
-  color: rgba(217, 220, 242, 0.9);
+  background: var(--color-cloud);
+  border: 1px solid var(--color-lavender);
+  border-radius: 0.5rem;
+  color: var(--color-indigo);
 }
 
 .insuranceRow[data-active="true"] .insuranceIcon {
-  color: #C4B5FD;
-  background: rgba(196, 181, 253, 0.12);
-  border-color: rgba(196, 181, 253, 0.4);
+  background: var(--color-white);
+  border-color: color-mix(in srgb, var(--color-indigo) 22%, transparent);
 }
 
 .insuranceCopy {
   display: flex;
   flex-direction: column;
-  gap: 0.15rem;
+  gap: 0.05rem;
   min-width: 0;
   flex: 1;
 }
 
 .insuranceTitle {
   font-family: var(--font-display);
-  font-size: var(--text-sm);
+  font-size: 13px;
   font-weight: 700;
-  color: var(--color-white);
+  color: var(--color-indigo);
   letter-spacing: -0.005em;
 }
 
 .insuranceDetail {
   font-family: var(--font-body);
-  font-size: var(--text-xs);
-  color: rgba(217, 220, 242, 0.65);
+  font-size: 11px;
+  color: var(--color-gray);
+  line-height: 1.35;
+}
+
+/* Right-aligned premium column */
+.insurancePremium {
+  flex: none;
+  text-align: right;
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 12.5px;
+  color: var(--color-indigo);
+  white-space: nowrap;
   font-variant-numeric: tabular-nums;
 }
 
-.insuranceRow[data-active="true"] .insuranceDetail {
-  color: rgba(217, 220, 242, 0.9);
+.insurancePremium small {
+  font-weight: 600;
+  color: var(--color-gray);
+  font-size: 10px;
 }
 
-/* Pill-style toggle */
+/* Pill toggle */
 .insuranceToggle {
   flex: none;
-  width: 38px;
-  height: 22px;
-  padding: 2px;
+  width: 42px;
+  height: 24px;
+  padding: 3px;
   border-radius: var(--radius-full);
-  background: rgba(255, 255, 255, 0.1);
-  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: var(--color-lavender);
+  border: none;
   display: inline-flex;
   align-items: center;
-  transition: background 0.2s var(--ease-out-expo), border-color 0.2s var(--ease-out-expo);
+  transition: background 0.2s var(--ease-out-expo);
 }
 
 .insuranceRow[data-active="true"] .insuranceToggle {
-  background: #C4B5FD;
-  border-color: #C4B5FD;
-  box-shadow: 0 0 10px rgba(196, 181, 253, 0.55);
+  background: var(--color-indigo);
 }
 
 .insuranceToggleKnob {
-  width: 16px;
-  height: 16px;
+  width: 18px;
+  height: 18px;
   border-radius: 50%;
-  background: #FFFFFF;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
+  background: var(--color-white);
+  box-shadow: 0 1px 2px rgba(41, 40, 103, 0.25);
   transform: translateX(0);
   transition: transform 0.25s var(--ease-out-expo);
 }
 
 .insuranceRow[data-active="true"] .insuranceToggleKnob {
-  transform: translateX(16px);
+  transform: translateX(18px);
 }
 
-/* ── Summary / checkout aside ──────────────────────────────────── */
+/* ── Section 5 — Payment method (lives on the white panel) ──────────── */
+.pmtMethodList {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.pmtMethodCard {
+  background: var(--color-white);
+  border: 1.5px solid var(--color-lavender);
+  border-radius: 0.5rem;
+  overflow: hidden;
+  transition: border-color 0.2s ease, background 0.2s ease;
+}
+
+.pmtMethodCard[data-active="true"] {
+  border-color: var(--color-indigo);
+  background: color-mix(in srgb, var(--color-indigo) 3%, transparent);
+}
+
+.pmtMethodHeader {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  padding: 0.85rem 0.9rem;
+  background: transparent;
+  border: none;
+  text-align: left;
+  cursor: pointer;
+  color: inherit;
+}
+
+.pmtMethodHeader:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.pmtMethodRadio {
+  flex: none;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: 2px solid var(--color-lavender);
+  position: relative;
+  transition: border-color 0.2s var(--ease-out-expo);
+}
+
+.pmtMethodRadio[data-active="true"] {
+  border-color: var(--color-indigo);
+}
+
+.pmtMethodRadio[data-active="true"]::after {
+  content: "";
+  position: absolute;
+  inset: 3px;
+  background: var(--color-indigo);
+  border-radius: 50%;
+}
+
+.pmtMethodCopy {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  min-width: 0;
+  flex: 1;
+}
+
+.pmtMethodLabel {
+  font-family: var(--font-display);
+  font-size: var(--text-sm);
+  font-weight: 700;
+  color: var(--color-indigo);
+  letter-spacing: -0.005em;
+}
+
+.pmtMethodDesc {
+  font-family: var(--font-body);
+  font-size: 11.5px;
+  color: var(--color-gray);
+}
+
+.pmtFields {
+  overflow: hidden;
+}
+
+.pmtFieldsInner {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  padding: 0 0.9rem 0.9rem;
+  margin-top: -0.1rem;
+}
+
+.pmtProviderRow {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.5rem;
+}
+
+.pmtProviderBtn {
+  padding: 9px 0;
+  font-family: var(--font-display);
+  font-size: 12.5px;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  color: var(--color-gray);
+  background: var(--color-white);
+  border: 1.5px solid var(--color-lavender);
+  border-radius: 0.5rem;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease, color 0.15s ease;
+}
+
+.pmtProviderBtn:hover:not([data-active="true"]) {
+  border-color: var(--color-indigo-soft);
+  background: var(--color-cloud);
+}
+
+.pmtProviderBtn[data-active="true"] {
+  color: var(--color-white);
+  background: var(--color-indigo);
+  border-color: var(--color-indigo);
+}
+
+.pmtFieldRow {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  min-width: 0;
+}
+
+.pmtFieldLabel {
+  font-family: var(--font-body);
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--color-gray);
+}
+
+.pmtPhoneField {
+  display: flex;
+  align-items: stretch;
+  height: 42px;
+  background: var(--color-white);
+  border: 1.5px solid var(--color-lavender);
+  border-radius: 0.5rem;
+  overflow: hidden;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.pmtPhoneField:focus-within {
+  border-color: var(--color-indigo);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-indigo) 8%, transparent);
+}
+
+.pmtPhonePrefix {
+  display: inline-flex;
+  align-items: center;
+  padding: 0 0.7rem;
+  font-family: var(--font-display);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: var(--color-gray);
+  background: var(--color-cloud);
+  border-right: 1px solid var(--color-lavender);
+  white-space: nowrap;
+}
+
+.pmtPhoneInput {
+  flex: 1;
+  border: none;
+  outline: none;
+  background: transparent;
+  padding: 0 0.8rem;
+  font-family: var(--font-display);
+  font-size: var(--text-sm);
+  font-weight: 700;
+  color: var(--color-indigo);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.01em;
+  min-width: 0;
+}
+
+.pmtPhoneInput::placeholder {
+  color: var(--color-gray);
+  font-weight: 500;
+}
+
+.pmtRedirectNote {
+  margin: 0;
+  display: flex;
+  align-items: flex-start;
+  gap: 0.45rem;
+  padding: 0.65rem 0.75rem;
+  font-family: var(--font-body);
+  font-size: 11.5px;
+  line-height: 1.5;
+  color: var(--color-indigo-soft);
+  background: var(--color-cloud);
+  border: 1px solid var(--color-lavender);
+  border-radius: 0.5rem;
+}
+
+.pmtRedirectNote svg {
+  flex: none;
+  color: var(--color-indigo);
+  margin-top: 2px;
+}
+
+/* Payment method block when it lives inside the summary aside — a hairline
+   separates it from the projection/milestones above (the summaryCard's flex
+   gap supplies the surrounding spacing). */
+.pmtSection {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  padding-top: 0.85rem;
+  border-top: 1px solid var(--color-lavender);
+}
+
+.pmtSecure {
+  margin: 0.2rem 0 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  font-family: var(--font-body);
+  font-size: 11.5px;
+  color: var(--color-gray);
+}
+
+.pmtSecure svg {
+  color: var(--color-green);
+}
+
+/* ── Summary / checkout aside ───────────────────────────────────────── */
 .summaryCard {
   position: sticky;
   top: var(--space-6);
   display: flex;
   flex-direction: column;
   gap: 0.85rem;
-  padding: 1.35rem 1.35rem 1.25rem;
+  padding: 1.25rem;
   max-height: calc(100dvh - 2 * var(--space-6));
   overflow-y: auto;
   overscroll-behavior: contain;
-  background: linear-gradient(180deg, #FFFFFF 0%, var(--color-cloud) 100%);
+  background: var(--color-cloud);
   border: 1px solid var(--color-lavender);
-  border-radius: var(--radius-xl);
-  box-shadow:
-    0 1px 0 rgba(255, 255, 255, 0.9) inset,
-    0 10px 28px color-mix(in srgb, var(--color-indigo) 8%, transparent),
-    0 32px 64px -24px color-mix(in srgb, var(--color-indigo) 14%, transparent);
+  border-radius: 0.5rem;
+  box-shadow: 0 1px 3px rgba(41, 40, 103, 0.08);
   color: var(--color-slate);
 }
 
@@ -876,15 +941,13 @@
   display: flex;
   flex-direction: column;
   gap: 0.25rem;
-  padding-bottom: 0.75rem;
-  border-bottom: 1px solid var(--color-lavender);
 }
 
 .summaryEyebrow {
   font-family: var(--font-display);
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 700;
-  letter-spacing: 0.14em;
+  letter-spacing: 0.07em;
   text-transform: uppercase;
   color: var(--color-indigo-soft);
 }
@@ -900,16 +963,7 @@
 
 .summaryHero {
   display: flex;
-  flex-direction: column;
-  gap: 0.2rem;
-}
-
-.summaryHeroLabel {
-  font-family: var(--font-body);
-  font-size: var(--text-xs);
-  font-weight: 500;
-  letter-spacing: 0.04em;
-  color: var(--color-gray);
+  align-items: baseline;
 }
 
 .summaryHeroValue {
@@ -922,14 +976,21 @@
   font-variant-numeric: tabular-nums;
 }
 
+.summaryHeroCadence {
+  font-family: var(--font-display);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0;
+  color: var(--color-gray);
+}
+
 .summaryList {
   list-style: none;
   margin: 0;
-  padding: 0.75rem 0 0;
+  padding: 0.5rem 0 0;
   display: flex;
   flex-direction: column;
-  gap: 0.45rem;
-  border-top: 1px dashed color-mix(in srgb, var(--color-indigo) 12%, transparent);
+  gap: 0;
 }
 
 .summaryRow {
@@ -937,6 +998,8 @@
   align-items: center;
   justify-content: space-between;
   gap: var(--space-3);
+  padding: 7px 0;
+  border-top: 1px solid var(--color-lavender);
   font-family: var(--font-body);
   font-size: var(--text-sm);
 }
@@ -974,129 +1037,98 @@
 }
 
 .summaryDot[data-tone="retirement"] {
-  background: linear-gradient(135deg, #C4B5FD 0%, #8B83F4 100%);
-  box-shadow: 0 0 6px rgba(139, 131, 244, 0.5);
+  background: var(--color-indigo);
 }
 
 .summaryDot[data-tone="emergency"] {
-  background: linear-gradient(135deg, #5EEAD4 0%, #2DD4BF 100%);
-  box-shadow: 0 0 6px rgba(45, 212, 191, 0.55);
+  background: var(--color-teal);
 }
 
 .summaryDot[data-tone="insurance"] {
-  background: linear-gradient(135deg, #E9D5FF 0%, #A78BFA 100%);
-  box-shadow: 0 0 6px rgba(167, 139, 250, 0.5);
+  background: var(--color-indigo-soft);
 }
 
-/* ── Projection block ──────────────────────────────────────────── */
-.projection {
-  margin-top: 0.1rem;
-  padding: 0.85rem 1rem 0.95rem;
-  background: linear-gradient(145deg, #1B1A4A 0%, var(--color-indigo) 100%);
-  border-radius: var(--radius-md);
-  color: var(--color-white);
-  display: flex;
-  flex-direction: column;
-  gap: 0.35rem;
-  overflow: hidden;
-  position: relative;
-  isolation: isolate;
+.summaryRow[data-due="true"] {
+  margin-top: 0.2rem;
+  padding-top: 11px;
 }
 
-.projection::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  z-index: 0;
-  background:
-    radial-gradient(ellipse 260px 140px at 100% 0%, rgba(196, 181, 253, 0.22) 0%, transparent 70%),
-    radial-gradient(ellipse 220px 120px at 0% 100%, rgba(94, 234, 212, 0.14) 0%, transparent 70%);
-  pointer-events: none;
-}
-
-.projection > * {
-  position: relative;
-  z-index: 1;
-}
-
-.projectionHead {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-2);
-}
-
-.projectionLabel {
+.summaryRow[data-due="true"] .summaryRowLabel {
   font-family: var(--font-display);
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: rgba(217, 220, 242, 0.85);
-}
-
-.projectionYears {
-  font-family: var(--font-body);
-  font-size: 10px;
-  font-weight: 600;
-  letter-spacing: 0.04em;
-  padding: 0.2rem 0.55rem;
-  color: rgba(217, 220, 242, 0.9);
-  background: rgba(255, 255, 255, 0.08);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: var(--radius-full);
-  font-variant-numeric: tabular-nums;
-}
-
-.projectionValue {
-  font-family: var(--font-display);
-  font-size: var(--text-3xl);
   font-weight: 800;
-  letter-spacing: -0.035em;
-  line-height: 1.1;
-  font-variant-numeric: tabular-nums;
-  color: transparent;
-  -webkit-text-fill-color: transparent;
-  background-color: #FFFFFF;
-  background-image: linear-gradient(
-    110deg,
-    transparent 0%,
-    transparent 40%,
-    rgba(196, 181, 253, 0.95) 50%,
-    transparent 60%,
-    transparent 100%
-  );
-  background-size: 250% 100%;
-  background-repeat: no-repeat;
-  background-position: 150% 0;
-  -webkit-background-clip: text;
-  background-clip: text;
-  animation: contribShimmer 4s linear infinite;
+  color: var(--color-indigo);
 }
 
-.projectionHelp {
-  margin: 0.2rem 0 0;
+.summaryRow[data-due="true"] .summaryRowValue {
+  font-size: var(--text-base);
+}
+
+/* Clarifies that only the contribution grows savings; the premium buys cover —
+   so the post-signup balance (contribution only) reads honestly against the
+   "Due today" payment total. */
+.dueNote {
+  margin: 6px 0 0;
   font-family: var(--font-body);
   font-size: 11px;
   line-height: 1.45;
-  color: rgba(217, 220, 242, 0.65);
+  color: var(--color-gray);
+  letter-spacing: 0.01em;
+}
+
+/* ── Projection block (flat white card) ─────────────────────────────── */
+.projection {
+  margin-top: 0.3rem;
+  padding: 12px;
+  background: var(--color-white);
+  border: 1px solid var(--color-lavender);
+  border-radius: 0.5rem;
+  display: flex;
+  flex-direction: column;
+}
+
+.projectionLabel {
+  font-family: var(--font-body);
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--color-gray);
+}
+
+.projectionValue {
+  margin-top: 3px;
+  font-family: var(--font-display);
+  font-size: var(--text-lg);
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+  color: var(--color-indigo);
 }
 
 .projectionYear {
-  margin: 0.3rem 0 0;
+  margin: 5px 0 0;
   font-family: var(--font-body);
   font-size: var(--text-xs);
-  color: rgba(217, 220, 242, 0.9);
+  color: var(--color-gray);
   letter-spacing: 0.01em;
 }
 
 .projectionYear strong {
-  color: var(--color-white);
+  color: var(--color-indigo);
   font-weight: 700;
   font-variant-numeric: tabular-nums;
 }
 
-/* ── Milestones: "That could buy you…" (compact inline list) ───── */
+.projectionHelp {
+  margin: 5px 0 0;
+  font-family: var(--font-body);
+  font-size: 11px;
+  line-height: 1.4;
+  color: var(--color-gray);
+}
+
+/* ── Milestones: "That could buy you…" ──────────────────────────────── */
 .milestones {
   display: flex;
   flex-direction: column;
@@ -1108,7 +1140,7 @@
   font-family: var(--font-display);
   font-size: 10px;
   font-weight: 700;
-  letter-spacing: 0.14em;
+  letter-spacing: 0.07em;
   text-transform: uppercase;
   color: var(--color-indigo-soft);
 }
@@ -1131,7 +1163,7 @@
 }
 
 .milestone + .milestone {
-  border-top: 1px dashed color-mix(in srgb, var(--color-indigo) 10%, transparent);
+  border-top: 1px solid var(--color-lavender);
 }
 
 .milestoneIcon {
@@ -1167,7 +1199,7 @@
   letter-spacing: 0.02em;
 }
 
-/* ── Pay now CTA ───────────────────────────────────────────────── */
+/* ── Pay now CTA ─────────────────────────────────────────────────────── */
 .payNow {
   margin-top: 0.2rem;
   display: inline-flex;
@@ -1175,7 +1207,7 @@
   justify-content: space-between;
   gap: var(--space-3);
   width: 100%;
-  height: 50px;
+  height: 48px;
   padding: 0 1.4rem;
   font-family: var(--font-display);
   font-size: var(--text-sm);
@@ -1183,63 +1215,42 @@
   letter-spacing: 0.01em;
   color: var(--color-white);
   background-color: var(--color-indigo);
-  background-image: linear-gradient(
-    110deg,
-    transparent 0%,
-    transparent 40%,
-    rgba(196, 181, 253, 0.35) 50%,
-    transparent 60%,
-    transparent 100%
-  );
-  background-size: 250% 100%;
-  background-repeat: no-repeat;
-  background-position: 150% 0;
   border: none;
   border-radius: var(--radius-full);
   cursor: pointer;
-  box-shadow:
-    0 1px 0 rgba(255, 255, 255, 0.15) inset,
-    0 6px 18px color-mix(in srgb, var(--color-indigo) 28%, transparent),
-    0 16px 30px -14px color-mix(in srgb, var(--color-indigo) 38%, transparent);
+  box-shadow: 0 6px 18px color-mix(in srgb, var(--color-indigo) 22%, transparent);
   transition: transform 0.2s var(--ease-out-expo), box-shadow 0.2s var(--ease-out-expo), background-color 0.2s ease;
-  animation: payNowShimmer 4s linear infinite;
-  will-change: background-position;
-}
-
-@keyframes payNowShimmer {
-  0%   { background-position: 150% 0; }
-  100% { background-position: -50% 0; }
 }
 
 .payNow:hover:not(:disabled) {
   transform: translateY(-1px);
   background-color: var(--color-indigo-deep);
-  box-shadow:
-    0 1px 0 rgba(255, 255, 255, 0.15) inset,
-    0 10px 22px color-mix(in srgb, var(--color-indigo) 32%, transparent),
-    0 22px 42px -14px color-mix(in srgb, var(--color-indigo) 44%, transparent);
+  box-shadow: 0 10px 22px color-mix(in srgb, var(--color-indigo) 28%, transparent);
 }
 
 .payNow:disabled {
-  background-color: color-mix(in srgb, var(--color-indigo) 18%, transparent);
-  background-image: none;
-  color: rgba(255, 255, 255, 0.55);
+  background-color: color-mix(in srgb, var(--color-indigo) 22%, transparent);
+  color: rgba(255, 255, 255, 0.7);
   cursor: not-allowed;
   box-shadow: none;
   transform: none;
-  animation: none;
 }
 
-.payNowAmount {
-  font-family: var(--font-display);
-  font-weight: 800;
-  letter-spacing: -0.01em;
-  font-variant-numeric: tabular-nums;
-  color: rgba(255, 255, 255, 0.95);
+.pmtSpinner {
+  width: 14px;
+  height: 14px;
+  border: 2px solid rgba(255, 255, 255, 0.4);
+  border-top-color: var(--color-white);
+  border-radius: 50%;
+  animation: pmtSpin 0.7s linear infinite;
 }
 
-/* ── Responsive ──────────────────────────────────────────────────── */
-@media (max-width: 1280px) {
+@keyframes pmtSpin {
+  to { transform: rotate(360deg); }
+}
+
+/* ── Responsive ──────────────────────────────────────────────────────── */
+@media (max-width: 1100px) {
   .shell {
     grid-template-columns: minmax(0, 1fr);
     max-width: 720px;
@@ -1247,19 +1258,13 @@
 
   .summaryCard {
     position: static;
+    max-height: none;
   }
 }
 
 @media (max-width: 768px) {
-  /* Hide the top-left logo on mobile — the card fills the viewport. */
-  .pageHeader {
-    display: none;
-  }
-
-  .page {
+  .shell {
     padding: var(--space-4);
-    align-items: flex-start;
-    justify-content: flex-start;
   }
 
   .card {
@@ -1273,7 +1278,7 @@
 
   .freqGrid {
     grid-template-columns: repeat(2, 1fr);
-    gap: 0.35rem;
+    gap: 0.4rem;
   }
 
   .freqGrid .freqCard:nth-child(5) {
@@ -1292,463 +1297,23 @@
     display: none;
   }
 
-  .presetRow {
-    grid-template-columns: repeat(4, 1fr);
-  }
-
-  .presetChip {
-    padding: 0 0.4rem;
-    font-size: 11px;
-  }
-
   .splitPct {
-    font-size: var(--text-2xl);
+    font-size: var(--text-xl);
   }
-}
-
-/* ── Payment step (lives inside the light summary card) ─────────── */
-.summarySwap {
-  display: flex;
-  flex-direction: column;
-  gap: 0.85rem;
-}
-
-.pmtHead {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-2);
-}
-
-.pmtBack {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.3rem;
-  padding: 0.25rem 0.5rem 0.25rem 0.35rem;
-  font-family: var(--font-body);
-  font-size: 11px;
-  font-weight: 600;
-  color: var(--color-indigo-soft);
-  background: transparent;
-  border: none;
-  border-radius: var(--radius-full);
-  cursor: pointer;
-  transition: color 0.15s ease, background 0.15s ease;
-}
-
-.pmtBack:hover:not(:disabled) {
-  color: var(--color-indigo);
-  background: color-mix(in srgb, var(--color-indigo) 6%, transparent);
-}
-
-.pmtBack:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.pmtMethodList {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-}
-
-.pmtMethodCard {
-  background: var(--color-white);
-  border: 1px solid var(--color-lavender);
-  border-radius: var(--radius-md);
-  overflow: hidden;
-  transition: border-color 0.2s ease, background 0.2s ease, box-shadow 0.2s ease;
-}
-
-.pmtMethodCard[data-active="true"] {
-  background: linear-gradient(145deg, #1B1A4A 0%, var(--color-indigo) 60%, #2F3550 100%);
-  border-color: var(--color-indigo-deep);
-  box-shadow:
-    0 1px 0 rgba(255, 255, 255, 0.06) inset,
-    0 0 0 1px rgba(94, 99, 168, 0.25) inset,
-    0 10px 24px -10px rgba(27, 26, 74, 0.35);
-}
-
-.pmtMethodHeader {
-  width: 100%;
-  display: flex;
-  align-items: center;
-  gap: 0.7rem;
-  padding: 0.7rem 0.8rem;
-  background: transparent;
-  border: none;
-  text-align: left;
-  cursor: pointer;
-  color: inherit;
-}
-
-.pmtMethodHeader:disabled {
-  cursor: not-allowed;
-  opacity: 0.55;
-}
-
-.pmtMethodRadio {
-  flex: none;
-  width: 16px;
-  height: 16px;
-  border-radius: 50%;
-  border: 1.5px solid color-mix(in srgb, var(--color-indigo) 28%, transparent);
-  position: relative;
-  transition: border-color 0.2s var(--ease-out-expo);
-}
-
-.pmtMethodRadio[data-active="true"] {
-  border-color: var(--color-indigo);
-}
-
-.pmtMethodRadio[data-active="true"]::after {
-  content: "";
-  position: absolute;
-  inset: 2.5px;
-  background: var(--color-indigo);
-  border-radius: 50%;
-  box-shadow: 0 0 6px color-mix(in srgb, var(--color-indigo) 30%, transparent);
-}
-
-.pmtMethodIcon {
-  flex: none;
-  width: 30px;
-  height: 30px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  background: color-mix(in srgb, var(--color-indigo) 6%, transparent);
-  border: 1px solid var(--color-lavender);
-  border-radius: var(--radius-md);
-  color: var(--color-indigo);
-}
-
-.pmtMethodCard[data-active="true"] .pmtMethodRadio {
-  border-color: #C4B5FD;
-}
-
-.pmtMethodCard[data-active="true"] .pmtMethodRadio::after {
-  background: #C4B5FD;
-  box-shadow: 0 0 8px rgba(196, 181, 253, 0.55);
-}
-
-.pmtMethodCard[data-active="true"] .pmtMethodIcon {
-  background: rgba(255, 255, 255, 0.08);
-  border-color: rgba(255, 255, 255, 0.16);
-  color: rgba(217, 220, 242, 0.95);
-}
-
-.pmtMethodCard[data-active="true"] .pmtMethodLabel {
-  color: var(--color-white);
-}
-
-.pmtMethodCard[data-active="true"] .pmtMethodDesc {
-  color: rgba(217, 220, 242, 0.65);
-}
-
-.pmtMethodCard[data-active="true"] .pmtFieldsInner {
-  border-top-color: rgba(255, 255, 255, 0.1);
-}
-
-.pmtMethodCard[data-active="true"] .pmtFieldLabel {
-  color: rgba(217, 220, 242, 0.7);
-}
-
-.pmtMethodCard[data-active="true"] .pmtProviderBtn {
-  color: rgba(217, 220, 242, 0.85);
-  background: rgba(255, 255, 255, 0.04);
-  border-color: rgba(255, 255, 255, 0.14);
-}
-
-.pmtMethodCard[data-active="true"] .pmtProviderBtn:hover:not([data-active="true"]) {
-  background: rgba(255, 255, 255, 0.08);
-  border-color: rgba(255, 255, 255, 0.22);
-}
-
-.pmtMethodCard[data-active="true"] .pmtProviderBtn[data-active="true"] {
-  color: var(--color-white);
-  background: rgba(196, 181, 253, 0.14);
-  border-color: rgba(196, 181, 253, 0.5);
-  box-shadow: 0 0 0 1px rgba(196, 181, 253, 0.2) inset;
-}
-
-.pmtMethodCard[data-active="true"] .pmtPhoneField {
-  background: rgba(0, 0, 0, 0.25);
-  border-color: rgba(255, 255, 255, 0.14);
-}
-
-.pmtMethodCard[data-active="true"] .pmtPhoneField:focus-within {
-  border-color: rgba(196, 181, 253, 0.7);
-  box-shadow: 0 0 0 3px rgba(196, 181, 253, 0.18);
-}
-
-.pmtMethodCard[data-active="true"] .pmtPhonePrefix {
-  color: rgba(217, 220, 242, 0.75);
-  background: rgba(255, 255, 255, 0.06);
-  border-right-color: rgba(255, 255, 255, 0.1);
-}
-
-.pmtMethodCard[data-active="true"] .pmtPhoneInput {
-  color: var(--color-white);
-  caret-color: #C4B5FD;
-}
-
-.pmtMethodCard[data-active="true"] .pmtPhoneInput::placeholder {
-  color: rgba(217, 220, 242, 0.35);
-}
-
-.pmtMethodCard[data-active="true"] .pmtRedirectNote {
-  background: rgba(255, 255, 255, 0.06);
-  border-color: rgba(255, 255, 255, 0.1);
-  color: rgba(217, 220, 242, 0.85);
-}
-
-.pmtMethodCard[data-active="true"] .pmtRedirectNote svg {
-  color: #C4B5FD;
-}
-
-.pmtMethodCopy {
-  display: flex;
-  flex-direction: column;
-  gap: 0.1rem;
-  min-width: 0;
-  flex: 1;
-}
-
-.pmtMethodLabel {
-  font-family: var(--font-display);
-  font-size: var(--text-sm);
-  font-weight: 700;
-  color: var(--color-indigo);
-  letter-spacing: -0.005em;
-}
-
-.pmtMethodDesc {
-  font-family: var(--font-body);
-  font-size: 11px;
-  color: var(--color-gray);
-}
-
-.pmtFields {
-  overflow: hidden;
-}
-
-.pmtFieldsInner {
-  display: flex;
-  flex-direction: column;
-  gap: 0.6rem;
-  padding: 0.75rem 0.85rem 0.9rem;
-  border-top: 1px solid color-mix(in srgb, var(--color-indigo) 8%, transparent);
-}
-
-.pmtProviderRow {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 0.35rem;
-}
-
-.pmtProviderBtn {
-  padding: 0 0.6rem;
-  height: 34px;
-  font-family: var(--font-display);
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.02em;
-  color: var(--color-slate);
-  background: var(--color-white);
-  border: 1px solid var(--color-lavender);
-  border-radius: var(--radius-md);
-  cursor: pointer;
-  transition: border-color 0.15s ease, background 0.15s ease, color 0.15s ease;
-}
-
-.pmtProviderBtn:hover:not([data-active="true"]) {
-  background: color-mix(in srgb, var(--color-indigo) 4%, transparent);
-  border-color: rgba(94, 99, 168, 0.4);
-}
-
-.pmtProviderBtn[data-active="true"] {
-  color: var(--color-indigo);
-  background: color-mix(in srgb, var(--color-indigo) 8%, transparent);
-  border-color: var(--color-indigo-soft);
-  box-shadow: 0 0 0 1px color-mix(in srgb, var(--color-indigo) 10%, transparent) inset;
-}
-
-.pmtFieldRow {
-  display: flex;
-  flex-direction: column;
-  gap: 0.3rem;
-  min-width: 0;
-}
-
-.pmtFieldLabel {
-  font-family: var(--font-body);
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  color: var(--color-indigo-soft);
-  text-transform: uppercase;
-}
-
-.pmtFieldInput,
-.pmtFieldSelect {
-  width: 100%;
-  height: 40px;
-  padding: 0 0.75rem;
-  font-family: var(--font-body);
-  font-size: var(--text-sm);
-  color: var(--color-slate);
-  background: var(--color-white);
-  border: 1.5px solid var(--color-lavender);
-  border-radius: var(--radius-md);
-  outline: none;
-  font-variant-numeric: tabular-nums;
-  caret-color: var(--color-indigo);
-  transition: border-color 0.15s ease, box-shadow 0.15s ease;
-}
-
-.pmtFieldInput::placeholder {
-  color: var(--color-gray);
-  opacity: 0.7;
-}
-
-.pmtFieldInput:focus,
-.pmtFieldSelect:focus {
-  border-color: var(--color-indigo);
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-indigo) 8%, transparent);
-}
-
-.pmtFieldSelect {
-  appearance: none;
-  -webkit-appearance: none;
-  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 8' fill='none'><path d='M1 1l5 5 5-5' stroke='%23292867' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/></svg>");
-  background-repeat: no-repeat;
-  background-position: right 0.8rem center;
-  background-size: 12px 8px;
-  padding-right: 2rem;
-}
-
-.pmtPhoneField {
-  display: flex;
-  align-items: stretch;
-  height: 40px;
-  background: var(--color-white);
-  border: 1.5px solid var(--color-lavender);
-  border-radius: var(--radius-md);
-  overflow: hidden;
-  transition: border-color 0.15s ease, box-shadow 0.15s ease;
-}
-
-.pmtPhoneField:focus-within {
-  border-color: var(--color-indigo);
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-indigo) 8%, transparent);
-}
-
-.pmtPhonePrefix {
-  display: inline-flex;
-  align-items: center;
-  padding: 0 0.65rem;
-  font-family: var(--font-display);
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.1em;
-  color: var(--color-indigo-soft);
-  background: color-mix(in srgb, var(--color-indigo) 4%, transparent);
-  border-right: 1px solid var(--color-lavender);
-  white-space: nowrap;
-}
-
-.pmtPhoneInput {
-  flex: 1;
-  border: none;
-  outline: none;
-  background: transparent;
-  padding: 0 0.7rem;
-  font-family: var(--font-display);
-  font-size: var(--text-sm);
-  font-weight: 700;
-  color: var(--color-indigo);
-  font-variant-numeric: tabular-nums;
-  letter-spacing: 0.01em;
-  min-width: 0;
-}
-
-.pmtFieldGrid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 0.55rem;
-}
-
-.pmtRedirectNote {
-  margin: 0;
-  display: flex;
-  align-items: flex-start;
-  gap: 0.45rem;
-  padding: 0.65rem 0.75rem;
-  font-family: var(--font-body);
-  font-size: 11.5px;
-  line-height: 1.5;
-  color: var(--color-indigo-soft);
-  background: color-mix(in srgb, var(--color-indigo) 4%, transparent);
-  border: 1px solid color-mix(in srgb, var(--color-indigo) 10%, transparent);
-  border-radius: var(--radius-md);
-}
-
-.pmtRedirectNote svg {
-  flex: none;
-  color: var(--color-indigo);
-  margin-top: 2px;
-}
-
-.pmtSecure {
-  margin: 0;
-  display: inline-flex;
-  align-items: center;
-  gap: 0.4rem;
-  font-family: var(--font-body);
-  font-size: 11px;
-  color: var(--color-gray);
-  padding-top: 0.3rem;
-  border-top: 1px dashed color-mix(in srgb, var(--color-indigo) 10%, transparent);
-}
-
-.pmtSpinner {
-  width: 14px;
-  height: 14px;
-  border: 2px solid rgba(255, 255, 255, 0.35);
-  border-top-color: var(--color-white);
-  border-radius: 50%;
-  animation: pmtSpin 0.7s linear infinite;
-}
-
-@keyframes pmtSpin {
-  to { transform: rotate(360deg); }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .shimmerText,
-  .projectionValue {
-    animation: none;
-    color: var(--color-white);
-    -webkit-text-fill-color: var(--color-white);
-  }
-
-  .payNow {
-    animation: none;
-    background-image: none;
-  }
-
-  .pmtSpinner {
-    animation-duration: 2s;
-  }
-
   .allocFillRetirement,
   .allocFillEmergency,
   .freqCard,
   .freqCheck,
   .presetChip,
-  .confirm,
-  .closeBtn {
+  .closeBtn,
+  .insuranceToggleKnob {
     transition: none;
+  }
+
+  .pmtSpinner {
+    animation-duration: 2s;
   }
 }

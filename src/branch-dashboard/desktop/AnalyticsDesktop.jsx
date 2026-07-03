@@ -253,7 +253,7 @@ export default function AnalyticsDesktop() {
           icon={employeesIcon(18)}
           label="Active subscribers"
           value={formatNumber(header.activeSubs)}
-          sub={`${header.activeRate}% active`}
+          sub={`${Math.round(header.activeRate || 0)}% active`}
         />
         <Tile
           accent="indigoSoft"

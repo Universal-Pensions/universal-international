@@ -199,6 +199,7 @@ export function SettingsBody({ tab, settingsOpen, employer, employerId, addToast
           employerPct,
           insuranceEnabled,
           groupCoverAmount: cover,
+          groupInsuranceProducts,
         };
       } else {
         const employerAmount = Number(draft.employerAmount);
@@ -212,6 +213,7 @@ export function SettingsBody({ tab, settingsOpen, employer, employerId, addToast
           employerAmount,
           insuranceEnabled,
           groupCoverAmount: cover,
+          groupInsuranceProducts,
         };
       }
     }

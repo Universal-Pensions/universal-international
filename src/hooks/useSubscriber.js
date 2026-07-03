@@ -100,6 +100,7 @@ function useInvalidateSubscriber(id) {
     qc.invalidateQueries({ queryKey: ['subscriberClaims', id] });
     qc.invalidateQueries({ queryKey: ['subscriberWithdrawals', id] });
     qc.invalidateQueries({ queryKey: ['subscriberNominees', id] });
+    qc.invalidateQueries({ queryKey: ['contributionPaidThisMonth', id] });
   };
 }
 

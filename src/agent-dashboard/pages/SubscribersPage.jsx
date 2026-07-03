@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { motion, useReducedMotion } from 'framer-motion';
 import { EASE_OUT_EXPO } from '../../utils/motion';
 import { formatUGX } from '../../utils/currency';
@@ -16,9 +16,12 @@ import SkeletonRow from '../../components/SkeletonRow';
 import EmptyState from '../../components/EmptyState';
 import styles from './SubscribersPage.module.css';
 
+// NB: no 'balance' (netBalance) sort — ranking subscribers by current balance
+// would expose their net wealth, which the agent must NOT see (invariant in
+// SubscriberDetailPage.jsx). Lifetime 'contributions' is an engagement figure
+// the list already surfaces, so it stays.
 const SORT_OPTIONS = [
   { key: 'contributions', label: 'Contributions', fn: (a, b) => b.totalContributions - a.totalContributions },
-  { key: 'balance', label: 'Balance', fn: (a, b) => (b.netBalance || 0) - (a.netBalance || 0) },
   { key: 'registration', label: 'Registration', fn: (a, b) => (b.registeredDate || '').localeCompare(a.registeredDate || '') },
   { key: 'name', label: 'Name', fn: (a, b) => (a.name || '').localeCompare(b.name || '') },
 ];
@@ -45,7 +48,13 @@ export default function SubscribersPage() {
   const { data: subscribers = [], isLoading, isError, error, refetch } = useAgentSubscribers(agentId);
 
   const [search, setSearch] = useState('');
-  const [filter, setFilter] = useState('all');
+  // Honour a `?filter=active|dormant` deep link (e.g. the Home "Active
+  // subscribers" row) so it lands on the matching filtered view, not All.
+  const [searchParams] = useSearchParams();
+  const [filter, setFilter] = useState(() => {
+    const f = searchParams.get('filter');
+    return f === 'active' || f === 'dormant' ? f : 'all';
+  });
   const [sortKey, setSortKey] = useState('contributions');
 
   const filtered = useMemo(() => {

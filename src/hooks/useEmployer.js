@@ -304,7 +304,7 @@ export function useUpdateMemberCompensation(employerId) {
  * Mutation: submit a contribution run. NON-optimistic — the server re-derives
  * every figure and is the source of truth. On success, invalidates every read
  * the run could have moved: the roster, the drilled-in employee, the run
- * history, and the metrics.
+ * history, the metrics, and the leaderboard.
  * @param {string} employerId
  * @returns {import('@tanstack/react-query').UseMutationResult}
  */
@@ -319,6 +319,9 @@ export function useRunContribution(employerId) {
       queryClient.invalidateQueries({ queryKey: ['employeeContributions'] });
       queryClient.invalidateQueries({ queryKey: ['contributionRuns', employerId] });
       queryClient.invalidateQueries({ queryKey: ['employerMetrics', employerId] });
+      // A run moves the funded totals that drive the leaderboard rank, so
+      // refresh it too (otherwise the rank is stale for up to 5 min).
+      queryClient.invalidateQueries({ queryKey: ['employerLeaderboard', employerId] });
     },
   });
 }

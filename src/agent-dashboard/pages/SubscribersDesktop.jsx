@@ -3,7 +3,6 @@ import { useNavigate } from 'react-router-dom';
 import { useAgentScope } from '../../contexts/AgentScopeContext';
 import { useAgentSubscribers } from '../../hooks/useAgent';
 import { formatUGX } from '../../utils/currency';
-
 import { formatDate } from '../../utils/date';
 import ReportTable from '../../components/reports/ReportTable';
 import SearchFilter from '../../components/reports/SearchFilter';
@@ -103,14 +102,10 @@ export default function SubscribersDesktop() {
         sortValue: (row) => row.totalContributions || 0,
         render: (row) => formatUGX(row.totalContributions || 0),
       },
-      {
-        key: 'netBalance',
-        label: 'Balance',
-        align: 'right',
-        sortable: true,
-        sortValue: (row) => row.netBalance || 0,
-        render: (row) => formatUGX(row.netBalance || 0),
-      },
+      // NB: no Balance (netBalance) column — the agent must NOT see a
+      // subscriber's current balance / net wealth (invariant in
+      // SubscriberDetailPage.jsx). Lifetime contributions is an engagement
+      // figure the mobile list also surfaces, so it stays.
       {
         key: 'registeredDate',
         label: 'Registered',

@@ -78,3 +78,39 @@
   padding: 0.4rem 0.75rem;
   border-radius: var(--radius-full);
 }
+
+/* ── Subscriber self-signup re-skin (signupcanvas only) ──────────────────
+   Shrink the result icon to a flat 60px tinted disc holding a BARE mark — drop
+   the 96px stroked ring (.iconRing) and the box-shadow. Agent-desktop renders
+   inside `onboardcanvas` (or no container on mobile), so the base 96px ringed
+   icon above stays byte-identical there. */
+@container signupcanvas (min-width: 1px) {
+  .resultIcon {
+    width: 60px;
+    height: 60px;
+  }
+
+  .resultIcon svg {
+    width: 48px;
+    height: 48px;
+  }
+
+  .iconRing {
+    display: none;
+  }
+
+  .resultIcon[data-kind="success"] {
+    background: rgba(46, 139, 87, 0.12);
+    box-shadow: none;
+  }
+
+  .resultIcon[data-kind="warn"] {
+    background: rgba(230, 168, 23, 0.14);
+    box-shadow: none;
+  }
+
+  .resultIcon[data-kind="error"] {
+    background: rgba(220, 53, 69, 0.10);
+    box-shadow: none;
+  }
+}

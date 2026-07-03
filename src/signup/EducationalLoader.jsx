@@ -73,7 +73,7 @@ function prefersReducedMotion() {
   return window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 }
 
-export default function EducationalLoader({ title, subtitle }) {
+export default function EducationalLoader() {
   const [index, setIndex] = useState(0);
 
   // Pause auto-rotation when the user prefers reduced motion — a single static
@@ -88,43 +88,40 @@ export default function EducationalLoader({ title, subtitle }) {
 
   const current = BENEFITS[index];
 
+  // Compact horizontal card: a small icon tile on the left + an eyebrow/headline
+  // text column on the right, with a dot pager below. Mirrors the redesign
+  // mockup's `.educard` / `.edudots`.
   return (
     <div className={styles.root}>
-      <div className={styles.header}>
-        <div className={styles.statusRow} aria-live="polite">
-          <span className={styles.statusDot} aria-hidden="true" />
-          <span className={styles.statusText}>{title}</span>
-        </div>
-        {subtitle && <p className={styles.subtitle}>{subtitle}</p>}
-      </div>
-
-      <div className={styles.carousel}>
+      <div className={styles.card}>
         <AnimatePresence mode="wait">
-          <motion.article
+          <motion.div
             key={current.id}
-            className={styles.card}
-            initial={{ opacity: 0, y: 8 }}
+            className={styles.row}
+            initial={{ opacity: 0, y: 6 }}
             animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -8 }}
-            transition={{ duration: 0.4, ease: EASE_OUT_EXPO }}
+            exit={{ opacity: 0, y: -6 }}
+            transition={{ duration: 0.35, ease: EASE_OUT_EXPO }}
           >
-            <div className={styles.iconWrap} aria-hidden="true">
+            <div className={styles.iconTile} aria-hidden="true">
               {current.icon}
             </div>
-            <span className={styles.eyebrow}>{current.eyebrow}</span>
-            <h3 className={styles.headline}>{current.headline}</h3>
-          </motion.article>
+            <div className={styles.text}>
+              <span className={styles.eyebrow}>{current.eyebrow}</span>
+              <h3 className={styles.headline}>{current.headline}</h3>
+            </div>
+          </motion.div>
         </AnimatePresence>
+      </div>
 
-        <div className={styles.dots} aria-hidden="true">
-          {BENEFITS.map((b, i) => (
-            <span
-              key={b.id}
-              className={styles.dot}
-              data-active={i === index || undefined}
-            />
-          ))}
-        </div>
+      <div className={styles.dots} aria-hidden="true">
+        {BENEFITS.map((b, i) => (
+          <span
+            key={b.id}
+            className={styles.dot}
+            data-active={i === index || undefined}
+          />
+        ))}
       </div>
     </div>
   );

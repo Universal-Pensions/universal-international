@@ -6,9 +6,24 @@
  *   - /api/* → never cached (balances, transactions, money flows must be fresh)
  *   - cross-origin (fonts, CDNs) → left to the browser
  */
-const VERSION = 'up-pwa-v1';
+// Bump VERSION on each release so `activate` purges the previous release's
+// caches. Independently, the RUNTIME cache self-caps (trimCache below) so
+// orphaned content-hashed assets from prior builds can't accumulate unbounded
+// even between version bumps.
+const VERSION = 'up-pwa-v2';
 const SHELL = VERSION + '-shell';
 const RUNTIME = VERSION + '-runtime';
+const RUNTIME_MAX_ENTRIES = 80;
+
+// FIFO-trim a cache to at most `maxEntries`, deleting the oldest keys first.
+async function trimCache(cacheName, maxEntries) {
+  const cache = await caches.open(cacheName);
+  const keys = await cache.keys();
+  if (keys.length <= maxEntries) return;
+  await Promise.all(
+    keys.slice(0, keys.length - maxEntries).map((k) => cache.delete(k)),
+  );
+}
 
 const APP_SHELL = [
   '/',
@@ -65,7 +80,9 @@ self.addEventListener('fetch', (event) => {
     const cached = await cache.match(request);
     const network = fetch(request)
       .then((res) => {
-        if (res && res.status === 200 && res.type === 'basic') cache.put(request, res.clone());
+        if (res && res.status === 200 && res.type === 'basic') {
+          cache.put(request, res.clone()).then(() => trimCache(RUNTIME, RUNTIME_MAX_ENTRIES));
+        }
         return res;
       })
       .catch(() => cached);

@@ -6,7 +6,7 @@ import { useSignup } from '../SignupContext';
 import * as subscriberService from '../../services/subscriber';
 import { verifyOtp } from '../../services/auth';
 import { toCanonicalUGPhone } from '../../utils/phone';
-import { normalizeFrequency } from '../../utils/finance';
+import { buildContributionPayload } from './contributionPayload';
 import ContributionSettings from './ContributionSettings';
 import SignupShell from '../SignupShell';
 import ActivatedStep from '../steps/ActivatedStep';
@@ -50,56 +50,28 @@ export default function ContributionRoute() {
     return <Navigate to="/signup" replace />;
   }
 
-  /**
-   * Build the payload the RPC expects from the SignupContext snapshot + the
-   * schedule the user just confirmed. The RPC is forgiving about missing
-   * optional fields (it defaults paymentMethod, includeInsurance, etc.) but
-   * the required fields must be present.
-   */
-  function buildPayload(schedule, phone) {
-    const includeInsurance = schedule.includeInsurance ?? false;
-    const insuranceCover = schedule.insuranceCover ?? 0;
-    const insurancePremium = schedule.insurancePremium ?? 0;
-    return {
-      phone,
-      fullName: signup.fullName,
-      dob: signup.dob,
-      gender: signup.gender,
-      nin: signup.nin,
-      email: signup.email?.trim() ? signup.email.trim() : null,
-      occupation: signup.occupation || null,
-      districtId: signup.districtId,
-      consent: !!signup.consent,
-      consentTimestamp: signup.consentTimestamp,
-      contributionSchedule: {
-        frequency: normalizeFrequency(schedule.frequency),
-        amount: schedule.amount,
-        retirementPct: schedule.retirementPct,
-        emergencyPct: schedule.emergencyPct,
-        includeInsurance,
-        insurancePremium,
-        insuranceCover,
-      },
-      pensionBeneficiaries: signup.pensionBeneficiaries ?? [],
-      insuranceBeneficiaries: signup.insuranceBeneficiaries ?? [],
-      insuranceSameAsPension: !!signup.insuranceSameAsPension,
-      insuranceChoiceMade: !!signup.insuranceChoiceMade,
-      paymentMethod: schedule.paymentMethod,
-      // Persist the insurance policy at signup when the subscriber opted in.
-      // create_subscriber_from_signup (0042 _insert_subscriber_chain) reads
-      // payload.insurancePolicy → insurance_policies; omitting it (no opt-in)
-      // means no policy row is created. Without this, insurance never persisted.
-      ...(includeInsurance && insuranceCover > 0
-        ? { insurancePolicy: { cover: insuranceCover, premiumMonthly: insurancePremium } }
-        : {}),
-    };
-  }
-
   async function handleConfirm(schedule) {
+    // The chosen password is held in memory only (never persisted — see
+    // SignupContext EPHEMERAL_KEYS). A mid-flow refresh clears it; without it the
+    // create below would stamp a password-less account the member could never
+    // sign into. It's required at ReviewStep for every flow, so an empty value
+    // here can only mean it was lost on refresh — send them back to Review to
+    // re-enter it rather than minting a credential-less account.
+    if (!signup.password) {
+      addToast('error', 'For your security, please re-enter your password to finish setting up your account.');
+      // Leaving /contribution renders the wizard shell, which resumeGates has
+      // already clamped to Review (password is an ephemeral resume-gate — see
+      // resolveResumeStep), so the user lands on the step that has the field.
+      // Persist the clamp too, and keep invite users on their /invite/:token base.
+      signup.patch({ stepId: 'review' });
+      const inviteToken = signup.employerInvite?.token;
+      navigate(inviteToken ? `/invite/${inviteToken}` : '/signup');
+      return;
+    }
     const canonicalPhone = toCanonicalUGPhone(signup.phone) || signup.phone;
     signup.patch({ contributionSchedule: schedule });
 
-    const payload = buildPayload(schedule, canonicalPhone);
+    const payload = buildContributionPayload(signup, schedule, canonicalPhone);
 
     // 1. Atomic write: subscriber + schedule + nominees + first transaction +
     //    optional insurance policy. Trigger chain populates subscriber_balances
@@ -120,14 +92,15 @@ export default function ContributionRoute() {
     } catch (err) {
       // Log so the actual RPC error is visible during demos — Supabase RPC
       // errors often carry useful detail in `err.details` / `err.hint` /
-      // `err.code` that the toast's top-level message hides.
-      console.error('[signup] createFromSignup failed', err);
+      // `err.code` that the toast's top-level message hides. Covers both the
+      // self-signup and employer-invite create paths.
+      console.error('[signup] account creation failed', err);
       addToast(
         'error',
         err?.message || "Couldn't create your account. Please try again.",
       );
-      // Re-throw so PaymentStep's `await onComplete(...)` rejects and resets
-      // its `processing` state — otherwise the Pay button stays stuck on
+      // Re-throw so ContributionSettings' `await onConfirm(...)` rejects and
+      // resets its `processing` state — otherwise the Pay button stays stuck on
       // "Processing…" with no way to retry.
       throw err;
     }

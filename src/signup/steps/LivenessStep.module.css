@@ -267,3 +267,146 @@
   outline: 2px solid rgba(255, 255, 255, 0.9);
   outline-offset: 2px;
 }
+
+/* ── Subscriber self-signup re-skin (v2 redesign mockup) ──────────────────
+   These rules fire ONLY inside SignupShell's `signupcanvas` named container, so
+   the agent desktop wizard (`onboardcanvas`) keeps the base viewfinder chrome
+   byte-identical (rear camera, non-mirrored, 260/300px frame, solid oval +
+   vignette). They restyle the camera frame + oval guide, center the top block,
+   and supply the readiness row, in-frame idle hint and proactive help link from
+   the mockup's .cam / .ov / .ht / .livechk / .altlink. */
+@container signupcanvas (min-width: 1px) {
+  /* Camera chrome: wider, slightly squarer viewfinder on an ellipse gradient
+     with flat 8px corners (mockup .cam). The dark stop maps to the indigo-deep
+     token; the lighter stop is a viewfinder-specific shade like the base. */
+  .frame {
+    /* Size the viewfinder by available HEIGHT so the whole selfie step fits the
+       viewport without scrolling: cap it to the space left after the topbar,
+       heading, readiness row, button and footer, and derive the width from the
+       aspect ratio. Falls back to a 440px cap on tall screens. */
+    width: auto;
+    height: min(calc(100dvh - 520px), 420px);
+    aspect-ratio: 0.78;
+    max-width: 100%;
+    margin: 0 auto;
+    border-radius: var(--radius-md);
+    background: radial-gradient(ellipse at center, #3A3960 0%, var(--color-indigo-deep) 100%);
+  }
+
+  /* Centered top block (eyebrow · heading · subtext). */
+  .topEyebrow {
+    display: block;
+    text-align: center;
+  }
+
+  .topHeading {
+    text-align: center;
+  }
+
+  .topSubtext {
+    max-width: 360px;
+    margin-left: auto;
+    margin-right: auto;
+    margin-bottom: var(--space-4);
+    text-align: center;
+  }
+
+  /* Oval guide: dashed, no dark vignette mask (mockup .ov). The base
+     analyzing/ok border-color rules outrank this on specificity, so the oval
+     still turns indigo while analyzing and green on a match. */
+  .oval {
+    border: 2px dashed rgba(255, 255, 255, 0.55);
+    border-radius: 48%;
+    box-shadow: none;
+  }
+
+  /* Idle hint pinned to the bottom of the frame (mockup .ht). */
+  .hint {
+    position: absolute;
+    bottom: 13px;
+    left: 0;
+    right: 0;
+    text-align: center;
+    color: rgba(255, 255, 255, 0.85);
+    font-family: var(--font-body);
+    font-size: var(--text-xs);
+    pointer-events: none;
+  }
+
+  /* Readiness row between the camera and the button (mockup .livechk).
+     Dots default to a muted lavender and turn green once their state is
+     satisfied (driven via the [data-on] attribute from the component). */
+  .livechk {
+    display: flex;
+    gap: var(--space-4);
+    justify-content: center;
+    flex-wrap: wrap;
+    margin: var(--space-4) 0 var(--space-2);
+  }
+
+  .livechk span {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    font-family: var(--font-body);
+    font-size: var(--text-xs);
+    color: var(--color-gray);
+  }
+
+  .livechk span::before {
+    content: "";
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--color-lavender);
+    transition: background 0.2s ease;
+  }
+
+  .livechk span[data-on] {
+    color: var(--color-slate);
+  }
+
+  .livechk span[data-on]::before {
+    background: var(--color-green);
+  }
+
+  /* Capture button → centered, auto-width pill. The doubled class outranks
+     Step.module.css's `@container signupcanvas (min-width:600px) .actions {
+     align-items: flex-end }` so the pill stays centered at the 640px tier. */
+  .actions.actions {
+    align-items: center;
+  }
+
+  /* Proactive help link under the button (mockup .altlink). Rendered as a
+     real <button> for accessibility but styled as the mockup's text link. */
+  .altlink {
+    display: flex;
+    justify-content: center;
+  }
+
+  .altlinkBtn {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 0;
+    background: transparent;
+    border: 0;
+    cursor: pointer;
+    font-family: var(--font-display);
+    font-size: var(--text-xs);
+    font-weight: 700;
+    color: var(--color-indigo-soft);
+    transition: color 0.15s ease;
+  }
+
+  .altlinkBtn:hover {
+    color: var(--color-indigo);
+    text-decoration: underline;
+  }
+
+  .altlinkBtn:focus-visible {
+    outline: 2px solid var(--color-indigo);
+    outline-offset: 2px;
+    border-radius: var(--radius-sm);
+  }
+}

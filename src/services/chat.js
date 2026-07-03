@@ -122,6 +122,25 @@ export async function getBranchChatResponse(message, ctx = {}) {
   return mockBranchChatResponse(message, ctx);
 }
 
+/**
+ * @endpoint POST /api/chat (platform copilot — client-side mock)
+ * @param {string} message
+ * @param {object} ctx - the platform/network figures from
+ *   buildPlatformCopilotContext (live hooks). Powers the Ask-AI copilot on the
+ *   ADMIN ("the platform") and DISTRIBUTOR ("your network") map-overlay shells.
+ *
+ *   MUST stay client-side. The shared getChatResponse('admin') posts to the
+ *   server, whose api/chat.ts still carries STALE hardcoded stats (~30k
+ *   subscribers, 82% active) that contradict the live ~5k seed — so it would
+ *   answer with fiction. This responder instead derives every figure from the
+ *   real, live-hook `ctx`, exactly like getBranchChatResponse. Do NOT swap it
+ *   for getChatResponse/postChat.
+ * @returns {Promise<string>}
+ */
+export async function getPlatformChatResponse(message, ctx = {}) {
+  return mockPlatformChatResponse(message, ctx);
+}
+
 /* ═══════════════════════════════════════════════════════════════════════════ */
 /*  Subscriber-facing copilot                                                 */
 /* ═══════════════════════════════════════════════════════════════════════════ */
@@ -134,11 +153,11 @@ const subscriberChatResponses = {
   contribute:
     "To add money, tap ‘Make a Contribution’ — you can use the default split (80/20) or customise just this top-up.",
   schedule:
-    "Your schedule controls how often and how much you save. Head to Settings → Contribution schedule to change frequency, amount, or the retirement/emergency split.",
+    "Your schedule controls how often and how much you save. Open the Schedule tab to change frequency, amount, or the retirement/emergency split.",
   nominee:
     "Nominees receive your savings or insurance benefit. You can change them any time under ‘Update nominees’. Shares must total 100%.",
   claim:
-    "To file an insurance claim, open Insurance → Claims → ‘File a new claim’. Have the incident date and any supporting documents ready.",
+    "To file an insurance claim, open Withdrawals → ‘File an insurance claim’ → ‘File a new claim’. Have the incident date and any supporting documents ready.",
   retirement:
     "Your retirement bucket compounds monthly. Increase your schedule or retirement % to grow your projected income.",
   emergency:
@@ -146,7 +165,7 @@ const subscriberChatResponses = {
   insurance:
     "Your baseline cover is UGX 1,000,000 for UGX 2,000 / month. Upgrade options are available under Insurance → Coverage.",
   split:
-    "A balanced split is 80% retirement / 20% emergency. Adjust any time — the donut on your dashboard updates immediately.",
+    "A balanced split is 80% retirement / 20% emergency. Adjust it any time from the Schedule tab.",
   balance:
     "Your total balance reflects contributions minus withdrawals, translated to units at the latest unit value.",
   help:
@@ -346,6 +365,132 @@ function mockBranchChatResponse(message, ctx = {}) {
   }
 
   return `I can answer about your agents, subscribers, contributions, commissions, KYC, and branch health for ${branchName}. Try “Who are my top agents?” or “How many dormant subscribers can I reactivate?”.`;
+}
+
+/**
+ * Platform / network copilot — keyword-matched answers grounded in the figures
+ * the ADMIN (whole platform) or DISTRIBUTOR (their network) already sees on
+ * their map-overlay dashboard, passed in `ctx` from buildPlatformCopilotContext.
+ * A mock (CLAUDE.md §10a), but truthful: every number comes from the live
+ * usePlatformOverview / country-rollup hooks, never the server's stale stats.
+ *
+ * @param {string} message
+ * @param {object} ctx - { scope:'admin'|'distributor', networkName,
+ *   totalSubscribers, activeSubscribers, dormant, activeRate, agents, branches,
+ *   distributors, employers, aum, totalContributions, totalWithdrawals,
+ *   viaDistributor, viaEmployer, direct, topChannelLabel, topChannelCount }.
+ *   distributors/employers/channel figures are null for the distributor scope
+ *   (a single-network, agent-tree view has no such concept) — answered honestly.
+ * @returns {string}
+ */
+function mockPlatformChatResponse(message, ctx = {}) {
+  const l = (message || '').toLowerCase();
+  const {
+    scope = 'admin',
+    networkName = 'the platform',
+    totalSubscribers = 0,
+    activeSubscribers = 0,
+    dormant = 0,
+    activeRate = 0,
+    agents = 0,
+    branches = 0,
+    distributors = null,
+    employers = null,
+    aum = 0,
+    totalContributions = 0,
+    totalWithdrawals = 0,
+    viaDistributor = null,
+    viaEmployer = null,
+    direct = null,
+    topChannelLabel = null,
+    topChannelCount = 0,
+  } = ctx;
+
+  const isAdmin = scope === 'admin';
+  // Capitalise the network label for sentence-start use ("the platform" →
+  // "The platform"; a distributor's proper name is left untouched).
+  const cap = (s) => (s ? s.charAt(0).toUpperCase() + s.slice(1) : s);
+
+  // AUM / assets under management.
+  if (l.includes('aum') || l.includes('asset') || l.includes('under management') || l.includes('managed')) {
+    return `${cap(networkName)} holds ${formatUGX(aum)} in assets under management across ${formatNumber(totalSubscribers)} subscribers.`;
+  }
+
+  // Contributions collected.
+  if (l.includes('contribut') || l.includes('collect') || l.includes('inflow') || l.includes('deposit')) {
+    return `${cap(networkName)} has collected ${formatUGX(totalContributions)} in contributions to date.`;
+  }
+
+  // Withdrawals / outflows.
+  if (l.includes('withdraw') || l.includes('outflow') || l.includes('payout')) {
+    return `${formatUGX(totalWithdrawals)} has been withdrawn across ${networkName} to date — against ${formatUGX(aum)} still under management.`;
+  }
+
+  // Dormant / inactive / reactivation.
+  if (l.includes('dormant') || l.includes('reactivat') || l.includes('not contributing') || l.includes('lapsed') || l.includes('inactive')) {
+    return dormant > 0
+      ? `${formatNumber(dormant)} of ${formatNumber(totalSubscribers)} subscribers are dormant (not contributing recently) — about ${Math.max(0, 100 - activeRate)}% of the base. Reactivating them is the single biggest lever on ${networkName}.`
+      : `Every subscriber on ${networkName} is currently active.`;
+  }
+
+  // Active rate / participation / engagement / health.
+  if (l.includes('active rate') || l.includes('participation') || l.includes('engagement') || l.includes('% active') || l.includes('health') || l.includes('how are we')) {
+    return `${activeRate}% of ${networkName}'s ${formatNumber(totalSubscribers)} subscribers are actively contributing — ${formatNumber(activeSubscribers)} active, ${formatNumber(dormant)} dormant.`;
+  }
+
+  // Agents.
+  if (l.includes('agent')) {
+    return `${cap(networkName)} has ${formatNumber(agents)} field agents${branches ? ` across ${formatNumber(branches)} branches` : ''}.`;
+  }
+
+  // Branches.
+  if (l.includes('branch')) {
+    return `There ${branches === 1 ? 'is' : 'are'} ${formatNumber(branches)} branch${branches === 1 ? '' : 'es'} on ${networkName}, supervising ${formatNumber(agents)} agents.`;
+  }
+
+  // Distributors (a head-office / admin concept).
+  if (l.includes('distributor')) {
+    return distributors == null
+      ? `You're viewing a single distributor network here — it covers ${formatNumber(branches)} branches and ${formatNumber(agents)} agents.`
+      : `There ${distributors === 1 ? 'is' : 'are'} ${formatNumber(distributors)} distributor network${distributors === 1 ? '' : 's'} on the platform. Open Distributors to manage them.`;
+  }
+
+  // Employers (a head-office / admin concept).
+  if (l.includes('employer') || l.includes('company') || l.includes('companies') || l.includes('b2b')) {
+    return employers == null
+      ? `Employer accounts are managed by head office — your network is the agent → subscriber tree, with no employer channel.`
+      : `There ${employers === 1 ? 'is' : 'are'} ${formatNumber(employers)} employer account${employers === 1 ? '' : 's'} on the platform. Open Employers to manage them.`;
+  }
+
+  // Acquisition channel / where members come from / top source / region breakdown.
+  if (l.includes('channel') || l.includes('where') || l.includes('come from') || l.includes('source') || l.includes('acquisition') || l.includes('region') || l.includes('top')) {
+    if (topChannelLabel) {
+      const parts = [];
+      if (viaDistributor != null) parts.push(`${formatNumber(viaDistributor)} via distributors`);
+      if (viaEmployer != null) parts.push(`${formatNumber(viaEmployer)} via employers`);
+      if (direct != null && direct > 0) parts.push(`${formatNumber(direct)} direct`);
+      return `Most subscribers join through ${topChannelLabel} (${formatNumber(topChannelCount)}). Full split: ${parts.join(', ')}. For a region-by-region view, drill into the map.`;
+    }
+    return `For a region-by-region breakdown, drill into the map — each region opens its districts, branches, and agents.`;
+  }
+
+  // Subscribers / members / how many / total.
+  if (l.includes('subscriber') || l.includes('member') || l.includes('saver') || l.includes('active') || l.includes('how many') || l.includes('how big') || l.includes('total') || l.includes('people')) {
+    return `${cap(networkName)} has ${formatNumber(totalSubscribers)} subscribers — ${formatNumber(activeSubscribers)} actively contributing (${activeRate}%) and ${formatNumber(dormant)} dormant.`;
+  }
+
+  // Overview / summary / snapshot.
+  if (l.includes('overview') || l.includes('summary') || l.includes('snapshot') || l.includes('glance')) {
+    const bits = [
+      `${formatNumber(totalSubscribers)} subscribers (${activeRate}% active)`,
+      `${formatUGX(aum)} AUM`,
+      `${formatNumber(agents)} agents`,
+    ];
+    if (isAdmin && employers != null) bits.push(`${formatNumber(employers)} employers`);
+    return `${cap(networkName)} at a glance — ${bits.join(' · ')}.`;
+  }
+
+  return `I can answer about ${networkName}'s subscribers, active rate, AUM, contributions, withdrawals, agents, branches${isAdmin ? ', distributors, employers' : ''}, and where members are acquired. Try "What's our AUM?" or "How many subscribers are dormant?".`;
 }
 
 function mockAgentReply(message, firstName) {

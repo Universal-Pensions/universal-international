@@ -154,15 +154,19 @@ export async function walkSignupToFirstContribution(
   // Consent navigates directly to /signup/contribution — no intermediate
   // ActivatedStep heading (that renders post-payment now).
 
-  // ── Contribution onboarding ──────────────────────────────────────────────
+  // ── Contribution onboarding (Plan & pay) ─────────────────────────────────
+  // Payment is now MERGED into the contribution page (no "Pay now" swap): the
+  // method picker lives in the summary and the single "Pay UGX…" CTA submits.
   await expect(
-    page.getByRole('heading', { name: /design your savings rhythm/i }),
+    page.getByRole('heading', { name: /set up your contributions/i }),
   ).toBeVisible({ timeout: 15_000 });
 
   await page
     .getByRole('button', { name: new RegExp(`^${QUICK_CONTRIBUTION_LABEL}$`) })
     .click();
-  await page.getByRole('button', { name: /^pay now/i }).click();
+
+  // Mobile Money is selected by default; fill the phone so the Pay CTA enables.
+  await page.getByPlaceholder('700 000 000').fill('700123456');
 
   const payBtn = page.getByRole('button', { name: /^pay (ugx|\d)/i });
   await expect(payBtn).toBeEnabled();
@@ -189,6 +193,6 @@ export async function walkSignupToFirstContribution(
   await expect(
     page.getByRole('heading', { name: /you['’]re all set/i }),
   ).toBeVisible({ timeout: 20_000 });
-  await page.getByRole('button', { name: /^continue$/i }).click();
+  await page.getByRole('button', { name: /go to my dashboard/i }).click();
   await expect(page).toHaveURL(/\/dashboard/, { timeout: 15_000 });
 }

@@ -1,4 +1,5 @@
 import { useState, useRef, useCallback } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { EASE_OUT_EXPO } from '../utils/motion';
 
@@ -83,7 +84,14 @@ const ROLES = [
 ];
 
 export default function ForYou() {
-  const [active, setActive] = useState('subscriber');
+  // Deep-link the audience tab via ?aud= (the footer's "For employers" / "For
+  // agents" links), falling back to Individuals. Read once for the initial tab;
+  // clicking the tabs afterwards just updates local state.
+  const [searchParams] = useSearchParams();
+  const [active, setActive] = useState(() => {
+    const aud = searchParams.get('aud');
+    return ROLES.some((r) => r.id === aud) ? aud : 'subscriber';
+  });
   const role = ROLES.find((r) => r.id === active);
   const tabRefs = useRef([]);
 

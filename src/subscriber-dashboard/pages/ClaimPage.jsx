@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { parseAmount } from '../../utils/finance';
+import { activeCoverTotal, activePolicies } from '../../utils/policies';
 import { EASE_OUT_EXPO } from '../../utils/motion';
 import { formatNumber, formatUGX } from '../../utils/currency';
 import { formatDate } from '../../utils/date';
@@ -9,6 +10,7 @@ import { useCurrentSubscriber, useSubmitClaim, useSubscriberClaims } from '../..
 import { useToast } from '../../contexts/ToastContext';
 import { useIsDesktop } from '../../hooks/useIsDesktop';
 import { PillChip, PillChipGroup } from '../../components/PillChip';
+import ErrorCard from '../../components/feedback/ErrorCard';
 import { goBackOrFallback } from '../shell/navigation';
 import { useSubscriberAppBar } from '../shell/subscriberAppBarContext';
 import styles from './ClaimPage.module.css';
@@ -38,7 +40,7 @@ export default function ClaimPage() {
   const navigate = useNavigate();
   const reducedMotion = useReducedMotion();
   const isDesktop = useIsDesktop();
-  const { data: sub } = useCurrentSubscriber();
+  const { data: sub, isError, error, refetch } = useCurrentSubscriber();
   const { addToast } = useToast();
   const submitClaim = useSubmitClaim(sub?.id);
 
@@ -51,9 +53,15 @@ export default function ClaimPage() {
   const [submitting, setSubmitting] = useState(false);
   const [resultClaim, setResultClaim] = useState(null);
 
-  const insurance = sub?.insurance;
   const { data: claims = [] } = useSubscriberClaims(sub?.id);
-  const noPolicy = !insurance || insurance.status !== 'active';
+  // Cover figures span ALL active products (life + health + funeral), not the
+  // legacy life-only row — so a member with only health/funeral cover can still
+  // file a claim and sees their real cover, matching Policies / Home.
+  const activeIns = activePolicies(sub);
+  const coverTotal = activeCoverTotal(sub);
+  const premiumTotal = activeIns.reduce((s, p) => s + (Number(p.premiumMonthly) || 0), 0);
+  const nextRenewal = activeIns.map((p) => p.renewalDate).filter(Boolean).sort()[0] || null;
+  const noPolicy = activeIns.length === 0;
 
   const claimAmtNum = parseAmount(claimAmount) ?? 0;
   const canReview = claimType && claimDate && claimAmtNum > 0 && claimDesc.trim().length >= 6;
@@ -131,7 +139,7 @@ export default function ClaimPage() {
   // On the list view with an active policy, fold the cover figure into the
   // hero dome (eyebrow + big amount + premium/renewal stat row). Every other
   // view (and the no-policy upsell) shows a title-only hero with a muted line.
-  const showCoverHero = view === 'list' && !noPolicy && insurance;
+  const showCoverHero = view === 'list' && !noPolicy;
 
   const headTitle =
     view === 'list' ? 'File a claim'
@@ -143,10 +151,24 @@ export default function ClaimPage() {
   // dome's big amount + stat row) into a single flat line so nothing is lost.
   const deskSubtitle =
     showCoverHero
-      ? `UGX ${formatUGX(insurance.cover || 0, { compact: false }).replace('UGX ', '')} active cover · ${formatUGX(insurance.premiumMonthly, { compact: false })} / mo · renews ${formatDate(insurance.renewalDate)}`
-      : view === 'list' && insurance ? `Cover: ${formatUGX(insurance.cover || 0)}`
+      ? `UGX ${formatUGX(coverTotal, { compact: false }).replace('UGX ', '')} active cover · ${formatUGX(premiumTotal, { compact: false })} / mo${nextRenewal ? ` · renews ${formatDate(nextRenewal)}` : ''}`
+      : view === 'list' && coverTotal > 0 ? `Cover: ${formatUGX(coverTotal)}`
       : view === 'list' ? 'No active policy yet'
       : undefined;
+
+  // A cold-start query failure would otherwise render a silent blank claim page
+  // — surface a retry card instead (mirrors HomePage's error handling).
+  if (isError) {
+    return (
+      <div className={styles.page}>
+        <ErrorCard
+          title="We couldn't load your cover"
+          message={error}
+          onRetry={refetch}
+        />
+      </div>
+    );
+  }
 
   return (
     <div className={styles.page}>
@@ -215,9 +237,9 @@ export default function ClaimPage() {
                     // flat header subtitle, so this is mobile-only.
                     <section className={styles.coverSummary}>
                       <span className={styles.coverEyebrow}>Active cover</span>
-                      <div className={styles.coverAmount}>{formatUGX(insurance.cover || 0, { compact: false })}</div>
+                      <div className={styles.coverAmount}>{formatUGX(coverTotal, { compact: false })}</div>
                       <p className={styles.coverSub}>
-                        {formatUGX(insurance.premiumMonthly, { compact: false })} / mo · Renews {formatDate(insurance.renewalDate)}
+                        {formatUGX(premiumTotal, { compact: false })} / mo{nextRenewal ? ` · Renews ${formatDate(nextRenewal)}` : ''}
                       </p>
                     </section>
                   )}
@@ -392,18 +414,18 @@ export default function ClaimPage() {
                         <ul className={flow.sumList}>
                           <li className={flow.sumRow}>
                             <span>Cover amount</span>
-                            <span className={flow.sumVal}>{formatUGX(insurance?.cover || 0, { compact: false })}</span>
+                            <span className={flow.sumVal}>{formatUGX(coverTotal, { compact: false })}</span>
                           </li>
-                          {insurance?.premiumMonthly != null && (
+                          {premiumTotal > 0 && (
                             <li className={flow.sumRow}>
                               <span>Premium</span>
-                              <span className={flow.sumVal}>{formatUGX(insurance.premiumMonthly, { compact: false })} / mo</span>
+                              <span className={flow.sumVal}>{formatUGX(premiumTotal, { compact: false })} / mo</span>
                             </li>
                           )}
-                          {insurance?.renewalDate && (
+                          {nextRenewal && (
                             <li className={flow.sumRow}>
                               <span>Renews</span>
-                              <span className={flow.sumVal}>{formatDate(insurance.renewalDate)}</span>
+                              <span className={flow.sumVal}>{formatDate(nextRenewal)}</span>
                             </li>
                           )}
                         </ul>

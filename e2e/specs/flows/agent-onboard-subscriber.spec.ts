@@ -220,12 +220,12 @@ test.describe('agent → onboard new subscriber (UI + RPC + DB)', () => {
     await benefContinue.click();
 
     // ── KYC step 8 · consent ───────────────────────────────────────────
-    // Tick the (single) checkbox to enable "Activate my account".
+    // Tick the (single) checkbox to enable "I consent — continue".
     await expect(
-      page.getByRole('heading', { name: /before we activate your account/i }),
+      page.getByRole('heading', { name: /consent & data use/i }),
     ).toBeVisible({ timeout: 15_000 });
     await page.getByRole('checkbox').check();
-    await page.getByRole('button', { name: /activate my account/i }).click();
+    await page.getByRole('button', { name: /i consent — continue/i }).click();
 
     // ── Stage 3 · contribution schedule ────────────────────────────────
     // ContributionSettingsForm — monthly is the default frequency. Fill

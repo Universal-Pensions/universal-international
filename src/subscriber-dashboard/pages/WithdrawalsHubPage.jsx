@@ -3,6 +3,7 @@ import { motion, useReducedMotion } from 'framer-motion';
 import { EASE_OUT_EXPO } from '../../utils/motion';
 
 import { formatUGXShort, formatUGX } from '../../utils/currency';
+import { activeCoverTotal } from '../../utils/policies';
 import { useCurrentSubscriber } from '../../hooks/useSubscriber';
 import { useIsDesktop } from '../../hooks/useIsDesktop';
 import { RETIREMENT_AGE } from '../../constants/savings';
@@ -46,8 +47,9 @@ export default function WithdrawalsHubPage() {
   const emergency = sub?.emergencyBalance || 0;
   const retirement = sub?.retirementBalance || 0;
   const available = emergency + retirement;
-  const cover = sub?.insurance?.cover || 0;
-  const insuranceActive = sub?.insurance?.status === 'active';
+  // Total ACTIVE cover across all products (life + health + funeral), so the
+  // claim hint matches the Policies page / Home rather than the life-only row.
+  const cover = activeCoverTotal(sub);
 
   // Desktop summary reframes "available" honestly: retirement is locked until
   // age 60, so only the emergency pot (plus retirement once eligible) is actually
@@ -60,7 +62,7 @@ export default function WithdrawalsHubPage() {
   const HINTS = {
     savings: `${formatUGX(emergency)} ready · ${formatUGX(retirement)} retirement`,
     claim: cover > 0
-      ? `${formatUGX(cover)} cover ${insuranceActive ? 'active' : 'inactive'}`
+      ? `${formatUGX(cover)} cover active`
       : 'No active cover',
   };
 

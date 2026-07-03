@@ -32,6 +32,7 @@ import {
   buildRunsExport,
 } from '../reports/deriveEmployeeAnalytics';
 import { PALETTE, STATUS_COLORS, axisTick, chartTooltip } from '../reports/chartConfig';
+import { deriveEmployerMetrics } from '../overview/employerCopilotContext';
 import { PageHead, MetricRow, Tile, Card, SectionHead, Btn } from './ui';
 import {
   employeesIcon, checkIcon, walletIcon, shieldIcon, coinsIcon, downloadIcon,
@@ -132,7 +133,10 @@ export default function AnalyticsDesktop() {
     ?? runs.reduce((s, r) => s + ((r.employeeTotal || 0) + (r.employerTotal || 0)), 0);
   const latest = chronoRuns[chronoRuns.length - 1];
   const thisMonth = latest ? (latest.employeeTotal || 0) + (latest.employerTotal || 0) : 0;
-  const participation = active > 0 ? 100 : 0; // every active staff member is funded each run
+  // Real participation = active staff with compensation > 0 (the v2 run driver),
+  // measured against the active base — same formula the mobile Overview and the
+  // copilot use, not a hardcoded 100%.
+  const participation = Math.round(deriveEmployerMetrics(metrics, employees).participationRate);
   const avgComp = a.kpis.avgMonthly;
   const cover = Number(cfg?.groupCoverAmount) || 0;
   const insuranceOn = (cfg?.insuranceEnabled ?? cover > 0) && cover > 0;
@@ -179,6 +183,11 @@ export default function AnalyticsDesktop() {
   // engine's occupation ranking, enriched with avg-compensation per role.
   const empPct = Number(cfg?.employeePct ?? 0);
   const matchPct = Number(cfg?.employerMatchPct ?? 0);
+  // Fixed-amount employer-only plans fund a FLAT amount per member (no % of
+  // compensation), so a comp×rate calc yields 0 for every role (empty bars).
+  // Handle it explicitly; otherwise use the effective % of compensation.
+  const isFixedBasis = cfg?.mode === 'employer-only' && cfg?.employerBasis === 'fixed';
+  const fixedAmount = Number(cfg?.employerAmount) || 0;
   const totalRate = cfg?.mode === 'employer-only'
     ? (Number(cfg?.employerPct) || 0)
     : empPct + (empPct * matchPct) / 100;
@@ -194,7 +203,7 @@ export default function AnalyticsDesktop() {
     .filter(([role]) => role !== '—')
     .map(([role, { sum, count }]) => ({
       label: role.length > 16 ? `${role.slice(0, 15)}…` : role,
-      value: Math.round((sum / count) * (totalRate / 100)),
+      value: isFixedBasis ? fixedAmount : Math.round((sum / count) * (totalRate / 100)),
     }))
     .sort((x, y) => y.value - x.value)
     .slice(0, 6);

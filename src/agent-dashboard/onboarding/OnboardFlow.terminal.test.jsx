@@ -18,6 +18,7 @@ import { vi, describe, it, expect, beforeEach } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
 import { SignupProvider } from '../../signup/SignupContext';
 
@@ -81,12 +82,17 @@ vi.mock('./OnboardScheduleStep', () => ({
 import OnboardFlow from './OnboardFlow';
 
 function renderFlow() {
+  // OnboardingComplete invalidates the agent's subscriber list on success, so it
+  // needs a QueryClient in context.
+  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
-    <MemoryRouter>
-      <SignupProvider>
-        <OnboardFlow />
-      </SignupProvider>
-    </MemoryRouter>,
+    <QueryClientProvider client={queryClient}>
+      <MemoryRouter>
+        <SignupProvider>
+          <OnboardFlow />
+        </SignupProvider>
+      </MemoryRouter>
+    </QueryClientProvider>,
   );
 }
 

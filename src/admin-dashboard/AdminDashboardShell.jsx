@@ -16,10 +16,10 @@ import AdminSidebar from './sidebar/AdminSidebar';
 // they are role-blind (RLS scopes the data) and admin now has the SELECT grants.
 const UgandaMap = lazy(() => import('../dashboard/map/UgandaMap'));
 import OverlayPanel from '../dashboard/overlay/OverlayPanel';
+import DataCopilotPanel, { AskAiFab } from '../dashboard/overlay/DataCopilotPanel';
 import Breadcrumb from '../dashboard/overlay/Breadcrumb';
 import MetricsRow from '../dashboard/cards/MetricsRow';
 import TopBar from '../dashboard/overlay/TopBar';
-import CreateBranch from '../dashboard/branch/CreateBranch';
 import ViewBranches from '../dashboard/branch/ViewBranches';
 import ViewAgents from '../dashboard/agent/ViewAgents';
 import ViewSubscribers from '../dashboard/subscriber/ViewSubscribers';
@@ -245,7 +245,6 @@ function AdminDashboardContent() {
   // (mirrors the distributor shell's AUDIT-1-10 fix).
   const {
     level,
-    createBranchOpen,
     viewBranchesOpen,
     viewAgentsOpen,
     viewSubscribersOpen,
@@ -261,6 +260,8 @@ function AdminDashboardContent() {
     viewEmployerDetailOpen,
     setViewEmployerDetailOpen,
     setDetailEmployerId,
+    copilotOpen,
+    setCopilotOpen,
   } = useAdminPanel();
   // Open the employer detail panel focused on the clicked employer (from the map
   // district drill-down's Employers tab) — mirrors clicking a branch.
@@ -290,14 +291,21 @@ function AdminDashboardContent() {
       {viewEmployersOpen && <ViewEmployers />}
       {createEmployerOpen && <CreateEmployer />}
       {viewEmployerDetailOpen && <ViewEmployerDetail />}
-      {/* Reused distributor-shell panels */}
-      {createBranchOpen && <CreateBranch />}
+      {/* Reused distributor-shell panels. NB: no <CreateBranch> — admins have no
+          branch-INSERT RLS grant, so that panel could never succeed; it was dead
+          (createBranchOpen is never set true) and has been removed. */}
       {viewBranchesOpen && <ViewBranches readOnly />}
       {viewAgentsOpen && <ViewAgents />}
       {viewSubscribersOpen && <ViewSubscribers />}
       {viewReportsOpen && <ViewReports />}
       {settingsOpen && <Settings />}
       {viewTicketsOpen && <ViewTickets />}
+      {/* Ask-AI Platform Copilot — additive FAB + slide-in drawer; the map/overlay
+          are untouched. */}
+      <AskAiFab onClick={() => setCopilotOpen(true)} />
+      {copilotOpen && (
+        <DataCopilotPanel open scope="admin" onClose={() => setCopilotOpen(false)} />
+      )}
     </>
   );
 }

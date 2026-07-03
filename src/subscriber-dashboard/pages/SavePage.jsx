@@ -23,6 +23,7 @@ import {
 } from '../../constants/savings';
 import { PillChip, PillChipGroup } from '../../components/PillChip';
 import InlinePayPanel from '../../components/InlinePayPanel';
+import ErrorCard from '../../components/feedback/ErrorCard';
 import styles from './SavePage.module.css';
 import flow from './desktopFlow.module.css';
 
@@ -35,7 +36,10 @@ const METHODS = [
   { id: 'airtel', label: 'Airtel Money', full: 'Airtel Money',     helper: '+256 70 100 0001' },
 ];
 
-const DEFAULT_RETIREMENT_PCT = 70;
+// Matches the schedule form's default (ContributionSettingsForm) and the
+// server-side schedule default (retirement_pct ?? 80), so a subscriber with no
+// saved schedule sees the same 80/20 split everywhere.
+const DEFAULT_RETIREMENT_PCT = 80;
 
 // Hero opens on a valid preset (UGX 25K) so the amount reads as a real figure
 // rather than "—" before any interaction — matches mockup 02.
@@ -50,7 +54,7 @@ export default function SavePage() {
   const location = useLocation();
   const reduceMotion = useReducedMotion();
   const isDesktop = useIsDesktop();
-  const { data: sub } = useCurrentSubscriber();
+  const { data: sub, isError, error, refetch } = useCurrentSubscriber();
   const { addToast } = useToast();
   const makeContribution = useMakeContribution(sub?.id);
 
@@ -59,7 +63,7 @@ export default function SavePage() {
   // and the retirement/emergency split are properties of the saved schedule
   // (configured in SchedulePage), NOT chosen here: the user already set them,
   // so we read the split off the existing schedule and apply it silently. No
-  // schedule yet → fall back to the 70/30 default.
+  // schedule yet → fall back to the 80/20 default.
   const existing = sub?.contributionSchedule;
   const retirementPct = existing?.retirementPct ?? DEFAULT_RETIREMENT_PCT;
   const emergencyPct = 100 - retirementPct;
@@ -183,6 +187,20 @@ export default function SavePage() {
     } finally {
       setSubmitting(false);
     }
+  }
+
+  // A cold-start query failure would otherwise render a silent blank/zero page —
+  // surface a retry card instead (mirrors HomePage's error handling).
+  if (isError) {
+    return (
+      <div className={styles.page}>
+        <ErrorCard
+          title="We couldn't load your account"
+          message={error}
+          onRetry={refetch}
+        />
+      </div>
+    );
   }
 
   return (

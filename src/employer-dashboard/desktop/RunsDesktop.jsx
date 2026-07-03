@@ -41,6 +41,10 @@ export default function RunsDesktop() {
   // fallback must sum the two pension legs, NOT grandTotal which includes insurance).
   const fundedToDate = metrics.totalContributions
     || runs.reduce((s, r) => s + ((r.employeeTotal || 0) + (r.employerTotal || 0)), 0);
+  // Insurance premiums are a separate run leg, excluded from "Funded to date"
+  // (pension) but INCLUDED in each row's Total column — track the running total
+  // so the footer can reconcile the two figures on screen.
+  const insuranceToDate = runs.reduce((s, r) => s + (r.insuranceTotal || 0), 0);
   const completed = runs.filter((r) => r.status === 'completed').length;
 
   // "Next run" cadence — due now once the latest run isn't in the current month.
@@ -186,7 +190,8 @@ export default function RunsDesktop() {
                 </table>
                 <div className={ui.tableFoot}>
                   <span className={styles.foot}>
-                    {runs.length} {runs.length === 1 ? 'run' : 'runs'} · {formatUGX(fundedToDate, { compact: false })} funded in total
+                    {runs.length} {runs.length === 1 ? 'run' : 'runs'} · {formatUGX(fundedToDate, { compact: false })} pension funded
+                    {insuranceToDate > 0 && ` · ${formatUGX(insuranceToDate, { compact: false })} premiums`}
                   </span>
                 </div>
               </>

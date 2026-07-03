@@ -22,6 +22,8 @@ import { createContext, useContext, useState, useMemo, useCallback } from 'react
  * @property {(open: boolean) => void} setViewEmployerDetailOpen
  * @property {string|null} detailEmployerId
  * @property {(id: string|null) => void} setDetailEmployerId
+ * @property {boolean} copilotOpen - Ask-AI "Platform Copilot" drawer
+ * @property {(open: boolean) => void} setCopilotOpen
  * @property {() => void} closeAllPanels
  */
 
@@ -37,6 +39,8 @@ export function AdminPanelProvider({ children }) {
   // employer; the panel reads it + `viewEmployerDetailOpen` to render.
   const [viewEmployerDetailOpen, setViewEmployerDetailOpen] = useState(false);
   const [detailEmployerId, setDetailEmployerId] = useState(null);
+  // Ask-AI "Platform Copilot" drawer (map-overlay shell FAB).
+  const [copilotOpen, setCopilotOpen] = useState(false);
 
   /* Close every admin slide-in panel. The create panels deliberately stay
      independent of their list panels so "Create" can open over the list. */
@@ -46,6 +50,7 @@ export function AdminPanelProvider({ children }) {
     setViewEmployersOpen(false);
     setCreateEmployerOpen(false);
     setViewEmployerDetailOpen(false);
+    setCopilotOpen(false);
   }, []);
 
   const value = useMemo(() => ({
@@ -55,11 +60,13 @@ export function AdminPanelProvider({ children }) {
     createEmployerOpen, setCreateEmployerOpen,
     viewEmployerDetailOpen, setViewEmployerDetailOpen,
     detailEmployerId, setDetailEmployerId,
+    copilotOpen, setCopilotOpen,
     closeAllPanels,
   }), [
     viewDistributorsOpen, createDistributorOpen,
     viewEmployersOpen, createEmployerOpen,
     viewEmployerDetailOpen, detailEmployerId,
+    copilotOpen,
     closeAllPanels,
   ]);
 

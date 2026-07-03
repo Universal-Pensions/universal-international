@@ -21,12 +21,13 @@ import PaySheet from '../../components/PaySheet';
 import InlinePayPanel from '../../components/InlinePayPanel';
 import ContributionSettingsForm from '../../components/contribution/ContributionSettingsForm';
 import { MOBILE_MONEY_METHODS } from '../../constants/payment';
+import ErrorCard from '../../components/feedback/ErrorCard';
 import styles from './SchedulePage.module.css';
 import flow from './desktopFlow.module.css';
 
 export default function SchedulePage() {
   const navigate = useNavigate();
-  const { data: sub } = useCurrentSubscriber();
+  const { data: sub, isError, error, refetch } = useCurrentSubscriber();
   const { addToast } = useToast();
   const updateSchedule = useUpdateSchedule(sub?.id);
   const makeContribution = useMakeContribution(sub?.id);
@@ -152,6 +153,20 @@ export default function SchedulePage() {
   // When a save leaves a balance owed, the form is replaced IN PLACE by a
   // 2-column settle checkout (breakdown left, inline pay panel right) — desktop
   // never opens the phone-style bottom sheet.
+  // A cold-start query failure would otherwise render a silent blank schedule
+  // form — surface a retry card instead (mirrors HomePage's error handling).
+  if (isError) {
+    return (
+      <div className={styles.page}>
+        <ErrorCard
+          title="We couldn't load your schedule"
+          message={error}
+          onRetry={refetch}
+        />
+      </div>
+    );
+  }
+
   if (isDesktop) {
     const settleItems = (settle?.lineItems ?? []).map((li) => ({
       label: li.label,

@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react';
 import { useCurrentSubscriber } from '../../../hooks/useSubscriber';
 import { formatUGX } from '../../../utils/currency';
+import { txDisplayAmount } from '../../../utils/finance';
 
 import { formatDate } from '../../../utils/date';
 import { downloadCSV } from '../../../utils/csv';
@@ -58,8 +59,10 @@ export default function AllTransactions() {
   const totals = useMemo(() => {
     let inflow = 0, outflow = 0;
     filtered.forEach((t) => {
-      if (t.amount > 0) inflow += t.amount;
-      else outflow += Math.abs(t.amount);
+      // Sign from txDisplayAmount so premiums (stored positive) count as outflow.
+      const signed = txDisplayAmount(t);
+      if (signed > 0) inflow += signed;
+      else outflow += Math.abs(signed);
     });
     return { inflow, outflow, net: inflow - outflow };
   }, [filtered]);
@@ -87,11 +90,15 @@ export default function AllTransactions() {
       label: 'Amount',
       align: 'right',
       sortable: true,
-      render: (row) => (
-        <span className={row.amount >= 0 ? frameStyles.amountPositive : frameStyles.amountNegative}>
-          {row.amount >= 0 ? '+' : '−'}{formatUGX(Math.abs(row.amount), { compact: false })}
-        </span>
-      ),
+      sortValue: (row) => txDisplayAmount(row),
+      render: (row) => {
+        const signed = txDisplayAmount(row);
+        return (
+          <span className={signed >= 0 ? frameStyles.amountPositive : frameStyles.amountNegative}>
+            {signed >= 0 ? '+' : '−'}{formatUGX(Math.abs(signed), { compact: false })}
+          </span>
+        );
+      },
     },
     {
       key: 'method',

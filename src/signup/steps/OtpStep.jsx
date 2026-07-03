@@ -135,14 +135,17 @@ export default function OtpStep({ onNext }) {
     ? `+256 ${signup.phone.slice(0, 1)}XX XXX ${signup.phone.slice(6)}`
     : '';
 
+  // m:ss for the subscriber re-skin ("…in 0:21"); the agent flow keeps "21s".
+  const resendClock = `${Math.floor(resendTimer / 60)}:${String(resendTimer % 60).padStart(2, '0')}`;
+
   return (
     <div className={styles.card}>
-      <span className={styles.eyebrow}>Step 4 · Phone verification</span>
-      <h2 className={styles.heading}>{isAgent ? 'Verify the phone number' : 'Enter the code we sent you'}</h2>
-      <p className={styles.subtext}>
+      <span className={`${styles.eyebrow} ${own.topEyebrow}`}>Step 4 · Phone verification</span>
+      <h2 className={`${styles.heading} ${own.topHeading}`}>{isAgent ? 'Verify the phone number' : 'Enter the code we sent you'}</h2>
+      <p className={`${styles.subtext} ${own.topSub}`}>
         {sending
           ? 'Sending a code to your phone…'
-          : <>We sent a {OTP_LENGTH}-digit code to <strong>{maskedPhone}</strong>.</>}
+          : <>We sent a {OTP_LENGTH}-digit code to <strong className={own.phone}>{maskedPhone}</strong>.</>}
       </p>
 
       <div className={own.otpRow} onPaste={handlePaste}>
@@ -181,7 +184,11 @@ export default function OtpStep({ onNext }) {
       <div className={own.resendRow}>
         {resendTimer > 0 ? (
           <span className={own.resendWait}>
-            Resend code in <strong>{resendTimer}s</strong>
+            {isAgent ? (
+              <>Resend code in <strong>{resendTimer}s</strong></>
+            ) : (
+              <>Didn&rsquo;t arrive? Resend code in <strong>{resendClock}</strong></>
+            )}
           </span>
         ) : (
           <button type="button" className={own.resendBtn} onClick={handleResend}>
@@ -190,24 +197,38 @@ export default function OtpStep({ onNext }) {
         )}
       </div>
 
-      <div className={styles.actions}>
-        <button
-          type="button"
-          className={styles.submit}
-          onClick={() => handleSubmit()}
-          disabled={verifying || digits.join('').length < OTP_LENGTH}
-          data-loading={verifying || undefined}
-        >
-          {verifying ? (
-            <>
-              <span className={own.btnSpinner} aria-hidden="true" />
+      {/* Agent flows keep the explicit footer button; the subscriber re-skin has
+          no footer (auto-submits on the 4th digit) and surfaces an inline
+          "Verifying…" status while the check runs. */}
+      {isAgent ? (
+        <div className={styles.actions}>
+          <button
+            type="button"
+            className={styles.submit}
+            onClick={() => handleSubmit()}
+            disabled={verifying || digits.join('').length < OTP_LENGTH}
+            data-loading={verifying || undefined}
+          >
+            {verifying ? (
+              <>
+                <span className={own.btnSpinner} aria-hidden="true" />
+                Verifying…
+              </>
+            ) : (
+              'Verify & continue'
+            )}
+          </button>
+        </div>
+      ) : (
+        <div className={own.statusRow} aria-live="polite">
+          {verifying && (
+            <span className={own.verifying}>
+              <span className={own.statusSpinner} aria-hidden="true" />
               Verifying…
-            </>
-          ) : (
-            'Verify & continue'
+            </span>
           )}
-        </button>
-      </div>
+        </div>
+      )}
     </div>
   );
 }

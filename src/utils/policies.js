@@ -27,6 +27,9 @@ const PRODUCT_LABEL = {
 };
 const PRODUCT_ORDER = ['life', 'health', 'funeral'];
 
+// Compact product labels for one-line cover summaries ("Life & Health").
+const PRODUCT_SHORT = { life: 'Life', health: 'Health', funeral: 'Funeral' };
+
 // Exported so agent-side surfaces (PolicyChips) reuse the SAME product→label map
 // the subscriber policies page uses — no third copy to drift.
 export function productName(product) {
@@ -128,4 +131,42 @@ export function derivePolicies(subscriber, { now, renewalOverrides = {} } = {}) 
       renewalOverrides[r.product],
       now,
     ));
+}
+
+/**
+ * The subscriber's ACTIVE policies (cover > 0, renewal not lapsed), from the
+ * already-derived `policies` list. Product-ordered.
+ * @param {object} subscriber — expects the derived `policies` array.
+ * @returns {Array}
+ */
+export function activePolicies(subscriber) {
+  return (subscriber?.policies || []).filter((p) => p.status === 'active');
+}
+
+/**
+ * Total ACTIVE insurance cover across ALL held products (life + health +
+ * funeral). This is the single figure every subscriber surface should show —
+ * reading the legacy life-only `sub.insurance.cover` makes a multi-product
+ * member's cover disagree between screens (desktop vs mobile home, analytics,
+ * withdrawals hub). Sum the derived policies instead.
+ * @param {object} subscriber — expects the derived `policies` array.
+ * @returns {number}
+ */
+export function activeCoverTotal(subscriber) {
+  return activePolicies(subscriber).reduce((s, p) => s + (Number(p.cover) || 0), 0);
+}
+
+/**
+ * Human one-line summary of the products a subscriber is actively covered for,
+ * e.g. "Life", "Life & Health", "Life, Health & Funeral". Empty string when no
+ * policy is active. Use for compact cover subtitles instead of a hardcoded
+ * product string.
+ * @param {object} subscriber — expects the derived `policies` array.
+ * @returns {string}
+ */
+export function activeCoverProductsLabel(subscriber) {
+  const names = activePolicies(subscriber).map((p) => PRODUCT_SHORT[p.type] || productName(p.type));
+  if (names.length === 0) return '';
+  if (names.length === 1) return names[0];
+  return `${names.slice(0, -1).join(', ')} & ${names[names.length - 1]}`;
 }

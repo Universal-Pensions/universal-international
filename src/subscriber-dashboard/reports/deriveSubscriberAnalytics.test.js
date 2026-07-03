@@ -15,6 +15,11 @@ const SUB = {
   unitsHeld: 250,
   currentUnitValue: 1000,
   insurance: { cover: 5000000, status: 'active', premiumMonthly: 12000 },
+  // Analytics now sums cover/premium across the derived ACTIVE policies list
+  // (all products), not the legacy life-only `insurance` row.
+  policies: [
+    { type: 'life', cover: 5000000, status: 'active', premiumMonthly: 12000 },
+  ],
 };
 
 // Dated feed in the shape useSubscriberTransactions() delivers. Withdrawals come

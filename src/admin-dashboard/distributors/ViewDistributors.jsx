@@ -6,15 +6,9 @@ import { useAdminPanel } from '../../contexts/AdminPanelContext';
 import { useAllEntities, usePlatformOverview, useSetDistributorStatus } from '../../hooks/useEntity';
 import { useToast } from '../../contexts/ToastContext';
 import { formatNumber, formatUGXShort } from '../../utils/currency';
+import { formatDate } from '../../utils/date';
 import Modal from '../../components/Modal';
 import styles from '../adminPanels.module.css';
-
-function fmtDate(value) {
-  if (!value) return '—';
-  const d = new Date(value);
-  if (Number.isNaN(d.getTime())) return '—';
-  return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
-}
 
 /**
  * Admin: platform-wide Distributors panel. Shows platform totals from
@@ -174,7 +168,7 @@ export default function ViewDistributors() {
                           <span className={styles.metricLabel}>Email on file</span>
                         </div>
                         <div className={styles.metric}>
-                          <span className={styles.metricVal}>{fmtDate(d.createdAt)}</span>
+                          <span className={styles.metricVal}>{formatDate(d.createdAt)}</span>
                           <span className={styles.metricLabel}>Created</span>
                         </div>
                       </div>

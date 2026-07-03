@@ -25,33 +25,37 @@ import PendingReviewStep from './steps/PendingReviewStep';
 const NO_BACK_STEPS = new Set(['id-upload', 'done', AGENT_STEP, PENDING_REVIEW_STEP]);
 
 // Steps that consume a re-uploadable File (idFront/idBack, selfie). The raw
-// File fields are EPHEMERAL — dropped from localStorage on refresh (see
-// SignupContext EPHEMERAL_KEYS). But the *outcome* each file step produces is
-// persisted (non-ephemeral): id-upload's OCR yields `idConfidence`, liveness'
-// face match yields `faceMatchOutcome`. We clamp on the outcome, not the raw
-// File: if the outcome is missing, the user hadn't finished that step before
-// the refresh and must re-upload; if the outcome is present, the file already
-// served its purpose downstream and need not be re-captured. Listed in flow
-// order. `done` is the predicate that the step's persisted result survived.
-const FILE_GATED_STEPS = [
+// Resume gates: EPHEMERAL inputs dropped from localStorage on refresh (see
+// SignupContext EPHEMERAL_KEYS), keyed on the persisted OUTCOME rather than the
+// raw value. File steps: id-upload's OCR yields `idConfidence`, liveness' face
+// match yields `faceMatchOutcome` — if the outcome is missing the user hadn't
+// finished that step before the refresh and must re-do it; if present, the file
+// already served its purpose downstream and need not be re-captured. Review: the
+// chosen `password` is also ephemeral (raw passwords must never touch storage),
+// so a refresh past Review must return to Review to re-enter it — otherwise the
+// account would be created password-less (the pay guard in ContributionRoute
+// blocks that create, but only Review has the field to re-enter). Listed in flow
+// order; `done` is the predicate that the step's persisted result survived.
+const RESUME_GATES = [
   { id: 'id-upload', done: (s) => s.idConfidence != null },
+  { id: 'review',    done: (s) => !!s.password },
   { id: 'liveness',  done: (s) => s.faceMatchOutcome === 'ok' },
 ];
 
 /**
  * Compute the step a refresh should rehydrate into. Persists wizard position
- * (BL-22) while preserving the documented demo-scope "re-upload files on
- * refresh" behaviour: clamp the persisted `stepId` back to the first
- * file-gated step (at or before it, in flow order) whose result didn't
- * survive the refresh, so the user can't resume past a file gate they never
- * actually completed. A step the user already cleared (outcome persisted)
- * isn't re-walked even though its raw File is gone. Terminal/failure screens
- * (`agent`/`pending-review`, index -1) and an unknown id restart at step 1.
+ * (BL-22) while preserving the documented demo-scope "re-do ephemeral steps on
+ * refresh" behaviour: clamp the persisted `stepId` back to the first resume gate
+ * (at or before it, in flow order) whose result didn't survive the refresh, so
+ * the user can't resume past a gate they never actually cleared (an unfinished
+ * file upload, or a lost password). A step already cleared (outcome persisted)
+ * isn't re-walked. Terminal/failure screens (`agent`/`pending-review`, index -1)
+ * and an unknown id restart at step 1.
  */
-function resolveResumeStep(persisted) {
+export function resolveResumeStep(persisted) {
   const targetIdx = getStepIndex(persisted?.stepId);
   if (targetIdx < 0) return 'id-upload';
-  for (const gate of FILE_GATED_STEPS) {
+  for (const gate of RESUME_GATES) {
     const gateIdx = getStepIndex(gate.id);
     if (gateIdx <= targetIdx && !gate.done(persisted)) return gate.id;
   }
@@ -140,7 +144,20 @@ function SignupFlow() {
 
   function goBack() {
     const idx = getStepIndex(stepId);
-    const prev = STEPS[idx - 1];
+    // Some beats auto-advance and have no manual control: the NIRA "Identity
+    // verified" beat (on a successful match) and the AML "check passed" beat (on
+    // a clear result) both auto-fire onNext on mount. Stepping back onto one
+    // would immediately bounce forward again (a ~1s flicker), so skip over any
+    // run of them to the previous real step.
+    let prevIdx = idx - 1;
+    while (
+      prevIdx >= 0 &&
+      ((STEPS[prevIdx].id === 'nira' && signup.niraResult === 'match') ||
+        (STEPS[prevIdx].id === 'aml' && signup.amlResult === 'clear'))
+    ) {
+      prevIdx -= 1;
+    }
+    const prev = STEPS[prevIdx];
     if (prev) goTo(prev.id);
   }
 

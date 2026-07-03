@@ -60,7 +60,19 @@ export default function OnboardKycFlow({ onComplete, onBackToAwareness, onExit }
 
   function goBack() {
     const idx = getStepIndex(stepId);
-    const prev = STEPS[idx - 1];
+    // Both the NIRA "Identity verified" beat (on a match) and the AML "check
+    // passed" beat (on a clear result) auto-advance with no manual control;
+    // stepping back onto either would bounce forward again (a ~1s flicker). Skip
+    // over any run of them to the previous real step.
+    let prevIdx = idx - 1;
+    while (
+      prevIdx >= 0 &&
+      ((STEPS[prevIdx].id === 'nira' && signup.niraResult === 'match') ||
+        (STEPS[prevIdx].id === 'aml' && signup.amlResult === 'clear'))
+    ) {
+      prevIdx -= 1;
+    }
+    const prev = STEPS[prevIdx];
     if (prev) {
       goTo(prev.id);
     } else {

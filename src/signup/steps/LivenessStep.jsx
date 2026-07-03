@@ -189,6 +189,11 @@ export default function LivenessStep({ onNext, onAgentFallback }) {
 
   const busy = phase === PHASES.capturing || phase === PHASES.analyzing;
   const canCapture = cameraReady && !cameraError && phase === PHASES.idle;
+  // Readiness lamp for the "Face detected" row. There's no live face-tracking
+  // signal in the mocked KYC pipeline, so this lights up at the honest moment we
+  // actually hold a face frame — once a capture is in flight or has matched.
+  const faceDetected =
+    phase === PHASES.capturing || phase === PHASES.analyzing || phase === PHASES.ok;
 
   /* ── Liveness failure: allow one retry, then block → agent ──────────── */
   if (phase === PHASES.livenessFail) {
@@ -242,9 +247,9 @@ export default function LivenessStep({ onNext, onAgentFallback }) {
   /* ── Main capture UI ────────────────────────────────────────────────── */
   return (
     <div className={styles.card}>
-      <span className={styles.eyebrow}>Step 5 · Selfie</span>
-      <h2 className={styles.heading}>{isAgent ? "Take the subscriber's selfie" : 'Take a quick selfie'}</h2>
-      <p className={styles.subtext}>
+      <span className={`${styles.eyebrow} ${own.topEyebrow}`}>Step 5 · Selfie</span>
+      <h2 className={`${styles.heading} ${own.topHeading}`}>{isAgent ? "Take the subscriber's selfie" : 'Take a quick selfie'}</h2>
+      <p className={`${styles.subtext} ${own.topSubtext}`}>
         {isAgent ? (
           'Capture their face to match the ID photo.'
         ) : (
@@ -349,35 +354,67 @@ export default function LivenessStep({ onNext, onAgentFallback }) {
               </motion.div>
             )}
           </AnimatePresence>
+
+          {/* Idle hint, moved INSIDE the frame per the redesign mockup (.ht).
+              Subscriber-only — the agent flow keeps its hint in the status line
+              below so the agent viewfinder stays byte-identical. */}
+          {!isAgent && phase === PHASES.idle && cameraReady && !cameraError && (
+            <div className={own.hint}>Face the camera when you’re ready</div>
+          )}
         </div>
         <div className={own.cornerGuides} aria-hidden="true">
           <span /><span /><span /><span />
         </div>
       </div>
 
+      {/* Readiness row between the camera and the button (mockup .livechk).
+          Subscriber-only; dots are driven off real camera/capture state. */}
+      {!isAgent && (
+        <div className={own.livechk} aria-hidden="true">
+          <span data-on={cameraReady && !cameraError ? '' : undefined}>Camera ready</span>
+          <span data-on={faceDetected ? '' : undefined}>Face detected</span>
+        </div>
+      )}
+
       <div className={own.statusLine} aria-live="polite">
         {phase === PHASES.idle && cameraError && ' '}
         {phase === PHASES.idle && !cameraError && !cameraReady && 'Starting camera…'}
-        {phase === PHASES.idle && !cameraError && cameraReady && 'Face the camera when you’re ready'}
+        {/* Subscriber moves this hint in-frame (.ht); agent keeps it here. */}
+        {phase === PHASES.idle && !cameraError && cameraReady && isAgent && 'Face the camera when you’re ready'}
         {phase === PHASES.capturing && 'Hold steady…'}
         {phase === PHASES.analyzing && 'Checking live-person match…'}
         {phase === PHASES.ok && 'All good — face matched. Taking you to the next step…'}
       </div>
 
-      <div className={styles.actions}>
+      <div className={`${styles.actions} ${own.actions}`}>
         {phase === PHASES.idle && (
-          <button
-            type="button"
-            className={styles.submit}
-            onClick={startCapture}
-            disabled={!canCapture}
-          >
-            <svg aria-hidden="true" viewBox="0 0 24 24" width="18" height="18" fill="none">
-              <path d="M5 7h3l2-2h4l2 2h3a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9a2 2 0 012-2z" stroke="currentColor" strokeWidth="1.75" strokeLinejoin="round"/>
-              <circle cx="12" cy="13" r="3.5" stroke="currentColor" strokeWidth="1.75"/>
-            </svg>
-            Take selfie
-          </button>
+          <>
+            <button
+              type="button"
+              className={styles.submit}
+              onClick={startCapture}
+              disabled={!canCapture}
+            >
+              {/* Camera icon kept for the agent console only; the subscriber
+                  re-skin uses a clean text pill per the mockup. */}
+              {isAgent && (
+                <svg aria-hidden="true" viewBox="0 0 24 24" width="18" height="18" fill="none">
+                  <path d="M5 7h3l2-2h4l2 2h3a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9a2 2 0 012-2z" stroke="currentColor" strokeWidth="1.75" strokeLinejoin="round"/>
+                  <circle cx="12" cy="13" r="3.5" stroke="currentColor" strokeWidth="1.75"/>
+                </svg>
+              )}
+              Take selfie
+            </button>
+            {/* Proactive help link (mockup .altlink) — routes to the agent
+                fallback path the app already surfaces after a failure. */}
+            {!isAgent && (
+              <div className={own.altlink}>
+                <button type="button" className={own.altlinkBtn} onClick={onAgentFallback}>
+                  What if my selfie doesn’t match? <span aria-hidden="true">→</span>
+                </button>
+              </div>
+            )}
+          </>
         )}
 
         {busy && (

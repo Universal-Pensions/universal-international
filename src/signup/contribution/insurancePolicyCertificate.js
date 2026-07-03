@@ -2,10 +2,15 @@
  * Insurance policy certificate — generates a styled, printable HTML document
  * and opens it in a new tab. Users print → save as PDF via their browser.
  *
- * No external dependencies. All CSS is inlined because the new tab has no
- * access to the Vite bundle's stylesheets / fonts. Uses system font stacks
- * with the project's brand fonts at the front (`Plus Jakarta Sans`, `Inter`).
+ * No external dependencies for the OUTPUT tab. All CSS is inlined because the
+ * new tab has no access to the Vite bundle's stylesheets / fonts. Uses system
+ * font stacks with the project's brand fonts at the front (`Plus Jakarta Sans`,
+ * `Inter`). Money/date strings are produced with the app's central formatters
+ * (en-UG), so the certificate reads consistently with the rest of the UI.
  */
+
+import { formatUGX } from '../../utils/currency';
+import { formatDate } from '../../utils/date';
 
 const INDIGO = '#292867';
 const INDIGO_SOFT = '#5E63A8';
@@ -36,19 +41,6 @@ function escapeHtml(value) {
     .replaceAll('>', '&gt;')
     .replaceAll('"', '&quot;')
     .replaceAll("'", '&#39;');
-}
-
-function formatDate(input) {
-  if (!input) return '—';
-  const d = input instanceof Date ? input : new Date(input);
-  if (Number.isNaN(d.getTime())) return '—';
-  return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
-}
-
-function formatUGX(amount) {
-  const n = Number(amount);
-  if (!Number.isFinite(n)) return 'UGX —';
-  return `UGX ${n.toLocaleString('en-GB')}`;
 }
 
 function renderBeneficiaryRows(beneficiaries) {
@@ -92,8 +84,8 @@ export function buildPolicyCertificateHtml(data) {
   const startStr = formatDate(policyStart);
   const renewalStr = formatDate(renewalDate);
   const todayStr = formatDate(new Date());
-  const coverStr = formatUGX(cover);
-  const premiumStr = formatUGX(premiumPerPeriod);
+  const coverStr = formatUGX(cover, { compact: false });
+  const premiumStr = formatUGX(premiumPerPeriod, { compact: false });
   const cadence = FREQ_CADENCE[frequency] || frequency || '';
 
   return `<!DOCTYPE html>

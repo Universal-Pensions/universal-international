@@ -66,7 +66,7 @@ export default function AmlStep({ onNext, onFlagged }) {
           transition={{ duration: 0.5, ease: EASE_OUT_EXPO }}
         >
           <svg viewBox="0 0 56 56" width="56" height="56" fill="none" aria-hidden="true">
-            <circle cx="28" cy="28" r="26" stroke="currentColor" strokeWidth="2.5"/>
+            <circle className={own.iconRing} cx="28" cy="28" r="26" stroke="currentColor" strokeWidth="2.5"/>
             <motion.path
               d="M17 28l7 7 15-16"
               stroke="currentColor"
@@ -89,12 +89,25 @@ export default function AmlStep({ onNext, onFlagged }) {
 
   return (
     <div className={styles.card}>
-      <span className={styles.eyebrow}>Step 6 · Background check</span>
-      <h2 className={styles.heading}>{isAgent ? 'Screening compliance lists' : 'Running a quick compliance check'}</h2>
-      <EducationalLoader
-        title="Screening compliance lists"
-        subtitle="This usually takes a few seconds. Here's why this step matters."
-      />
+      {/* 42px ring spinner (subscriber re-skin; hidden in the agent flows). */}
+      <span className={own.spin} aria-hidden="true" />
+      <h2 className={`${styles.heading} ${own.runningHead}`}>
+        {isAgent ? 'Screening compliance lists' : 'Running a quick compliance check'}
+      </h2>
+      <p className={`${styles.subtext} ${own.runningSub}`}>
+        This usually takes a few seconds. Here&rsquo;s why this step matters.
+      </p>
+      <EducationalLoader />
+      {/* Informational help — flagging is routed automatically (onFlagged), so
+          this is a reassurance affordance, not a navigation link. */}
+      <details className={own.helpLine}>
+        <summary>What if I&rsquo;m flagged for review?</summary>
+        <p>
+          If anything needs a closer look, our compliance team reviews it
+          manually — usually within a few business days. You&rsquo;ll be
+          contacted by SMS, and there&rsquo;s nothing you need to do right now.
+        </p>
+      </details>
     </div>
   );
 }

@@ -4,6 +4,7 @@ import { EASE_OUT_EXPO } from '../../utils/motion';
 import { formatUGX } from '../../utils/currency';
 import { formatDate } from '../../utils/date';
 import { deriveInvestmentGrowth, deriveEmployerSplit } from '../../utils/finance';
+import { activeCoverTotal, activeCoverProductsLabel } from '../../utils/policies';
 import { useContributionBreakdown } from '../../hooks/useSubscriber';
 import { useCountUp } from '../../hooks/useCountUp';
 import styles from './HomeMobile.module.css';
@@ -77,9 +78,8 @@ export default function HomeMobile({ subscriber: sub }) {
 
   const retirement = sub?.retirementBalance || 0;
   const emergency = sub?.emergencyBalance || 0;
-  const activeCover = (sub?.policies || [])
-    .filter((p) => p.status === 'active')
-    .reduce((s, p) => s + (p.cover || 0), 0);
+  const activeCover = activeCoverTotal(sub);
+  const coverProducts = activeCoverProductsLabel(sub);
 
   const itemV = reduce ? undefined : item;
 
@@ -169,7 +169,7 @@ export default function HomeMobile({ subscriber: sub }) {
       <motion.section variants={itemV} className={styles.card} aria-labelledby="cover-title">
         <div className={styles.cardHd}>
           <h3 id="cover-title">Savings &amp; cover</h3>
-          <span className={styles.pillOk}><i />All active</span>
+          {activeCover > 0 && <span className={styles.pillOk}><i />All active</span>}
         </div>
         <button type="button" className={styles.lrow} onClick={() => navigate('/dashboard/reports')}>
           <span className={`${styles.lIc} ${styles.tintIndigo}`}>{RetireIcon}</span>
@@ -191,7 +191,7 @@ export default function HomeMobile({ subscriber: sub }) {
           <span className={`${styles.lIc} ${styles.tintTeal}`}>{ShieldIcon}</span>
           <span className={styles.lMid}>
             <b>Insurance cover</b>
-            <small>{activeCover > 0 ? 'Life & health' : 'Add cover from UGX 2,000/mo'}</small>
+            <small>{activeCover > 0 ? coverProducts : 'Add cover from UGX 2,000/mo'}</small>
           </span>
           <span className={styles.lAmt}>{activeCover > 0 ? formatUGX(activeCover) : '—'}</span>
           <span className={styles.chev}>{Chevron}</span>

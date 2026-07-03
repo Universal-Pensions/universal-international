@@ -1,4 +1,5 @@
 import { monthlyEquivalent } from '../../utils/finance';
+import { activePolicies } from '../../utils/policies';
 
 /**
  * Pure derivation of the agent home dome's summary figures. Extracted from
@@ -109,12 +110,14 @@ export function pendingContributors(subscribers, monthContributions = []) {
 }
 
 /**
- * True if a subscriber has ACTIVE life cover. Single source of truth shared by
- * the Home insurance card (counts) and the Insured / Uninsured drill-down pages,
- * so the card numbers always equal the list lengths. Null/absent insurance (e.g.
- * RLS-filtered on live, or no policy) is treated as uninsured.
+ * True if a subscriber has ANY active insurance policy (life, health OR
+ * funeral). Single source of truth shared by the Home insurance card (counts)
+ * and the Insured / Uninsured drill-down pages, so the card numbers always equal
+ * the list lengths. Reads the agent-facing `policies` list (product + status,
+ * built by `buildAgentPolicies`), so a member with only health/funeral cover
+ * counts as insured — matching the PolicyChips shown on their detail page.
+ * Null/absent policies (e.g. RLS-filtered on live) is treated as uninsured.
  */
 export function isInsured(subscriber) {
-  const ins = subscriber?.insurance;
-  return !!ins && ins.status === 'active' && Number(ins.cover) > 0;
+  return activePolicies(subscriber).length > 0;
 }

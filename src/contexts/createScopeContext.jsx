@@ -15,7 +15,9 @@ export function createScopeContext(keyName) {
   const ScopeContext = createContext({ [keyName]: null });
 
   function ScopeProvider({ children, [keyName]: id = null }) {
-    const value = useMemo(() => ({ [keyName]: id || null }), [id]);
+    // `?? null` (not `|| null`) so a legitimately falsy id like 0 isn't coerced
+    // to null — only null/undefined mean "no scope".
+    const value = useMemo(() => ({ [keyName]: id ?? null }), [id]);
     return <ScopeContext value={value}>{children}</ScopeContext>;
   }
 

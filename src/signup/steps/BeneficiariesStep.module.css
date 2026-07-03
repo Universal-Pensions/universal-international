@@ -41,19 +41,33 @@
 .rowHeader {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  gap: 9px;
 }
 
-.rowIndex {
+/* Filled indigo rounded-square index badge + "Beneficiary N" label (v3 mockup). */
+.rowBadge {
+  flex: 0 0 auto;
+  width: 19px;
+  height: 19px;
+  border-radius: 5px;
+  background: var(--color-indigo);
+  color: var(--color-white);
   font-family: var(--font-display);
-  font-size: var(--text-xs);
+  font-weight: 800;
+  font-size: 10.5px;
+  display: grid;
+  place-items: center;
+}
+
+.rowName {
+  font-family: var(--font-display);
+  font-size: var(--text-sm);
   font-weight: 700;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
   color: var(--color-indigo);
 }
 
 .removeBtn {
+  margin-left: auto;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -69,11 +83,42 @@
   color: var(--color-status-poor);
 }
 
-/* ── Share row: number + slider ──────────────────────────────────────── */
-.shareRow {
+/* ── Fields grid ─────────────────────────────────────────────────────────
+   Base (self phone + agent): name + share span the full width; phone and
+   relationship sit side-by-side — reproduces the prior agent row layout. The
+   wide self tier (signupcanvas ≥720) lays all four fields out horizontally,
+   and tiny phones collapse to a single column. */
+.fields {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-3);
+}
+
+.nameField,
+.shareField {
+  grid-column: 1 / -1;
+}
+
+@container signupcanvas (max-width: 479px) {
+  .fields {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ── Share cell: number + slider ─────────────────────────────────────────
+   Base = inline (full-width cell, self phone + agent). At the wide self tier
+   the share cell becomes a narrow grid column, so it stacks the number over
+   the slider (mockup `.sharef`). */
+.sharef {
   display: flex;
   align-items: center;
   gap: 0.625rem;
+}
+
+.shareNum {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
 }
 
 .shareInput {
@@ -107,102 +152,15 @@
   font-family: var(--font-display);
   font-size: var(--text-sm);
   color: var(--color-gray);
-  margin-left: -0.25rem;
 }
 
-.shareSlider {
+.shareRange {
   flex: 1;
-  display: flex;
-  align-items: center;
-}
-
-.shareSlider input[type="range"] {
-  width: 100%;
+  min-width: 0;
   accent-color: var(--color-indigo);
 }
 
-/* ── Allocation summary ──────────────────────────────────────────────── */
-.allocation {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  padding: 0.625rem 0.875rem;
-  border-radius: var(--radius-md);
-  background: color-mix(in srgb, var(--color-indigo) 4%, transparent);
-  border: 1px solid color-mix(in srgb, var(--color-indigo) 8%, transparent);
-}
-
-.allocation[data-state="ok"] {
-  background: rgba(46, 139, 87, 0.08);
-  border-color: rgba(46, 139, 87, 0.25);
-}
-
-.allocation[data-state="over"] {
-  background: rgba(220, 53, 69, 0.06);
-  border-color: rgba(220, 53, 69, 0.25);
-}
-
-.allocationBar {
-  position: relative;
-  flex: 1;
-  height: 8px;
-  border-radius: 999px;
-  background: color-mix(in srgb, var(--color-indigo) 10%, transparent);
-  overflow: hidden;
-}
-
-.allocationFill {
-  display: block;
-  height: 100%;
-  background: linear-gradient(90deg, var(--color-indigo-soft) 0%, var(--color-indigo) 100%);
-  border-radius: 999px;
-}
-
-.allocation[data-state="ok"] .allocationFill {
-  background: linear-gradient(90deg, #4ADE80 0%, var(--color-green) 100%);
-}
-
-.allocation[data-state="over"] .allocationFill {
-  background: linear-gradient(90deg, #F87171 0%, var(--color-status-poor) 100%);
-}
-
-.allocationOver {
-  position: absolute;
-  inset: 0;
-  background: repeating-linear-gradient(45deg, rgba(220, 53, 69, 0.25) 0 6px, transparent 6px 12px);
-}
-
-.allocationText {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  min-width: 110px;
-  gap: 0.1rem;
-}
-
-.allocationValue {
-  font-family: var(--font-display);
-  font-size: var(--text-lg);
-  font-weight: 800;
-  color: var(--color-indigo);
-  font-variant-numeric: tabular-nums;
-}
-
-.allocation[data-state="ok"] .allocationValue {
-  color: var(--color-green);
-}
-
-.allocation[data-state="over"] .allocationValue {
-  color: var(--color-status-poor);
-}
-
-.allocationRemaining {
-  font-family: var(--font-body);
-  font-size: var(--text-xs);
-  color: var(--color-gray);
-}
-
-/* ── Agent allocation aside: per-beneficiary donut + legend (v3 mockup) ──── */
+/* ── Allocation aside: per-beneficiary donut + legend (v3 mockup) ───────── */
 .allocAside {
   background: var(--color-cloud);
   border: 1px solid var(--color-lavender);
@@ -286,56 +244,48 @@
   flex: 0 0 auto;
 }
 
-/* ── Row actions ─────────────────────────────────────────────────────── */
+.allocCaption {
+  margin: 10px 0 0;
+  font-family: var(--font-body);
+  font-size: var(--text-xs);
+  color: var(--color-gray);
+}
+
+/* ── Row actions: two matching ghost pills (mockup `.benadd .btn.g.sm`) ─── */
 .rowActions {
   display: flex;
   align-items: center;
-  gap: 0.75rem;
+  gap: 0.5rem;
 }
 
-.addBtn {
+.actionBtn {
   display: inline-flex;
   align-items: center;
   gap: 0.4rem;
-  padding: 0.5rem 1rem;
+  padding: 0.5rem 0.95rem;
   font-family: var(--font-display);
   font-size: var(--text-sm);
-  font-weight: 600;
+  font-weight: 700;
   color: var(--color-indigo);
-  background: var(--color-white);
-  border: 1.5px dashed color-mix(in srgb, var(--color-indigo) 24%, transparent);
+  background: transparent;
+  border: 1.5px solid var(--color-lavender);
   border-radius: var(--radius-full);
   transition: border-color 0.15s ease, background 0.15s ease;
 }
 
-.addBtn:hover {
-  border-color: var(--color-indigo);
+.actionBtn:hover {
+  border-color: var(--color-indigo-soft);
   background: color-mix(in srgb, var(--color-indigo) 3%, transparent);
 }
 
-.linkBtn {
-  font-family: var(--font-body);
-  font-size: var(--text-xs);
-  font-weight: 600;
-  color: var(--color-indigo-soft);
-  padding: 0.5rem 0.25rem;
-  text-decoration: underline;
-  text-underline-offset: 3px;
-  transition: color 0.15s ease;
-}
-
-.linkBtn:hover {
-  color: var(--color-indigo);
-}
-
-/* ── Insurance toggle ────────────────────────────────────────────────── */
+/* ── Insurance toggle (mockup `.insurance` + custom `.ck` checkbox) ─────── */
 .insuranceToggle {
   margin-top: var(--space-2);
   margin-bottom: var(--space-4);
   padding: 0.875rem 1rem;
-  border: 1.5px solid var(--color-lavender);
+  border: 1px solid var(--color-lavender);
   border-radius: var(--radius-md);
-  background: color-mix(in srgb, var(--color-indigo) 2%, transparent);
+  background: var(--color-cloud);
 }
 
 .toggleRow {
@@ -345,21 +295,55 @@
   cursor: pointer;
 }
 
+/* Visually-hidden native control — kept focusable so .ck shows a focus ring. */
 .checkbox {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* Custom indigo rounded-square box with a white checkmark when checked. */
+.ck {
+  flex: 0 0 auto;
   width: 20px;
   height: 20px;
-  flex-shrink: 0;
-  margin-top: 0.1rem;
-  accent-color: var(--color-indigo);
-  cursor: pointer;
+  margin-top: 0.05rem;
+  border-radius: 5px;
+  border: 1.5px solid var(--color-lavender);
+  background: var(--color-white);
+  color: var(--color-white);
+  display: grid;
+  place-items: center;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.ck svg {
+  opacity: 0;
+  transition: opacity 0.12s ease;
+}
+
+.checkbox:checked ~ .ck {
+  background: var(--color-indigo);
+  border-color: var(--color-indigo);
+}
+
+.checkbox:checked ~ .ck svg {
+  opacity: 1;
+}
+
+.checkbox:focus-visible ~ .ck {
+  outline: 2px solid var(--color-indigo-soft);
+  outline-offset: 2px;
 }
 
 .toggleLabel {
   display: block;
   font-family: var(--font-display);
   font-size: var(--text-sm);
-  font-weight: 600;
-  color: var(--color-slate);
+  font-weight: 700;
+  color: var(--color-indigo);
   line-height: 1.4;
 }
 
@@ -450,22 +434,40 @@
     grid-column: 1 / -1;
   }
 
-  .allocation,
   .allocAside {
     grid-column: 2;
     align-self: start;
     position: sticky;
     top: var(--space-2);
   }
+}
 
-  .allocation {
-    flex-direction: column;
-    align-items: stretch;
-    gap: var(--space-3);
+/* ── Wide self tier (Beneficiaries renders at the 980px signupcanvas width) ──
+   Fires only inside SignupShell's `signupcanvas` container (subscriber self-
+   signup). This is an EXACT mirror of the onboardcanvas block above so the
+   subscriber Beneficiaries page is identical to the (preferred) agent-assisted
+   layout: a 2-column section (beneficiary rows on the left, the allocation donut
+   as a sticky aside on the right), with each row keeping the comfortable stacked
+   field layout (name full / phone + relationship / share full) — NOT a cramped
+   4-across row. Below 720px the section is single-column with the donut stacked
+   under the rows. */
+@container signupcanvas (min-width: 720px) {
+  .section {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 244px;
+    column-gap: var(--space-5);
+    row-gap: var(--space-3);
+    align-items: start;
   }
 
-  .allocationText {
-    align-items: flex-start;
-    min-width: 0;
+  .sectionHeader {
+    grid-column: 1 / -1;
+  }
+
+  .allocAside {
+    grid-column: 2;
+    align-self: start;
+    position: sticky;
+    top: var(--space-2);
   }
 }

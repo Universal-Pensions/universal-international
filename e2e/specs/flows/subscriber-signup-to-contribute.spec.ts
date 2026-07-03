@@ -269,24 +269,28 @@ test.describe('subscriber → signup wizard → first contribution (UI + DB)', (
     // mediates between Consent and Contribution — Consent's submit now
     // goes straight to /signup/contribution.
 
-    // ── Contribution onboarding ─────────────────────────────────────────
+    // ── Contribution onboarding (Plan & pay) ────────────────────────────
     // Pick monthly (already the default), enter 10,000 UGX (above the
-    // MIN_CONTRIBUTION floor), keep the default 80/20 split, then walk
-    // through the payment step. The momo phone input pre-fills from the
-    // signup phone (`+256${uniquePhoneDigits}`-shaped via the prop).
+    // MIN_CONTRIBUTION floor), keep the default 80/20 split. Payment is now
+    // MERGED into this page (no separate "Pay now" step): the Mobile Money
+    // picker is inline in the summary and a single "Pay UGX…" CTA submits.
     await expect(
-      page.getByRole('heading', { name: /design your savings rhythm/i }),
+      page.getByRole('heading', { name: /set up your contributions/i }),
     ).toBeVisible({ timeout: 15_000 });
 
     // Use a preset for amount entry — '10,000 UGX' is the first preset chip.
     await page.getByRole('button', { name: /^UGX 10,000$/ }).click();
 
-    // "Pay now" opens the payment view (still inside the summary card).
-    await page.getByRole('button', { name: /^pay now/i }).click();
+    // Section 04 · multi-product insurance — Life is on by default; add Health +
+    // Funeral so the insurancePolicy + insuranceProducts[] split is exercised
+    // end-to-end (asserted in the DB block below).
+    await page.getByRole('switch', { name: /health insurance/i }).click();
+    await page.getByRole('switch', { name: /funeral insurance/i }).click();
 
-    // Mobile Money is the default selected method; the phone pre-fills.
-    // We just need to click the final Pay CTA — the label is dynamic
-    // ("Pay UGX 10,000"), so we match by prefix.
+    // Mobile Money is the default selected method; fill the inline phone so the
+    // Pay CTA enables. The label is dynamic ("Pay UGX 10,000") — match by prefix.
+    await page.getByPlaceholder('700 000 000').fill('700123456');
+
     const payBtn = page.getByRole('button', { name: /^pay (ugx|\d)/i });
     await expect(payBtn).toBeEnabled();
 
@@ -342,6 +346,23 @@ test.describe('subscriber → signup wizard → first contribution (UI + DB)', (
     expect(
       await rowExists('nominees', { subscriber_id: sub!.id }),
       'at least one nominee row should be inserted',
+    ).toBe(true);
+
+    // Multi-product insurance: life (default selection) → insurance_policies;
+    // the Health + Funeral add-ons → subscriber_insurance_products, both via the
+    // shared _insert_subscriber_chain (migration 0065). Pins the self-signup
+    // multi-product split through create_subscriber_from_signup.
+    expect(
+      await rowExists('insurance_policies', { subscriber_id: sub!.id }),
+      `life insurance_policies row should be created for ${sub!.id}`,
+    ).toBe(true);
+    expect(
+      await rowExists('subscriber_insurance_products', { subscriber_id: sub!.id, product: 'health' }),
+      `health subscriber_insurance_products row should be created for ${sub!.id}`,
+    ).toBe(true);
+    expect(
+      await rowExists('subscriber_insurance_products', { subscriber_id: sub!.id, product: 'funeral' }),
+      `funeral subscriber_insurance_products row should be created for ${sub!.id}`,
     ).toBe(true);
 
     // Password hash — the raw password we typed at ReviewStep travels through

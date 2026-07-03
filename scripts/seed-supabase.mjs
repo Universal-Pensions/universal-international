@@ -880,16 +880,23 @@ async function main() {
       const _seededSum = (s.transactions ?? []).reduce((acc, t) => acc + Number(t.amount || 0), 0);
       const _opening = Math.round(Number(s.netBalance ?? 0) - _seededSum);
       if (_opening !== 0) {
+        // A POSITIVE opening is savings brought forward → a contribution. A
+        // NEGATIVE opening (seeded recent contributions exceed the authored
+        // balance, i.e. net prior withdrawals) is booked as a WITHDRAWAL, not a
+        // negative "contribution" — the latter rendered as a confusing money-in
+        // row that shows as "Sent" and skewed the Activity year in/out totals
+        // (audit 2026-07-02). Either way the ledger still sums to total_balance.
+        const _isDraw = _opening < 0;
         txIds.push(`tx-${s.id}-open`);
         txSubIds.push(s.id);
         txAgentIds.push(s.parentId);
-        txTypes.push('contribution');
-        txAmounts.push(_opening);
+        txTypes.push(_isDraw ? 'withdrawal' : 'contribution');
+        txAmounts.push(_opening); // withdrawals are stored as negative magnitudes (see above)
         txDates.push(toTimestamptz(s.registeredDate ?? s.transactions?.[s.transactions.length - 1]?.date ?? '2024-01-01'));
         txStatuses.push('settled');
-        txMethods.push('Opening balance');
+        txMethods.push(_isDraw ? 'Opening adjustment' : 'Opening balance');
         txRefs.push('OPENING');
-        txBuckets.push(null);
+        txBuckets.push(_isDraw ? 'emergency' : null);
       }
     }
     await bulkInsert(
