@@ -18,6 +18,8 @@ import { hasDashboard } from './services/auth';
 import FAQ from './pages/FAQ';
 import Contact from './pages/Contact';
 import About from './pages/About';
+import AdminLogin from './pages/AdminLogin';
+import RequestAccess from './pages/RequestAccess';
 
 const DashboardShell = lazy(() => import('./dashboard/DashboardShell'));
 const BranchDashboardShell = lazy(() => import('./branch-dashboard/BranchDashboardShell'));
@@ -178,6 +180,10 @@ export default function App() {
         <Route path="/contact" element={<Contact />} />
         <Route path="/about" element={<About />} />
         <Route path="/coming-soon" element={<ComingSoon />} />
+        {/* Super-admin login portal (role-fixed to admin). */}
+        <Route path="/admin" element={<AdminLogin />} />
+        {/* Lead-capture for employer/distributor (admin-provisioned, not self-signup). */}
+        <Route path="/request-access" element={<RequestAccess />} />
         <Route
           path="/signup/*"
           element={
