@@ -5,7 +5,7 @@ import { EASE_OUT_EXPO } from '../../utils/motion';
 import { formatUGX } from '../../utils/currency';
 import { formatDate } from '../../utils/date';
 import { deriveInvestmentGrowth, deriveEmployerSplit, periodsPerYear, txDisplayAmount } from '../../utils/finance';
-import { activeCoverTotal, activePolicies } from '../../utils/policies';
+import { activeCoverTotal, activePolicies, buildingCoverTotal, buildingProgress } from '../../utils/policies';
 import { useCountUp } from '../../hooks/useCountUp';
 import { useContributionBreakdown, useSubscriberTransactions } from '../../hooks/useSubscriber';
 import styles from './HomeDesktop.module.css';
@@ -159,9 +159,19 @@ export default function HomeDesktop({ subscriber }) {
   const cover = activeCoverTotal(sub);
   const hasCover = cover > 0;
   const premium = activePolicies(sub).reduce((s, p) => s + (Number(p.premiumMonthly) || 0), 0);
+  // Save-to-cover (0072): cover still being saved for. When there is no active
+  // cover but a building one, the tile shows the target cover + savings progress
+  // toward the annual premium instead of "Not active".
+  const building = buildingProgress(sub);
+  const buildingCover = buildingCoverTotal(sub);
+  const hasBuilding = !hasCover && building.isBuilding;
+  const displayCover = hasCover ? cover : buildingCover;
+  const showCover = hasCover || hasBuilding;
   const coverContext = hasCover
     ? (premium > 0 ? `Active · ${formatUGX(premium, { compact: false })}/mo premium` : 'Active cover')
-    : 'Not active';
+    : (hasBuilding
+        ? (building.target > 0 ? `Building · ${building.pct}% of premium saved` : 'Building your cover')
+        : 'Not active');
 
   // Contribution schedule → hero "Next payment" + Pay button.
   const schedule = sub.contributionSchedule;
@@ -370,17 +380,24 @@ export default function HomeDesktop({ subscriber }) {
             type="button"
             className={`${styles.swcItem} ${styles.swcItemBtn}`}
             style={{ '--ac': 'var(--color-teal)', '--tint': '47,143,157' }}
-            onClick={() => navigate(hasCover ? '/dashboard/policies' : '/dashboard/settings/insurance')}
+            onClick={() => navigate(showCover ? '/dashboard/policies' : '/dashboard/settings/insurance')}
             aria-label={hasCover
               ? 'View your insurance cover and download your certificate'
-              : 'Add insurance cover'}
+              : hasBuilding
+                ? 'View your insurance cover you are saving toward'
+                : 'Add insurance cover'}
           >
             <div className={styles.swcChip}>{glyph.shield(20)}</div>
             <span className={styles.swcK}>Insurance cover</span>
-            <span className={styles.swcV}>{hasCover ? formatUGX(cover, { compact: false }) : 'Not set'}</span>
+            <span className={styles.swcV}>{showCover ? formatUGX(displayCover, { compact: false }) : 'Not set'}</span>
             <span className={styles.swcSub}>{coverContext}</span>
+            {hasBuilding && building.target > 0 && (
+              <span className={styles.swcProgress} aria-hidden="true">
+                <span className={styles.swcProgressFill} style={{ width: `${building.pct}%` }} />
+              </span>
+            )}
             <span className={styles.swcCta}>
-              {hasCover ? 'View & download' : 'Add cover'}{glyph.arrow(13)}
+              {hasCover ? 'View & download' : hasBuilding ? 'View progress' : 'Add cover'}{glyph.arrow(13)}
             </span>
           </button>
         </div>

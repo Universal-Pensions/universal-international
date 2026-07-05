@@ -84,6 +84,36 @@ export function clearToken() {
   safeRemove(TOKEN_KEY);
 }
 
+/**
+ * True ONLY for a token we can prove is past its `exp`. An expired custom JWT is
+ * rejected by PostgREST with 401 "JWT expired", so it must never be sent as the
+ * bearer — a stale token left in localStorage from an old session would
+ * otherwise break even public, anon-only reads (e.g. the signup district list,
+ * which every unauthenticated visitor needs). We decode WITHOUT verifying
+ * (PostgREST owns signature verification); if the value can't be parsed or has
+ * no numeric `exp`, we fail OPEN (return false) and send it exactly as before,
+ * so this can only ever suppress a provably-dead token — never a live one, and
+ * never the opaque test fixtures the accessToken round-trip relies on.
+ */
+export function isJwtExpired(token) {
+  try {
+    const part = String(token).split('.')[1];
+    if (!part) return false;
+    let b64 = part.replace(/-/g, '+').replace(/_/g, '/');
+    b64 += '='.repeat((4 - (b64.length % 4)) % 4);
+    const { exp } = JSON.parse(atob(b64));
+    return typeof exp === 'number' && Date.now() >= exp * 1000;
+  } catch {
+    return false;
+  }
+}
+
+/** The stored user JWT, but only when present AND not provably expired. */
+function liveToken() {
+  const stored = safeRead(TOKEN_KEY);
+  return stored && !isJwtExpired(stored) ? stored : null;
+}
+
 // `upensions_auth` mirrors the key apiFetch's notifyAuthExpired() clears, so the
 // post-logout state is identical whether the 401 came from `/api/*` or supabase.
 const AUTH_KEY = 'upensions_auth';
@@ -184,7 +214,10 @@ const anon = resolveAnonKey();
 // the bearer token. We only override `Authorization` and leave every other
 // header postgrest-js already set (apikey, content-type, prefer, …) untouched.
 const fetchWithAuth = (input, init = {}) => {
-  const token = safeRead(TOKEN_KEY) || anon;
+  // A live user JWT when we have one, else the anon key. A provably-expired
+  // token is treated as absent (see liveToken/isJwtExpired) so it can't 401 an
+  // otherwise-public read.
+  const token = liveToken() || anon;
   const headers = new Headers(init.headers);
   headers.set('Authorization', `Bearer ${token}`);
   return fetch(input, { ...init, headers });
@@ -213,7 +246,7 @@ supabase.__ctor = {
   url,
   anon,
   opts: {
-    accessToken: async () => safeRead(TOKEN_KEY) || null,
+    accessToken: async () => liveToken(),
   },
 };
 

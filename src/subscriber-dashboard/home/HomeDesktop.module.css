@@ -593,6 +593,24 @@
   color: var(--color-gray);
 }
 
+/* Save-to-cover savings progress toward the annual premium (building tile). */
+.swcProgress {
+  display: block;
+  height: 5px;
+  margin-top: 6px;
+  border-radius: var(--radius-full);
+  background: var(--color-lavender);
+  overflow: hidden;
+}
+
+.swcProgressFill {
+  display: block;
+  height: 100%;
+  border-radius: var(--radius-full);
+  background: var(--color-teal);
+  transition: width 0.4s var(--ease-out-expo);
+}
+
 /* ── Recent activity ─────────────────────────────────────────────────────── */
 .row {
   display: flex;

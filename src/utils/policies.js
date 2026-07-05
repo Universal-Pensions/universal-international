@@ -65,6 +65,14 @@ function buildPolicy(base, override, now) {
   const premiumMonthly = employerPaid
     ? 0
     : (Number(base.premiumMonthly) > 0 ? Number(base.premiumMonthly) : FALLBACK_PREMIUM_MONTHLY);
+  // A 'building' policy (save-to-cover: the annual premium is still being saved
+  // up — migration 0072) is NOT yet in force. It keeps its 'building' status even
+  // though its placeholder renewal_date sits in the future, so the date-based
+  // derivation below must not read it as 'active'. The DB sweep flips it to
+  // 'active' once the accrual funds the premium. All other rows derive by date.
+  const status = base.status === 'building'
+    ? 'building'
+    : derivePolicyStatus({ renewalDate }, now);
   return {
     id: base.id,
     type: base.type,
@@ -73,7 +81,7 @@ function buildPolicy(base, override, now) {
     premiumMonthly,
     policyStart: base.policyStart ?? null,
     renewalDate: renewalDate ?? null,
-    status: derivePolicyStatus({ renewalDate }, now),
+    status,
     renewalAmount: employerPaid ? 0 : premiumMonthly * 12,
     // 'employer' = the subscriber's employer pays this group premium (the member
     // pays nothing and can't re-buy it); 'self' = the subscriber funds it.
@@ -126,6 +134,7 @@ export function derivePolicies(subscriber, { now, renewalOverrides = {} } = {}) 
         premiumMonthly: r.premiumMonthly,
         policyStart: r.policyStart,
         renewalDate: r.renewalDate,
+        status: r.status,
         fundedBy: r.fundedBy,
       },
       renewalOverrides[r.product],
@@ -154,6 +163,50 @@ export function activePolicies(subscriber) {
  */
 export function activeCoverTotal(subscriber) {
   return activePolicies(subscriber).reduce((s, p) => s + (Number(p.cover) || 0), 0);
+}
+
+/**
+ * The subscriber's BUILDING policies — save-to-cover cover whose annual premium
+ * is still being saved up (not yet in force). Product-ordered.
+ * @param {object} subscriber — expects the derived `policies` array.
+ * @returns {Array}
+ */
+export function buildingPolicies(subscriber) {
+  return (subscriber?.policies || []).filter((p) => p.status === 'building');
+}
+
+/**
+ * Total cover the subscriber is BUILDING toward (sum of building policies'
+ * cover). This is what they'll be insured for once their savings fund the
+ * combined annual premium — distinct from `activeCoverTotal` (cover in force now).
+ * @param {object} subscriber — expects the derived `policies` array.
+ * @returns {number}
+ */
+export function buildingCoverTotal(subscriber) {
+  return buildingPolicies(subscriber).reduce((s, p) => s + (Number(p.cover) || 0), 0);
+}
+
+/**
+ * Progress of a save-to-cover subscriber toward funding their combined annual
+ * premium, read from the contribution schedule (migration 0072). `target` is the
+ * combined annual premium of the building products; `accrued` is how much of each
+ * contribution's assigned slice has been saved toward it so far.
+ * @param {object} subscriber — expects `contributionSchedule` + derived `policies`.
+ * @returns {{ target:number, accrued:number, remaining:number, pct:number, isBuilding:boolean }}
+ */
+export function buildingProgress(subscriber) {
+  const sched = subscriber?.contributionSchedule;
+  const target = Math.max(0, Number(sched?.insurancePremiumTarget) || 0);
+  const accrued = Math.max(0, Math.min(target, Number(sched?.insurancePremiumAccrued) || 0));
+  const remaining = Math.max(0, target - accrued);
+  const pct = target > 0 ? Math.min(100, Math.round((accrued / target) * 100)) : 0;
+  return {
+    target,
+    accrued,
+    remaining,
+    pct,
+    isBuilding: buildingPolicies(subscriber).length > 0,
+  };
 }
 
 /**

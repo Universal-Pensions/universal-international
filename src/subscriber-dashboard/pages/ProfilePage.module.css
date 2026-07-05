@@ -40,6 +40,12 @@
   gap: var(--space-4);
 }
 
+/* Shared MemberCard as the profile's identity summary — centred at the top. */
+.cardWrap {
+  display: flex;
+  justify-content: center;
+}
+
 .section {
   background: var(--color-white);
   border: 1px solid var(--color-lavender);

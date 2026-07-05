@@ -57,6 +57,12 @@ export function buildContributionPayload(signup, schedule, phone) {
       includeInsurance,
       insurancePremium,
       insuranceCover: wantsLife ? INSURANCE_COVER : 0,
+      // save-to-cover + indexation (migration 0072). 'pay_now' | 'save_to_cover';
+      // target = combined ANNUAL premium of building products; indexation 0..15.
+      insuranceFundingMode: schedule.insuranceFundingMode ?? 'pay_now',
+      insurancePremiumTarget: schedule.insurancePremiumTarget ?? 0,
+      insuranceSavingsPct: schedule.insuranceSavingsPct ?? 100,
+      contributionIndexationPct: schedule.contributionIndexationPct ?? 0,
     },
     pensionBeneficiaries: signup.pensionBeneficiaries ?? [],
     insuranceBeneficiaries: signup.insuranceBeneficiaries ?? [],

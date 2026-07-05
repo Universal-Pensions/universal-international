@@ -63,9 +63,10 @@ describe('finance utils', () => {
 
   describe('normalizeFrequency()', () => {
     // Pin the canonical contract so the constants can't silently drift either —
-    // a schedule normalises to one of exactly these five string ids.
+    // a schedule normalises to one of exactly these six string ids.
     it('exposes the canonical frequency ids', () => {
       expect(FREQUENCY).toEqual({
+        DAILY: 'daily',
         WEEKLY: 'weekly',
         MONTHLY: 'monthly',
         QUARTERLY: 'quarterly',
@@ -75,6 +76,7 @@ describe('finance utils', () => {
     });
 
     it('passes canonical ids through unchanged', () => {
+      expect(normalizeFrequency('daily')).toBe(FREQUENCY.DAILY);
       expect(normalizeFrequency('weekly')).toBe(FREQUENCY.WEEKLY);
       expect(normalizeFrequency('monthly')).toBe(FREQUENCY.MONTHLY);
       expect(normalizeFrequency('quarterly')).toBe(FREQUENCY.QUARTERLY);
@@ -123,6 +125,12 @@ describe('finance utils', () => {
       expect(normalizeFrequency('Yearly')).toBe(FREQUENCY.ANNUALLY);
     });
 
+    it('normalizes daily (case-insensitively) to the canonical id', () => {
+      expect(normalizeFrequency('daily')).toBe(FREQUENCY.DAILY);
+      expect(normalizeFrequency('Daily')).toBe(FREQUENCY.DAILY);
+      expect(normalizeFrequency('DAILY')).toBe(FREQUENCY.DAILY);
+    });
+
     it('falls back to monthly for empty / unknown input', () => {
       expect(normalizeFrequency('')).toBe(FREQUENCY.MONTHLY);
       expect(normalizeFrequency(null)).toBe(FREQUENCY.MONTHLY);
@@ -130,12 +138,12 @@ describe('finance utils', () => {
       expect(normalizeFrequency(0)).toBe(FREQUENCY.MONTHLY);
       expect(normalizeFrequency('fortnightly')).toBe(FREQUENCY.MONTHLY);
       expect(normalizeFrequency('biweekly')).toBe(FREQUENCY.MONTHLY);
-      expect(normalizeFrequency('daily')).toBe(FREQUENCY.MONTHLY);
     });
   });
 
   describe('periodsPerYear()', () => {
     it('returns the correct count for each canonical frequency', () => {
+      expect(periodsPerYear('daily')).toBe(365);
       expect(periodsPerYear('weekly')).toBe(52);
       expect(periodsPerYear('monthly')).toBe(12);
       expect(periodsPerYear('quarterly')).toBe(4);
@@ -288,6 +296,13 @@ describe('txDisplayAmount', () => {
     // The whole point of the helper: premiums are money out, not money received.
     expect(txDisplayAmount({ type: 'premium', amount: 2000 })).toBe(-2000);
     expect(txDisplayAmount({ type: 'insurance_premium', amount: 8500 })).toBe(-8500);
+  });
+
+  it('renders a save-to-cover premium_sweep as an OUTFLOW (stored negative)', () => {
+    // The sweep marker row posts amount = −target; classified as an outflow so
+    // its magnitude reads as money out regardless of the stored sign.
+    expect(txDisplayAmount({ type: 'premium_sweep', amount: -24000 })).toBe(-24000);
+    expect(txDisplayAmount({ type: 'premium_sweep', amount: 24000 })).toBe(-24000);
   });
 
   it('normalises withdrawals to negative regardless of stored sign', () => {

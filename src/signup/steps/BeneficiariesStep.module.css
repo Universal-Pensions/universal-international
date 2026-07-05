@@ -21,6 +21,16 @@
   color: var(--color-indigo-soft);
 }
 
+/* Left-column wrapper (rows + Add/Split actions). Base = a plain stacked block;
+   at the wide tiers it becomes grid column 1 so the allocation aside is the only
+   thing in column 2. `min-width: 0` lets it shrink inside minmax(0, 1fr). */
+.sectionMain {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  min-width: 0;
+}
+
 .list {
   display: flex;
   flex-direction: column;
@@ -434,6 +444,10 @@
     grid-column: 1 / -1;
   }
 
+  .sectionMain {
+    grid-column: 1;
+  }
+
   .allocAside {
     grid-column: 2;
     align-self: start;
@@ -462,6 +476,10 @@
 
   .sectionHeader {
     grid-column: 1 / -1;
+  }
+
+  .sectionMain {
+    grid-column: 1;
   }
 
   .allocAside {

@@ -180,6 +180,44 @@ describe('supabaseClient service', () => {
     });
   });
 
+  describe('isJwtExpired — suppress provably-dead tokens', () => {
+    // Minimal JWT with a chosen `exp`; only the payload segment is decoded.
+    const makeJwt = (exp) => {
+      const b64u = (obj) => btoa(JSON.stringify(obj))
+        .replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+      return `eyJhbGciOiJIUzI1NiJ9.${b64u({ app_role: 'agent', exp })}.sig`;
+    };
+    const NOW = Math.floor(Date.now() / 1000);
+
+    it('flags a token whose exp is in the past', async () => {
+      const { isJwtExpired } = await import('../supabaseClient');
+      expect(isJwtExpired(makeJwt(NOW - 60))).toBe(true);
+    });
+
+    it('does not flag a token whose exp is in the future', async () => {
+      const { isJwtExpired } = await import('../supabaseClient');
+      expect(isJwtExpired(makeJwt(NOW + 3600))).toBe(false);
+    });
+
+    it('fails OPEN for opaque / unparseable / exp-less tokens', async () => {
+      const { isJwtExpired } = await import('../supabaseClient');
+      expect(isJwtExpired('first-jwt')).toBe(false);      // no segments
+      expect(isJwtExpired('a.b.c')).toBe(false);          // undecodable payload
+      const b64u = (o) => btoa(JSON.stringify(o)).replace(/=+$/, '');
+      expect(isJwtExpired(`x.${b64u({ app_role: 'agent' })}.y`)).toBe(false); // no exp claim
+    });
+
+    it('the accessToken hook returns null for an expired token but keeps a live one', async () => {
+      const { setToken, supabase } = await import('../supabaseClient');
+      const accessToken = supabase.__ctor.opts.accessToken;
+      setToken(makeJwt(NOW - 60));
+      expect(await accessToken()).toBeNull();
+      const live = makeJwt(NOW + 3600);
+      setToken(live);
+      expect(await accessToken()).toBe(live);
+    });
+  });
+
   describe('default export', () => {
     it('default export is the same client as the named `supabase` export', async () => {
       const mod = await import('../supabaseClient');

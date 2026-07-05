@@ -4,12 +4,14 @@ import { motion, useReducedMotion } from 'framer-motion';
 import { EASE_OUT_EXPO } from '../../utils/motion';
 
 import { formatDate } from '../../utils/date';
+import { formatMemberId } from '../../utils/memberId';
 import { isValidUGPhone, parseUGPhoneLocal } from '../../utils/phone';
 import { useCurrentSubscriber, useUpdateProfile } from '../../hooks/useSubscriber';
 import { useAllEntities } from '../../hooks/useEntity';
 import { useIsDesktop } from '../../hooks/useIsDesktop';
 import { useToast } from '../../contexts/ToastContext';
 import PageHeader from '../../components/PageHeader';
+import MemberCard from '../../components/MemberCard';
 import styles from './ProfilePage.module.css';
 
 const UG_PREFIX = '+256';
@@ -118,6 +120,18 @@ export default function ProfilePage() {
           animate={reducedMotion ? undefined : { opacity: 1, y: 0 }}
           transition={{ duration: 0.32, ease: EASE_OUT_EXPO }}
         >
+          {sub && (
+            <div className={styles.cardWrap}>
+              <MemberCard
+                fullName={sub.name}
+                memberId={formatMemberId(sub.phone)}
+                enrolled={sub.registeredDate}
+                dob={sub.dob}
+                gender={sub.gender}
+              />
+            </div>
+          )}
+
           <section className={styles.section}>
             <h2 className={styles.sectionTitle}>Personal information</h2>
 
@@ -188,10 +202,6 @@ export default function ProfilePage() {
               <li>
                 <span className={styles.readonlyLabel}>District</span>
                 <span className={styles.readonlyValue}>{districtName || '—'}</span>
-              </li>
-              <li>
-                <span className={styles.readonlyLabel}>Member ID</span>
-                <span className={styles.readonlyValue}>{sub?.id || '—'}</span>
               </li>
             </ul>
             <p className={styles.helperLine}>

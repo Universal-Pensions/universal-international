@@ -4,7 +4,7 @@ import { EASE_OUT_EXPO } from '../../utils/motion';
 import { formatUGX } from '../../utils/currency';
 import { formatDate } from '../../utils/date';
 import { deriveInvestmentGrowth, deriveEmployerSplit } from '../../utils/finance';
-import { activeCoverTotal, activeCoverProductsLabel } from '../../utils/policies';
+import { activeCoverTotal, activeCoverProductsLabel, buildingCoverTotal, buildingProgress } from '../../utils/policies';
 import { useContributionBreakdown } from '../../hooks/useSubscriber';
 import { useCountUp } from '../../hooks/useCountUp';
 import styles from './HomeMobile.module.css';
@@ -80,6 +80,12 @@ export default function HomeMobile({ subscriber: sub }) {
   const emergency = sub?.emergencyBalance || 0;
   const activeCover = activeCoverTotal(sub);
   const coverProducts = activeCoverProductsLabel(sub);
+  // Save-to-cover (0072): show the cover being saved toward + premium progress
+  // when there's no active cover yet but a building one.
+  const building = buildingProgress(sub);
+  const buildingCover = buildingCoverTotal(sub);
+  const hasBuilding = activeCover === 0 && building.isBuilding;
+  const showCover = activeCover > 0 || hasBuilding;
 
   const itemV = reduce ? undefined : item;
 
@@ -186,14 +192,20 @@ export default function HomeMobile({ subscriber: sub }) {
         <button
           type="button"
           className={styles.lrow}
-          onClick={() => navigate(activeCover > 0 ? '/dashboard/policies' : '/dashboard/settings/insurance')}
+          onClick={() => navigate(showCover ? '/dashboard/policies' : '/dashboard/settings/insurance')}
         >
           <span className={`${styles.lIc} ${styles.tintTeal}`}>{ShieldIcon}</span>
           <span className={styles.lMid}>
             <b>Insurance cover</b>
-            <small>{activeCover > 0 ? coverProducts : 'Add cover from UGX 2,000/mo'}</small>
+            <small>
+              {activeCover > 0
+                ? coverProducts
+                : hasBuilding
+                  ? (building.target > 0 ? `Building · ${building.pct}% of premium saved` : 'Building your cover')
+                  : 'Add cover from UGX 2,000/mo'}
+            </small>
           </span>
-          <span className={styles.lAmt}>{activeCover > 0 ? formatUGX(activeCover) : '—'}</span>
+          <span className={styles.lAmt}>{showCover ? formatUGX(activeCover > 0 ? activeCover : buildingCover) : '—'}</span>
           <span className={styles.chev}>{Chevron}</span>
         </button>
       </motion.section>

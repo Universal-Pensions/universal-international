@@ -4,6 +4,7 @@ import { formatUGX } from '../../utils/currency';
 
 import { formatDate } from '../../utils/date';
 import { formatMemberId } from '../../utils/memberId';
+import { buildingProgress } from '../../utils/policies';
 import { useCurrentSubscriber, useSubscriberNominees, useRenewPolicy } from '../../hooks/useSubscriber';
 import { useToast } from '../../contexts/ToastContext';
 import { openPolicyCertificate } from '../../signup/contribution/insurancePolicyCertificate';
@@ -44,17 +45,20 @@ function PolicyIcon({ type }) {
   );
 }
 
+const STATUS_LABEL = { active: 'Active', building: 'Building', expired: 'Expired' };
+
 function StatusPill({ status }) {
   return (
     <span className={styles.statusPill} data-tone={status}>
       <span className={styles.statusDot} aria-hidden="true" />
-      {status === 'active' ? 'Active' : 'Expired'}
+      {STATUS_LABEL[status] ?? 'Active'}
     </span>
   );
 }
 
 function PolicyCard({ policy, onRenew, onCertificate, employerName }) {
   const expired = policy.status === 'expired';
+  const building = policy.status === 'building';
   const employerPaid = policy.fundedBy === 'employer';
   return (
     <article className={styles.policyCard} data-status={policy.status}>
@@ -84,8 +88,12 @@ function PolicyCard({ policy, onRenew, onCertificate, employerName }) {
           <dd>{employerPaid ? 'Employer-funded' : `${formatUGX(policy.premiumMonthly, { compact: false })} / mo`}</dd>
         </div>
         <div>
-          <dt>{employerPaid ? 'Status' : expired ? 'Expired' : 'Renews'}</dt>
-          <dd>{employerPaid ? 'Managed by employer' : formatDate(policy.renewalDate)}</dd>
+          <dt>{employerPaid ? 'Status' : building ? 'Cover starts' : expired ? 'Expired' : 'Renews'}</dt>
+          <dd>{employerPaid
+            ? 'Managed by employer'
+            : building
+              ? 'Once your premium is saved'
+              : formatDate(policy.renewalDate)}</dd>
         </div>
       </dl>
 
@@ -96,6 +104,16 @@ function PolicyCard({ policy, onRenew, onCertificate, employerName }) {
             <path d="M12 4v12m0 0l-4-4m4 4l4-4M5 20h14" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
         </button>
+      ) : building ? (
+        // Save-to-cover: not in force yet — no certificate to download. The card
+        // just states the policy is being funded (progress bar lives above).
+        <div className={styles.buildingNote}>
+          <svg viewBox="0 0 24 24" width="15" height="15" fill="none" aria-hidden="true">
+            <path d="M12 3l7 3v5c0 4-3 7-7 8-4-1-7-4-7-8V6z" stroke="currentColor" strokeWidth="1.7" strokeLinejoin="round" />
+            <path d="M12 8v4l2.5 1.5" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+          Saving toward this cover — the certificate unlocks once it&apos;s active.
+        </div>
       ) : expired ? (
         <button type="button" className={styles.renewBtn} onClick={() => onRenew(policy)}>
           Renew · {formatUGX(policy.renewalAmount, { compact: false })}
@@ -122,12 +140,21 @@ export default function PoliciesPage() {
 
   const policies = sub?.policies || [];
   const active = policies.filter((p) => p.status === 'active');
+  const building = policies.filter((p) => p.status === 'building');
   const expired = policies.filter((p) => p.status === 'expired');
   const hasAny = policies.length > 0;
-  const onlyExpired = active.length === 0 && expired.length > 0;
+  const onlyExpired = active.length === 0 && building.length === 0 && expired.length > 0;
+  // Save-to-cover (0072): combined savings progress toward the annual premium.
+  const progress = buildingProgress(sub);
   // Headline figure for the mobile flat summary card (replaces the removed hero):
   // total benefit across the subscriber's active cover.
   const totalActiveCover = active.reduce((sum, p) => sum + (p.cover || 0), 0);
+  const totalBuildingCover = building.reduce((sum, p) => sum + (p.cover || 0), 0);
+  // When there's no active cover yet but cover is building, the summary headline
+  // flips to the cover being saved toward.
+  const summaryIsBuilding = active.length === 0 && building.length > 0;
+  const summaryCoverLabel = summaryIsBuilding ? 'Cover you’re building' : 'Total active cover';
+  const summaryCoverAmount = summaryIsBuilding ? totalBuildingCover : totalActiveCover;
   // Earliest upcoming renewal across active policies — shown in the desktop
   // cover-summary strip. ISO date strings sort lexicographically.
   const nextRenewal = active.map((p) => p.renewalDate).filter(Boolean).sort()[0] || null;
@@ -200,7 +227,11 @@ export default function PoliciesPage() {
   const subtitle = isLoading
     ? undefined
     : hasAny
-      ? `${active.length} active · ${expired.length} expired`
+      ? [
+          active.length > 0 ? `${active.length} active` : null,
+          building.length > 0 ? `${building.length} building` : null,
+          expired.length > 0 ? `${expired.length} expired` : null,
+        ].filter(Boolean).join(' · ') || `${active.length} active`
       : 'Protect what matters most';
 
   // ── Shared blocks ───────────────────────────────────────────────────────────
@@ -241,6 +272,31 @@ export default function PoliciesPage() {
         </section>
       )}
 
+      {building.length > 0 && (
+        <section className={styles.section} aria-labelledby="policies-building">
+          <h2 id="policies-building" className={styles.sectionTitle}>Building</h2>
+          {progress.target > 0 && (
+            <div className={styles.buildProgress} role="status">
+              <div className={styles.buildProgressTop}>
+                <span className={styles.buildProgressLabel}>Saving toward your annual premium</span>
+                <b className={styles.buildProgressPct}>{progress.pct}%</b>
+              </div>
+              <div className={styles.buildBar} aria-hidden="true">
+                <span className={styles.buildBarFill} style={{ width: `${progress.pct}%` }} />
+              </div>
+              <p className={styles.buildProgressSub}>
+                {formatUGX(progress.accrued, { compact: false })} of {formatUGX(progress.target, { compact: false })} saved · your cover activates automatically once it&apos;s fully funded.
+              </p>
+            </div>
+          )}
+          <div className={styles.cards}>
+            {building.map((p) => (
+              <PolicyCard key={p.id} policy={p} onRenew={openRenew} onCertificate={handleCertificate} employerName={sub?.employerName} />
+            ))}
+          </div>
+        </section>
+      )}
+
       {expired.length > 0 && (
         <section className={styles.section} aria-labelledby="policies-expired">
           <h2 id="policies-expired" className={styles.sectionTitle}>Expired</h2>
@@ -258,23 +314,41 @@ export default function PoliciesPage() {
   // the inline renewal pay panel (no bottom sheet on desktop).
   const coverSummaryCard = (
     <div className={flow.card}>
-      <p className={flow.sumEyebrow}>Total active cover</p>
-      <div className={flow.sumBig}>{formatUGX(totalActiveCover, { compact: false })}</div>
+      <p className={flow.sumEyebrow}>{summaryCoverLabel}</p>
+      <div className={flow.sumBig}>{formatUGX(summaryCoverAmount, { compact: false })}</div>
       <ul className={flow.sumList}>
         <li className={flow.sumRow}>
           <span>Active</span>
           <span className={flow.sumVal}>{active.length} {active.length === 1 ? 'policy' : 'policies'}</span>
         </li>
+        {building.length > 0 && (
+          <li className={flow.sumRow}>
+            <span>Building</span>
+            <span className={flow.sumVal}>{building.length} {building.length === 1 ? 'policy' : 'policies'}</span>
+          </li>
+        )}
+        {summaryIsBuilding && progress.target > 0 && (
+          <li className={flow.sumRow}>
+            <span>Premium saved</span>
+            <span className={flow.sumVal}>{progress.pct}%</span>
+          </li>
+        )}
         <li className={flow.sumRow}>
           <span>Expired</span>
           <span className={flow.sumVal}>{expired.length}</span>
         </li>
-        <li className={flow.sumRow}>
-          <span>Next renewal</span>
-          <span className={flow.sumVal}>{nextRenewal ? formatDate(nextRenewal) : '—'}</span>
-        </li>
+        {!summaryIsBuilding && (
+          <li className={flow.sumRow}>
+            <span>Next renewal</span>
+            <span className={flow.sumVal}>{nextRenewal ? formatDate(nextRenewal) : '—'}</span>
+          </li>
+        )}
       </ul>
-      <p className={flow.note}>{nextRenewalName ? <>Next up: <b>{nextRenewalName}</b>.</> : 'No upcoming renewals.'}</p>
+      <p className={flow.note}>
+        {summaryIsBuilding
+          ? 'Your cover activates automatically once your savings fund the annual premium.'
+          : (nextRenewalName ? <>Next up: <b>{nextRenewalName}</b>.</> : 'No upcoming renewals.')}
+      </p>
     </div>
   );
 
@@ -346,8 +420,8 @@ export default function PoliciesPage() {
             a sub-line. Only shown when cover exists. */}
         {!isLoading && hasAny && (
           <section className={styles.summary} aria-labelledby="policies-cover-label">
-            <span className={styles.summaryEyebrow} id="policies-cover-label">Total active cover</span>
-            <div className={styles.summaryFigure}>{formatUGX(totalActiveCover, { compact: false })}</div>
+            <span className={styles.summaryEyebrow} id="policies-cover-label">{summaryCoverLabel}</span>
+            <div className={styles.summaryFigure}>{formatUGX(summaryCoverAmount, { compact: false })}</div>
             <span className={styles.summarySub}>{subtitle}</span>
           </section>
         )}

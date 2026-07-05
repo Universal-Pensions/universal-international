@@ -16,6 +16,7 @@ export const ANNUAL_RATE  = 0.10;
  * them via these helpers, never via inline switch statements.
  */
 export const FREQUENCY = {
+  DAILY: 'daily',
   WEEKLY: 'weekly',
   MONTHLY: 'monthly',
   QUARTERLY: 'quarterly',
@@ -29,6 +30,7 @@ export const FREQUENCY = {
  * pulse cards, etc.) so the prose stays consistent across the app.
  */
 export const FREQUENCY_LABEL = {
+  [FREQUENCY.DAILY]: 'Daily',
   [FREQUENCY.WEEKLY]: 'Weekly',
   [FREQUENCY.MONTHLY]: 'Monthly',
   [FREQUENCY.QUARTERLY]: 'Quarterly',
@@ -38,6 +40,7 @@ export const FREQUENCY_LABEL = {
 
 /** Periods per year for each canonical frequency. */
 const PERIODS_PER_YEAR = {
+  [FREQUENCY.DAILY]: 365,
   [FREQUENCY.WEEKLY]: 52,
   [FREQUENCY.MONTHLY]: 12,
   [FREQUENCY.QUARTERLY]: 4,
@@ -53,6 +56,7 @@ const PERIODS_PER_YEAR = {
 export function normalizeFrequency(value) {
   if (!value) return FREQUENCY.MONTHLY;
   const v = String(value).toLowerCase();
+  if (v === 'daily') return FREQUENCY.DAILY;
   if (v === 'weekly') return FREQUENCY.WEEKLY;
   if (v === 'monthly') return FREQUENCY.MONTHLY;
   if (v === 'quarterly') return FREQUENCY.QUARTERLY;
@@ -123,7 +127,7 @@ export function parseAmount(str) {
  * — like withdrawals were historically — but are outflows, so any activity feed
  * that classifies rows by sign must treat them as negative.
  */
-export const TX_OUTFLOW_TYPES = new Set(['withdrawal', 'premium', 'insurance_premium']);
+export const TX_OUTFLOW_TYPES = new Set(['withdrawal', 'premium', 'insurance_premium', 'premium_sweep']);
 
 /**
  * The display-signed amount for a transaction: positive = money in, negative =

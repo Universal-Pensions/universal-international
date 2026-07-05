@@ -357,30 +357,34 @@ function BeneficiarySection({ title, list, onChange }) {
         </div>
       )}
 
-      <div className={own.list}>
-        {list.map((b, i) => (
-          <BeneficiaryRow
-            key={b.id}
-            index={i}
-            beneficiary={b}
-            canRemove={list.length > 1}
-            onChange={(patchObj) => updateOne(b.id, patchObj)}
-            onShareChange={(value) => updateShare(i, value)}
-            onRemove={() => removeOne(b.id)}
-          />
-        ))}
-      </div>
+      {/* Left column at the wide tier: the rows + their actions kept together so
+          grid auto-placement can't float "Add / Split" into the aside column. */}
+      <div className={own.sectionMain}>
+        <div className={own.list}>
+          {list.map((b, i) => (
+            <BeneficiaryRow
+              key={b.id}
+              index={i}
+              beneficiary={b}
+              canRemove={list.length > 1}
+              onChange={(patchObj) => updateOne(b.id, patchObj)}
+              onShareChange={(value) => updateShare(i, value)}
+              onRemove={() => removeOne(b.id)}
+            />
+          ))}
+        </div>
 
-      <div className={own.rowActions}>
-        <button type="button" className={own.actionBtn} onClick={addOne}>
-          <svg aria-hidden="true" viewBox="0 0 16 16" width="12" height="12" fill="none">
-            <path d="M8 3v10M3 8h10" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round"/>
-          </svg>
-          Add beneficiary
-        </button>
-        <button type="button" className={own.actionBtn} onClick={distributeEvenly}>
-          Split evenly
-        </button>
+        <div className={own.rowActions}>
+          <button type="button" className={own.actionBtn} onClick={addOne}>
+            <svg aria-hidden="true" viewBox="0 0 16 16" width="12" height="12" fill="none">
+              <path d="M8 3v10M3 8h10" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round"/>
+            </svg>
+            Add beneficiary
+          </button>
+          <button type="button" className={own.actionBtn} onClick={distributeEvenly}>
+            Split evenly
+          </button>
+        </div>
       </div>
 
       {/* Allocation donut + legend. With auto-balance the total is always 100, so

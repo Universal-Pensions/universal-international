@@ -297,6 +297,90 @@
   background: #C98A00;
 }
 
+.statusPill[data-tone='building'] {
+  background: color-mix(in srgb, var(--color-teal) 16%, transparent);
+  color: #1E6E70;
+}
+
+.statusPill[data-tone='building'] .statusDot {
+  background: var(--color-teal);
+}
+
+/* ── Save-to-cover: building progress + card note ───────────────────────── */
+.buildProgress {
+  padding: 0.9rem 1rem;
+  margin-bottom: var(--space-3);
+  border-radius: var(--radius-md);
+  background: var(--color-cloud);
+  border: 1px solid var(--color-lavender);
+}
+
+.buildProgressTop {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.buildProgressLabel {
+  font-family: var(--font-display);
+  font-size: var(--text-sm);
+  font-weight: 700;
+  color: var(--color-indigo);
+}
+
+.buildProgressPct {
+  font-family: var(--font-display);
+  font-size: var(--text-base);
+  font-weight: 800;
+  color: var(--color-teal);
+  font-variant-numeric: tabular-nums;
+}
+
+.buildBar {
+  height: 8px;
+  margin: 0.6rem 0 0.55rem;
+  border-radius: var(--radius-full);
+  background: var(--color-lavender);
+  overflow: hidden;
+}
+
+.buildBarFill {
+  display: block;
+  height: 100%;
+  border-radius: var(--radius-full);
+  background: linear-gradient(90deg, var(--color-teal), #3DA9B8);
+  transition: width 0.4s var(--ease-out-expo);
+}
+
+.buildProgressSub {
+  margin: 0;
+  font-family: var(--font-body);
+  font-size: var(--text-xs);
+  color: var(--color-gray);
+  line-height: 1.5;
+  font-variant-numeric: tabular-nums;
+}
+
+.buildingNote {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.7rem 0.85rem;
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--color-teal) 8%, transparent);
+  border: 1px solid color-mix(in srgb, var(--color-teal) 22%, transparent);
+  font-family: var(--font-body);
+  font-size: var(--text-xs);
+  color: var(--color-slate);
+  line-height: 1.45;
+}
+
+.buildingNote svg {
+  flex: none;
+  color: var(--color-teal);
+}
+
 /* ── Policy meta ─────────────────────────────────────────── */
 .employerBadge {
   display: inline-flex;

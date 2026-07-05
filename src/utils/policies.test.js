@@ -6,6 +6,9 @@ import {
   activePolicies,
   activeCoverTotal,
   activeCoverProductsLabel,
+  buildingPolicies,
+  buildingCoverTotal,
+  buildingProgress,
 } from './policies';
 
 const NOW = new Date(2026, 4, 26); // 2026-05-26
@@ -131,5 +134,53 @@ describe('active-cover helpers', () => {
     expect(activeCoverProductsLabel(withPolicies([
       { type: 'life', cover: 1, status: 'expired' },
     ]))).toBe('');
+  });
+});
+
+// Save-to-cover (0072): a 'building' policy is NOT in force yet, so it must not
+// read as active even though its placeholder renewal date is in the future.
+describe('save-to-cover / building', () => {
+  const withPolicies = (policies, contributionSchedule) => ({ id: 'sub-1', policies, contributionSchedule });
+
+  it('derivePolicies preserves a building status despite a future renewal date', () => {
+    const policies = derivePolicies(
+      sub([
+        { product: 'life', cover: 1_000_000, premiumMonthly: 2000, renewalDate: '2027-05-01', status: 'building' },
+        { product: 'health', cover: 3_000_000, premiumMonthly: 5000, renewalDate: '2027-05-01', status: 'active' },
+      ]),
+      { now: NOW },
+    );
+    expect(policies.find((p) => p.type === 'life').status).toBe('building');
+    expect(policies.find((p) => p.type === 'health').status).toBe('active');
+  });
+
+  it('a building policy is NOT counted as active cover', () => {
+    const s = withPolicies([
+      { type: 'life', cover: 1_000_000, status: 'building' },
+      { type: 'health', cover: 3_000_000, status: 'building' },
+    ]);
+    expect(activePolicies(s)).toEqual([]);
+    expect(activeCoverTotal(s)).toBe(0);
+    expect(buildingPolicies(s).map((p) => p.type)).toEqual(['life', 'health']);
+    expect(buildingCoverTotal(s)).toBe(4_000_000);
+  });
+
+  it('buildingProgress reports accrual toward the annual premium target', () => {
+    const s = withPolicies(
+      [{ type: 'life', cover: 1_000_000, status: 'building' }],
+      { insurancePremiumTarget: 100_000, insurancePremiumAccrued: 25_000 },
+    );
+    const p = buildingProgress(s);
+    expect(p).toMatchObject({ target: 100_000, accrued: 25_000, remaining: 75_000, pct: 25, isBuilding: true });
+  });
+
+  it('buildingProgress clamps accrued to target and is safe with no schedule', () => {
+    const over = withPolicies(
+      [{ type: 'life', cover: 1, status: 'building' }],
+      { insurancePremiumTarget: 50_000, insurancePremiumAccrued: 80_000 },
+    );
+    expect(buildingProgress(over)).toMatchObject({ accrued: 50_000, remaining: 0, pct: 100 });
+    const none = withPolicies([], undefined);
+    expect(buildingProgress(none)).toMatchObject({ target: 0, accrued: 0, pct: 0, isBuilding: false });
   });
 });

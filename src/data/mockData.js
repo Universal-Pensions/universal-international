@@ -623,6 +623,30 @@ function finalizeRates(m) {
 
 // Compute agent-level metrics from subscribers
 const subs = generateSubscribers();
+
+// ── save-to-cover demo (migration 0072) ──────────────────────────────────────
+// Pin one subscriber into a BUILDING state (cover not on yet — savings filling
+// the "tin") so the feature is demoable under VITE_USE_SUPABASE=false. All other
+// rows default to funding_mode 'pay_now' / 0 → behaviour unchanged.
+{
+  const demo = subs['s-0002'];
+  if (demo) {
+    demo.contributionSchedule = {
+      ...demo.contributionSchedule,
+      insuranceFundingMode: 'save_to_cover',
+      insurancePremiumTarget: 42_000,   // Life + Funeral combined annual premium
+      insurancePremiumAccrued: 18_000,  // partway to the goal
+      insuranceSavingsPct: 60,          // 60% of the take-out slice builds cover
+      contributionIndexationPct: 5,
+    };
+    demo.insurance = {
+      ...demo.insurance,
+      cover: 1_000_000,
+      premiumMonthly: 2000,
+      status: 'building',               // filling the tin — not covered yet
+    };
+  }
+}
 // Pre-group subscribers by agent for O(1) lookup instead of O(n) filter
 const subsByAgent = {};
 Object.values(subs).forEach((s) => {

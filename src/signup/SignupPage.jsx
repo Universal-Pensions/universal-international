@@ -86,7 +86,15 @@ function SignupFlow() {
   // (double-invoked) pass's result; the live pass applies it. No ref guard —
   // that deadlocks under StrictMode (ref blocks pass 2 while pass 1 is cancelled).
   useEffect(() => {
-    if (!inviteToken) return undefined;
+    if (!inviteToken) {
+      // Plain /signup — an employerInvite is only ever valid inside the
+      // /invite/:token/* tree. If one lingers in persisted state from an earlier
+      // invite session, drop it: otherwise completion routes to
+      // create_subscriber_from_employer_invite with a now-dead token and 500s
+      // ("invite not found") instead of the correct self-signup RPC.
+      if (signup.employerInvite) signup.patch({ employerInvite: null });
+      return undefined;
+    }
     if (signup.employerInvite?.token === inviteToken) { setInviteReady(true); return undefined; }
     let cancelled = false;
     (async () => {

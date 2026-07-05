@@ -10,6 +10,12 @@
   width: 100%;
 }
 
+/* Wrapper around the shared MemberCard — full column width; the card centres
+   itself within (parent .wrap already gaps its children). */
+.cardWrap {
+  width: 100%;
+}
+
 .successIcon {
   width: 76px;
   height: 76px;

@@ -18,6 +18,7 @@ const INK = '#1B1A4A';
 const SUBTLE = '#5F6783';
 
 const FREQ_CADENCE = {
+  daily: 'every day',
   weekly: 'every week',
   monthly: 'every month',
   quarterly: 'every 3 months',
@@ -65,6 +66,10 @@ export function buildPolicyCertificateHtml(data) {
     cover,
     premiumPerPeriod,
     frequency,
+    // Label for the premium figure. Defaults to "Premium" so existing callers
+    // are unchanged; the onboarding done-step passes "Annual premium" now that
+    // the pay-now premium is charged as a single yearly amount (annualised copy).
+    premiumLabel = 'Premium',
     policyStart,
     renewalDate,
     beneficiaries = [],
@@ -86,6 +91,7 @@ export function buildPolicyCertificateHtml(data) {
   const todayStr = formatDate(new Date());
   const coverStr = formatUGX(cover, { compact: false });
   const premiumStr = formatUGX(premiumPerPeriod, { compact: false });
+  const premiumLbl = escapeHtml(premiumLabel || 'Premium');
   const cadence = FREQ_CADENCE[frequency] || frequency || '';
 
   return `<!DOCTYPE html>
@@ -373,7 +379,7 @@ export function buildPolicyCertificateHtml(data) {
         <div class="hero-field-value">${coverStr}</div>
       </div>
       <div>
-        <div class="hero-field-label">Premium</div>
+        <div class="hero-field-label">${premiumLbl}</div>
         <div class="hero-field-value">${premiumStr}<span class="hero-cadence"> ${escapeHtml(cadence)}</span></div>
       </div>
     </section>

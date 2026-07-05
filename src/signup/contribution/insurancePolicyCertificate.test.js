@@ -53,4 +53,17 @@ describe('buildPolicyCertificateHtml', () => {
     const html = buildPolicyCertificateHtml({});
     expect(html).toContain('Policy Holder'); // holderName fallback
   });
+
+  it('defaults the premium label to "Premium" and lets callers annualise it', () => {
+    // Default (e.g. the subscriber PoliciesPage caller) keeps "Premium".
+    expect(buildPolicyCertificateHtml(base)).toContain('>Premium</div>');
+    // Onboarding done-step opts into the annual model.
+    const annual = buildPolicyCertificateHtml({ ...base, premiumLabel: 'Annual premium' });
+    expect(annual).toContain('>Annual premium</div>');
+  });
+
+  it('renders the "daily" cadence for daily-frequency premiums', () => {
+    expect(buildPolicyCertificateHtml({ ...base, frequency: 'daily' }))
+      .toContain('every day');
+  });
 });

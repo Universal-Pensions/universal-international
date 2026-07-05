@@ -21,6 +21,7 @@ export default function OnboardScheduleStep({ onContinue, onCancel }) {
       initial={signup.contributionSchedule || null}
       dob={signup.dob}
       layout="split"
+      enableSaveToCover
       onSave={handleSave}
       onCancel={onCancel}
       submitLabel="Save & continue"

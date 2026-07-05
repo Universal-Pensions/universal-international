@@ -4,6 +4,7 @@
 // exports a component — exporting a helper alongside it trips react-refresh.
 
 import { toCanonicalUGPhone } from '../../utils/phone';
+import { normalizeFrequency } from '../../utils/finance';
 import { INSURANCE_PRODUCTS, INSURANCE_COVER, INSURANCE_PREMIUM_MONTHLY } from '../../constants/savings';
 
 /**
@@ -55,11 +56,17 @@ export function buildPayload(signup) {
     consent: !!signup.consent,
     consentTimestamp: signup.consentTimestamp,
     contributionSchedule: {
-      frequency: schedule.frequency,
+      frequency: normalizeFrequency(schedule.frequency),
       amount: schedule.amount,
       retirementPct: schedule.retirementPct,
       emergencyPct: schedule.emergencyPct,
       includeInsurance,
+      // save-to-cover + indexation (migration 0072). Agent flow supports both
+      // routes: 'pay_now' (agent collects the annual premium) | 'save_to_cover'.
+      insuranceFundingMode: schedule.insuranceFundingMode ?? 'pay_now',
+      insurancePremiumTarget: schedule.insurancePremiumTarget ?? 0,
+      insuranceSavingsPct: schedule.insuranceSavingsPct ?? 100,
+      contributionIndexationPct: schedule.contributionIndexationPct ?? 0,
     },
     pensionBeneficiaries: signup.pensionBeneficiaries ?? [],
     insuranceBeneficiaries: signup.insuranceBeneficiaries ?? [],

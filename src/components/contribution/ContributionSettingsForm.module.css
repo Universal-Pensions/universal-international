@@ -374,6 +374,26 @@
   border-radius: var(--radius-full);
 }
 
+/* Indexation variant: indigo fill up to --pct, then lavender (no teal split). */
+.slider[data-variant='index'] {
+  background: linear-gradient(
+    to right,
+    var(--color-indigo) 0%,
+    var(--color-indigo) var(--pct),
+    var(--color-lavender) var(--pct),
+    var(--color-lavender) 100%
+  );
+}
+
+.sliderLabels {
+  display: flex;
+  justify-content: space-between;
+  font-family: var(--font-body);
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--color-gray);
+}
+
 .slider::-webkit-slider-thumb {
   -webkit-appearance: none;
   appearance: none;
@@ -755,3 +775,775 @@
 .body:not(.bodySplit) .projLabel,
 .body:not(.bodySplit) .projNote { color: var(--color-gray); }
 .body:not(.bodySplit) .projValue { color: var(--color-indigo); }
+
+/* ── "Your plan" redesign (enableSaveToCover) — contribution + cards ──── */
+.putin { display: flex; flex-direction: column; }
+
+.putinLabel {
+  font-family: var(--font-display);
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--color-indigo-soft);
+}
+
+.putinBig {
+  margin-top: 5px;
+  font-family: var(--font-display);
+  font-size: 25px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  line-height: 1.05;
+  color: var(--color-indigo);
+  font-variant-numeric: tabular-nums;
+}
+
+.putinBig small { font-size: 13px; font-weight: 700; color: var(--color-gray); }
+
+.putinSub {
+  margin: 4px 0 0;
+  font-family: var(--font-body);
+  font-size: 12px;
+  color: var(--color-gray);
+  font-variant-numeric: tabular-nums;
+}
+
+.ocards { display: flex; flex-direction: column; gap: 10px; }
+
+.oc {
+  position: relative;
+  border-radius: 11px;
+  padding: 12px 14px 12px 16px;
+  overflow: hidden;
+}
+
+.oc::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+}
+
+.oc[data-tone='ret'] { background: color-mix(in srgb, var(--color-indigo) 5%, var(--color-white)); }
+.oc[data-tone='ret']::before { background: var(--color-indigo); }
+.oc[data-tone='emg'] { background: color-mix(in srgb, var(--color-teal) 7%, var(--color-white)); }
+.oc[data-tone='emg']::before { background: var(--color-teal); }
+.oc[data-tone='ins'] { background: color-mix(in srgb, var(--color-green) 7%, var(--color-white)); }
+.oc[data-tone='ins']::before { background: var(--color-green); }
+.oc[data-tone='ins'][data-empty='true'] { background: color-mix(in srgb, var(--color-gray) 6%, var(--color-white)); }
+.oc[data-tone='ins'][data-empty='true']::before { background: var(--color-gray); }
+
+.ocTop {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.ocName {
+  font-family: var(--font-display);
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--color-slate);
+}
+
+.ocVal {
+  font-family: var(--font-display);
+  font-size: 19px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.oc[data-tone='ret'] .ocVal { color: var(--color-indigo); }
+.oc[data-tone='emg'] .ocVal { color: #1f6b76; }
+.oc[data-tone='ins'] .ocVal { color: #1d6b45; }
+.oc[data-tone='ins'][data-empty='true'] .ocVal { color: var(--color-gray); }
+
+.ocSub {
+  margin: 2px 0 0;
+  font-family: var(--font-body);
+  font-size: 10.5px;
+  color: var(--color-gray);
+  line-height: 1.35;
+}
+
+.payToday {
+  padding-top: 12px;
+  border-top: 1px solid var(--color-lavender);
+}
+
+.ptKey {
+  font-family: var(--font-display);
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--color-gray);
+}
+
+.ptVal {
+  display: block;
+  margin-top: 2px;
+  font-family: var(--font-display);
+  font-size: 20px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: var(--color-indigo);
+  font-variant-numeric: tabular-nums;
+}
+
+.ptNote {
+  margin: 3px 0 0;
+  font-family: var(--font-body);
+  font-size: 11px;
+  color: var(--color-gray);
+  line-height: 1.45;
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   SAVE-TO-COVER (agent onboarding, enableSaveToCover) — indexation + A/B route.
+   All classes here render only when the caller opts in, so every other caller
+   (subscriber SchedulePage, agent schedule-edit) is byte-identical.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+/* ── Indexation ("Grow your saving each year") ─────────────────────────────── */
+.idxTop {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.idxTitleWrap { min-width: 0; }
+
+.idxOpt {
+  font-family: var(--font-body);
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--color-gray);
+  letter-spacing: 0;
+}
+
+.idxSub {
+  margin: 4px 0 0;
+  font-family: var(--font-body);
+  font-size: 12px;
+  color: var(--color-gray);
+  line-height: 1.45;
+}
+
+.idxBadge {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 2px;
+  min-width: 62px;
+  padding: 7px 12px;
+  background: var(--color-indigo);
+  color: var(--color-white);
+  border: 1.5px solid var(--color-indigo);
+  border-radius: var(--radius-md);
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: var(--text-base);
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+.idxBadgeOff {
+  background: var(--color-cloud);
+  color: var(--color-gray);
+  border-color: var(--color-lavender);
+}
+
+.idxBadgeUnit {
+  font-size: 10px;
+  font-weight: 600;
+  opacity: 0.85;
+}
+
+.idxEffect {
+  margin: 2px 0 0;
+  padding: 9px 13px;
+  background: var(--color-cloud);
+  border: 1px solid var(--color-lavender);
+  border-radius: var(--radius-md);
+  font-family: var(--font-body);
+  font-size: 12.5px;
+  color: var(--color-slate);
+  line-height: 1.5;
+  font-variant-numeric: tabular-nums;
+}
+
+.idxEffect b {
+  font-family: var(--font-display);
+  font-weight: 800;
+  color: var(--color-indigo);
+}
+
+.idxEffectUp { color: color-mix(in srgb, var(--color-green) 74%, #000); }
+
+/* ── Cost-for-a-year + route choice ────────────────────────────────────────── */
+.saveCover {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  margin-top: var(--space-1);
+}
+
+.target {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--space-3);
+  padding: 11px 14px;
+  background: var(--color-cloud);
+  border: 1px solid var(--color-lavender);
+  border-radius: var(--radius-md);
+}
+
+.targetLabel {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 12.5px;
+  color: var(--color-slate);
+}
+
+.targetValue {
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: var(--text-lg);
+  color: var(--color-indigo);
+  font-variant-numeric: tabular-nums;
+}
+
+.targetUnit {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--color-gray);
+}
+
+.payQ {
+  margin: var(--space-1) 0 0;
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 13px;
+  color: var(--color-indigo);
+}
+
+.routes {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+@media (max-width: 460px) {
+  .routes { grid-template-columns: 1fr; }
+}
+
+.route {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  text-align: left;
+  padding: 13px;
+  background: var(--color-white);
+  border: 1.5px solid var(--color-lavender);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  touch-action: manipulation;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.route:hover { border-color: var(--color-indigo-soft); }
+
+.route[data-active='true'] {
+  border-color: var(--color-indigo);
+  background: color-mix(in srgb, var(--color-indigo) 4%, transparent);
+  box-shadow: inset 0 0 0 1px var(--color-indigo);
+}
+
+.route:focus-visible {
+  outline: 2px solid var(--color-indigo);
+  outline-offset: 2px;
+}
+
+.routeTop {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.routeDot {
+  flex: 0 0 auto;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: 2px solid var(--color-lavender);
+}
+
+.route[data-active='true'] .routeDot {
+  border-color: var(--color-indigo);
+  background: radial-gradient(circle, var(--color-indigo) 43%, transparent 46%);
+}
+
+.routeLabel {
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: var(--text-sm);
+  color: var(--color-indigo);
+  letter-spacing: -0.01em;
+}
+
+.routeSub {
+  font-family: var(--font-body);
+  font-size: 11.5px;
+  color: var(--color-gray);
+  line-height: 1.45;
+}
+
+.routeTag {
+  display: inline-block;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 10.5px;
+  padding: 2px 8px;
+  border-radius: var(--radius-full);
+}
+
+.routeTagNow {
+  background: color-mix(in srgb, var(--color-green) 14%, transparent);
+  color: color-mix(in srgb, var(--color-green) 74%, #000);
+}
+
+.routeTagBuild {
+  background: color-mix(in srgb, var(--color-status-warning) 18%, transparent);
+  color: color-mix(in srgb, var(--color-status-warning) 55%, #000);
+}
+
+/* ── Route A: covered-today note (green) ───────────────────────────────────── */
+.aline {
+  display: flex;
+  gap: 9px;
+  padding: 12px 13px;
+  border: 1px solid color-mix(in srgb, var(--color-green) 30%, transparent);
+  background: color-mix(in srgb, var(--color-green) 7%, transparent);
+  border-radius: var(--radius-md);
+  color: color-mix(in srgb, var(--color-green) 72%, #000);
+}
+
+.aline svg { flex: 0 0 auto; margin-top: 1px; }
+
+.alineTx {
+  font-family: var(--font-body);
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: color-mix(in srgb, var(--color-green) 68%, #000);
+}
+
+.alineTx b { color: color-mix(in srgb, var(--color-green) 80%, #000); }
+
+/* ── Route B: the saving tin (amber = still building) ──────────────────────── */
+.detail {
+  border: 1px solid color-mix(in srgb, var(--color-status-warning) 40%, transparent);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  background: color-mix(in srgb, var(--color-status-warning) 5%, transparent);
+}
+
+.detailHead {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--space-3);
+  padding: 11px 13px;
+  border-bottom: 1px solid color-mix(in srgb, var(--color-status-warning) 30%, transparent);
+}
+
+.detailTitle,
+.detailProj {
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 12.5px;
+  color: color-mix(in srgb, var(--color-status-warning) 55%, #000);
+  font-variant-numeric: tabular-nums;
+}
+
+.detailBody { padding: 14px 13px; }
+
+.buildMsg {
+  margin: 0 0 14px;
+  font-family: var(--font-body);
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: color-mix(in srgb, var(--color-status-warning) 62%, #000);
+}
+
+.tinArea {
+  display: flex;
+  gap: 18px;
+  align-items: center;
+}
+
+.tin {
+  position: relative;
+  width: 108px;
+  height: 138px;
+  flex: 0 0 auto;
+}
+
+.tinLid {
+  position: absolute;
+  top: 0;
+  left: -6px;
+  right: -6px;
+  height: 12px;
+  background: var(--color-indigo);
+  border-radius: 5px;
+  z-index: 4;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding-right: 5px;
+}
+
+.tinShield { display: inline-flex; }
+.tinShield svg { stroke: var(--color-lavender); transition: stroke 0.3s ease; }
+.tinShield[data-on='true'] svg { stroke: var(--color-white); }
+
+.tinBody {
+  position: absolute;
+  top: 9px;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  border: 2.5px solid var(--color-indigo);
+  border-top: none;
+  border-radius: 2px 2px 16px 16px;
+  background: var(--color-cloud);
+  overflow: hidden;
+}
+
+.tinLine {
+  position: absolute;
+  left: -4px;
+  right: -4px;
+  bottom: 80%;
+  border-top: 2.5px dashed var(--color-green);
+  z-index: 3;
+}
+
+.tinLine::after {
+  content: '';
+  position: absolute;
+  right: -3px;
+  top: -4.5px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--color-green);
+}
+
+.tinCoins {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 0;
+  background: var(--color-status-warning);
+  background-image: repeating-linear-gradient(
+    0deg,
+    var(--color-status-warning) 0 9px,
+    color-mix(in srgb, var(--color-status-warning) 78%, #000) 9px 11px
+  );
+  border-radius: 5px 5px 0 0;
+  /* Glide the pile to its new pace level on the brand expo ease (hard decel =
+     natural settle, no overshoot, so coins can never cross the goal line). */
+  transition: height 0.55s var(--ease-out-expo), background-color 0.3s ease;
+}
+
+/* Living surface sheen — the only continuous motion. opacity + transform only;
+   rides up/down with the pile so the surface always looks quietly alive. */
+.tinCoins::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 6px;
+  border-radius: 5px 5px 0 0;
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--color-white) 72%, transparent) 0%,
+    transparent 100%
+  );
+  transform-origin: top;
+  opacity: 0.4;
+  pointer-events: none;
+  animation: tinMeniscus var(--tin-pace-dur, 5s) ease-in-out infinite;
+}
+
+/* One-shot "it landed" flash — remounted by React key on every edit. Plays once
+   over the freshly-settled coins; transform + opacity only, self-clears. */
+.tinFx {
+  position: absolute;
+  left: 2px;
+  right: 2px;
+  bottom: 0;
+  height: 100%;
+  border-radius: 5px 5px 0 0;
+  transform-origin: bottom center;
+  background: linear-gradient(
+    0deg,
+    transparent 0%,
+    color-mix(in srgb, var(--color-white) 55%, transparent) 55%,
+    transparent 100%
+  );
+  opacity: 0;
+  pointer-events: none;
+  animation: tinSettle 520ms var(--ease-out-expo);
+}
+
+.tinCoinsEmpty {
+  background: var(--color-lavender);
+  background-image: none;
+}
+
+/* No life on the lavender idle stub. */
+.tinCoinsEmpty::after { display: none; }
+
+@keyframes tinMeniscus {
+  0%, 100% { opacity: 0.34; transform: translateY(0) scaleY(1); }
+  50% { opacity: 0.58; transform: translateY(-0.5px) scaleY(1.16); }
+}
+
+@keyframes tinSettle {
+  0% { opacity: 0; transform: translateY(7px) scaleY(1.04); }
+  45% { opacity: 0.72; }
+  100% { opacity: 0; transform: translateY(-3px) scaleY(1); }
+}
+
+.tinPill {
+  position: absolute;
+  top: -10px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--color-white);
+  border: 1px solid var(--color-status-warning);
+  color: color-mix(in srgb, var(--color-status-warning) 58%, #000);
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 10px;
+  padding: 2px 8px;
+  border-radius: 9px;
+  white-space: nowrap;
+  box-shadow: var(--shadow-sm);
+  font-variant-numeric: tabular-nums;
+}
+
+.tinInfo { flex: 1; min-width: 0; }
+
+.tinGoal {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px;
+  background: color-mix(in srgb, var(--color-green) 10%, transparent);
+  color: color-mix(in srgb, var(--color-green) 74%, #000);
+  border-radius: 9px;
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+.tinGoal svg { flex: 0 0 auto; stroke: color-mix(in srgb, var(--color-green) 74%, #000); }
+
+.tinCap {
+  margin: 10px 0 0;
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 15px;
+  color: var(--color-indigo);
+  line-height: 1.3;
+}
+
+.tinCap b { color: var(--color-indigo); }
+
+.tinSub {
+  margin: 4px 0 0;
+  font-family: var(--font-body);
+  font-size: 11.5px;
+  color: var(--color-gray);
+  line-height: 1.5;
+}
+
+.linkNote {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin-top: 13px;
+  padding: 9px 11px;
+  background: color-mix(in srgb, var(--color-indigo) 4.5%, transparent);
+  border-radius: var(--radius-md);
+  font-family: var(--font-body);
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--color-indigo-soft);
+}
+
+.linkNote svg { flex: 0 0 auto; stroke: var(--color-indigo-soft); }
+
+.zeroWarn {
+  display: flex;
+  gap: 9px;
+  margin-top: 13px;
+  padding: 11px 12px;
+  background: color-mix(in srgb, var(--color-status-poor) 8%, transparent);
+  border: 1px solid color-mix(in srgb, var(--color-status-poor) 32%, transparent);
+  border-radius: var(--radius-md);
+  color: var(--color-status-poor);
+}
+
+.zeroWarn svg { flex: 0 0 auto; margin-top: 1px; }
+
+.zeroWarnTx {
+  font-family: var(--font-body);
+  font-size: 12px;
+  line-height: 1.5;
+  color: color-mix(in srgb, var(--color-status-poor) 72%, #000);
+}
+
+/* ── Agent hint (this is the agent-assisted form) ──────────────────────────── */
+.agentNote {
+  display: flex;
+  gap: 9px;
+  padding: 11px 12px;
+  background: color-mix(in srgb, var(--color-teal) 9%, transparent);
+  border: 1px solid color-mix(in srgb, var(--color-teal) 30%, transparent);
+  border-radius: var(--radius-md);
+  color: var(--color-teal);
+}
+
+.agentNote svg { flex: 0 0 auto; margin-top: 1px; }
+
+.agentNoteTx {
+  font-family: var(--font-body);
+  font-size: 12px;
+  line-height: 1.5;
+  color: color-mix(in srgb, var(--color-teal) 68%, #000);
+}
+
+.agentNoteTx b { color: color-mix(in srgb, var(--color-teal) 80%, #000); }
+
+/* ── Summary additions (due note + cover status) ───────────────────────────── */
+.summaryNote {
+  margin: 2px 0 0;
+  font-family: var(--font-body);
+  font-size: 12px;
+  line-height: 1.45;
+  color: rgba(217, 220, 242, 0.8);
+}
+
+.coverStatus {
+  margin-top: var(--space-1);
+  padding-top: var(--space-3);
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+}
+
+.coverStatusHead {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: var(--space-3);
+  font-family: var(--font-body);
+  font-size: var(--text-sm);
+  color: rgba(217, 220, 242, 0.85);
+}
+
+.coverStatusPremium {
+  font-family: var(--font-display);
+  font-weight: 700;
+  color: var(--color-white);
+  font-variant-numeric: tabular-nums;
+}
+
+.coverStatusPremium small {
+  font-size: 10px;
+  font-weight: 600;
+  opacity: 0.8;
+}
+
+.statusPill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  align-self: flex-start;
+  padding: 4px 10px;
+  border-radius: var(--radius-full);
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 11px;
+}
+
+.statusDot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: currentColor;
+  flex: 0 0 auto;
+}
+
+.statusPill[data-state='building'] {
+  background: color-mix(in srgb, var(--color-status-warning) 22%, transparent);
+  color: #F4CE7A;
+}
+
+.statusPill[data-state='active'] {
+  background: color-mix(in srgb, var(--color-green) 22%, transparent);
+  color: #8FE3B4;
+}
+
+/* On the light summary card (split / mobile-single-column light theme) the
+   dark-summary overrides above are too light — re-tone note/status to ink. */
+.bodySplit .summaryNote,
+.body:not(.bodySplit) .summaryNote { color: var(--color-gray); }
+
+.bodySplit .coverStatus,
+.body:not(.bodySplit) .coverStatus { border-top-color: var(--color-lavender); }
+
+.bodySplit .coverStatusHead,
+.body:not(.bodySplit) .coverStatusHead { color: var(--color-slate); }
+
+.bodySplit .coverStatusPremium,
+.body:not(.bodySplit) .coverStatusPremium { color: var(--color-indigo); }
+
+.bodySplit .statusPill[data-state='building'],
+.body:not(.bodySplit) .statusPill[data-state='building'] {
+  background: color-mix(in srgb, var(--color-status-warning) 16%, transparent);
+  color: color-mix(in srgb, var(--color-status-warning) 55%, #000);
+}
+
+.bodySplit .statusPill[data-state='active'],
+.body:not(.bodySplit) .statusPill[data-state='active'] {
+  background: color-mix(in srgb, var(--color-green) 14%, transparent);
+  color: color-mix(in srgb, var(--color-green) 74%, #000);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  /* Keep the informative level (height is inline, so edits still snap the pile
+     to the right pace) but freeze every loop and one-shot flash. */
+  .tinCoins { transition: none; }
+  .tinCoins::after { animation: none; opacity: 0.4; transform: none; }
+  .tinFx { animation: none; opacity: 0; }
+}

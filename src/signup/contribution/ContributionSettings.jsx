@@ -7,6 +7,10 @@ import {
   RETIREMENT_AGE,
   MIN_CONTRIBUTION,
   INSURANCE_PRODUCTS,
+  annualPremium,
+  tinFillState,
+  TIN_LINE_PCT,
+  presetsForFrequency,
 } from '../../constants/savings';
 import SignupTopbar from '../SignupTopbar';
 import { PillChipGroup } from '../../components/PillChip';
@@ -15,6 +19,7 @@ import styles from './ContributionSettings.module.css';
 export { MIN_CONTRIBUTION };
 
 const FREQUENCIES = [
+  { id: FREQUENCY.DAILY,       label: 'Daily',       helper: 'every day',      cadence: 'every day'      },
   { id: FREQUENCY.WEEKLY,      label: 'Weekly',      helper: 'every week',     cadence: 'every week'     },
   { id: FREQUENCY.MONTHLY,     label: 'Monthly',     helper: 'every month',    cadence: 'every month'    },
   { id: FREQUENCY.QUARTERLY,   label: 'Quarterly',   helper: 'every 3 months', cadence: 'every 3 months' },
@@ -22,21 +27,25 @@ const FREQUENCIES = [
   { id: FREQUENCY.ANNUALLY,    label: 'Annually',    helper: 'every year',     cadence: 'every year'     },
 ];
 
-const PRESET_AMOUNTS = [10000, 25000, 50000, 100000];
-
 const PAYMENT_METHODS = [
   { id: 'momo',    label: 'Mobile Money',            description: 'MTN or Airtel — instant confirmation' },
   { id: 'gateway', label: 'Pay with another method', description: 'Card, bank or wallet — via Pesapal'   },
 ];
 
-/** Short per-period suffix for premium chips ("/mo", "/wk", …). */
+/** Short per-period suffix for the "You save …/xx" summary line ("/mo", "/wk", …). */
 const PERIOD_SUFFIX = {
-  [FREQUENCY.WEEKLY]:      'wk',
-  [FREQUENCY.MONTHLY]:     'mo',
-  [FREQUENCY.QUARTERLY]:   'qtr',
+  [FREQUENCY.DAILY]:      'day',
+  [FREQUENCY.WEEKLY]:     'wk',
+  [FREQUENCY.MONTHLY]:    'mo',
+  [FREQUENCY.QUARTERLY]:  'qtr',
   [FREQUENCY.HALF_YEARLY]: '6mo',
-  [FREQUENCY.ANNUALLY]:    'yr',
+  [FREQUENCY.ANNUALLY]:   'yr',
 };
+
+/* The "cover starts" goal line (TIN_LINE_PCT) and the coin-fill level are shared
+ * with the agent form via src/constants/savings.js — the fill is now a live pace
+ * gauge (tinFillState) rather than a fixed illustration, so the pot reacts as the
+ * user edits their split/products. */
 
 /**
  * Display order for the insurance list (Life, Health, Funeral — the mockup
@@ -48,19 +57,20 @@ const ORDERED_INSURANCE = INSURANCE_DISPLAY_ORDER
   .map((id) => INSURANCE_PRODUCTS.find((p) => p.id === id))
   .filter(Boolean);
 
-/** Relatable Ugandan milestones — shown at retirement. */
-const MILESTONES = [
-  { id: 'land',    cost: 8_000_000, one: 'plot of land',        many: 'plots of land' },
-  { id: 'tuition', cost: 4_000_000, one: 'year of university',  many: 'years of university' },
-  { id: 'income',  cost: 1_000_000, one: 'month of income',     many: 'months of retirement income' },
-];
-
 function getFreq(frequencyId) {
-  return FREQUENCIES.find((f) => f.id === frequencyId) ?? FREQUENCIES[1];
+  return (
+    FREQUENCIES.find((f) => f.id === frequencyId) ??
+    FREQUENCIES.find((f) => f.id === FREQUENCY.MONTHLY)
+  );
 }
 
 function digitsOnly(str, max = 10) {
   return String(str).replace(/[^\d]/g, '').slice(0, max);
+}
+
+/** Short product name for the compact cover cards ("Life insurance" → "Life"). */
+function shortProductName(label) {
+  return String(label).replace(/\s*insurance$/i, '');
 }
 
 /**
@@ -115,6 +125,145 @@ function ProductIcon({ id }) {
   );
 }
 
+/* ── Small inline glyphs used by the two-page flow ────────────────────── */
+function IconCheck() {
+  return (
+    <svg viewBox="0 0 24 24" width="11" height="11" fill="none" aria-hidden="true">
+      <path d="M5 12l5 5 9-11" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+function IconShield() {
+  return (
+    <svg viewBox="0 0 24 24" width="15" height="15" fill="none" aria-hidden="true">
+      <path d="M12 3l7 3v5c0 4-3 7-7 8-4-1-7-4-7-8V6z" stroke="currentColor" strokeWidth="1.9" strokeLinejoin="round" />
+    </svg>
+  );
+}
+function IconShieldCheck() {
+  return (
+    <svg viewBox="0 0 24 24" width="13" height="13" fill="none" aria-hidden="true">
+      <path d="M12 3l7 3v5c0 4-3 7-7 8-4-1-7-4-7-8V6z" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" />
+      <path d="M9 11l2 2 4-4" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+function IconCheckCircle() {
+  return (
+    <svg viewBox="0 0 24 24" width="17" height="17" fill="none" aria-hidden="true">
+      <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="1.9" />
+      <path d="M9 12l2 2 4-4" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+function IconArrowRight({ size = 14 }) {
+  return (
+    <svg viewBox="0 0 24 24" width={size} height={size} fill="none" aria-hidden="true">
+      <path d="M5 12h14M13 6l6 6-6 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+function IconArrowLeft() {
+  return (
+    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" aria-hidden="true">
+      <path d="M11 5l-7 7 7 7M4 12h16" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+function IconAlert() {
+  return (
+    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" aria-hidden="true">
+      <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="1.9" />
+      <path d="M12 8v5M12 16.5v.5" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+/**
+ * Route B "save up for it" tin — a symbolic illustration of the emergency
+ * savings filling toward the annual premium. At onboarding nothing is saved
+ * yet, so the coins render at a fixed illustrative height; the copy + months
+ * projection react to the split + selected products. When the emergency share
+ * is zero the tin can never fill → an inline warning replaces the helper note.
+ */
+function SaveUpTin({ target, monthlyEmergency, monthsToCover, emergencyPct, isZero }) {
+  const monthsWord = monthsToCover === 1 ? 'month' : 'months';
+  // Live pace gauge: coin height + surface tempo are derived from how fast cover
+  // would fill, so every split/product edit visibly moves the pile. fxKey remounts
+  // the one-shot "settle" flash whenever the settled level or month count changes.
+  const fill = tinFillState(target, monthlyEmergency);
+  const fxKey = `${Math.round(fill.heightPct)}-${monthsToCover}`;
+  return (
+    <div className={styles.detail}>
+      <div className={styles.detailHd}>
+        <span className={styles.detailTitle}>Filling the tin</span>
+        <span className={styles.detailProj}>
+          {isZero ? 'not filling yet' : `full in about ${monthsToCover} ${monthsWord}`}
+        </span>
+      </div>
+      <div className={styles.detailBody}>
+        <p className={styles.buildMsg}>
+          You are not covered yet. Cover starts the day your coins reach the line.
+        </p>
+        <div className={styles.tinArea}>
+          <div className={styles.tin}>
+            <div className={styles.tinLid}>
+              <span className={styles.tinShield} data-on="false"><IconShield /></span>
+            </div>
+            <div className={styles.tinBody}>
+              <div className={styles.tinLine} style={{ bottom: `${TIN_LINE_PCT}%` }} />
+              <div
+                className={`${styles.tinCoins} ${isZero ? styles.tinCoinsEmpty : ''}`}
+                style={{ height: `${fill.heightPct}%`, '--tin-pace-dur': `${fill.sheenDur}s` }}
+              >
+                {!isZero && (
+                  <span className={styles.tinPill}>≈ {formatUGXExact(monthlyEmergency)}/mo</span>
+                )}
+                {!isZero && <span key={fxKey} className={styles.tinFx} aria-hidden="true" />}
+              </div>
+            </div>
+          </div>
+          <div className={styles.tinInfo}>
+            <div className={styles.tinGoal}>
+              <IconShieldCheck /> Cover starts at <span>{formatUGXExact(target)}</span>
+            </div>
+            <div className={styles.tinCap}>
+              {isZero ? (
+                'Add money you can take out'
+              ) : (
+                <>Full in about <strong>{monthsToCover}</strong> {monthsWord}</>
+              )}
+            </div>
+            <div className={styles.tinSub}>
+              {isZero
+                ? 'Right now nothing goes into the tin.'
+                : 'Your saved money moves into the tin on its own.'}
+            </div>
+          </div>
+        </div>
+        {isZero ? (
+          <div className={styles.warn0}>
+            <IconAlert />
+            <span className={styles.warn0Tx}>
+              Nothing goes to “take out any time”, so the tin never fills. Add some, or pay the
+              whole year now.
+            </span>
+          </div>
+        ) : (
+          <div className={styles.linkNote}>
+            <IconArrowRight />
+            <span>
+              {emergencyPct >= 60
+                ? 'A big “take out” share fills the tin fast.'
+                : 'Put more in “take out any time” and the tin fills faster.'}
+            </span>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 /** Default insurance selection: life only (preserves the long-standing demo
  *  default of a single life policy). The user can add Health/Funeral. */
 function resolveInitialInsurance(initial) {
@@ -125,9 +274,10 @@ function resolveInitialInsurance(initial) {
 }
 
 /**
- * Payment-method picker — section 05 at the bottom of the (white) contribution
- * panel. The actual Pay action is the summary aside's CTA; this only collects
- * the method + momo details. State is owned by ContributionSettings.
+ * Payment-method picker — collects the method + momo details in the summary
+ * aside (shown on the "Protect your family" page, beside "You pay today"). The
+ * actual Pay action is the pinned footer CTA; this only collects the method.
+ * State is owned by ContributionSettings.
  */
 function PaymentMethodPicker({ method, setMethod, momoProvider, setMomoProvider, momoPhone, setMomoPhone, processing }) {
   return (
@@ -232,25 +382,43 @@ function PaymentMethodPicker({ method, setMethod, momoProvider, setMomoProvider,
 }
 
 /**
- * Full page for /signup/contribution — the "Plan & pay" stage. Sets the
- * contribution schedule, insurance products, and payment method on a single
- * page (no separate payment step), then makes the first contribution.
+ * Full page for /signup/contribution — the "Plan & pay" stage. A two-page flow:
+ * page 1 sets the savings schedule (frequency, amount, split, yearly step-up),
+ * page 2 adds optional family cover with a "pay now / save up for it" choice.
+ * A live "Your plan" summary aside and a pinned footer CTA drive the payment.
  */
 export default function ContributionSettings({ initial, dob, phone, collectSchedule = true, onClose, onConfirm }) {
+  const [page, setPage] = useState('contrib');
   const [frequency, setFrequency] = useState(initial?.frequency ?? 'monthly');
   const [amountStr, setAmountStr] = useState(initial?.amount ? String(initial.amount) : '');
-  const [retirementPct, setRetirementPct] = useState(initial?.retirementPct ?? 80);
+  // Retirement is at least 60% of the split — liquid savings caps at 40%. Clamp
+  // the restored value too (an older schedule may carry a lower share).
+  const [retirementPct, setRetirementPct] = useState(() => Math.max(60, initial?.retirementPct ?? 80));
   const [insuranceTypes, setInsuranceTypes] = useState(() => resolveInitialInsurance(initial));
+  const [indexationPct, setIndexationPct] = useState(initial?.contributionIndexationPct ?? 5);
+  const [route, setRoute] = useState(initial?.insuranceFundingMode === 'pay_now' ? 'A' : 'B');
+  // % of the take-out (emergency) slice redirected to build cover; the rest stays
+  // liquid. Only relevant for Route B "save up". Default 50 → half builds cover.
+  const [savingsPct, setSavingsPct] = useState(initial?.insuranceSavingsPct ?? 50);
+  // Insurance-page sub-state: false = "Your plan" summary; true = the summary box
+  // converts in place into the payment-method picker (no stacked scroll).
+  const [payMode, setPayMode] = useState(false);
+  // Checkout breakdown (the "You pay today" itemisation) — open by default so the
+  // split between contribution and cover is visible at the payment step; the
+  // chevron collapses it.
+  const [breakdownOpen, setBreakdownOpen] = useState(true);
   const [touched, setTouched] = useState(Boolean(initial?.amount));
 
   // Payment state (formerly PaymentStep's) — the picker lives in the summary
-  // aside and the Pay CTA below it shares this state.
+  // aside and the pinned footer Pay CTA shares this state.
   const [method, setMethod] = useState('momo');
   const [momoProvider, setMomoProvider] = useState('mtn');
   const [momoPhone, setMomoPhone] = useState(phone || '');
   const [processing, setProcessing] = useState(false);
 
   const amountInputRef = useRef(null);
+  const pbodyRef = useRef(null);
+  const shellRef = useRef(null);
 
   // Escape returns without saving.
   useEffect(() => {
@@ -277,35 +445,114 @@ export default function ContributionSettings({ initial, dob, phone, collectSched
     [insuranceTypes],
   );
   const periodLabel = PERIOD_SUFFIX[freq.id] ?? 'mo';
+  // Legacy per-period premium — retained purely for the write payload's
+  // `insurancePremium` field (back-compat); the UI now prices cover annually.
   const insurancePremium = selectedProducts.reduce(
     (sum, p) => sum + perPeriodPremium(p.premiumMonthly),
     0,
   );
-  const totalPerPeriod   = hasAmount ? amount + insurancePremium : 0;
-  const annualTotal      = hasAmount ? totalPerPeriod * freqPerYear : 0;
 
-  const contribAnnual       = hasAmount ? amount * freqPerYear : 0;
-  const contribMonthly      = contribAnnual / 12;
   const retirementPerPeriod = hasAmount ? Math.round(amount * (retirementPct / 100)) : 0;
   const emergencyPerPeriod  = hasAmount ? amount - retirementPerPeriod : 0;
 
+  // ── Insurance / save-to-cover ──────────────────────────────────
+  const insuranceTarget = useMemo(
+    () => selectedProducts.reduce((sum, p) => sum + annualPremium(p), 0),
+    [selectedProducts],
+  );
+  const hasProducts = selectedProducts.length > 0;
+  const isRouteA = route === 'A';
+  // The take-out (emergency) slice splits: `coverPerPeriod` is redirected to build
+  // cover (Route B), the rest stays liquid. Only that share fills the tin.
+  const coverPerPeriod  = hasProducts && !isRouteA ? Math.round(emergencyPerPeriod * (savingsPct / 100)) : 0;
+  const liquidPerPeriod = emergencyPerPeriod - coverPerPeriod;
+  const monthlyToCover  = (coverPerPeriod * freqPerYear) / 12;
+  // Cover can't fill if there's no take-out money OR 0% is assigned ([M3] guard).
+  const coverGetsNothing = !(monthlyToCover > 0);
+  const monthsToCover = (monthlyToCover > 0 && insuranceTarget > 0)
+    ? Math.ceil(insuranceTarget / monthlyToCover)
+    : Infinity;
+  const monthsLabel = Number.isFinite(monthsToCover)
+    ? `${monthsToCover} ${monthsToCover === 1 ? 'month' : 'months'}`
+    : '—';
+
+  // Route A pays the year's premium today alongside the contribution; Route B
+  // (and no-cover) pays only the contribution — the premium fills from the tin.
+  const payTotal = hasAmount ? (hasProducts && isRouteA ? amount + insuranceTarget : amount) : 0;
+  const dueDisplay = hasAmount ? (page === 'insurance' ? payTotal : amount) : 0;
+  const dueBrk = page !== 'insurance'
+    ? 'This is just your saving. Cover comes next.'
+    : (!hasProducts
+        ? 'No cover chosen — just your saving.'
+        : (isRouteA
+            ? 'Your saving + one year of cover.'
+            : (coverPerPeriod > 0
+                ? `Your saving — ${formatUGXExact(coverPerPeriod)} of it builds your cover.`
+                : 'Your saving — assign liquid savings to start building cover.')));
+
+  // ── Checkout breakdown ("You pay today" itemisation) ──────────────
+  // What actually leaves the member's wallet today: the pension contribution,
+  // plus (Route A only) one year of insurance premium paid up-front. Route B
+  // charges nothing extra — the premium builds out of the liquid-savings slice.
+  const payItems = [];
+  if (hasAmount) {
+    payItems.push({ key: 'contribution', label: 'Pension contribution', value: amount, unit: `/${periodLabel}` });
+    if (page === 'insurance' && hasProducts && isRouteA) {
+      payItems.push({ key: 'premium', label: 'Insurance · one year of cover', value: insuranceTarget });
+    }
+  }
+  // Only meaningful once there are ≥2 charge lines to sum (Route A). Otherwise the
+  // header total already IS the single line, so a "Total" row would just repeat it.
+  const showPayTotal = payItems.length > 1;
+  // The insurance PAYOUT (Σ cover) — what the family receives, shown as context
+  // beneath the charges. Distinct from the premium (what they pay).
+  const payoutSub = isRouteA
+    ? 'Paid to your family on a valid claim'
+    : (coverPerPeriod > 0
+        ? 'Starts once your savings reach it'
+        : 'Assign liquid savings to start it');
+
   const yrs = yearsToRetirement(dob);
+  const contribMonthly = hasAmount ? (amount * freqPerYear) / 12 : 0;
   const retirementMonthly = contribMonthly * (retirementPct / 100);
   const retirementFV = yrs && yrs > 0 ? calcFV(retirementMonthly, yrs) : 0;
   const retirementYears = yrs != null ? Math.round(yrs) : null;
-  const retirementYear  = retirementYears && retirementYears > 0
-    ? new Date().getFullYear() + retirementYears
-    : null;
-
-  const milestones = useMemo(() => {
-    if (!hasAmount || retirementFV <= 0) return [];
-    return MILESTONES
-      .map((m) => ({ ...m, count: Math.floor(retirementFV / m.cost) }))
-      .filter((m) => m.count >= 1);
-  }, [hasAmount, retirementFV]);
+  // "Liquid savings" projects only the take-out money that actually STAYS
+  // liquid. On Route B the cover-building slice (coverPerPeriod) is swept to pay
+  // premiums, so we compound liquidPerPeriod — keeping this figure consistent
+  // with the split slider's "{liquidPerPeriod} stays yours to take out" line.
+  // Route A / no cover: the whole take-out slice stays liquid.
+  const liquidMonthly = (hasProducts && !isRouteA)
+    ? (liquidPerPeriod * freqPerYear) / 12
+    : (contribMonthly - retirementMonthly);
+  const emergencyFV = yrs && yrs > 0 ? calcFV(liquidMonthly, yrs) : 0;
+  // Cover PAYOUT total (Σ product.cover) — distinct from insuranceTarget (the
+  // annual PREMIUM). The summary card shows the payout, not the premium.
+  const coverTotal = selectedProducts.reduce((sum, p) => sum + (p.cover || 0), 0);
+  // Second contribution line: the yearly total on a monthly cadence, or the
+  // monthly-equivalent when they save weekly/quarterly (never a redundant repeat).
+  const planSubText = freqPerYear === 12
+    ? `≈ ${formatUGXExact(amount * 12)} a year`
+    : `≈ ${formatUGXExact(contribMonthly)} a month overall`;
+  const coverCardSub = !hasProducts
+    ? 'Add cover on this step'
+    : isRouteA
+      ? 'Covered when you pay'
+      : coverGetsNothing
+        ? 'Add liquid savings'
+        : `Building · about ${monthsLabel}`;
 
   const momoValid = digitsOnly(momoPhone).length >= 9;
   const canPay = canConfirm && (method === 'gateway' || momoValid);
+
+  function goPage(next) {
+    setPayMode(false);
+    setPage(next);
+    requestAnimationFrame(() => {
+      if (pbodyRef.current) pbodyRef.current.scrollTop = 0;
+      if (shellRef.current) shellRef.current.scrollTop = 0;
+    });
+  }
 
   function handlePresetClick(value) {
     setAmountStr(String(value));
@@ -347,6 +594,15 @@ export default function ContributionSettings({ initial, dob, phone, collectSched
           includeInsurance: insuranceTypes.length > 0,
           insuranceTypes,
           insurancePremium,
+          // save-to-cover + step-up contract (consumed by contributionPayload /
+          // _insert_subscriber_chain). Route A → charge the year today; Route B
+          // → accrue from the emergency tin.
+          contributionIndexationPct: indexationPct,
+          // Only 'save_to_cover' when cover is actually selected (Route B default
+          // must not mislabel a no-cover schedule).
+          insuranceFundingMode: (insuranceTypes.length > 0 && !isRouteA) ? 'save_to_cover' : 'pay_now',
+          insurancePremiumTarget: insuranceTarget,
+          insuranceSavingsPct: savingsPct,
           paymentMethod: method,
           paymentDetails: details,
         });
@@ -354,6 +610,19 @@ export default function ContributionSettings({ initial, dob, phone, collectSched
         setProcessing(false);
       }
     }, 1200);
+  }
+
+  function handleCta() {
+    if (page === 'contrib') {
+      setTouched(true);
+      if (!hasAmount) { amountInputRef.current?.focus(); return; }
+      goPage('insurance');
+      return;
+    }
+    // Insurance page: first "Continue to payment" converts the summary box into
+    // the payment picker; the second (in pay mode) actually pays.
+    if (!payMode) { setPayMode(true); return; }
+    handlePay();
   }
 
   // Employer-only invite: collect ONLY the retirement/emergency split — no
@@ -372,28 +641,131 @@ export default function ContributionSettings({ initial, dob, phone, collectSched
 
   const payLabel = processing
     ? (method === 'gateway' ? 'Redirecting…' : 'Processing…')
-    : (method === 'gateway' ? 'Continue with Pesapal' : (hasAmount ? `Pay ${formatUGXExact(totalPerPeriod)}` : 'Pay'));
+    : (method === 'gateway' ? 'Continue with Pesapal' : `Pay ${formatUGXExact(payTotal)}`);
+  const ctaLabel = page === 'contrib'
+    ? 'Next: protect your family'
+    : (payMode ? payLabel : 'Continue to payment');
+  const ctaDisabled = page === 'insurance' && payMode && (!canPay || processing);
+  const onInsurance = page === 'insurance';
+  // Whether the checkout breakdown has anything to itemise (a cover payout and/or
+  // a separate premium charge). Only then is the dropdown offered.
+  const hasBreakdown = hasAmount && onInsurance && hasProducts;
+
+  // "You pay today" checkout block — the total, a collapsible line-item
+  // breakdown (contribution + premium + insurance payout), and the plain-language
+  // note. Rendered ABOVE the payment picker in pay mode (checkout convention) and
+  // at the foot of the plan summary otherwise.
+  const payTodayNode = (
+    <div className={styles.paytoday}>
+      <div className={styles.ptHead}>
+        <div className={styles.ptHeadMain}>
+          <span className={styles.ptKey}>You pay today</span>
+          <span className={styles.ptVal}>{hasAmount ? formatUGXExact(dueDisplay) : 'UGX —'}</span>
+        </div>
+        {hasBreakdown && (
+          <button
+            type="button"
+            className={styles.ptToggle}
+            aria-expanded={breakdownOpen}
+            aria-controls="pay-breakdown"
+            onClick={() => setBreakdownOpen((o) => !o)}
+          >
+            <span>Breakdown</span>
+            <svg className={styles.ptChevron} data-open={breakdownOpen || undefined} viewBox="0 0 24 24" width="14" height="14" fill="none" aria-hidden="true">
+              <path d="M6 9l6 6 6-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </button>
+        )}
+      </div>
+
+      <AnimatePresence initial={false}>
+        {hasBreakdown && breakdownOpen && (
+          <motion.div
+            key="breakdown"
+            id="pay-breakdown"
+            className={styles.ptBreak}
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.24, ease: EASE_OUT_EXPO }}
+          >
+            <dl className={styles.ptItems}>
+              {payItems.map((it) => (
+                <div key={it.key} className={styles.ptRow}>
+                  <dt className={styles.ptRowK}>{it.label}</dt>
+                  <dd className={styles.ptRowV}>
+                    {formatUGXExact(it.value)}{it.unit && <small>{it.unit}</small>}
+                  </dd>
+                </div>
+              ))}
+              {showPayTotal && (
+                <div className={styles.ptRow} data-total="true">
+                  <dt className={styles.ptRowK}>Total today</dt>
+                  <dd className={styles.ptRowV}>{formatUGXExact(dueDisplay)}</dd>
+                </div>
+              )}
+              <div className={styles.ptRow} data-payout="true">
+                <dt className={styles.ptRowK}>
+                  Insurance payout
+                  <span className={styles.ptRowSub}>{payoutSub}</span>
+                </dt>
+                <dd className={styles.ptRowV}>{formatUGX(coverTotal, { compact: false })}</dd>
+              </div>
+            </dl>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <p className={styles.ptNote}>{dueBrk}</p>
+      {!onInsurance && (
+        <p className={styles.ptMethods}>Pay with MoMo, Airtel or Pesapal</p>
+      )}
+    </div>
+  );
 
   return (
-    <main className={styles.page} aria-labelledby="contrib-title">
+    <main className={styles.page} aria-label="Set up your savings and first payment">
       <SignupTopbar stageKey="plan" />
 
-      <div className={styles.shell}>
+      <div className={styles.shell} data-pinned="true" ref={shellRef}>
       <motion.div
-        className={styles.card}
+        className={`${styles.card} ${styles.cardWizard}`}
         initial={{ opacity: 0, y: 14, scale: 0.99 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
         transition={{ duration: 0.5, ease: EASE_OUT_EXPO }}
       >
-        {/* ── Header ──────────────────────────────────────────── */}
-        <header className={styles.header}>
-          <div className={styles.headerText}>
-            <span className={styles.eyebrow}>Your plan</span>
-            <h1 id="contrib-title" className={styles.title}>Set up your contributions &amp; first payment</h1>
-            <p className={styles.lede}>
-              Choose how you save, then make your first contribution to switch your account on.
-              You can change any of this later.
-            </p>
+        {/* ── Sub-step tabs ─────────────────────────────────────── */}
+        <div className={styles.cardTop}>
+          <div className={styles.substeps} role="tablist" aria-label="Set up steps">
+            <button
+              type="button"
+              role="tab"
+              aria-selected={page === 'contrib'}
+              className={styles.substep}
+              data-on={page === 'contrib'}
+              data-done={page === 'insurance'}
+              onClick={() => goPage('contrib')}
+            >
+              <span className={styles.substepNum} aria-hidden="true">
+                {page === 'insurance' ? <IconCheck /> : '1'}
+              </span>
+              <span className={styles.substepLabel}>
+                Your savings<small>How much &amp; how often</small>
+              </span>
+            </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={page === 'insurance'}
+              className={styles.substep}
+              data-on={page === 'insurance'}
+              onClick={() => goPage('insurance')}
+            >
+              <span className={styles.substepNum} aria-hidden="true">2</span>
+              <span className={styles.substepLabel}>
+                Protect your family<small>Add cover (optional)</small>
+              </span>
+            </button>
           </div>
           <button
             type="button"
@@ -405,185 +777,362 @@ export default function ContributionSettings({ initial, dob, phone, collectSched
               <path d="M6 6l12 12M18 6L6 18" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" />
             </svg>
           </button>
-        </header>
+        </div>
 
-        {/* ── Section 1 — Frequency ─────────────────────────────── */}
-        <section className={styles.section} aria-label="How often?">
-          <div className={styles.sectionEyebrow}>01 · How often?</div>
-          <PillChipGroup
-            label="Contribution frequency"
-            layout="grid"
-            columns={FREQUENCIES.length}
-            className={styles.freqGrid}
+        {/* ── Scroll body: the two pages ────────────────────────── */}
+        <div className={styles.pbody} ref={pbodyRef}>
+          {/* PAGE 1 — Your savings */}
+          <div className={styles.pagePanel} data-on={page === 'contrib'}>
+            {/* Section 1 — Frequency */}
+            <section className={styles.section} aria-label="How often?">
+              <div className={styles.sectionEyebrow}>01 · How often?</div>
+              <PillChipGroup
+                label="Contribution frequency"
+                layout="grid"
+                columns={FREQUENCIES.length}
+                className={styles.freqGrid}
+              >
+                {FREQUENCIES.map((f) => {
+                  const active = frequency === f.id;
+                  return (
+                    <button
+                      key={f.id}
+                      type="button"
+                      role="radio"
+                      aria-checked={active}
+                      data-active={active}
+                      className={styles.freqCard}
+                      onClick={() => setFrequency(f.id)}
+                    >
+                      <span className={styles.freqLabel}>{f.label}</span>
+                      <span className={styles.freqHelper}>{f.helper}</span>
+                      <span className={styles.freqCheck} aria-hidden="true">
+                        <svg viewBox="0 0 16 16" width="10" height="10" fill="none">
+                          <path d="M3 8.5l3.2 3 6.3-7" stroke="currentColor" strokeWidth="2.25" strokeLinecap="round" strokeLinejoin="round" />
+                        </svg>
+                      </span>
+                    </button>
+                  );
+                })}
+              </PillChipGroup>
+            </section>
+
+            {/* Section 2 — Amount */}
+            <section className={styles.section} aria-label="How much each time?">
+              <div className={styles.sectionEyebrow}>
+                02 · How much each time?
+                <span className={styles.sectionAside}>Min {formatUGXExact(MIN_CONTRIBUTION)}</span>
+              </div>
+
+              <label className={styles.amountField} data-error={belowMin && touched}>
+                <span className={styles.amountPrefix} aria-hidden="true">UGX</span>
+                <input
+                  ref={amountInputRef}
+                  type="text"
+                  inputMode="numeric"
+                  autoComplete="off"
+                  spellCheck={false}
+                  placeholder="Enter amount"
+                  aria-label="Contribution amount in UGX"
+                  aria-invalid={belowMin && touched}
+                  aria-describedby="amt-helper"
+                  className={styles.amountInput}
+                  value={amountStr ? formatNumber(Number.parseInt(amountStr, 10)) : ''}
+                  onChange={handleAmountChange}
+                  onBlur={() => setTouched(true)}
+                />
+                <span className={styles.amountCadence} aria-hidden="true">{cadence}</span>
+              </label>
+
+              <div className={styles.presetRow} role="group" aria-label="Quick-select amounts">
+                {presetsForFrequency(freq.id).map((v) => {
+                  const active = amount === v;
+                  return (
+                    <button
+                      key={v}
+                      type="button"
+                      className={styles.presetChip}
+                      data-active={active}
+                      onClick={() => handlePresetClick(v)}
+                    >
+                      {formatUGXExact(v)}
+                    </button>
+                  );
+                })}
+              </div>
+
+              {belowMin && touched && (
+                <p id="amt-helper" className={styles.errorLine}>
+                  <svg viewBox="0 0 24 24" width="12" height="12" fill="none" aria-hidden="true">
+                    <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="1.75" />
+                    <path d="M12 7v6M12 16.5v.5" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" />
+                  </svg>
+                  Enter at least {formatUGXExact(MIN_CONTRIBUTION)} to continue.
+                </p>
+              )}
+            </section>
+
+            {/* Section 3 — Allocation */}
+            <section className={styles.section} aria-label="Split your savings">
+              <div className={styles.sectionEyebrow}>03 · Split your savings</div>
+
+              <div className={styles.splitHead}>
+                <div className={styles.splitSide}>
+                  <span className={styles.splitLabel}>Retirement</span>
+                  <span className={styles.splitPct}>{retirementPct}<em>%</em></span>
+                </div>
+                <div className={styles.splitSide} data-align="right">
+                  <span className={styles.splitLabel} data-tone="teal">Liquid savings</span>
+                  <span className={styles.splitPct} data-tone="teal">{emergencyPct}<em>%</em></span>
+                </div>
+              </div>
+
+              <input
+                type="range"
+                min={60}
+                max={100}
+                step={5}
+                value={retirementPct}
+                onChange={(e) => setRetirementPct(Number.parseInt(e.target.value, 10))}
+                aria-label="Retirement savings percentage"
+                aria-valuetext={`${retirementPct} percent to retirement, ${emergencyPct} percent to liquid savings`}
+                className={styles.slider}
+                style={{ '--pct': `${(retirementPct - 60) * 2.5}%` }}
+              />
+
+              <div
+                className={styles.allocBar}
+                role="img"
+                aria-label={`${retirementPct}% retirement, ${emergencyPct}% liquid savings`}
+              >
+                <span className={styles.allocFillRetirement} style={{ flexBasis: `${retirementPct}%` }} />
+                <span className={styles.allocFillEmergency} style={{ flexBasis: `${emergencyPct}%` }} />
+              </div>
+
+              <p className={styles.bucketHelp}>
+                <span className={styles.bucketDot} data-tone="retirement" aria-hidden="true" />
+                <strong>Retirement</strong> is locked until retirement age
+                <span className={styles.bucketSep} aria-hidden="true">·</span>
+                <span className={styles.bucketDot} data-tone="emergency" aria-hidden="true" />
+                <strong>Liquid savings</strong> can be taken out any time
+              </p>
+            </section>
+
+            {/* Section 4 — Yearly step-up (indexation) */}
+            <section className={styles.section} aria-label="Grow your saving each year">
+              <div className={styles.idxTop}>
+                <div className={styles.idxTopText}>
+                  <div className={styles.sectionEyebrow}>
+                    04 · Grow each year
+                    <span className={styles.sectionAside}>optional</span>
+                  </div>
+                  <p className={styles.idxSub}>
+                    Prices rise every year. Let your saving rise a little too, so it keeps its value.
+                  </p>
+                </div>
+                <div className={styles.idxBadge} data-off={indexationPct === 0}>
+                  {indexationPct === 0 ? 'Off' : <>+{indexationPct}%<small>/yr</small></>}
+                </div>
+              </div>
+              <input
+                type="range"
+                min={0}
+                max={15}
+                step={1}
+                value={indexationPct}
+                onChange={(e) => setIndexationPct(Number.parseInt(e.target.value, 10))}
+                aria-label="How much your saving goes up each year"
+                aria-valuetext={indexationPct === 0 ? 'Off, saving stays the same' : `Goes up ${indexationPct} percent each year`}
+                className={`${styles.slider} ${styles.idxSlider}`}
+                style={{ '--pct': `${(indexationPct / 15) * 100}%` }}
+              />
+              <div className={styles.idxLabels}>
+                <span>Off</span>
+                <span>Grows fastest</span>
+              </div>
+              <div className={styles.idxEffect}>
+                {indexationPct === 0 ? (
+                  'Your saving stays the same each year.'
+                ) : hasAmount ? (
+                  <>
+                    {formatUGXExact(amount)} now →{' '}
+                    <strong>{formatUGXExact(Math.round(amount * (1 + indexationPct / 100)))}</strong>{' '}
+                    next year, then a bit more every year.
+                  </>
+                ) : (
+                  'Enter an amount to see how it grows.'
+                )}
+              </div>
+            </section>
+          </div>
+
+          {/* PAGE 2 — Protect your family */}
+          <div className={styles.pagePanel} data-on={page === 'insurance'}>
+            <section className={styles.section} aria-label="Protect your family">
+              <div className={styles.sectionEyebrow}>
+                05 · Protect your family
+                <span className={styles.sectionAside}>optional add-ons</span>
+              </div>
+              <p className={styles.pageMuted}>Pick your cover. Pay once a year.</p>
+
+              <div className={styles.prods} role="group" aria-label="Choose your cover">
+                {ORDERED_INSURANCE.map((p) => {
+                  const active = insuranceTypes.includes(p.id);
+                  return (
+                    <button
+                      key={p.id}
+                      type="button"
+                      role="switch"
+                      aria-checked={active}
+                      className={styles.prod}
+                      data-active={active}
+                      onClick={() => toggleInsurance(p.id)}
+                    >
+                      <span className={styles.prodTick} aria-hidden="true"><IconCheck /></span>
+                      <span className={styles.prodIcon} aria-hidden="true"><ProductIcon id={p.id} /></span>
+                      <span className={styles.prodName}>{shortProductName(p.label)}</span>
+                      <span className={styles.prodBlurb}>{p.blurb}</span>
+                      <span className={styles.prodPrice}>
+                        {formatUGXExact(annualPremium(p))}<small>/year</small>
+                      </span>
+                      <span className={styles.prodCover}>Pays {formatUGXExact(p.cover)}</span>
+                    </button>
+                  );
+                })}
+              </div>
+
+              <div className={styles.target}>
+                <span className={styles.targetKey}>Cost for one year</span>
+                <span className={styles.targetVal}>
+                  {hasProducts ? <>{formatUGXExact(insuranceTarget)}<small> /year</small></> : '—'}
+                </span>
+              </div>
+
+              {hasProducts && (
+                <>
+                  <p className={styles.routesHeading}>How do you want to pay?</p>
+                  <div className={styles.routes} role="radiogroup" aria-label="How do you want to pay">
+                    <button
+                      type="button"
+                      role="radio"
+                      aria-checked={isRouteA}
+                      className={styles.route}
+                      data-active={isRouteA}
+                      onClick={() => setRoute('A')}
+                    >
+                      <span className={styles.routeTop}>
+                        <span className={styles.routeDot} aria-hidden="true" />
+                        <span className={styles.routeLabel}>Pay now</span>
+                      </span>
+                      <span className={styles.routeSub}>Pay the whole year today. Covered today.</span>
+                      <span className={styles.routeTag} data-tone="now">Covered today</span>
+                    </button>
+                    <button
+                      type="button"
+                      role="radio"
+                      aria-checked={!isRouteA}
+                      className={styles.route}
+                      data-active={!isRouteA}
+                      onClick={() => setRoute('B')}
+                    >
+                      <span className={styles.routeTop}>
+                        <span className={styles.routeDot} aria-hidden="true" />
+                        <span className={styles.routeLabel}>Save up for it</span>
+                      </span>
+                      <span className={styles.routeSub}>
+                        Your saving fills the tin. Cover starts when your coins reach the line.
+                      </span>
+                      <span className={styles.routeTag} data-tone="build">Save up</span>
+                    </button>
+                  </div>
+
+                  {isRouteA ? (
+                    <div className={styles.aline}>
+                      <IconCheckCircle />
+                      <span className={styles.alineTx}>
+                        <strong>Pay today, covered today.</strong> It starts again every year on its own.
+                      </span>
+                    </div>
+                  ) : (
+                    <>
+                      <div className={styles.savePct}>
+                        <div className={styles.savePctHead}>
+                          <span className={styles.savePctLabel}>How much of your liquid savings builds cover?</span>
+                          <strong className={styles.savePctVal}>{savingsPct}%</strong>
+                        </div>
+                        <input
+                          type="range"
+                          min={0}
+                          max={100}
+                          step={5}
+                          value={savingsPct}
+                          onChange={(e) => setSavingsPct(Number.parseInt(e.target.value, 10))}
+                          aria-label="Percent of liquid savings that builds cover"
+                          aria-valuetext={`${savingsPct} percent — ${formatUGXExact(coverPerPeriod)} to insurance, ${formatUGXExact(liquidPerPeriod)} stays liquid`}
+                          className={styles.slider}
+                          style={{ '--pct': `${savingsPct}%` }}
+                        />
+                        {/* Where the split lands, minimal: what stays liquid vs what
+                            goes to insurance — aligned under the slider's two ends. */}
+                        <div className={styles.savePctMeter} aria-hidden="true">
+                          <span className={styles.savePctMeterCell}>
+                            <span className={styles.savePctMeterK}>Liquid savings</span>
+                            <span className={styles.savePctMeterV}>{formatUGXExact(liquidPerPeriod)}<small>/{periodLabel}</small></span>
+                          </span>
+                          <span className={styles.savePctMeterCell} data-tone="cover">
+                            <span className={styles.savePctMeterK}>Insurance</span>
+                            <span className={styles.savePctMeterV}>{formatUGXExact(coverPerPeriod)}<small>/{periodLabel}</small></span>
+                          </span>
+                        </div>
+                      </div>
+                      <SaveUpTin
+                        target={insuranceTarget}
+                        monthlyEmergency={monthlyToCover}
+                        monthsToCover={monthsToCover}
+                        emergencyPct={emergencyPct}
+                        isZero={coverGetsNothing}
+                      />
+                    </>
+                  )}
+                </>
+              )}
+            </section>
+          </div>
+        </div>
+
+        {/* ── Pinned footer CTA ─────────────────────────────────── */}
+        <div className={styles.pfoot}>
+          <button
+            type="button"
+            className={styles.backBtn}
+            onClick={() => (payMode ? setPayMode(false) : goPage('contrib'))}
+            style={{ visibility: onInsurance ? 'visible' : 'hidden' }}
           >
-            {FREQUENCIES.map((f) => {
-              const active = frequency === f.id;
-              return (
-                <button
-                  key={f.id}
-                  type="button"
-                  role="radio"
-                  aria-checked={active}
-                  data-active={active}
-                  className={styles.freqCard}
-                  onClick={() => setFrequency(f.id)}
-                >
-                  <span className={styles.freqLabel}>{f.label}</span>
-                  <span className={styles.freqHelper}>{f.helper}</span>
-                  <span className={styles.freqCheck} aria-hidden="true">
-                    <svg viewBox="0 0 16 16" width="10" height="10" fill="none">
-                      <path d="M3 8.5l3.2 3 6.3-7" stroke="currentColor" strokeWidth="2.25" strokeLinecap="round" strokeLinejoin="round" />
-                    </svg>
-                  </span>
-                </button>
-              );
-            })}
-          </PillChipGroup>
-        </section>
-
-        {/* ── Section 2 — Amount ────────────────────────────────── */}
-        <section className={styles.section} aria-label="How much each time?">
-          <div className={styles.sectionEyebrow}>
-            02 · How much each time?
-            <span className={styles.sectionAside}>Min {formatUGXExact(MIN_CONTRIBUTION)}</span>
-          </div>
-
-          <label className={styles.amountField} data-error={belowMin && touched}>
-            <span className={styles.amountPrefix} aria-hidden="true">UGX</span>
-            <input
-              ref={amountInputRef}
-              type="text"
-              inputMode="numeric"
-              autoComplete="off"
-              spellCheck={false}
-              placeholder="Enter amount"
-              aria-label="Contribution amount in UGX"
-              aria-invalid={belowMin && touched}
-              aria-describedby="amt-helper"
-              className={styles.amountInput}
-              value={amountStr ? formatNumber(Number.parseInt(amountStr, 10)) : ''}
-              onChange={handleAmountChange}
-              onBlur={() => setTouched(true)}
-            />
-            <span className={styles.amountCadence} aria-hidden="true">{cadence}</span>
-          </label>
-
-          <div className={styles.presetRow} role="group" aria-label="Quick-select amounts">
-            {PRESET_AMOUNTS.map((v) => {
-              const active = amount === v;
-              return (
-                <button
-                  key={v}
-                  type="button"
-                  className={styles.presetChip}
-                  data-active={active}
-                  onClick={() => handlePresetClick(v)}
-                >
-                  {formatUGXExact(v)}
-                </button>
-              );
-            })}
-          </div>
-
-          {belowMin && touched && (
-            <p id="amt-helper" className={styles.errorLine}>
-              <svg viewBox="0 0 24 24" width="12" height="12" fill="none" aria-hidden="true">
-                <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="1.75" />
-                <path d="M12 7v6M12 16.5v.5" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" />
-              </svg>
-              Enter at least {formatUGXExact(MIN_CONTRIBUTION)} to continue.
-            </p>
-          )}
-        </section>
-
-        {/* ── Section 3 — Allocation ────────────────────────────── */}
-        <section className={styles.section} aria-label="Split your savings">
-          <div className={styles.sectionEyebrow}>03 · Split your savings</div>
-
-          <div className={styles.splitHead}>
-            <div className={styles.splitSide}>
-              <span className={styles.splitLabel}>Retirement</span>
-              <span className={styles.splitPct}>{retirementPct}<em>%</em></span>
-            </div>
-            <div className={styles.splitSide} data-align="right">
-              <span className={styles.splitLabel} data-tone="teal">Emergency</span>
-              <span className={styles.splitPct} data-tone="teal">{emergencyPct}<em>%</em></span>
-            </div>
-          </div>
-
-          <input
-            type="range"
-            min={0}
-            max={100}
-            step={5}
-            value={retirementPct}
-            onChange={(e) => setRetirementPct(Number.parseInt(e.target.value, 10))}
-            aria-label="Retirement savings percentage"
-            aria-valuetext={`${retirementPct} percent to retirement, ${emergencyPct} percent to emergency`}
-            className={styles.slider}
-            style={{ '--pct': `${retirementPct}%` }}
-          />
-
-          <div
-            className={styles.allocBar}
-            role="img"
-            aria-label={`${retirementPct}% retirement, ${emergencyPct}% emergency`}
+            <IconArrowLeft /> Back
+          </button>
+          <button
+            type="button"
+            className={styles.ctaBtn}
+            disabled={ctaDisabled}
+            onClick={handleCta}
+            aria-busy={processing || undefined}
           >
-            <span className={styles.allocFillRetirement} style={{ flexBasis: `${retirementPct}%` }} />
-            <span className={styles.allocFillEmergency} style={{ flexBasis: `${emergencyPct}%` }} />
-          </div>
-
-          <p className={styles.bucketHelp}>
-            <span className={styles.bucketDot} data-tone="retirement" aria-hidden="true" />
-            <strong>Retirement</strong> is locked until retirement age
-            <span className={styles.bucketSep} aria-hidden="true">·</span>
-            <span className={styles.bucketDot} data-tone="emergency" aria-hidden="true" />
-            <strong>Emergency</strong> is accessible in cases of hardship
-          </p>
-        </section>
-
-        {/* ── Section 4 — Insurance (multi-product) ─────────────── */}
-        <section className={styles.section} aria-label="Protect your family">
-          <div className={styles.sectionEyebrow}>
-            04 · Protect your family
-            <span className={styles.sectionAside}>optional add-ons</span>
-          </div>
-          <div className={styles.insuranceList}>
-            {ORDERED_INSURANCE.map((p) => {
-              const active = insuranceTypes.includes(p.id);
-              return (
-                <button
-                  key={p.id}
-                  type="button"
-                  role="switch"
-                  aria-checked={active}
-                  className={styles.insuranceRow}
-                  data-active={active}
-                  onClick={() => toggleInsurance(p.id)}
-                >
-                  <span className={styles.insuranceIcon} aria-hidden="true">
-                    <ProductIcon id={p.id} />
-                  </span>
-                  <span className={styles.insuranceCopy}>
-                    <span className={styles.insuranceTitle}>{p.label}</span>
-                    <span className={styles.insuranceDetail}>{p.blurb}</span>
-                  </span>
-                  <span className={styles.insurancePremium}>
-                    {`+${formatUGXExact(perPeriodPremium(p.premiumMonthly))}`}
-                    <small> /{periodLabel}</small>
-                  </span>
-                  <span className={styles.insuranceToggle} aria-hidden="true">
-                    <span className={styles.insuranceToggleKnob} />
-                  </span>
-                </button>
-              );
-            })}
-          </div>
-        </section>
-
+            {onInsurance && processing ? (
+              <>
+                <span className={styles.pmtSpinner} aria-hidden="true" />
+                <span>{ctaLabel}</span>
+              </>
+            ) : (
+              <>
+                <span>{ctaLabel}</span>
+                <IconArrowRight />
+              </>
+            )}
+          </button>
+        </div>
       </motion.div>
 
-      {/* ── Summary / checkout card ──────────────────────────────── */}
+      {/* ── Summary / checkout aside ──────────────────────────────── */}
       <motion.aside
         className={styles.summaryCard}
         aria-label="Your plan summary"
@@ -591,171 +1140,81 @@ export default function ContributionSettings({ initial, dob, phone, collectSched
         animate={{ opacity: 1, y: 0, scale: 1 }}
         transition={{ duration: 0.55, ease: EASE_OUT_EXPO, delay: 0.08 }}
       >
-        <header className={styles.summaryHeader}>
-          <span className={styles.summaryEyebrow}>Your plan</span>
-          <h2 className={styles.summaryTitle}>What you’ll pay</h2>
+        <header className={styles.sumHd}>
+          <div className={styles.sumHdTitle}>{payMode ? 'Payment' : 'Your plan'}</div>
+          <div className={styles.sumHdSub}>{payMode ? 'Choose how to pay' : `Step ${onInsurance ? '2' : '1'} of 2`}</div>
         </header>
 
-        <div className={styles.summaryHero}>
-          <span className={styles.summaryHeroValue}>
-            {hasAmount ? formatUGXExact(totalPerPeriod) : 'UGX —'}
-            {hasAmount && <span className={styles.summaryHeroCadence}> /{periodLabel}</span>}
-          </span>
+        {payMode ? (
+          <>
+            {/* Checkout convention: what you pay today (+ breakdown) sits ABOVE
+                the payment-method choice. */}
+            {payTodayNode}
+            <PaymentMethodPicker
+              method={method}
+              setMethod={setMethod}
+              momoProvider={momoProvider}
+              setMomoProvider={setMomoProvider}
+              momoPhone={momoPhone}
+              setMomoPhone={setMomoPhone}
+              processing={processing}
+            />
+          </>
+        ) : (
+          <>
+        {/* You put in — the contribution now + monthly-overall */}
+        <div className={styles.putin}>
+          <div className={styles.putinLabel}>You put in</div>
+          <div className={styles.putinBig}>
+            {hasAmount ? formatUGXExact(amount) : 'UGX —'}
+            {hasAmount && <small>/{periodLabel}</small>}
+          </div>
+          <p className={styles.putinSub}>
+            {hasAmount ? planSubText : 'Enter an amount to see your plan.'}
+          </p>
         </div>
 
-        <ul className={styles.summaryList}>
-          <li className={styles.summaryRow}>
-            <span className={styles.summaryRowLabel}>Per year</span>
-            <span className={styles.summaryRowValue}>
-              {hasAmount ? formatUGXExact(annualTotal) : '—'}
-            </span>
-          </li>
-          <li className={styles.summaryRow}>
-            <span className={styles.summaryRowLabel}>
-              <span className={styles.summaryDot} data-tone="retirement" aria-hidden="true" />
-              Retirement <em>{retirementPct}%</em>
-            </span>
-            <span className={styles.summaryRowValue}>
-              {hasAmount ? formatUGXExact(retirementPerPeriod) : '—'}
-            </span>
-          </li>
-          <li className={styles.summaryRow}>
-            <span className={styles.summaryRowLabel}>
-              <span className={styles.summaryDot} data-tone="emergency" aria-hidden="true" />
-              Emergency <em>{emergencyPct}%</em>
-            </span>
-            <span className={styles.summaryRowValue}>
-              {hasAmount ? formatUGXExact(emergencyPerPeriod) : '—'}
-            </span>
-          </li>
-          {selectedProducts.map((p) => (
-            <li key={p.id} className={styles.summaryRow}>
-              <span className={styles.summaryRowLabel}>
-                <span className={styles.summaryDot} data-tone="insurance" aria-hidden="true" />
-                {p.label}
+        {/* What it grows into — three outcome cards */}
+        <div className={styles.ocards}>
+          <div className={styles.oc} data-tone="ret">
+            <div className={styles.ocTop}>
+              <span className={styles.ocName}>Retirement fund</span>
+              <span className={styles.ocVal}>
+                {hasAmount && retirementFV > 0 ? `≈ ${formatProjection(retirementFV)}` : '—'}
               </span>
-              <span className={styles.summaryRowValue}>
-                {hasAmount ? `+${formatUGXExact(perPeriodPremium(p.premiumMonthly))}` : '—'}
-              </span>
-            </li>
-          ))}
-          <li className={styles.summaryRow} data-due="true">
-            <span className={styles.summaryRowLabel}>Due today</span>
-            <span className={styles.summaryRowValue}>
-              {hasAmount ? formatUGXExact(totalPerPeriod) : '—'}
-            </span>
-          </li>
-        </ul>
-        {hasAmount && insurancePremium > 0 && (
-          // The contribution grows the member's savings; the premium pays for
-          // insurance cover and is NOT added to the pension balance. Spell that
-          // out so "Due today" reconciles with the post-signup dashboard balance.
-          <p className={styles.dueNote}>
-            {formatUGXExact(amount)} goes into your savings; {formatUGXExact(insurancePremium)} pays your insurance premium.
-          </p>
-        )}
-
-        {/* ── Future value at retirement ──────────────────────────── */}
-        <div className={styles.projection}>
-          <div className={styles.projectionLabel}>
-            At retirement (age {RETIREMENT_AGE})
-            {retirementYears != null && retirementYears > 0 && ` · in ${retirementYears} yrs`}
-          </div>
-          <div className={styles.projectionValue}>
-            {hasAmount && retirementFV > 0 ? `≈ ${formatProjection(retirementFV)}` : 'UGX —'}
-          </div>
-          {retirementYear && (
-            <p className={styles.projectionYear}>
-              You’ll reach age {RETIREMENT_AGE} in <strong>{retirementYear}</strong>
+            </div>
+            <p className={styles.ocSub}>
+              {retirementYears == null ? 'Add your date of birth' : `Locked until age ${RETIREMENT_AGE}`}
             </p>
+          </div>
+
+          <div className={styles.oc} data-tone="emg">
+            <div className={styles.ocTop}>
+              <span className={styles.ocName}>Liquid savings</span>
+              <span className={styles.ocVal}>
+                {hasAmount && emergencyFV > 0 ? `≈ ${formatProjection(emergencyFV)}` : '—'}
+              </span>
+            </div>
+            <p className={styles.ocSub}>Take out any time</p>
+          </div>
+
+          {onInsurance && (
+            <div className={styles.oc} data-tone="ins" data-empty={!hasProducts}>
+              <div className={styles.ocTop}>
+                <span className={styles.ocName}>Insurance cover</span>
+                <span className={styles.ocVal}>
+                  {hasProducts ? formatUGX(coverTotal, { compact: true }) : 'None'}
+                </span>
+              </div>
+              <p className={styles.ocSub}>{coverCardSub}</p>
+            </div>
           )}
-          <p className={styles.projectionHelp}>
-            {retirementYears == null
-              ? 'Add your date of birth to see a projection.'
-              : retirementYears <= 0
-                ? 'You’re already at retirement age — contributions stay accessible.'
-                : `At 10% annual return, compounded monthly — retirement bucket only.`}
-          </p>
         </div>
 
-        {/* ── What that could buy ─────────────────────────────────── */}
-        {milestones.length > 0 && (
-          <section className={styles.milestones} aria-label="What your retirement savings could buy">
-            <h3 className={styles.milestonesTitle}>That could buy you…</h3>
-            <ul className={styles.milestonesList}>
-              {milestones.map((m) => (
-                <li key={m.id} className={styles.milestone}>
-                  <span className={styles.milestoneIcon} aria-hidden="true">
-                    {m.id === 'land' && (
-                      <svg viewBox="0 0 24 24" width="18" height="18" fill="none">
-                        <path d="M4 11l8-7 8 7v9a1 1 0 0 1-1 1h-4v-6h-6v6H5a1 1 0 0 1-1-1v-9z"
-                              stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round" />
-                      </svg>
-                    )}
-                    {m.id === 'tuition' && (
-                      <svg viewBox="0 0 24 24" width="18" height="18" fill="none">
-                        <path d="M3 9l9-4 9 4-9 4-9-4z"
-                              stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round" />
-                        <path d="M6 11v4.2c0 1.3 2.7 2.3 6 2.3s6-1 6-2.3V11"
-                              stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
-                        <path d="M21 9v5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
-                      </svg>
-                    )}
-                    {m.id === 'income' && (
-                      <svg viewBox="0 0 24 24" width="18" height="18" fill="none">
-                        <rect x="4" y="5" width="16" height="15" rx="1.5"
-                              stroke="currentColor" strokeWidth="1.6" />
-                        <path d="M4 10h16M8 3v4M16 3v4"
-                              stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
-                        <path d="M9 14h6M9 17h4"
-                              stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
-                      </svg>
-                    )}
-                  </span>
-                  <span className={styles.milestoneCount}>{formatNumber(m.count)}</span>
-                  <span className={styles.milestoneLabel}>
-                    {m.count === 1 ? m.one : m.many}
-                  </span>
-                </li>
-              ))}
-            </ul>
-            <p className={styles.milestonesNote}>Rough Uganda estimates — actual prices vary.</p>
-          </section>
+        {/* You pay today — foot of the plan summary. */}
+        {payTodayNode}
+          </>
         )}
-
-        {/* ── Payment method — lives in the summary aside so it opens inline
-             beside the plan (no separate page / left-column scroll) ───────── */}
-        <PaymentMethodPicker
-          method={method}
-          setMethod={setMethod}
-          momoProvider={momoProvider}
-          setMomoProvider={setMomoProvider}
-          momoPhone={momoPhone}
-          setMomoPhone={setMomoPhone}
-          processing={processing}
-        />
-
-        {/* ── Pay CTA ─────────────────────────────────────────────── */}
-        <button
-          type="button"
-          className={styles.payNow}
-          disabled={!canPay || processing}
-          onClick={handlePay}
-        >
-          {processing ? (
-            <>
-              <span className={styles.pmtSpinner} aria-hidden="true" />
-              <span>{payLabel}</span>
-            </>
-          ) : (
-            <>
-              <span>{payLabel}</span>
-              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" aria-hidden="true">
-                <path d="M5 12h14M13 6l6 6-6 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
-            </>
-          )}
-        </button>
       </motion.aside>
       </div>
     </main>
@@ -807,29 +1266,29 @@ function SplitOnlyView({ retirementPct, emergencyPct, setRetirementPct, onClose,
 
           <p style={{ margin: '0 0 1.25rem', color: 'var(--color-gray)', lineHeight: 1.6 }}>
             Your employer funds your pension. Choose how your savings are split between long-term
-            retirement and accessible emergency funds.
+            retirement and accessible liquid savings.
           </p>
 
-          <section className={styles.section} aria-label="Retirement vs emergency">
-            <div className={styles.sectionEyebrow}>01 · Retirement vs emergency</div>
+          <section className={styles.section} aria-label="Retirement vs liquid savings">
+            <div className={styles.sectionEyebrow}>01 · Retirement vs liquid savings</div>
             <div className={styles.splitHead}>
               <div className={styles.splitSide}>
                 <span className={styles.splitLabel}>Retirement</span>
                 <span className={styles.splitPct}>{retirementPct}<em>%</em></span>
               </div>
               <div className={styles.splitSide} data-align="right">
-                <span className={styles.splitLabel} data-tone="teal">Emergency</span>
+                <span className={styles.splitLabel} data-tone="teal">Liquid savings</span>
                 <span className={styles.splitPct} data-tone="teal">{emergencyPct}<em>%</em></span>
               </div>
             </div>
             <input
-              type="range" min={0} max={100} step={5} value={retirementPct}
+              type="range" min={60} max={100} step={5} value={retirementPct}
               onChange={(e) => setRetirementPct(Number.parseInt(e.target.value, 10))}
               aria-label="Retirement savings percentage"
               className={styles.slider}
-              style={{ '--pct': `${retirementPct}%` }}
+              style={{ '--pct': `${(retirementPct - 60) * 2.5}%` }}
             />
-            <div className={styles.allocBar} role="img" aria-label={`${retirementPct}% retirement, ${emergencyPct}% emergency`}>
+            <div className={styles.allocBar} role="img" aria-label={`${retirementPct}% retirement, ${emergencyPct}% liquid savings`}>
               <span className={styles.allocFillRetirement} style={{ flexBasis: `${retirementPct}%` }} />
               <span className={styles.allocFillEmergency} style={{ flexBasis: `${emergencyPct}%` }} />
             </div>
@@ -838,7 +1297,7 @@ function SplitOnlyView({ retirementPct, emergencyPct, setRetirementPct, onClose,
               <strong>Retirement</strong> is locked until retirement age
               <span className={styles.bucketSep} aria-hidden="true">·</span>
               <span className={styles.bucketDot} data-tone="emergency" aria-hidden="true" />
-              <strong>Emergency</strong> is accessible in hardship
+              <strong>Liquid savings</strong> can be taken out any time
             </p>
           </section>
 

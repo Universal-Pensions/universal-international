@@ -7,6 +7,8 @@ import { formatUGX } from '../../utils/currency';
 import { useAuth } from '../../contexts/AuthContext';
 import { useSignup } from '../../signup/SignupContext';
 import * as subscriberService from '../../services/subscriber';
+import { formatMemberId } from '../../utils/memberId';
+import MemberCard from '../../components/MemberCard';
 import { buildPayload } from './onboardPayload';
 import styles from './OnboardingComplete.module.css';
 
@@ -77,6 +79,7 @@ export default function OnboardingComplete({ subscriberName, awareness, schedule
   const correctCount = Object.values(awareness?.answers || {}).filter((v) => v === true).length;
   const firstName = subscriberName.trim().split(/\s+/)[0] || 'New subscriber';
   const scheduleSummary = formatSchedule(schedule);
+  const memberId = formatMemberId(signup.phone);
 
   return (
     <div className={styles.wrap}>
@@ -126,16 +129,30 @@ export default function OnboardingComplete({ subscriberName, awareness, schedule
         The subscriber&apos;s record is created and KYC has been submitted. They&apos;ll receive a welcome SMS with their member ID and next steps shortly.
       </motion.p>
 
+      {/* Member card issued to the new subscriber (shown once the record is saved). */}
+      {status === 'success' && (
+        <motion.div
+          className={styles.cardWrap}
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.65, ease: EASE_OUT_EXPO }}
+        >
+          <MemberCard
+            fullName={subscriberName}
+            memberId={memberId}
+            enrolled={new Date()}
+            dob={signup.dob}
+            gender={signup.gender}
+          />
+        </motion.div>
+      )}
+
       <motion.dl
         className={styles.summary}
         initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.45, delay: 0.7, ease: EASE_OUT_EXPO }}
       >
-        <div className={styles.summaryRow}>
-          <dt>Subscriber</dt>
-          <dd>{subscriberName || 'New Subscriber'}</dd>
-        </div>
         <div className={styles.summaryRow}>
           <dt>Awareness check</dt>
           <dd>{correctCount}/5 answered correctly</dd>
