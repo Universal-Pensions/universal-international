@@ -99,7 +99,7 @@ export default function SettingsPage() {
 
           {sub?.insurance?.cover ? (
             <p className={styles.coverHint}>
-              Cover {formatUGX(sub.insurance.cover)} · Premium {formatUGX(sub.insurance.premiumMonthly || 0, { compact: false })} / month
+              Cover {formatUGX(sub.insurance.cover)} · Premium {formatUGX((sub.insurance.premiumMonthly || 0) * 12, { compact: false })} / year
             </p>
           ) : null}
 
