@@ -98,10 +98,15 @@ const glyph = {
 const TX_META = {
   contribution: { label: 'Contribution', dot: 'var(--color-green)' },
   withdrawal: { label: 'Withdrawal', dot: 'var(--color-teal)' },
+  // Self-paid cover — one ANNUAL premium (or save-to-cover), not monthly.
   premium: { label: 'Insurance premium', dot: 'var(--color-amber)' },
-  // Employer-funded group premium — distinct type so it doesn't fall back to
-  // the contribution meta (green "+"); it's an outflow, not money received.
-  insurance_premium: { label: 'Insurance premium', dot: 'var(--color-amber)' },
+  // Employer-funded group premium (monthly) — distinct type + label so it doesn't
+  // fall back to the contribution meta (green "+"); it's an outflow, not money
+  // received, and it's the employer paying, not the member.
+  insurance_premium: { label: 'Employer cover premium', dot: 'var(--color-amber)' },
+  // Save-to-cover sweep (0072) — savings swept to pay the annual premium; add a
+  // real entry so it never falls back to the green "Contribution" meta.
+  premium_sweep: { label: 'Premium from savings', dot: 'var(--color-amber)' },
   claim: { label: 'Claim payout', dot: 'var(--color-indigo)' },
 };
 
@@ -168,7 +173,10 @@ export default function HomeDesktop({ subscriber }) {
   const displayCover = hasCover ? cover : buildingCover;
   const showCover = hasCover || hasBuilding;
   const coverContext = hasCover
-    ? (premium > 0 ? `Active · ${formatUGX(premium, { compact: false })}/mo premium` : 'Active cover')
+    // Self-paid cover is ONE annual premium — show the annual figure (monthly ×
+    // 12) as "/yr", never "/mo". Employer-funded policies carry a 0 member
+    // premium, so they contribute nothing to this sum.
+    ? (premium > 0 ? `Active · ${formatUGX(premium * 12, { compact: false })}/yr premium` : 'Active cover')
     : (hasBuilding
         ? (building.target > 0 ? `Building · ${building.pct}% of premium saved` : 'Building your cover')
         : 'Not active');

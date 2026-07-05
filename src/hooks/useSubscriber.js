@@ -179,20 +179,6 @@ export function useUpdateInsuranceCover(id) {
 }
 
 /**
- * Pays an insurance premium for a single product (health | funeral | life),
- * activating its policy row + recording a 'premium' transaction (idempotent on
- * the payload `nonce`). Invalidates the subscriber cache so the new product
- * appears on the Policies page and the premium shows in the activity feed.
- */
-export function usePayInsurancePremium(id) {
-  const invalidate = useInvalidateSubscriber(id);
-  return useMutation({
-    mutationFn: (payload) => subscriberService.payInsurancePremium(id, payload),
-    onSuccess: invalidate,
-  });
-}
-
-/**
  * Funds one or more insurance products post-signup on the annual-premium model
  * (migration 0073). `pay_now` activates + charges the annual premium; `save_to_cover`
  * creates 'building' policies and puts the schedule into save-to-cover (the DB

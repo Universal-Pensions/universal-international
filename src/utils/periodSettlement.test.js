@@ -4,7 +4,6 @@ import {
   paidThisMonth,
   contributionOwed,
   newlyAddedProducts,
-  buildSettleLineItems,
   buildAnnualSettleLineItems,
 } from './periodSettlement';
 import { INSURANCE_PRODUCTS, annualPremium } from '../constants/savings';
@@ -80,43 +79,6 @@ describe('newlyAddedProducts', () => {
     // The form now pre-checks held products from the SAME active-policy set the
     // settle flow diffs against, so an untouched re-save yields no new product.
     expect(newlyAddedProducts(['life', 'health', 'funeral'], ['life', 'health', 'funeral'])).toEqual([]);
-  });
-});
-
-describe('buildSettleLineItems', () => {
-  const FUNERAL = INSURANCE_PRODUCTS.find((p) => p.id === 'funeral');
-  const HEALTH = INSURANCE_PRODUCTS.find((p) => p.id === 'health');
-
-  it('includes only the contribution line when nothing is added', () => {
-    const { lineItems, total } = buildSettleLineItems({ owed: 5000, addedProductIds: [], freqPerYear: 12 });
-    expect(lineItems).toHaveLength(1);
-    expect(lineItems[0].kind).toBe('contribution');
-    expect(total).toBe(5000);
-  });
-
-  it('adds one premium line per new product, summing the total (monthly)', () => {
-    const { lineItems, total, products } = buildSettleLineItems({
-      owed: 5000,
-      addedProductIds: ['health', 'funeral'],
-      freqPerYear: 12,
-    });
-    expect(lineItems).toHaveLength(3);
-    expect(products.map((p) => p.id).sort()).toEqual(['funeral', 'health']);
-    // monthly → per-period premium === premiumMonthly
-    expect(total).toBe(5000 + HEALTH.premiumMonthly + FUNERAL.premiumMonthly);
-  });
-
-  it('omits the contribution line when owed is 0 (insurance-only settle)', () => {
-    const { lineItems, total } = buildSettleLineItems({ owed: 0, addedProductIds: ['funeral'], freqPerYear: 12 });
-    expect(lineItems).toHaveLength(1);
-    expect(lineItems[0].kind).toBe('insurance');
-    expect(total).toBe(FUNERAL.premiumMonthly);
-  });
-
-  it('prorates the premium per period for non-monthly frequencies (annually)', () => {
-    const { total } = buildSettleLineItems({ owed: 0, addedProductIds: ['funeral'], freqPerYear: 1 });
-    // annually → one period carries the full year's premium
-    expect(total).toBe(FUNERAL.premiumMonthly * 12);
   });
 });
 

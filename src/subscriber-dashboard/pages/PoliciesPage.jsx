@@ -85,7 +85,7 @@ function PolicyCard({ policy, onRenew, onCertificate, employerName }) {
       <dl className={styles.policyMeta}>
         <div>
           <dt>Premium</dt>
-          <dd>{employerPaid ? 'Employer-funded' : `${formatUGX(policy.premiumMonthly, { compact: false })} / mo`}</dd>
+          <dd>{employerPaid ? 'Employer-funded' : `${formatUGX((Number(policy.premiumMonthly) || 0) * 12, { compact: false })} / yr`}</dd>
         </div>
         <div>
           <dt>{employerPaid ? 'Status' : building ? 'Cover starts' : expired ? 'Expired' : 'Renews'}</dt>
@@ -211,8 +211,10 @@ export default function PoliciesPage() {
       memberId: formatMemberId(sub?.phone),
       dob: sub?.dob,
       cover: policy.cover,
-      premiumPerPeriod: policy.premiumMonthly,
-      frequency: 'monthly', // premium is a monthly figure for every product
+      // Self-paid cover is charged as ONE annual premium (rate × 12); label it
+      // annually with no per-period cadence, matching the signup certificate.
+      premiumPerPeriod: (Number(policy.premiumMonthly) || 0) * 12,
+      premiumLabel: 'Annual premium',
       policyStart: policy.policyStart,
       renewalDate: policy.renewalDate,
       productLabel: PRODUCT_LABEL[policy.type] ?? 'Life',
@@ -362,7 +364,7 @@ export default function PoliciesPage() {
       lineItems={[
         { label: 'Policy', value: renewing.name },
         { label: 'Cover', value: formatUGX(renewing.cover, { compact: false }) },
-        { label: 'Premium', value: `${formatUGX(renewing.premiumMonthly, { compact: false })} / mo` },
+        { label: 'Annual premium', value: `${formatUGX(renewing.renewalAmount, { compact: false })} / yr` },
       ]}
       methods={MOBILE_MONEY_METHODS}
       note="You’ll receive an SMS prompt to authorise the payment on your mobile money account."
@@ -444,7 +446,7 @@ export default function PoliciesPage() {
         lineItems={renewing ? [
           { label: 'Policy', value: renewing.name },
           { label: 'Cover', value: formatUGX(renewing.cover, { compact: false }) },
-          { label: 'Premium', value: `${formatUGX(renewing.premiumMonthly, { compact: false })} / mo` },
+          { label: 'Annual premium', value: `${formatUGX(renewing.renewalAmount, { compact: false })} / yr` },
         ] : []}
         note="You'll receive an SMS prompt to authorise the payment on your mobile money account."
         submitting={submitting}

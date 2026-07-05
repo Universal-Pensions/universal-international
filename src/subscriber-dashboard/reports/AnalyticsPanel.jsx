@@ -156,7 +156,7 @@ export default function AnalyticsPanel() {
         <Kpi
           label="Insurance cover"
           value={coverActive ? formatUGX(a.kpis.cover) : 'Off'}
-          sub={coverActive ? `${formatUGX(a.kpis.premiumMonthly, { compact: false })}/mo` : 'Not active'}
+          sub={coverActive ? `${formatUGX((a.kpis.premiumMonthly || 0) * 12, { compact: false })}/yr` : 'Not active'}
           accent={PALETTE.amber}
         />
       </div>

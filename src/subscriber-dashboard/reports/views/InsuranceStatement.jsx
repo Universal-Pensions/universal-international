@@ -28,13 +28,16 @@ export default function InsuranceStatement() {
   const { data: sub, isLoading, isError, error, refetch } = useCurrentSubscriber();
   const insurance = sub?.insurance || {};
   const { data: claims = [] } = useSubscriberClaims(sub?.id);
+  // Both a self-paid annual premium ('premium') and a save-to-cover sweep
+  // ('premium_sweep', stored NEGATIVE) count toward premiums paid on this cover.
   const premiumTx = useMemo(
-    () => (sub?.transactions || []).filter((t) => t.type === 'premium'),
+    () => (sub?.transactions || []).filter((t) => t.type === 'premium' || t.type === 'premium_sweep'),
     [sub]
   );
 
   const totals = useMemo(() => {
-    const premiumsPaid = premiumTx.reduce((s, t) => s + t.amount, 0);
+    // Math.abs so a negative sweep magnitude ADDS to premiums paid, not subtracts.
+    const premiumsPaid = premiumTx.reduce((s, t) => s + Math.abs(t.amount), 0);
     const claimsPaid = claims.filter((c) => c.status === 'paid').reduce((s, c) => s + c.amount, 0);
     return { premiumsPaid, claimsPaid, net: claimsPaid - premiumsPaid };
   }, [premiumTx, claims]);
@@ -133,7 +136,7 @@ export default function InsuranceStatement() {
           <span className={frameStyles.kpiLabel}>Current cover</span>
           <span className={frameStyles.kpiValue}>{formatUGX(insurance.cover || 0)}</span>
           <span className={frameStyles.kpiSub}>
-            {insurance.status === 'active' ? 'Active' : 'Inactive'} · {formatUGX(insurance.premiumMonthly || 0, { compact: false })} / mo
+            {insurance.status === 'active' ? 'Active' : 'Inactive'} · {formatUGX((insurance.premiumMonthly || 0) * 12, { compact: false })} / yr
           </span>
         </div>
         <div className={frameStyles.kpi}>

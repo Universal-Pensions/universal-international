@@ -414,20 +414,22 @@ function generateSubscribers() {
           reference: `CT-${randInt(10000, 99999)}`,
         });
       }
-      // Insurance premium if opted-in
+      // Insurance premium if opted-in. Self-paid cover is billed ANNUALLY — one
+      // premium a year (the `pay_now` model, migration 0072/0073) — NEVER a
+      // monthly stream. Post a SINGLE annual premium row (monthly rate × 12).
+      // (The s-0002 save-to-cover demo strips its premium rows in the override
+      // block below, so a "building" member correctly shows no upfront premium.)
       if (includeInsurance) {
-        for (let p = 0; p < contribMonths; p++) {
-          const pDate = new Date(refMs - p * 30 * 86400000 - randInt(0, 3) * 86400000);
-          transactions.push({
-            id: `tx-${id}-p-${p}`,
-            type: 'premium',
-            amount: 2000,
-            date: `${pDate.getFullYear()}-${String(pDate.getMonth() + 1).padStart(2, '0')}-${String(pDate.getDate()).padStart(2, '0')}`,
-            status: 'settled',
-            method: 'Auto-debit',
-            reference: `PR-${randInt(10000, 99999)}`,
-          });
-        }
+        const pDate = new Date(refMs - (contribMonths - 1) * 30 * 86400000 - randInt(0, 3) * 86400000);
+        transactions.push({
+          id: `tx-${id}-p-annual`,
+          type: 'premium',
+          amount: 2000 * 12, // annual premium = insurance.premiumMonthly (2000) × 12
+          date: `${pDate.getFullYear()}-${String(pDate.getMonth() + 1).padStart(2, '0')}-${String(pDate.getDate()).padStart(2, '0')}`,
+          status: 'settled',
+          method: pick(['MTN Mobile Money', 'Airtel Money', 'Bank transfer']),
+          reference: `PR-${randInt(10000, 99999)}`,
+        });
       }
       // Add withdrawals to transactions
       withdrawals.forEach((w) => {
@@ -645,6 +647,10 @@ const subs = generateSubscribers();
       premiumMonthly: 2000,
       status: 'building',               // filling the tin — not covered yet
     };
+    // save-to-cover pays NO upfront premium — the emergency slice accrues and the
+    // 0072 trigger sweeps it later. Drop any annual 'premium' row the generic
+    // generator gave this member so the building demo shows no premium charge.
+    demo.transactions = (demo.transactions ?? []).filter((t) => t.type !== 'premium');
   }
 }
 // Pre-group subscribers by agent for O(1) lookup instead of O(n) filter

@@ -202,7 +202,7 @@ export default function HomeMobile({ subscriber: sub }) {
                 ? coverProducts
                 : hasBuilding
                   ? (building.target > 0 ? `Building · ${building.pct}% of premium saved` : 'Building your cover')
-                  : 'Add cover from UGX 2,000/mo'}
+                  : 'Add cover from UGX 24,000/yr'}
             </small>
           </span>
           <span className={styles.lAmt}>{showCover ? formatUGX(activeCover > 0 ? activeCover : buildingCover) : '—'}</span>

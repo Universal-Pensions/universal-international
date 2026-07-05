@@ -142,7 +142,7 @@ export default function ContributionSettingsForm({
   // `showInsurance` (default true): render the insurance multi-select (section
   // 04) and emit the insurance selection on save. The AGENT's schedule-EDIT
   // forks pass `false` — an agent cannot authorise a premium for someone else
-  // (pay_insurance_premium requires app_role='subscriber'), so insurance is the
+  // (fund_insurance_products requires app_role='subscriber'), so insurance is the
   // subscriber's own post-signup decision. When false the section is hidden AND
   // the save payload omits includeInsurance/insuranceTypes, so the subscriber's
   // existing insurance flag is left untouched.

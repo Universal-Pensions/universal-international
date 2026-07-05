@@ -25,7 +25,7 @@ vi.mock('../../../hooks/useSubscriber', () => ({
   // Mutations are only exercised on click; the component reads .mutateAsync /
   // .isPending, so provide the standard TanStack mutation surface.
   useUpdateInsuranceCover: () => ({ mutate: vi.fn(), mutateAsync: vi.fn(), isPending: false }),
-  usePayInsurancePremium: () => ({ mutate: vi.fn(), mutateAsync: vi.fn(), isPending: false }),
+  useFundInsuranceProducts: () => ({ mutate: vi.fn(), mutateAsync: vi.fn(), isPending: false }),
 }));
 
 vi.mock('../../../contexts/ToastContext', () => ({

@@ -6,7 +6,7 @@ import { formatUGX } from '../../utils/currency';
 
 import { formatDate } from '../../utils/date';
 import { getInitials } from '../../utils/dashboard';
-import { useCurrentSubscriber, useUpdateInsuranceCover, usePayInsurancePremium } from '../../hooks/useSubscriber';
+import { useCurrentSubscriber, useUpdateInsuranceCover, useFundInsuranceProducts } from '../../hooks/useSubscriber';
 import { useToast } from '../../contexts/ToastContext';
 import { useIsDesktop } from '../../hooks/useIsDesktop';
 import PageHeader from '../../components/PageHeader';
@@ -30,7 +30,9 @@ export default function InsurancePage() {
   const { data: sub } = useCurrentSubscriber();
   const { addToast } = useToast();
   const updateCover = useUpdateInsuranceCover(sub?.id);
-  const payPremium = usePayInsurancePremium(sub?.id);
+  // Self-paid cover is funded on the ANNUAL model (migration 0073 fund_insurance_products):
+  // one annual premium (monthly rate × 12) per policy year — never a monthly charge.
+  const fundProducts = useFundInsuranceProducts(sub?.id);
 
   // Upgrade pay sheet (downgrades take no payment).
   const [payOpen, setPayOpen] = useState(false);
@@ -61,6 +63,9 @@ export default function InsurancePage() {
   }, [insurance?.cover]);
 
   const selectedTier = COVER_TIERS[coverIdx];
+  // The tier's `premium` is the monthly RATE; the member is charged the ANNUAL
+  // premium (× 12) once per policy year — this is the only self-pay shape.
+  const selectedAnnual = selectedTier.premium * 12;
   const currentCover = insurance?.cover || 0;
   const tierDelta = selectedTier.cover - currentCover;
   const isUpgrade = tierDelta > 0;
@@ -110,10 +115,11 @@ export default function InsurancePage() {
     if (!sub) return;
     setPaySubmitting(true);
     try {
-      await payPremium.mutateAsync({
-        product: 'life',
-        cover: selectedTier.cover,
-        premiumMonthly: selectedTier.premium,
+      // Annual-premium model: fund_insurance_products upserts the life policy
+      // (activate or upgrade in place) and charges ONE annual premium = rate × 12.
+      await fundProducts.mutateAsync({
+        fundingMode: 'pay_now',
+        products: [{ product: 'life', cover: selectedTier.cover, premiumMonthly: selectedTier.premium }],
         method: methodFull,
         nonce: payNonce,
       });
@@ -145,7 +151,7 @@ export default function InsurancePage() {
       </div>
       <h2 className={styles.emptyTitle}>No active policy</h2>
       <p className={styles.emptyText}>
-        Add life cover from <strong>UGX 2,000 / mo</strong>. You&apos;ll be covered up to UGX 1M.
+        Add life cover from <strong>UGX 24,000 / yr</strong>. You&apos;ll be covered up to UGX 1M.
       </p>
       <button type="button" className={styles.emptyCta} onClick={scrollToPicker}>
         Pick your cover
@@ -176,7 +182,7 @@ export default function InsurancePage() {
         </div>
         <div className={styles.tierPremium}>
           <span className={styles.tierEyebrow}>Premium</span>
-          <span className={styles.tierValue}>{formatUGX(selectedTier.premium, { compact: false })} / mo</span>
+          <span className={styles.tierValue}>{formatUGX(selectedAnnual, { compact: false })} / yr</span>
         </div>
       </div>
 
@@ -190,7 +196,7 @@ export default function InsurancePage() {
         className={styles.slider}
         style={{ '--pct': `${(coverIdx / (COVER_TIERS.length - 1)) * 100}%` }}
         aria-label="Cover tier"
-        aria-valuetext={`${formatUGX(selectedTier.cover)} cover, ${formatUGX(selectedTier.premium, { compact: false })} per month`}
+        aria-valuetext={`${formatUGX(selectedTier.cover)} cover, ${formatUGX(selectedAnnual, { compact: false })} per year`}
       />
 
       <div className={styles.tierMarks}>
@@ -285,7 +291,7 @@ export default function InsurancePage() {
       <ul className={flow.sumList}>
         <li className={flow.sumRow}>
           <span>Premium</span>
-          <span className={flow.sumVal}>{formatUGX(insurance.premiumMonthly, { compact: false })} / mo</span>
+          <span className={flow.sumVal}>{formatUGX((insurance.premiumMonthly || 0) * 12, { compact: false })} / yr</span>
         </li>
         <li className={flow.sumRow}>
           <span>Renews</span>
@@ -298,7 +304,7 @@ export default function InsurancePage() {
       </ul>
       {isUpgrade ? (
         <p className={flow.note}>
-          Selected <b>{formatUGX(selectedTier.cover)}</b> · {formatUGX(selectedTier.premium, { compact: false })} / mo. Press <b>Upgrade</b> on the left to pay the new premium.
+          Selected <b>{formatUGX(selectedTier.cover)}</b> · {formatUGX(selectedAnnual, { compact: false })} / yr. Press <b>Upgrade</b> on the left to pay the annual premium.
         </p>
       ) : (
         <p className={flow.note}>Use the slider on the left to raise your cover.</p>
@@ -308,7 +314,7 @@ export default function InsurancePage() {
     <div className={flow.card}>
       <p className={flow.sumEyebrow}>No active cover</p>
       <p className={flow.note} style={{ marginTop: 'var(--space-2)' }}>
-        Pick a cover level on the left to protect your family — from <b>UGX 2,000 / mo</b>.
+        Pick a cover level on the left to protect your family — from <b>UGX 24,000 / yr</b>.
       </p>
     </div>
   );
@@ -318,16 +324,16 @@ export default function InsurancePage() {
       view={payView === 'success' ? 'success' : 'confirm'}
       ariaLabel="Pay for insurance cover"
       eyebrow={noPolicy ? 'You’re activating cover' : 'You’re paying to upgrade'}
-      total={selectedTier.premium}
-      subtitle={`${formatUGX(selectedTier.cover)} life cover · ${formatUGX(selectedTier.premium, { compact: false })} / mo`}
+      total={selectedAnnual}
+      subtitle={`${formatUGX(selectedTier.cover)} life cover · ${formatUGX(selectedAnnual, { compact: false })} / yr`}
       lineItems={[
         { label: 'Cover', value: formatUGX(selectedTier.cover, { compact: false }) },
-        { label: 'Premium', value: `${formatUGX(selectedTier.premium, { compact: false })} / mo` },
+        { label: 'Annual premium', value: `${formatUGX(selectedAnnual, { compact: false })} / yr` },
       ]}
       methods={MOBILE_MONEY_METHODS}
       note="You’ll receive an SMS prompt to authorise the payment on your mobile money account."
       submitting={paySubmitting}
-      primaryLabel={`Pay ${formatUGX(selectedTier.premium, { compact: false })}`}
+      primaryLabel={`Pay ${formatUGX(selectedAnnual, { compact: false })}`}
       cancelLabel="Cancel"
       onPay={handlePayUpgrade}
       onCancel={closePay}
@@ -388,7 +394,7 @@ export default function InsurancePage() {
               <span className={styles.coverEyebrow}>Current cover</span>
               <div className={styles.coverAmount}>{formatUGX(insurance.cover || 0, { compact: false })}</div>
               <p className={styles.coverSub}>
-                {formatUGX(insurance.premiumMonthly, { compact: false })} / mo · Renews {formatDate(lifePolicy?.renewalDate ?? insurance.renewalDate)}
+                {formatUGX((insurance.premiumMonthly || 0) * 12, { compact: false })} / yr · Renews {formatDate(lifePolicy?.renewalDate ?? insurance.renewalDate)}
               </p>
             </section>
           )}
@@ -406,11 +412,11 @@ export default function InsurancePage() {
         view={payView}
         ariaLabel="Pay for insurance cover"
         eyebrow={noPolicy ? "You're activating cover" : "You're paying to upgrade"}
-        total={selectedTier.premium}
-        subtitle={`${formatUGX(selectedTier.cover)} life cover · ${formatUGX(selectedTier.premium, { compact: false })} / mo`}
+        total={selectedAnnual}
+        subtitle={`${formatUGX(selectedTier.cover)} life cover · ${formatUGX(selectedAnnual, { compact: false })} / yr`}
         lineItems={[
           { label: 'Cover', value: formatUGX(selectedTier.cover, { compact: false }) },
-          { label: 'Premium', value: `${formatUGX(selectedTier.premium, { compact: false })} / mo` },
+          { label: 'Annual premium', value: `${formatUGX(selectedAnnual, { compact: false })} / yr` },
         ]}
         note="You'll receive an SMS prompt to authorise the payment on your mobile money account."
         submitting={paySubmitting}
