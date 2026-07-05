@@ -42,6 +42,8 @@ const BOTTOM_LINKS = [
   { label: 'Privacy', type: 'external', href: LEGAL_PRIVACY_URL },
   { label: 'Terms', type: 'external', href: LEGAL_TERMS_URL },
   { label: 'Cookies', type: 'pending' },
+  // Discreet super-admin entry point.
+  { label: 'Admin', type: 'route', to: '/admin' },
 ];
 
 function FooterItem({ item, className }) {
