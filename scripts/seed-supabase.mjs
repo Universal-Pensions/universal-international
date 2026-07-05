@@ -1538,13 +1538,19 @@ async function main() {
           { name: 'premium_monthly', type: 'numeric' },
           { name: 'status', type: 'text' },
           { name: 'renewal_date', type: 'date' },
+          { name: 'funded_by', type: 'text' },
         ],
         [
           insuredMembers.map((m) => m.id),
           insuredMembers.map((m) => m.insuranceCover ?? 0),
-          insuredMembers.map((m) => m.insurancePremiumMonthly ?? 0),
+          // Employer group cover — the member pays nothing (premium 0, funded_by
+          // 'employer'). The employer settles it monthly via the contribution run's
+          // insurance leg (type='insurance_premium', source='employer') — the ONLY
+          // legitimate monthly premium; a member never self-pays monthly.
+          insuredMembers.map(() => 0),
           insuredMembers.map((m) => m.insuranceStatus ?? 'inactive'),
           insuredMembers.map((m) => toDateStr(m.insuranceRenewalDate)),
+          insuredMembers.map(() => 'employer'),
         ],
         'subscriber_id'
       );
