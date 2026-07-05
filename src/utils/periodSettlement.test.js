@@ -5,8 +5,9 @@ import {
   contributionOwed,
   newlyAddedProducts,
   buildSettleLineItems,
+  buildAnnualSettleLineItems,
 } from './periodSettlement';
-import { INSURANCE_PRODUCTS } from '../constants/savings';
+import { INSURANCE_PRODUCTS, annualPremium } from '../constants/savings';
 
 const NOW = new Date(2026, 4, 26); // 2026-05-26 (the demo MOCK_NOW)
 
@@ -116,5 +117,69 @@ describe('buildSettleLineItems', () => {
     const { total } = buildSettleLineItems({ owed: 0, addedProductIds: ['funeral'], freqPerYear: 1 });
     // annually → one period carries the full year's premium
     expect(total).toBe(FUNERAL.premiumMonthly * 12);
+  });
+});
+
+describe('buildAnnualSettleLineItems (0072/0073 annual model)', () => {
+  const HEALTH = INSURANCE_PRODUCTS.find((p) => p.id === 'health');
+  const FUNERAL = INSURANCE_PRODUCTS.find((p) => p.id === 'funeral');
+
+  it('Route A (pay now) charges the ANNUAL premium per added product', () => {
+    const { lineItems, total, insuranceTotal } = buildAnnualSettleLineItems({
+      owed: 5000,
+      addedProducts: [HEALTH, FUNERAL],
+      payNow: true,
+    });
+    // contribution + 2 insurance lines
+    expect(lineItems).toHaveLength(3);
+    const ins = lineItems.filter((li) => li.kind === 'insurance');
+    expect(ins[0].amount).toBe(annualPremium(HEALTH)); // 60,000, NOT 5,000/mo
+    expect(ins[1].amount).toBe(annualPremium(FUNERAL)); // 18,000
+    expect(insuranceTotal).toBe(annualPremium(HEALTH) + annualPremium(FUNERAL));
+    expect(total).toBe(5000 + annualPremium(HEALTH) + annualPremium(FUNERAL));
+  });
+
+  it('Route B (save up) charges NOTHING for insurance — only the owed contribution', () => {
+    const { lineItems, total, insuranceTotal } = buildAnnualSettleLineItems({
+      owed: 5000,
+      addedProducts: [HEALTH, FUNERAL],
+      payNow: false,
+    });
+    expect(lineItems).toHaveLength(1);
+    expect(lineItems[0].kind).toBe('contribution');
+    expect(insuranceTotal).toBe(0);
+    expect(total).toBe(5000);
+  });
+
+  it('Route B with no owed contribution settles to zero (no sheet needed)', () => {
+    const { lineItems, total } = buildAnnualSettleLineItems({
+      owed: 0,
+      addedProducts: [HEALTH],
+      payNow: false,
+    });
+    expect(lineItems).toHaveLength(0);
+    expect(total).toBe(0);
+  });
+
+  it('Route A insurance-only (no owed) totals the annual premium', () => {
+    const { total, insuranceTotal } = buildAnnualSettleLineItems({
+      owed: 0,
+      addedProducts: [FUNERAL],
+      payNow: true,
+    });
+    expect(total).toBe(annualPremium(FUNERAL));
+    expect(insuranceTotal).toBe(annualPremium(FUNERAL));
+  });
+
+  it('resolves the human product name for the settle label from a bare {product} config', () => {
+    // The page emits added products as { product, cover, premiumMonthly } (no label),
+    // so the builder must look up the display name — never render the raw enum id.
+    const { lineItems } = buildAnnualSettleLineItems({
+      owed: 0,
+      addedProducts: [{ product: 'life', cover: 1_000_000, premiumMonthly: 2_000 }],
+      payNow: true,
+    });
+    expect(lineItems[0].label).toBe('Life insurance · one year');
+    expect(lineItems[0].label).not.toMatch(/^life ·/); // not the raw id
   });
 });

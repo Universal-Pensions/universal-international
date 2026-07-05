@@ -79,3 +79,41 @@ export function buildSettleLineItems({ owed = 0, addedProductIds = [], freqPerYe
   const total = lineItems.reduce((sum, li) => sum + li.amount, 0);
   return { lineItems, total, products };
 }
+
+/**
+ * Settle line items for the ANNUAL-premium insurance model (migrations 0072/0073),
+ * used by the subscriber schedule editor. Route A "pay now" charges the combined
+ * ANNUAL premium up front (one line per newly-added product, priced yearly);
+ * Route B "save up for it" charges NOTHING now (the premium accrues from the
+ * emergency slice), so only the owed contribution appears.
+ *
+ * @param {{ owed?: number, addedProducts?: Array<{id?:string, product?:string, label?:string, premiumMonthly?:number}>, payNow?: boolean }} opts
+ * @returns {{ lineItems: Array, total: number, insuranceTotal: number }}
+ */
+export function buildAnnualSettleLineItems({ owed = 0, addedProducts = [], payNow = true } = {}) {
+  const lineItems = [];
+  if (owed > 0) {
+    lineItems.push({ id: 'contribution', kind: 'contribution', label: 'This month’s contribution', amount: owed });
+  }
+  let insuranceTotal = 0;
+  if (payNow) {
+    for (const p of addedProducts) {
+      const pid = p.id ?? p.product;
+      // Resolve the human product name (the caller passes {product, cover,
+      // premiumMonthly} with no label) so the settle sheet reads "Life insurance
+      // · one year", not the raw enum id.
+      const label = p.label ?? INSURANCE_PRODUCTS.find((x) => x.id === pid)?.label ?? pid;
+      const annual = Math.round((Number(p.premiumMonthly) || 0) * 12);
+      insuranceTotal += annual;
+      lineItems.push({
+        id: `insurance-${pid}`,
+        kind: 'insurance',
+        product: pid,
+        label: `${label} · one year`,
+        amount: annual,
+      });
+    }
+  }
+  const total = lineItems.reduce((sum, li) => sum + li.amount, 0);
+  return { lineItems, total, insuranceTotal };
+}

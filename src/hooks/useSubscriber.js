@@ -193,6 +193,21 @@ export function usePayInsurancePremium(id) {
 }
 
 /**
+ * Funds one or more insurance products post-signup on the annual-premium model
+ * (migration 0073). `pay_now` activates + charges the annual premium; `save_to_cover`
+ * creates 'building' policies and puts the schedule into save-to-cover (the DB
+ * accrual trigger funds them from savings). Invalidates the subscriber cache so
+ * the new active/building policies + any premium charge surface immediately.
+ */
+export function useFundInsuranceProducts(id) {
+  const invalidate = useInvalidateSubscriber(id);
+  return useMutation({
+    mutationFn: (payload) => subscriberService.fundInsuranceProducts(id, payload),
+    onSuccess: invalidate,
+  });
+}
+
+/**
  * Renews a policy (life | health) via a demo premium payment. Invalidates the
  * subscriber + transactions caches so the derived `policies` list and the
  * Insurance Statement feed reflect the renewal.

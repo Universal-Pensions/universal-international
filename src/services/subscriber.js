@@ -242,6 +242,12 @@ function mapSubscriberRow(row) {
           includeInsurance: !!sched.include_insurance,
           insuranceChoiceMade: !!sched.insurance_choice_made,
           nextDueDate: sched.next_due_date,
+          // save-to-cover + indexation (migration 0072)
+          insuranceFundingMode: sched.insurance_funding_mode ?? 'pay_now',
+          insurancePremiumTarget: Number(sched.insurance_premium_target ?? 0),
+          insurancePremiumAccrued: Number(sched.insurance_premium_accrued ?? 0),
+          insuranceSavingsPct: Number(sched.insurance_savings_pct ?? 100),
+          contributionIndexationPct: Number(sched.contribution_indexation_pct ?? 0),
         }
       : null,
 
@@ -845,6 +851,12 @@ export async function updateContributionSchedule(id, schedule = {}) {
     patch.insurance_choice_made = true;
   }
   if (schedule.nextDueDate !== undefined) patch.next_due_date = schedule.nextDueDate;
+  // Yearly step-up (0072). Editable post-signup — intentionally LEFT OUT of the
+  // 0072 column REVOKE (unlike the funding-mode/target columns), so a plain PATCH
+  // persists it. The contribution trigger reads it to bump the amount annually.
+  if (schedule.contributionIndexationPct !== undefined) {
+    patch.contribution_indexation_pct = Number(schedule.contributionIndexationPct);
+  }
   patch.updated_at = new Date().toISOString();
 
   const row = unwrap(
@@ -864,6 +876,7 @@ export async function updateContributionSchedule(id, schedule = {}) {
     insuranceChoiceMade: !!row.insurance_choice_made,
     insuranceTypes: schedule.insuranceTypes,
     nextDueDate: row.next_due_date,
+    contributionIndexationPct: Number(row.contribution_indexation_pct ?? 0),
   };
 }
 
@@ -1029,6 +1042,102 @@ export async function payInsurancePremium(
     p_product: product,
     p_cover: Number(cover ?? 0),
     p_premium: Number(premiumMonthly ?? 0),
+    p_method: method,
+  });
+  if (error) throw error;
+  return data;
+}
+
+/**
+ * Fund one or more insurance products post-signup, on the annual-premium model
+ * (migration 0073 `fund_insurance_products`). Two routes, matching onboarding:
+ *
+ *   • `fundingMode: 'pay_now'`      — activate each product NOW (storing the true
+ *     monthly premium) and charge the combined ANNUAL premium as ONE 'premium'
+ *     transaction. Leaves the schedule's building state untouched.
+ *   • `fundingMode: 'save_to_cover'` — create each product as 'building', put the
+ *     schedule into save_to_cover, set the savings split, and let the DB recompute
+ *     the target. Charges NOTHING now; the 0072 accrual trigger sweeps it later.
+ *
+ * `products` carries ONLY the newly-funded products — the caller de-dups cover
+ * the subscriber already holds (active or building), so this never re-charges or
+ * downgrades a held policy. Idempotent on `nonce`. 'premium' rows never fire the
+ * contribution trigger, so balances/AUM are unaffected.
+ *
+ * @param {string} id
+ * @param {{ fundingMode?:'pay_now'|'save_to_cover', products?:Array<{product,cover,premiumMonthly}>, savingsPct?:number, method?:string, nonce?:string }} payload
+ */
+export async function fundInsuranceProducts(
+  id,
+  { fundingMode = 'pay_now', products = [], savingsPct = 100, method = 'MTN Mobile Money', nonce } = {},
+) {
+  if (!id) throw new Error('Subscriber id required');
+  if (!['pay_now', 'save_to_cover'].includes(fundingMode)) throw new Error('Unknown funding mode');
+  const list = Array.isArray(products) ? products : [];
+  for (const p of list) {
+    if (!['health', 'funeral', 'life'].includes(p?.product)) throw new Error('Unknown insurance product');
+  }
+  const annualTotal = list.reduce((s, p) => s + (Number(p.premiumMonthly) || 0) * 12, 0);
+  const status = fundingMode === 'save_to_cover' ? 'building' : 'active';
+
+  if (!IS_SUPABASE_ENABLED) {
+    const sub = SUBSCRIBERS[id];
+    if (!sub) throw new Error('Subscriber not found');
+    const m = readSession(id);
+    const entries = list.map((p) => ({
+      product: p.product,
+      cover: Number(p.cover ?? 0),
+      premiumMonthly: Number(p.premiumMonthly ?? 0),
+      policyStart: todayIso(),
+      renewalDate: renewalIsoFromNow(1),
+      status,
+    }));
+    const newIds = new Set(entries.map((e) => e.product));
+    m.insuranceProductsOverride = [
+      ...m.insuranceProductsOverride.filter((o) => !newIds.has(o.product)),
+      ...entries,
+    ];
+    if (fundingMode === 'pay_now') {
+      list.forEach((p) => setRenewalOverride(id, p.product, true));
+      if (annualTotal > 0) {
+        m.extraTransactions.unshift({
+          id: `tx-${id}-prem-${Date.now()}`,
+          type: 'premium',
+          amount: annualTotal,
+          date: todayIso(),
+          status: 'settled',
+          method,
+          reference: `PR-${Math.floor(Math.random() * 900000) + 100000}`,
+        });
+      }
+    } else {
+      // save_to_cover: recompute the target from ALL non-active self products
+      // (the just-added building rows are now in the merged view) + set the
+      // schedule funding columns, mirroring the 0073 RPC.
+      const merged = applyMutations(sub).insuranceProducts;
+      const target = merged
+        .filter((p) => p.status !== 'active' && (p.fundedBy ?? 'self') === 'self')
+        .reduce((s, p) => s + (Number(p.premiumMonthly) || 0) * 12, 0);
+      const base = m.scheduleOverride ?? sub.contributionSchedule ?? {};
+      m.scheduleOverride = {
+        ...base,
+        insuranceFundingMode: 'save_to_cover',
+        insurancePremiumTarget: target,
+        insuranceSavingsPct: Math.max(0, Math.min(100, Number(savingsPct) || 100)),
+      };
+    }
+    return { fundingMode, annualTotal, charged: fundingMode === 'pay_now' ? annualTotal : 0, status };
+  }
+
+  const { data, error } = await supabase.rpc('fund_insurance_products', {
+    p_nonce: nonce ?? crypto.randomUUID(),
+    p_funding_mode: fundingMode,
+    p_products: list.map((p) => ({
+      product: p.product,
+      cover: Number(p.cover ?? 0),
+      premiumMonthly: Number(p.premiumMonthly ?? 0),
+    })),
+    p_savings_pct: Number(savingsPct ?? 100),
     p_method: method,
   });
   if (error) throw error;

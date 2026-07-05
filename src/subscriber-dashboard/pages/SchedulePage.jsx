@@ -4,22 +4,17 @@ import {
   useCurrentSubscriber,
   useUpdateSchedule,
   useMakeContribution,
-  usePayInsurancePremium,
+  useFundInsuranceProducts,
   useContributionPaidThisMonth,
 } from '../../hooks/useSubscriber';
 import { useToast } from '../../contexts/ToastContext';
 import { useIsDesktop } from '../../hooks/useIsDesktop';
-import { periodsPerYear } from '../../utils/finance';
 import { formatUGX } from '../../utils/currency';
-import {
-  contributionOwed,
-  newlyAddedProducts,
-  buildSettleLineItems,
-} from '../../utils/periodSettlement';
+import { contributionOwed, buildAnnualSettleLineItems } from '../../utils/periodSettlement';
 import PageHeader from '../../components/PageHeader';
 import PaySheet from '../../components/PaySheet';
 import InlinePayPanel from '../../components/InlinePayPanel';
-import ContributionSettingsForm from '../../components/contribution/ContributionSettingsForm';
+import SubscriberScheduleForm from '../../components/contribution/SubscriberScheduleForm';
 import { MOBILE_MONEY_METHODS } from '../../constants/payment';
 import ErrorCard from '../../components/feedback/ErrorCard';
 import styles from './SchedulePage.module.css';
@@ -31,13 +26,15 @@ export default function SchedulePage() {
   const { addToast } = useToast();
   const updateSchedule = useUpdateSchedule(sub?.id);
   const makeContribution = useMakeContribution(sub?.id);
-  const payPremium = usePayInsurancePremium(sub?.id);
+  const fundInsurance = useFundInsuranceProducts(sub?.id);
   const { data: paidThisMonthAmount = 0 } = useContributionPaidThisMonth(sub?.id);
   const [submitting, setSubmitting] = useState(false);
   const isDesktop = useIsDesktop();
 
-  // "Settle this period" prompt — opened after a save that leaves something owed
-  // (a higher contribution this month, and/or newly-added insurance premiums).
+  // "Settle this period" prompt — opened after a save that leaves a balance owed
+  // this month: the contribution top-up and/or a Route-A ("pay now") annual
+  // premium for the cover the subscriber just added. Route B ("save up") charges
+  // nothing now, so it funds building cover without opening this sheet.
   const [settle, setSettle] = useState(null);
   const [settleView, setSettleView] = useState('confirm'); // confirm | success
   const [settleSubmitting, setSettleSubmitting] = useState(false);
@@ -45,40 +42,69 @@ export default function SchedulePage() {
   const existing = sub?.contributionSchedule;
   const isNew = !existing;
 
-  // Products the subscriber currently holds (active policies) — the single
-  // source of truth shared by the form's pre-checked toggles AND the settle
-  // flow's "what's newly added" diff below, so re-saving an unchanged plan can
-  // never re-charge an already-held premium.
-  const heldActiveTypes = (sub?.policies ?? [])
-    .filter((p) => p.status === 'active')
-    .map((p) => p.type);
-
   async function handleSave(schedule) {
     if (!sub) return;
     setSubmitting(true);
     try {
-      await updateSchedule.mutateAsync(schedule);
+      // 1) Persist the schedule itself (frequency / amount / split / step-up +
+      //    the include-insurance flag). The 0072 funding-mode/target columns are
+      //    RPC-locked, so they DON'T ride this PATCH — the funding op below sets
+      //    them via the DEFINER RPC.
+      await updateSchedule.mutateAsync({
+        frequency: schedule.frequency,
+        amount: schedule.amount,
+        retirementPct: schedule.retirementPct,
+        emergencyPct: schedule.emergencyPct,
+        includeInsurance: schedule.includeInsurance,
+        insuranceTypes: schedule.insuranceTypes,
+        contributionIndexationPct: schedule.contributionIndexationPct,
+        ...(schedule.nextDueDate ? { nextDueDate: schedule.nextDueDate } : {}),
+      });
       addToast('success', isNew ? 'Schedule set up.' : 'Contribution schedule updated.');
 
-      // Settle the current period: the contribution top-up still owed this month
-      // plus premiums for any newly-added insurance products.
       const owed = contributionOwed(schedule.amount, paidThisMonthAmount);
-      const added = newlyAddedProducts(heldActiveTypes, schedule.insuranceTypes ?? []);
-      const { lineItems, total, products } = buildSettleLineItems({
-        owed,
-        addedProductIds: added,
-        freqPerYear: periodsPerYear(schedule.frequency),
-      });
+      const added = schedule.addedProducts ?? [];
+      const payNow = schedule.insuranceFundingMode !== 'save_to_cover';
+      const savingsPct = schedule.insuranceSavingsPct;
+      const hasNewCover = added.length > 0;
+      const hasBuild = (sub.policies ?? []).some((p) => p.status === 'building');
+
+      // Route B ("save up") funds building cover for FREE, so it must commit NOW —
+      // at save time — independent of the settle sheet. Otherwise deferring the
+      // (unrelated) owed contribution via "Maybe later" would silently drop the
+      // free cover. This also persists a savings-split-only tweak on an existing
+      // build (whose columns are RPC-locked, so updateSchedule can't carry it).
+      let builtNow = false;
+      if (!payNow && hasNewCover) {
+        await fundInsurance.mutateAsync({
+          fundingMode: 'save_to_cover', products: added, savingsPct, nonce: crypto.randomUUID(),
+        });
+        builtNow = true;
+      } else if (!payNow && !hasNewCover && hasBuild) {
+        await fundInsurance.mutateAsync({
+          fundingMode: 'save_to_cover', products: [], savingsPct, nonce: crypto.randomUUID(),
+        });
+      }
+
+      // The settle sheet handles only what's actually CHARGED this period: the
+      // owed contribution + any Route-A ("pay now") annual premium. Route-A cover
+      // activates only on payment, so its funding op rides the settle sheet.
+      const fundOp = (payNow && hasNewCover)
+        ? { fundingMode: 'pay_now', products: added, savingsPct }
+        : null;
+      const { lineItems, total } = buildAnnualSettleLineItems({ owed, addedProducts: added, payNow });
 
       if (total > 0) {
-        // Mint a stable nonce per leg so a double-tap can't double-charge.
-        const nonces = { contribution: crypto.randomUUID() };
-        products.forEach((p) => { nonces[p.id] = crypto.randomUUID(); });
-        setSettle({ owed, products, lineItems, total, retirementPct: schedule.retirementPct, nonces });
+        // Stable per-leg nonces so a double-tap can't double-charge.
+        const nonces = { contribution: crypto.randomUUID(), insurance: crypto.randomUUID() };
+        setSettle({ owed, fundOp, lineItems, total, retirementPct: schedule.retirementPct, nonces });
         setSettleView('confirm');
         setSubmitting(false);
         return;
       }
+
+      // Nothing to pay this period.
+      if (builtNow) addToast('success', 'Your new cover is now building from your savings.');
       navigate('/dashboard');
     } catch (err) {
       addToast('error', err?.message || 'Could not save schedule.');
@@ -99,14 +125,11 @@ export default function SchedulePage() {
           nonce: settle.nonces.contribution,
         });
       }
-      for (const p of settle.products) {
-        // Sequential so each premium commits with its own nonce (idempotent).
-        await payPremium.mutateAsync({
-          product: p.id,
-          cover: p.cover,
-          premiumMonthly: p.premiumMonthly,
+      if (settle.fundOp) {
+        await fundInsurance.mutateAsync({
+          ...settle.fundOp,
           method: methodFull,
-          nonce: settle.nonces[p.id],
+          nonce: settle.nonces.insurance,
         });
       }
       setSettleView('success');
@@ -147,12 +170,6 @@ export default function SchedulePage() {
     />
   );
 
-  // Desktop (>=1024px): mirror the agent's schedule sub-page — a plain header
-  // (no indigo hero dome) over a width-capped, centred frame wrapping the SAME
-  // form in its 2-column "split" layout (inputs left / sticky summary right).
-  // When a save leaves a balance owed, the form is replaced IN PLACE by a
-  // 2-column settle checkout (breakdown left, inline pay panel right) — desktop
-  // never opens the phone-style bottom sheet.
   // A cold-start query failure would otherwise render a silent blank schedule
   // form — surface a retry card instead (mirrors HomePage's error handling).
   if (isError) {
@@ -167,6 +184,10 @@ export default function SchedulePage() {
     );
   }
 
+  // Desktop (>=1024px): a plain header over a width-capped, centred frame wrapping
+  // the two-tab editor in its "split" layout (inputs left / sticky summary right).
+  // When a save leaves a balance owed, the form is replaced IN PLACE by a
+  // 2-column settle checkout (breakdown left, inline pay panel right).
   if (isDesktop) {
     const settleItems = (settle?.lineItems ?? []).map((li) => ({
       label: li.label,
@@ -179,15 +200,13 @@ export default function SchedulePage() {
           subtitle={
             settle
               ? 'Pay for the changes you just made to this month’s plan.'
-              : 'Frequency, amount, and the retirement/emergency split'
+              : 'Your contribution and your family cover, in one place'
           }
           fallback="/dashboard/save"
         />
         {settle ? (
           <div className={flow.splitHost}>
             <div className={flow.split}>
-              {/* LEFT — what's owed this month (the breakdown lives here, so the
-                  pay panel on the right stays a focused total + method + pay). */}
               <div className={flow.col}>
                 <div className={flow.card}>
                   <p className={flow.sumEyebrow}>What’s owed this month</p>
@@ -213,7 +232,6 @@ export default function SchedulePage() {
                 </div>
               </div>
 
-              {/* RIGHT — the inline pay panel (confirm → success in place). */}
               <aside className={flow.summaryCol}>
                 <InlinePayPanel
                   view={settleView === 'success' ? 'success' : 'confirm'}
@@ -237,10 +255,10 @@ export default function SchedulePage() {
         ) : (
           <div className={styles.frame}>
             {sub && (
-              <ContributionSettingsForm
+              <SubscriberScheduleForm
                 initial={existing}
                 age={sub.age}
-                initialInsuranceTypes={heldActiveTypes}
+                heldPolicies={sub.policies}
                 layout="split"
                 onSave={handleSave}
                 submitting={submitting}
@@ -253,9 +271,9 @@ export default function SchedulePage() {
     );
   }
 
-  // Mobile: the persistent shell app bar now owns the page title + back arrow, so
-  // the in-page hero dome is removed. A flat, light intro card carries the page's
-  // brand surface at the top of the body, then the shared form follows.
+  // Mobile: the persistent shell app bar owns the page title + back arrow, so the
+  // in-page hero dome is removed. A flat, light intro card carries the brand
+  // surface at the top of the body, then the two-tab editor follows.
   return (
     <>
       <div className={styles.page}>
@@ -266,15 +284,14 @@ export default function SchedulePage() {
               {isNew ? 'Set up your schedule' : 'Tune your schedule'}
             </p>
             <p className={styles.introSub}>
-              Frequency, amount, and the retirement/emergency split.
+              Your contribution and your family cover, in one place.
             </p>
           </section>
           {sub && (
-            <ContributionSettingsForm
+            <SubscriberScheduleForm
               initial={existing}
               age={sub.age}
-              initialInsuranceTypes={heldActiveTypes}
-              collapsible
+              heldPolicies={sub.policies}
               onSave={handleSave}
               submitting={submitting}
             />
