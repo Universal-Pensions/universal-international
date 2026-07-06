@@ -36,15 +36,8 @@ const ROLES = [
       </svg>
     ),
   },
-  {
-    id: 'admin', label: 'Admin', desc: 'Platform admin',
-    icon: (
-      <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" width="24" height="24">
-        <path d="M12 3L3 7v5c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V7l-9-4z" stroke="currentColor" strokeWidth="1.75" strokeLinejoin="round"/>
-        <path d="M9 12l2 2 4-4" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round"/>
-      </svg>
-    ),
-  },
+  // Admin is intentionally omitted — super-admin signs in only from the
+  // dedicated /admin portal, not the generic role picker.
 ];
 
 const container = {

@@ -1,0 +1,70 @@
+/* Super-admin login portal — a dark, focused counterpart to the public site. */
+.page {
+  min-height: 100vh;
+  min-height: 100dvh;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: linear-gradient(150deg, var(--color-indigo) 0%, var(--color-indigo-deep) 100%);
+  position: relative;
+  overflow: hidden;
+}
+.page::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(120% 85% at 88% -12%, rgba(255, 255, 255, 0.14), transparent 60%);
+}
+
+.inner {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  max-width: 420px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 22px;
+}
+
+.logo {
+  height: 40px;
+  width: auto;
+}
+
+.card {
+  width: 100%;
+  background: var(--color-white);
+  border-radius: 16px;
+  box-shadow: 0 30px 80px -30px rgba(0, 0, 0, 0.55);
+  padding: 26px 26px 22px;
+}
+
+.badge {
+  display: block;
+  text-align: center;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 0.6875rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-indigo-soft);
+  margin-bottom: 4px;
+}
+
+.body {
+  margin-top: 4px;
+}
+
+.backHome {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 0.8125rem;
+  color: var(--color-on-indigo-muted);
+  text-decoration: none;
+  transition: color 0.15s ease;
+}
+.backHome:hover {
+  color: var(--color-white);
+}

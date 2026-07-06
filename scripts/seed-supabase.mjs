@@ -26,6 +26,7 @@
 import 'dotenv/config';
 import { register } from 'node:module';
 import pg from 'pg';
+import bcrypt from 'bcryptjs';
 
 // Register an ESM resolution hook BEFORE importing mockData. The hook
 // auto-appends `.js` to extension-less relative specifiers so we can read
@@ -1684,9 +1685,10 @@ async function main() {
     );
 
     // ── users (auth identities) ────────────────────────────────────────────
-    // Seed a `users` row per demo persona with `password_hash = NULL` so the
-    // first sign-in via `/api/auth/verify-otp` stamps a hash on the existing
-    // row (the OTP path stays available until the user opts into a password).
+    // Seed a `users` row per demo persona, each stamped with the shared demo
+    // password hash (`Demo1234`) so PASSWORD login works out-of-the-box for
+    // every role. OTP stays available in parallel (any 6-digit code); the
+    // change-password route can still rotate a user's hash later.
     // The `id` follows `verify-otp.ts`'s deterministic `${role}:${phone}` shape
     // so re-running the seed is idempotent against an OTP-initiated upsert.
     // We mirror the persona list 1:1 here — the same five phones (agent,
@@ -1694,8 +1696,13 @@ async function main() {
     // (`s-0001`…`s-0005`) are NOT in `demo_personas` because subscriber lookup
     // routes through `users(phone, role='subscriber')` directly, so we also
     // seed those five subscriber rows so the demo phones land authenticated
-    // on first OTP without a missing-user fallback.
+    // on first OTP without a missing-user fallback. Admin gets a dedicated row
+    // (see below) — it has no demo_personas entry.
     console.log('• users…');
+    // Shared demo password for every seeded role. Satisfies validatePasswordShape
+    // (≥8 chars, ≥1 letter + ≥1 digit) and is published in CLAUDE.md §8. bcrypt
+    // cost 10 matches api/auth/_lib/password.ts so bcryptjs.compare verifies it.
+    const DEMO_PW_HASH = bcrypt.hashSync('Demo1234', 10);
     const userRows = [
       // Agent / branch / distributor personas — mirror `demo_personas` above.
       ...personas.map((p) => ({
@@ -1716,6 +1723,11 @@ async function main() {
       { id: 'subscriber:+256711000003', phone: '+256711000003', role: 'subscriber', name: 'Demo subscriber 3', entity_id: 's-0003' },
       { id: 'subscriber:+256711000004', phone: '+256711000004', role: 'subscriber', name: 'Demo subscriber 4', entity_id: 's-0004' },
       { id: 'subscriber:+256711000005', phone: '+256711000005', role: 'subscriber', name: 'Demo subscriber 5', entity_id: 's-0005' },
+      // Super-admin demo identity. Admin has NO demo_personas row (verify-* fall
+      // back to admin-001 via ROLE_DEFAULTS), so this `users` row is what enables
+      // admin PASSWORD login from /admin. Admin OTP stays phone-agnostic (any
+      // phone → admin-001). Keep this phone distinct from EMPLOYER_DEMO_PHONE.
+      { id: 'admin:+256700000099', phone: '+256700000099', role: 'admin', name: 'Demo super-admin', entity_id: 'admin-001' },
     ];
     // De-duplicate on (phone, role) so the `users_phone_role_unique` constraint
     // (UNIQUE(phone, role)) can always apply against seeded data (audit §4b.10).
@@ -1749,9 +1761,10 @@ async function main() {
         dedupedUserRows.map((u) => u.role),
         dedupedUserRows.map((u) => u.name),
         dedupedUserRows.map((u) => u.entity_id),
-        // NULL hash — verify-otp will stamp a bcrypt digest on first sign-in
-        // if/when the user sets a password (the OTP path stays primary).
-        dedupedUserRows.map(() => null),
+        // Shared demo password ('Demo1234') on every row so password login works
+        // out-of-the-box for all roles. OTP stays available in parallel; the
+        // change-password route can still rotate a user's hash later.
+        dedupedUserRows.map(() => DEMO_PW_HASH),
       ],
       'id'
     );

@@ -1,0 +1,189 @@
+.page {
+  min-height: 100vh;
+  min-height: 100dvh;
+  background-color: var(--color-cloud);
+  background-image:
+    linear-gradient(to right, rgba(41, 40, 103, 0.045) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(41, 40, 103, 0.045) 1px, transparent 1px);
+  background-size: 54px 54px;
+  display: flex;
+  flex-direction: column;
+}
+
+.top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  max-width: 1160px;
+  width: 100%;
+  margin: 0 auto;
+  padding: 22px 24px;
+}
+.brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-family: var(--font-display);
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: var(--color-indigo);
+  font-size: 1.0625rem;
+  text-decoration: none;
+}
+.mark {
+  width: 34px;
+  height: 34px;
+  border-radius: 8px;
+  display: grid;
+  place-items: center;
+  color: var(--color-indigo);
+  background: linear-gradient(150deg, #fff, var(--color-cloud));
+  border: 1px solid var(--color-lavender);
+}
+.mark svg { width: 19px; height: 19px; }
+.back {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 0.9375rem;
+  color: var(--color-indigo);
+  text-decoration: none;
+  padding: 8px 12px;
+  border-radius: 8px;
+}
+.back:hover { background: rgba(41, 40, 103, 0.06); }
+
+.main {
+  flex: 1;
+  display: grid;
+  place-items: center;
+  padding: 20px 24px 64px;
+}
+
+.card,
+.done {
+  width: 100%;
+  max-width: 520px;
+  background: var(--color-white);
+  border: 1px solid var(--color-lavender);
+  border-radius: 14px;
+  box-shadow: 0 1px 2px rgba(41, 40, 103, 0.05), 0 24px 48px -28px rgba(41, 40, 103, 0.4);
+  padding: 34px 34px 30px;
+}
+
+.eyebrow {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 0.75rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-indigo-soft);
+}
+.title {
+  font-family: var(--font-display);
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  color: var(--color-indigo);
+  font-size: clamp(1.6rem, 3vw, 2rem);
+  line-height: 1.1;
+  margin: 10px 0 0;
+  text-wrap: balance;
+}
+.lede {
+  font-size: 1rem;
+  color: var(--color-slate);
+  line-height: 1.55;
+  margin: 14px 0 0;
+  text-wrap: pretty;
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-top: 24px;
+}
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+.field > span {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 0.8125rem;
+  color: var(--color-slate);
+}
+.field em {
+  font-style: normal;
+  font-weight: 500;
+  color: var(--color-gray);
+}
+.field input {
+  width: 100%;
+  height: 46px;
+  padding: 0 14px;
+  font-family: var(--font-body);
+  font-size: 0.9375rem;
+  color: var(--color-slate);
+  background: var(--color-white);
+  border: 1px solid var(--color-lavender);
+  border-radius: 8px;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+.field input:focus {
+  outline: none;
+  border-color: var(--color-indigo-soft);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-indigo-soft) 18%, transparent);
+}
+
+.primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  height: 46px;
+  padding: 0 20px;
+  border: none;
+  border-radius: 10px;
+  background: var(--color-indigo);
+  color: #fff;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 0.9375rem;
+  cursor: pointer;
+  text-decoration: none;
+  box-shadow: 0 4px 12px rgba(41, 40, 103, 0.22);
+  transition: transform 0.15s ease, background 0.15s ease;
+}
+.primary:hover {
+  background: var(--color-indigo-deep);
+  transform: translateY(-1px);
+}
+.note {
+  font-size: 0.75rem;
+  color: var(--color-gray);
+  line-height: 1.5;
+  margin: 2px 0 0;
+}
+
+.done {
+  text-align: center;
+}
+.check {
+  display: grid;
+  place-items: center;
+  width: 52px;
+  height: 52px;
+  margin: 0 auto 4px;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--color-green) 14%, #fff);
+  color: var(--color-green);
+}
+.check svg { width: 26px; height: 26px; }
+.done .title { margin-top: 12px; }
+.done .primary { margin-top: 24px; }
+
+@media (max-width: 520px) {
+  .card, .done { padding: 26px 22px 24px; }
+}

@@ -16,7 +16,7 @@ import { EASE_OUT_EXPO as EASE } from '../utils/motion';
 import styles from './SignInModal.module.css';
 
 export default function SignInModal() {
-  const { isOpen, close } = useSignIn();
+  const { isOpen, initialRole, close } = useSignIn();
   const { login } = useAuth();
   const { addToast } = useToast();
   const navigate = useNavigate();
@@ -34,6 +34,9 @@ export default function SignInModal() {
   // When the backend returns `password_not_set`, flip this on to render the
   // prominent "Use a code instead" CTA panel inside PasswordEntry.
   const [showSwitchCta, setShowSwitchCta] = useState(false);
+  // Tracks the open/closed transition so the preset-role logic below can run
+  // during render instead of in an effect.
+  const [prevOpen, setPrevOpen] = useState(false);
   const prevStep = useRef('role');
 
   const modalRef = useRef(null);
@@ -124,6 +127,20 @@ export default function SignInModal() {
       return () => clearTimeout(timer);
     }
   }, [isOpen]);
+
+  // When opened with an explicit role (e.g. a landing "Log in as branch/agent"
+  // CTA calls signIn.open('branch')), skip the role picker. We adjust state
+  // during render on the open transition — React's supported alternative to a
+  // setState-in-an-effect (avoids the cascading-render warning and a RoleSelect
+  // flash). open() with no role leaves initialRole null, so the flow starts at
+  // the role step exactly as before.
+  if (isOpen !== prevOpen) {
+    setPrevOpen(isOpen);
+    if (isOpen && initialRole) {
+      setRole(initialRole === 'distributor' ? null : initialRole);
+      setStep(initialRole === 'distributor' ? 'distributor' : 'phone');
+    }
+  }
 
   function goTo(nextStep) {
     prevStep.current = step;

@@ -36,8 +36,12 @@ Design artifacts (Figma exports etc.) | `docs/design/`
 ```sh
 cp .env.local.example .env.local   # fill in Supabase keys
 npm install                         # legacy-peer-deps=true per .npmrc
-npm run dev                         # frontend only (mock fallback if VITE_USE_SUPABASE=false)
+npm run dev:all                     # ⭐ canonical: Vite (:5173) + Express API (:3001) together
+# npm run dev                       # frontend ONLY — /api has no backend, so sign-in (and every
+#                                   #   /api/* call) 500s via the proxy. Use only for pure-UI work.
 ```
+
+> **Sign-in returns 500 / "Server unavailable" in local dev?** The Express API on `:3001` isn't running — you started `npm run dev` (Vite only) instead of `npm run dev:all`, or `tsx watch` crashed and didn't restart. The Vite proxy relays the dead upstream as a 500 for *every* `/api/*` route (all roles, OTP + password). Fix: `npm run dev:all` (or `npm run dev:api` in a second terminal). Confirm with `nc -z localhost 3001`.
 
 **npm scripts** (`package.json`):
 
@@ -131,7 +135,7 @@ Also — env-var sourcing under the new Vercel-frontend / Render-backend split:
 
 ## 8. Demo credentials & personas
 
-The seeded demo data is generated via `npm run seed` (`scripts/seed-supabase.mjs`, mechanics in `BACKEND.md §12`). Phone numbers use the synthetic `+25671XXXXXXX` range. Login at the sign-in modal with any 6-digit code.
+The seeded demo data is generated via `npm run seed` (`scripts/seed-supabase.mjs`, mechanics in `BACKEND.md §12`). Phone numbers use the synthetic `+25671XXXXXXX` range. Every demo login supports **OTP or password, the user's choice**: OTP accepts **any 6-digit code**; password is the shared demo secret **`Demo1234`** (seeded onto every `users` row, hashed with bcrypt cost 10). Sign in per-audience from the landing pages (subscriber `/`, employer `/employers`, distributor/branch/agent `/distributors`) or admin from `/admin`.
 
 Role | Quick login | Seeded count
 --- | --- | ---
@@ -140,9 +144,11 @@ Agent | Any `agent` role login; `demo_personas` falls back to `a-001` if no phon
 Branch | Any `branch` role login; fallback to `b-kam-015` (Kampala branch) | ~316
 Distributor | Any `distributor` role login; fallback to `d-001` | 1 (singleton)
 Employer | `EMPLOYER_DEMO_PHONE` = `+25670 000 0031` (`src/data/employerSeed.js`); `demo_personas` falls back to `emp-001` if no phone match | 1 employer / 16 employees
-Admin | Any `admin` role login; `demo_personas` falls back to `admin-001` | 1 (head-office, global)
+Admin | Any `admin` role login; `demo_personas` falls back to `admin-001`. **Password login uses the pinned admin phone `+25670 000 0099`** (only seeded admin `users` row) | 1 (head-office, global)
 
 **Fallback rule.** `demo_personas` maps a phone → role-scoped ID. When no row matches, `verifyOtp` returns the hardcoded fallback IDs above so every demo login succeeds. Intentional. See `BACKEND.md §5` for the lookup chain and `BACKEND.md §12` for seed mechanics.
+
+**Password login scope.** OTP accepts any typed phone (fallback IDs keep it working); **password `Demo1234` works only for the explicitly-seeded demo phones** (the 5 subscribers, 3 agents, 2 branches, 2 distributors, the employer, and the pinned admin `+256700000099`) because `verify-password` needs a real `users(phone, role)` row. Arbitrary-phone password login is intentionally not built.
 
 ---
 
