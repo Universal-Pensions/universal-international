@@ -13,10 +13,10 @@ import styles from './Footer.module.css';
  */
 const LINKS = {
   Platform: [
-    { label: 'How it works', type: 'hash', to: '/#how-it-works' },
-    { label: 'For individuals', type: 'hash', to: '/?aud=subscriber#for-you' },
-    { label: 'For employers', type: 'hash', to: '/?aud=employer#for-you' },
-    { label: 'For agents', type: 'hash', to: '/?aud=agent#for-you' },
+    { label: 'For subscribers', type: 'route', to: '/' },
+    { label: 'For employers', type: 'route', to: '/employers' },
+    { label: 'For distributors', type: 'route', to: '/distributors' },
+    { label: 'How it works', type: 'hash', to: '/#how' },
   ],
   Company: [
     { label: 'About us', type: 'route', to: '/about' },

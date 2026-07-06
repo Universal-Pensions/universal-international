@@ -115,7 +115,7 @@
   color: var(--color-white);
   background: linear-gradient(135deg, var(--color-indigo) 0%, #1B1A4A 100%);
   padding: 1rem;
-  border-radius: var(--radius-full);
+  border-radius: var(--radius-md);
   width: 100%;
   text-align: center;
   transition: transform 0.2s ease, box-shadow 0.2s ease;

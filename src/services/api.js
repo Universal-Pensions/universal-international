@@ -161,6 +161,17 @@ export async function apiFetch(path, options = {}) {
   // G48 — Treat 5xx or non-JSON bodies as server_unavailable (cold-start
   // returning Render's HTML maintenance page, an LB 502, etc.).
   if (res.status >= 500) {
+    // Dev-only: the Vite proxy (vite.config.js) mints a `backend_down` body when
+    // the local Express API (:3001) isn't running. Surface its actionable hint
+    // instead of the generic "Server unavailable" so the sign-in UI tells the
+    // developer exactly what to do. Guarded on DEV + `clone` so this never
+    // changes production behaviour or perturbs test fetch-doubles.
+    if (import.meta.env?.DEV && typeof res.clone === 'function') {
+      const proxyBody = await res.clone().json().catch(() => null);
+      if (proxyBody?.code === 'backend_down') {
+        throw createApiError('backend_down', proxyBody.message || 'API server not running — run `npm run dev:all`.', res.status);
+      }
+    }
     const err = createApiError('server_unavailable', 'Server unavailable', res.status);
     // G49 — single retry with 1.5s backoff, idempotent only. A 5xx on a write
     // may have partially applied server-side, so we never auto-replay it.

@@ -21,6 +21,25 @@ export default defineConfig({
           proxy.on('proxyReq', (proxyReq) => {
             proxyReq.removeHeader('origin');
           });
+          // When the local Express backend (`npm run dev:api`, :3001) isn't
+          // running, http-proxy emits ECONNREFUSED and Vite would otherwise
+          // return a bare, bodyless 500 for every `/api/*` call — which the
+          // login UI surfaces as an opaque "Server unavailable" and hides the
+          // real cause (a recurring dev trap: `npm run dev` starts Vite only).
+          // Answer with an explicit, actionable 503 + a red terminal line so the
+          // failure is self-diagnosing. Dev-only: this `configure` callback never
+          // runs during `vite build` / on Vercel.
+          proxy.on('error', (err, _req, res) => {
+            const backendDown = err && (err.code === 'ECONNREFUSED' || err.code === 'ECONNRESET');
+            if (res && typeof res.writeHead === 'function' && !res.headersSent) {
+              res.writeHead(backendDown ? 503 : 502, { 'Content-Type': 'application/json' });
+              res.end(JSON.stringify({
+                code: 'backend_down',
+                message: 'API server not running — start it with `npm run dev:all` (or `npm run dev:api` in a second terminal).',
+              }));
+            }
+            console.error(`\x1b[31m[vite proxy] /api → localhost:3001 unreachable (${(err && err.code) || err}). Run \`npm run dev:all\`.\x1b[0m`);
+          });
         },
       },
     },

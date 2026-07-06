@@ -5,6 +5,8 @@ import { useAuth } from './contexts/AuthContext';
 import ErrorBoundary from './components/ErrorBoundary';
 import SignInModal from './components/SignInModal';
 import SubscribersPage from './pages/landing/SubscribersPage';
+import EmployersPage from './pages/landing/EmployersPage';
+import DistributorsPage from './pages/landing/DistributorsPage';
 import ScrollToTop from './components/ScrollToTop';
 import { hasDashboard } from './services/auth';
 import FAQ from './pages/FAQ';
@@ -12,6 +14,7 @@ import Contact from './pages/Contact';
 import About from './pages/About';
 import AdminLogin from './pages/AdminLogin';
 import RequestAccess from './pages/RequestAccess';
+import LandingLayout from './pages/landing/shell/LandingLayout';
 
 const DashboardShell = lazy(() => import('./dashboard/DashboardShell'));
 const BranchDashboardShell = lazy(() => import('./branch-dashboard/BranchDashboardShell'));
@@ -149,15 +152,23 @@ export default function App() {
     <SignInProvider>
       <ScrollToTop />
       <Routes>
-        <Route path="/" element={<SubscribersPage />} />
-        <Route path="/faq" element={<FAQ />} />
-        <Route path="/contact" element={<Contact />} />
-        <Route path="/about" element={<About />} />
+        {/* Public marketing surface. On a phone (<=768px) LandingLayout renders
+            the phone-native app shell (src/pages/landing/shell) instead of the
+            desktop pages; on larger screens it is a transparent <Outlet/> so the
+            pages below render byte-identically. */}
+        <Route element={<LandingLayout />}>
+          <Route index element={<SubscribersPage />} />
+          <Route path="employers" element={<EmployersPage />} />
+          <Route path="distributors" element={<DistributorsPage />} />
+          <Route path="faq" element={<FAQ />} />
+          <Route path="contact" element={<Contact />} />
+          <Route path="about" element={<About />} />
+          {/* Lead-capture for employer/distributor (admin-provisioned, not self-signup). */}
+          <Route path="request-access" element={<RequestAccess />} />
+        </Route>
         <Route path="/coming-soon" element={<ComingSoon />} />
         {/* Super-admin login portal (role-fixed to admin). */}
         <Route path="/admin" element={<AdminLogin />} />
-        {/* Lead-capture for employer/distributor (admin-provisioned, not self-signup). */}
-        <Route path="/request-access" element={<RequestAccess />} />
         <Route
           path="/signup/*"
           element={
