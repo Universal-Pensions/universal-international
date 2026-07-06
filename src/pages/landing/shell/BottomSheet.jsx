@@ -42,6 +42,15 @@ export default function BottomSheet({
   const sheetRef = useRef(null);
   const triggerRef = useRef(null);
 
+  // Hold onClose in a ref so the trap effect below depends only on `open`.
+  // Callers pass a fresh inline `onClose` arrow each render; without this the
+  // effect would tear down + re-run on every parent re-render while the sheet
+  // is open — flickering `inert` and bouncing focus back to the close button.
+  const onCloseRef = useRef(onClose);
+  useEffect(() => {
+    onCloseRef.current = onClose;
+  }, [onClose]);
+
   useEffect(() => {
     if (!open) return undefined;
 
@@ -63,7 +72,7 @@ export default function BottomSheet({
     function onKey(e) {
       if (e.key === 'Escape') {
         e.preventDefault();
-        onClose?.();
+        onCloseRef.current?.();
         return;
       }
       if (e.key !== 'Tab') return;
@@ -93,7 +102,7 @@ export default function BottomSheet({
       const trigger = triggerRef.current;
       if (trigger && typeof trigger.focus === 'function') trigger.focus();
     };
-  }, [open, onClose]);
+  }, [open]);
 
   return createPortal(
     <AnimatePresence>
