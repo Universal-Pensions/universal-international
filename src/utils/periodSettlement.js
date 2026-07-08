@@ -46,40 +46,6 @@ export function newlyAddedProducts(prev, next) {
   return (next ?? []).filter((id) => !held.has(id));
 }
 
-/** Per-period premium for a product given the schedule's periods-per-year. */
-function premiumPerPeriod(premiumMonthly, freqPerYear) {
-  return Math.round(((Number(premiumMonthly) || 0) * 12) / (freqPerYear || 12));
-}
-
-/**
- * Build the settle line items + total from the owed contribution and the
- * newly-added insurance products. Each line carries a numeric `amount` (summed
- * into the total) plus the product config the caller needs to drive payment.
- *
- * @param {{ owed?: number, addedProductIds?: string[], freqPerYear?: number }} opts
- * @returns {{ lineItems: Array, total: number, products: Array }}
- */
-export function buildSettleLineItems({ owed = 0, addedProductIds = [], freqPerYear = 12 } = {}) {
-  const lineItems = [];
-  if (owed > 0) {
-    lineItems.push({ id: 'contribution', kind: 'contribution', label: 'This month’s contribution', amount: owed });
-  }
-  const products = INSURANCE_PRODUCTS.filter((p) => addedProductIds.includes(p.id));
-  for (const p of products) {
-    lineItems.push({
-      id: `insurance-${p.id}`,
-      kind: 'insurance',
-      product: p.id,
-      label: p.label,
-      cover: p.cover,
-      premiumMonthly: p.premiumMonthly,
-      amount: premiumPerPeriod(p.premiumMonthly, freqPerYear),
-    });
-  }
-  const total = lineItems.reduce((sum, li) => sum + li.amount, 0);
-  return { lineItems, total, products };
-}
-
 /**
  * Settle line items for the ANNUAL-premium insurance model (migrations 0072/0073),
  * used by the subscriber schedule editor. Route A "pay now" charges the combined

@@ -27,7 +27,7 @@ function firstName(name) {
 /** Insurance-pitch draft for the nudge composer (vs the contribution reminder). */
 function insuranceMessage(recipients) {
   const lead = recipients.length === 1 ? `Hi ${firstName(recipients[0].name)}, ` : 'Hi, ';
-  return `${lead}adding life insurance to your pension is quick and affordable — cover for your family starts at just UGX 2,000/month. I can set it up for you in minutes; reply here or call me anytime. Thank you!`;
+  return `${lead}adding life insurance to your pension is quick and affordable — cover for your family is just UGX 24,000/year (about UGX 2,000/month) — paid once a year, or built gradually from savings. I can set it up for you in minutes; reply here or call me anytime. Thank you!`;
 }
 
 /**

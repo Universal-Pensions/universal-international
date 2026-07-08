@@ -172,7 +172,12 @@
   background: color-mix(in srgb, var(--color-teal) 10%, transparent);
 }
 
-.typeBadge[data-type='premium'] {
+/* The whole premium family (self-paid annual 'premium', employer-funded
+   'insurance_premium', and save-to-cover 'premium_sweep') shares the amber
+   accent — matching the amber dots the HomeDesktop activity feed uses. */
+.typeBadge[data-type='premium'],
+.typeBadge[data-type='insurance_premium'],
+.typeBadge[data-type='premium_sweep'] {
   color: var(--color-kyc-warning-amber);
   background: color-mix(in srgb, var(--color-amber) 14%, transparent);
 }

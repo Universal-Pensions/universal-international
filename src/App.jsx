@@ -5,6 +5,8 @@ import { useAuth } from './contexts/AuthContext';
 import ErrorBoundary from './components/ErrorBoundary';
 import SignInModal from './components/SignInModal';
 import SubscribersPage from './pages/landing/SubscribersPage';
+import EmployersPage from './pages/landing/EmployersPage';
+import DistributorsPage from './pages/landing/DistributorsPage';
 import ScrollToTop from './components/ScrollToTop';
 import { hasDashboard } from './services/auth';
 import FAQ from './pages/FAQ';
@@ -150,6 +152,8 @@ export default function App() {
       <ScrollToTop />
       <Routes>
         <Route path="/" element={<SubscribersPage />} />
+        <Route path="/employers" element={<EmployersPage />} />
+        <Route path="/distributors" element={<DistributorsPage />} />
         <Route path="/faq" element={<FAQ />} />
         <Route path="/contact" element={<Contact />} />
         <Route path="/about" element={<About />} />

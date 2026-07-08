@@ -14,12 +14,22 @@ import SkeletonRow from '../../../components/SkeletonRow';
 import EmptyState from '../../../components/EmptyState';
 import frameStyles from './ReportFrame.module.css';
 
-const TYPE_OPTIONS = [
-  { value: 'contribution', label: 'Contribution' },
-  { value: 'withdrawal', label: 'Withdrawal' },
-  { value: 'premium', label: 'Premium' },
-  { value: 'claim', label: 'Claim' },
-];
+// Human labels per transaction type. Self-paid cover is ONE annual premium
+// ('premium'); employer-funded group cover is monthly ('insurance_premium');
+// save-to-cover sweeps savings into the annual premium ('premium_sweep'). These
+// distinctions must show consistently in both the badge column and the filter.
+const TYPE_LABELS = {
+  contribution: 'Contribution',
+  withdrawal: 'Withdrawal',
+  premium: 'Insurance premium',
+  insurance_premium: 'Employer cover premium',
+  premium_sweep: 'Premium from savings',
+  claim: 'Claim',
+};
+
+// The filter narrows rows by exact `type` value, so every real type gets an
+// option (otherwise those rows are unreachable through the dropdown).
+const TYPE_OPTIONS = Object.entries(TYPE_LABELS).map(([value, label]) => ({ value, label }));
 
 const STATUS_OPTIONS = [
   { value: 'settled', label: 'Settled' },
@@ -81,7 +91,8 @@ export default function AllTransactions() {
       sortable: true,
       render: (row) => (
         <span className={frameStyles.typeBadge} data-type={row.type}>
-          {row.type.charAt(0).toUpperCase() + row.type.slice(1)}
+          {TYPE_LABELS[row.type]
+            || `${row.type.charAt(0).toUpperCase()}${row.type.slice(1).replace(/_/g, ' ')}`}
         </span>
       ),
     },

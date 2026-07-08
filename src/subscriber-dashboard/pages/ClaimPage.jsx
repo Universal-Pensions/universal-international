@@ -60,6 +60,8 @@ export default function ClaimPage() {
   const activeIns = activePolicies(sub);
   const coverTotal = activeCoverTotal(sub);
   const premiumTotal = activeIns.reduce((s, p) => s + (Number(p.premiumMonthly) || 0), 0);
+  // Self-paid cover is billed as ONE annual premium (rate × 12), never monthly.
+  const annualPremiumTotal = premiumTotal * 12;
   const nextRenewal = activeIns.map((p) => p.renewalDate).filter(Boolean).sort()[0] || null;
   const noPolicy = activeIns.length === 0;
 
@@ -151,7 +153,7 @@ export default function ClaimPage() {
   // dome's big amount + stat row) into a single flat line so nothing is lost.
   const deskSubtitle =
     showCoverHero
-      ? `UGX ${formatUGX(coverTotal, { compact: false }).replace('UGX ', '')} active cover · ${formatUGX(premiumTotal, { compact: false })} / mo${nextRenewal ? ` · renews ${formatDate(nextRenewal)}` : ''}`
+      ? `UGX ${formatUGX(coverTotal, { compact: false }).replace('UGX ', '')} active cover · ${formatUGX(annualPremiumTotal, { compact: false })} / yr${nextRenewal ? ` · renews ${formatDate(nextRenewal)}` : ''}`
       : view === 'list' && coverTotal > 0 ? `Cover: ${formatUGX(coverTotal)}`
       : view === 'list' ? 'No active policy yet'
       : undefined;
@@ -218,7 +220,7 @@ export default function ClaimPage() {
                   </div>
                   <h2 className={styles.emptyTitle}>No active policy</h2>
                   <p className={styles.emptyText}>
-                    Add life cover from <strong>UGX 2,000 / mo</strong>. You&apos;ll be covered up to UGX 1M.
+                    Add life cover from <strong>UGX 24,000 / yr</strong>. You&apos;ll be covered up to UGX 1M.
                   </p>
                   <button
                     type="button"
@@ -239,7 +241,7 @@ export default function ClaimPage() {
                       <span className={styles.coverEyebrow}>Active cover</span>
                       <div className={styles.coverAmount}>{formatUGX(coverTotal, { compact: false })}</div>
                       <p className={styles.coverSub}>
-                        {formatUGX(premiumTotal, { compact: false })} / mo{nextRenewal ? ` · Renews ${formatDate(nextRenewal)}` : ''}
+                        {formatUGX(annualPremiumTotal, { compact: false })} / yr{nextRenewal ? ` · Renews ${formatDate(nextRenewal)}` : ''}
                       </p>
                     </section>
                   )}
@@ -419,7 +421,7 @@ export default function ClaimPage() {
                           {premiumTotal > 0 && (
                             <li className={flow.sumRow}>
                               <span>Premium</span>
-                              <span className={flow.sumVal}>{formatUGX(premiumTotal, { compact: false })} / mo</span>
+                              <span className={flow.sumVal}>{formatUGX(annualPremiumTotal, { compact: false })} / yr</span>
                             </li>
                           )}
                           {nextRenewal && (

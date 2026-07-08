@@ -991,64 +991,6 @@ export async function updateInsuranceCover(id, { cover, premiumMonthly } = {}) {
 }
 
 /**
- * Pay an insurance premium for a single product (health | funeral | life).
- * Activates the per-(subscriber, product) policy row AND records a 'premium'
- * transaction, idempotent on the client-minted `nonce`. Routes through the
- * SECURITY DEFINER `pay_insurance_premium` RPC (migration 0063); 'premium' rows
- * never fire the contribution trigger, so balances/AUM are unaffected.
- *
- * @param {string} id
- * @param {{ product:'health'|'funeral'|'life', cover:number, premiumMonthly:number, method?:string, nonce?:string }} payload
- */
-export async function payInsurancePremium(
-  id,
-  { product, cover, premiumMonthly, method = 'MTN Mobile Money', nonce } = {},
-) {
-  if (!id) throw new Error('Subscriber id required');
-  if (!['health', 'funeral', 'life'].includes(product)) throw new Error('Unknown insurance product');
-
-  if (!IS_SUPABASE_ENABLED) {
-    const sub = SUBSCRIBERS[id];
-    if (!sub) throw new Error('Subscriber not found');
-    const m = readSession(id);
-    const entry = {
-      product,
-      cover: Number(cover ?? 0),
-      premiumMonthly: Number(premiumMonthly ?? 0),
-      policyStart: todayIso(),
-      renewalDate: renewalIsoFromNow(1),
-      status: 'active',
-    };
-    m.insuranceProductsOverride = [
-      ...m.insuranceProductsOverride.filter((o) => o.product !== product),
-      entry,
-    ];
-    setRenewalOverride(id, product, true);
-    const reference = `PR-${Math.floor(Math.random() * 900000) + 100000}`;
-    m.extraTransactions.unshift({
-      id: `tx-${id}-prem-${Date.now()}`,
-      type: 'premium',
-      amount: Number(premiumMonthly ?? 0),
-      date: todayIso(),
-      status: 'settled',
-      method,
-      reference,
-    });
-    return { ...entry, reference };
-  }
-
-  const { data, error } = await supabase.rpc('pay_insurance_premium', {
-    p_nonce: nonce ?? crypto.randomUUID(),
-    p_product: product,
-    p_cover: Number(cover ?? 0),
-    p_premium: Number(premiumMonthly ?? 0),
-    p_method: method,
-  });
-  if (error) throw error;
-  return data;
-}
-
-/**
  * Fund one or more insurance products post-signup, on the annual-premium model
  * (migration 0073 `fund_insurance_products`). Two routes, matching onboarding:
  *

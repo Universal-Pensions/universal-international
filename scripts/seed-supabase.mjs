@@ -877,7 +877,16 @@ async function main() {
       // Add one "brought-forward" contribution dated at registration so the
       // subscriber's ledger sums exactly to total_balance (and, since the rollup
       // sums all contribution rows, platform totalContributions ≈ AUM).
-      const _seededSum = (s.transactions ?? []).reduce((acc, t) => acc + Number(t.amount || 0), 0);
+      //
+      // A self-paid insurance 'premium' (the annual cover charge) does NOT build
+      // the savings balance — the balance trigger fires only WHEN type='contribution',
+      // so a premium never touches total_balance. Exclude it from the opening-balance
+      // reconciliation, else the ~24,000 annual premium would be baked into the
+      // brought-forward contribution and inflate seeded AUM (audit 2026-07-05).
+      // (Claims are left in the sum, unchanged, to preserve the approved headline.)
+      const _seededSum = (s.transactions ?? [])
+        .filter((t) => (t.type ?? 'contribution') !== 'premium')
+        .reduce((acc, t) => acc + Number(t.amount || 0), 0);
       const _opening = Math.round(Number(s.netBalance ?? 0) - _seededSum);
       if (_opening !== 0) {
         // A POSITIVE opening is savings brought forward → a contribution. A

@@ -44,7 +44,12 @@ export default function AnnualStatement() {
     let contributions = 0, premiums = 0, withdrawals = 0, claimsInflow = 0;
     yearTx.forEach((t) => {
       if (t.type === 'contribution') contributions += t.amount;
-      else if (t.type === 'premium') premiums += t.amount;
+      // Self-paid annual premium ('premium') and save-to-cover sweeps
+      // ('premium_sweep', stored negative) are both the member's own premiums;
+      // Math.abs so a negative sweep magnitude ADDS to the total, not subtracts.
+      // Employer-funded 'insurance_premium' is deliberately excluded — the
+      // member paid nothing toward it.
+      else if (t.type === 'premium' || t.type === 'premium_sweep') premiums += Math.abs(t.amount);
       else if (t.type === 'withdrawal') withdrawals += Math.abs(t.amount);
       else if (t.type === 'claim') claimsInflow += t.amount;
     });

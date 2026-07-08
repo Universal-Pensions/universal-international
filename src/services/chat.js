@@ -163,7 +163,7 @@ const subscriberChatResponses = {
   emergency:
     "Your Emergency bucket is designed for hardship situations — medical, education, housing, or business. It’s withdrawable any time.",
   insurance:
-    "Your baseline cover is UGX 1,000,000 for UGX 2,000 / month. Upgrade options are available under Insurance → Coverage.",
+    "Your baseline cover is UGX 1,000,000 for an annual premium of UGX 24,000 — you pay it once a year, or build it automatically from the emergency slice of your savings. Upgrade options are available under Insurance → Coverage.",
   split:
     "A balanced split is 80% retirement / 20% emergency. Adjust it any time from the Schedule tab.",
   balance:
