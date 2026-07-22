@@ -15,7 +15,7 @@ import styles from './Settings.module.css';
 /* ═══════════════════════════════════════════════════════════════════════════ */
 /*  Settings panel                                                           */
 /* ═══════════════════════════════════════════════════════════════════════════ */
-export default function Settings({ splitMode = false }) {
+export default function Settings({ splitMode = false, fullPage = false }) {
   const {
     settingsOpen,
     setSettingsOpen,
@@ -105,11 +105,11 @@ export default function Settings({ splitMode = false }) {
   useEffect(() => {
     if (!settingsOpen) return;
     function handleEsc(e) {
-      if (e.key === 'Escape') setSettingsOpen(false);
+      if (e.key === 'Escape' && !fullPage) setSettingsOpen(false);
     }
     document.addEventListener('keydown', handleEsc);
     return () => document.removeEventListener('keydown', handleEsc);
-  }, [settingsOpen, setSettingsOpen]);
+  }, [settingsOpen, setSettingsOpen, fullPage]);
 
   /* ── Validation ─────────────────────────────────────────────────────────── */
   const validate = useCallback(() => {
@@ -260,10 +260,10 @@ export default function Settings({ splitMode = false }) {
 
   return (
     <AnimatePresence>
-      {settingsOpen && (
+      {(settingsOpen || fullPage) && (
         <>
-          {/* Backdrop — hidden in split mode */}
-          {!splitMode && (
+          {/* Backdrop — hidden in split mode and in full-page (dash) mode */}
+          {!splitMode && !fullPage && (
             <motion.div
               className={styles.backdrop}
               initial={{ opacity: 0 }}
@@ -278,24 +278,26 @@ export default function Settings({ splitMode = false }) {
           <motion.div
             className={styles.panel}
             data-split-mode={splitMode || undefined}
-            initial={{ x: '100%', opacity: 0.6 }}
-            animate={{
+            style={fullPage ? { position: 'static', inset: 'auto', margin: '0 auto', width: '100%', maxWidth: '1040px', height: 'auto', maxHeight: 'none', overflow: 'visible', boxShadow: 'none', border: 'none' } : undefined}
+            initial={fullPage ? false : { x: '100%', opacity: 0.6 }}
+            animate={fullPage ? { opacity: 1 } : {
               x: 0,
               opacity: 1,
               transition: { duration: 0.55, ease: EASE_OUT_EXPO },
             }}
-            exit={{
+            exit={fullPage ? { opacity: 0 } : {
               x: '100%',
               opacity: 0.6,
               transition: { duration: 0.55, ease: EASE_OUT_EXPO },
             }}
-            role="dialog"
-            aria-modal="true"
+            role={fullPage ? undefined : 'dialog'}
+            aria-modal={fullPage ? undefined : 'true'}
             aria-label="Settings"
           >
             <form className={styles.form} onSubmit={handleSave} noValidate>
               {/* Header */}
               <div className={styles.header}>
+                {!fullPage && (
                 <button
                   type="button"
                   className={styles.closeBtn}
@@ -306,6 +308,7 @@ export default function Settings({ splitMode = false }) {
                     <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round"/>
                   </svg>
                 </button>
+                )}
                 <h2 className={styles.title}>Settings</h2>
                 <p className={styles.subtitle}>Manage your profile and security</p>
               </div>

@@ -31,6 +31,8 @@ vi.mock('../contexts/AuthContext', () => ({ useAuth: () => ({ logout: vi.fn() })
 vi.mock('./sidebar/AdminSidebar', () => ({ default: () => <div data-testid="admin-sidebar" /> }));
 vi.mock('../dashboard/map/UgandaMap', () => ({ default: () => <div data-testid="uganda-map" /> }));
 vi.mock('./AdminCountryOverview', () => ({ default: () => <div data-testid="admin-country-overview">National Overview</div> }));
+// Dash mode (the new default) renders the rich AdminOverview at country level.
+vi.mock('./overview/AdminOverview', () => ({ default: () => <div data-testid="admin-overview">National Platform</div> }));
 vi.mock('../dashboard/overlay/OverlayPanel', () => ({ default: () => <div data-testid="overlay-panel" /> }));
 vi.mock('../dashboard/overlay/Breadcrumb', () => ({ default: () => <div data-testid="breadcrumb" /> }));
 vi.mock('../dashboard/cards/MetricsRow', () => ({ default: () => <div data-testid="metrics-row" /> }));
@@ -69,17 +71,25 @@ describe('<AdminDashboardShell />', () => {
     expect(screen.getByTestId('admin-sidebar')).toBeInTheDocument();
   });
 
-  it('shows the admin country Summary (NOT the geographic overlay) at the default country level', () => {
+  it('defaults to dash mode: shows the rich AdminOverview at country level (NOT the map summary/overlay)', () => {
     renderShell();
-    // Country-level renders AdminCountryOverview, not the distributor OverlayPanel.
-    expect(screen.getByTestId('admin-country-overview')).toBeInTheDocument();
+    // The shell now defaults to the branch-admin dashboard mode (parity with the
+    // distributor). At country level that renders the rich AdminOverview — not the
+    // map-mode AdminCountryOverview summary nor the distributor OverlayPanel.
+    expect(screen.getByTestId('admin-overview')).toBeInTheDocument();
+    expect(screen.queryByTestId('admin-country-overview')).toBeNull();
     expect(screen.queryByTestId('overlay-panel')).toBeNull();
   });
 
-  it('renders the metrics row and (desktop) map chrome', () => {
+  it('hides the map-mode chrome (map, breadcrumb, metrics row, top bar) in the default dash mode', () => {
     renderShell();
-    expect(screen.getByTestId('metrics-row')).toBeInTheDocument();
-    expect(screen.getByTestId('breadcrumb')).toBeInTheDocument();
+    // Dash mode replaces the map + overlay + metrics chrome with the full-page
+    // canvas; the map itself is lazy (mapMounted stays false until the first
+    // map-mode entry), so none of the map-mode chrome should be present.
+    expect(screen.queryByTestId('uganda-map')).toBeNull();
+    expect(screen.queryByTestId('breadcrumb')).toBeNull();
+    expect(screen.queryByTestId('metrics-row')).toBeNull();
+    expect(screen.queryByTestId('top-bar')).toBeNull();
   });
 
   it('does not mount any slide-in panel while every panel open-state is closed', () => {

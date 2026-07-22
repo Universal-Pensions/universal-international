@@ -150,7 +150,7 @@ function SearchableSelect({ options, value, onChange, placeholder, allowCustom, 
 /* ═══════════════════════════════════════════════════════════════════════════ */
 /*  CreateBranch — multi-step slide-in panel                                  */
 /* ═══════════════════════════════════════════════════════════════════════════ */
-export default function CreateBranch() {
+export default function CreateBranch({ fullPage = false }) {
   const { createBranchOpen, setCreateBranchOpen } = useDashboard();
   const createBranch = useCreateBranch();
   const { addToast } = useToast();
@@ -197,10 +197,10 @@ export default function CreateBranch() {
   /* ── Escape key to close panel ────────────────────────────────────────────── */
   useEffect(() => {
     if (!createBranchOpen) return;
-    function onKey(e) { if (e.key === 'Escape') setCreateBranchOpen(false); }
+    function onKey(e) { if (e.key === 'Escape' && !fullPage) setCreateBranchOpen(false); }
     document.addEventListener('keydown', onKey);
     return () => document.removeEventListener('keydown', onKey);
-  }, [createBranchOpen, setCreateBranchOpen]);
+  }, [createBranchOpen, setCreateBranchOpen, fullPage]);
 
   /* ── Reset form when panel closes ────────────────────────────────────────── */
   useEffect(() => {
@@ -281,7 +281,7 @@ export default function CreateBranch() {
   return (
     <>
       <AnimatePresence>
-        {createBranchOpen && (
+        {createBranchOpen && !fullPage && (
           <motion.div
             key="cb-backdrop"
             className={styles.backdrop}
@@ -295,14 +295,15 @@ export default function CreateBranch() {
       </AnimatePresence>
 
       <AnimatePresence>
-        {createBranchOpen && (
+        {(createBranchOpen || fullPage) && (
           <motion.div
             key="cb-panel"
             className={styles.panel}
-            initial={{ x: '100%' }}
-            animate={{ x: 0 }}
-            exit={{ x: '100%' }}
+            initial={fullPage ? false : { x: '100%' }}
+            animate={fullPage ? { opacity: 1 } : { x: 0 }}
+            exit={fullPage ? { opacity: 0 } : { x: '100%' }}
             transition={{ duration: 0.4, ease: EASE_OUT_EXPO }}
+            style={fullPage ? { position: 'static', inset: 'auto', margin: '0 auto', width: '100%', maxWidth: '1040px', height: 'auto', maxHeight: 'none', overflow: 'visible', boxShadow: 'none', border: 'none' } : undefined}
           >
             {success ? (
               /* ── Success state ──────────────────────────────────────── */
@@ -408,11 +409,13 @@ export default function CreateBranch() {
               <>
                 {/* ── Header ──────────────────────────────────────────── */}
                 <div className={styles.header}>
-                  <button className={styles.closeBtn} onClick={() => setCreateBranchOpen(false)} aria-label="Close">
-                    <svg viewBox="0 0 24 24" fill="none" width="20" height="20">
-                      <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" />
-                    </svg>
-                  </button>
+                  {!fullPage && (
+                    <button className={styles.closeBtn} onClick={() => setCreateBranchOpen(false)} aria-label="Close">
+                      <svg viewBox="0 0 24 24" fill="none" width="20" height="20">
+                        <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" />
+                      </svg>
+                    </button>
+                  )}
                   <h2 className={styles.title}>Create New Branch</h2>
                   <p className={styles.subtitle}>Set up a new branch and assign an admin</p>
                 </div>

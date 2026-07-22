@@ -24,17 +24,10 @@
    distributor dashboard's micro-interactions. */
 .skeletonCard {
   min-height: 210px;
-  background: linear-gradient(145deg, rgba(255,255,255,0.78) 0%, rgba(246,247,251,0.72) 100%);
-  backdrop-filter: blur(24px);
-  -webkit-backdrop-filter: blur(24px);
-  border: 1px solid rgba(255,255,255,0.6);
-  border-top: 1px solid rgba(255,255,255,0.8);
-  border-left: 1px solid rgba(255,255,255,0.7);
-  border-radius: 1.25rem;
-  box-shadow:
-    0 8px 32px color-mix(in srgb, var(--color-indigo) 7%, transparent),
-    0 1px 0 rgba(255,255,255,0.5) inset,
-    0 -1px 0 color-mix(in srgb, var(--color-indigo) 3%, transparent) inset;
+  background: var(--color-white);
+  border: 1px solid var(--card-bd);
+  border-radius: var(--radius-md);
+  box-shadow: var(--card-sh);
   padding: 1rem 1.125rem;
   display: flex;
   flex-direction: column;
@@ -124,28 +117,20 @@
 
 .card {
   min-height: 210px;
-  background: linear-gradient(145deg, rgba(255,255,255,0.78) 0%, rgba(246,247,251,0.72) 100%);
-  backdrop-filter: blur(24px);
-  -webkit-backdrop-filter: blur(24px);
-  border: 1px solid rgba(255,255,255,0.6);
-  border-top: 1px solid rgba(255,255,255,0.8);
-  border-left: 1px solid rgba(255,255,255,0.7);
-  border-radius: 1.25rem;
-  box-shadow:
-    0 8px 32px color-mix(in srgb, var(--color-indigo) 7%, transparent),
-    0 1px 0 rgba(255,255,255,0.5) inset,
-    0 -1px 0 color-mix(in srgb, var(--color-indigo) 3%, transparent) inset;
+  background: var(--color-white);
+  border: 1px solid var(--card-bd);
+  border-radius: var(--radius-md);
+  box-shadow: var(--card-sh);
   padding: 1rem 1.125rem;
   display: flex;
   flex-direction: column;
   gap: 0.625rem;
-  transition: box-shadow 0.3s ease, transform 0.3s ease;
+  transition: box-shadow 0.3s ease, transform 0.3s ease, border-color 0.18s ease;
 }
 
 .card:hover {
-  box-shadow:
-    0 12px 40px color-mix(in srgb, var(--color-indigo) 10%, transparent),
-    0 1px 0 rgba(255,255,255,0.6) inset;
+  border-color: var(--card-bd-hi);
+  box-shadow: var(--card-sh-hi);
   transform: translateY(-3px);
 }
 
@@ -189,7 +174,7 @@
 .card[data-expanded='true'] {
   position: relative;
   z-index: 16;
-  box-shadow: 0 16px 48px color-mix(in srgb, var(--color-indigo) 14%, transparent);
+  box-shadow: var(--shadow-lg);
 }
 
 .expandedContent {
@@ -198,7 +183,7 @@
 
 .expandDivider {
   height: 1px;
-  background: color-mix(in srgb, var(--color-indigo) 6%, transparent);
+  background: var(--card-bd);
   margin: 0.5rem 0;
 }
 
@@ -281,7 +266,7 @@
   justify-content: space-between;
   gap: 0.5rem;
   padding: 0.75rem 1rem;
-  border-bottom: 1px solid color-mix(in srgb, var(--color-indigo) 5%, transparent);
+  border-bottom: 1px solid var(--card-bd);
   cursor: pointer;
   transition: background 0.15s ease, border-color 0.15s ease;
 }
@@ -431,7 +416,7 @@
   align-items: center;
   gap: 0.375rem;
   padding: 0.5rem 0.75rem;
-  border-top: 1px solid color-mix(in srgb, var(--color-indigo) 5%, transparent);
+  border-top: 1px solid var(--card-bd);
 }
 
 .chatField {
@@ -765,7 +750,7 @@
   .card {
     min-height: auto;
     border-radius: var(--radius-xl);
-    background: linear-gradient(145deg, rgba(255,255,255,0.92) 0%, rgba(246,247,251,0.88) 100%);
+    background: var(--color-white);
   }
 
   .card:hover {
@@ -776,12 +761,10 @@
   .chatCard {
     order: -1;
     min-height: auto;
-    border: none;
+    border: 1px solid var(--card-bd);
     border-radius: var(--radius-xl);
-    background: linear-gradient(165deg, #2D2C6B 0%, var(--color-indigo-deep) 60%, #171638 100%);
-    box-shadow:
-      0 4px 16px rgba(27, 26, 74, 0.15),
-      0 12px 40px rgba(27, 26, 74, 0.12);
+    background: var(--color-white);
+    box-shadow: var(--card-sh);
     overflow: hidden;
   }
 
@@ -791,7 +774,7 @@
 
   .chatHeader {
     padding: 1rem 1.25rem;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    border-bottom: 1px solid var(--card-bd);
     background: transparent;
   }
 
@@ -800,33 +783,32 @@
   }
 
   .chatHeader:hover {
-    background: rgba(255, 255, 255, 0.02);
+    background: color-mix(in srgb, var(--color-indigo) 2%, transparent);
   }
 
   .chatHeader .cardToggle {
-    color: rgba(217, 220, 242, 0.4);
+    color: var(--color-gray);
   }
 
   .chatIcon {
     width: 32px;
     height: 32px;
     border-radius: var(--radius-md);
-    background: rgba(255, 255, 255, 0.08);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    color: rgba(217, 220, 242, 0.9);
+    background: color-mix(in srgb, var(--color-indigo) 6%, transparent);
+    color: var(--color-indigo);
   }
 
   .chatTitle {
     font-size: var(--text-sm);
     font-weight: 800;
-    color: var(--color-white);
+    color: var(--color-indigo);
   }
 
   .chatSubtitle {
     display: block;
     font-family: var(--font-body);
     font-size: 11px;
-    color: rgba(217, 220, 242, 0.4);
+    color: var(--color-gray);
     margin-top: 2px;
   }
 
@@ -850,8 +832,8 @@
   }
 
   .chatBubble[data-role='assistant'] {
-    background: rgba(255, 255, 255, 0.07);
-    color: rgba(255, 255, 255, 0.8);
+    background: color-mix(in srgb, var(--color-indigo) 4%, transparent);
+    color: var(--color-slate);
   }
 
   .chatBubble[data-role='user'] {
@@ -860,7 +842,7 @@
   }
 
   .typingDots span {
-    background: rgba(217, 220, 242, 0.5);
+    background: var(--color-gray);
   }
 
   .chatSuggestions {
@@ -878,18 +860,18 @@
     white-space: normal;
     text-align: left;
     border-radius: var(--radius-md);
-    background: rgba(255, 255, 255, 0.05);
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    color: rgba(217, 220, 242, 0.7);
+    background: color-mix(in srgb, var(--color-indigo) 4%, transparent);
+    border: 1px solid color-mix(in srgb, var(--color-indigo) 6%, transparent);
+    color: var(--color-indigo-soft);
   }
 
   .chatSuggest:hover {
-    background: rgba(255, 255, 255, 0.1);
-    color: var(--color-white);
+    background: color-mix(in srgb, var(--color-indigo) 8%, transparent);
+    color: var(--color-indigo);
   }
 
   .chatSuggest:active {
-    background: rgba(255, 255, 255, 0.08);
+    background: color-mix(in srgb, var(--color-indigo) 6%, transparent);
     transform: scale(0.97);
   }
 
@@ -903,8 +885,8 @@
     display: flex;
     align-items: center;
     gap: 0.375rem;
-    background: rgba(255, 255, 255, 0.06);
-    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: var(--color-cloud);
+    border: 1px solid var(--color-lavender);
     border-radius: var(--radius-full);
     padding: 0.25rem 0.375rem 0.25rem 1rem;
   }
@@ -912,12 +894,12 @@
   .chatField {
     font-size: 16px; /* prevents iOS zoom on focus */
     padding: 0.5rem 0;
-    color: var(--color-white);
+    color: var(--color-slate);
     flex: 1;
   }
 
   .chatField::placeholder {
-    color: rgba(217, 220, 242, 0.3);
+    color: var(--color-lavender);
   }
 
   .chatField:focus-visible {

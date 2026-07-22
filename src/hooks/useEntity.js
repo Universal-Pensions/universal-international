@@ -325,6 +325,28 @@ export function useEntityMetrics(level, id) {
 }
 
 /**
+ * Bounded server-side top-N entities at a level for the country overview's
+ * "Top branches" / "Top agents" tables (0077 `get_top_entities`). Returns only the
+ * `limit` display-ready rows each table renders, replacing the old
+ * useAllEntities + useAllEntitiesMetrics full-collection pull on the default dash
+ * landing. 15-min staleTime — the same slow-changing aggregate hot path as the
+ * metrics rollups.
+ *
+ * @param {('branch'|'agent')} level
+ * @param {('aum'|'contributions'|'subscribers')} [sortKey]
+ * @param {number} [limit=6]
+ * @returns {import('@tanstack/react-query').UseQueryResult<Array<Object>>}
+ */
+export function useTopEntities(level, sortKey, limit = 6) {
+  return useQuery({
+    queryKey: ['topEntities', level, sortKey ?? null, limit],
+    queryFn: () => entities.getTopEntities(level, sortKey, limit),
+    enabled: !!level,
+    staleTime: 15 * 60 * 1000,
+  });
+}
+
+/**
  * Batch metrics for ALL entities at a level — used by report views
  * (AllBranches, AllAgents, AgentPerformance, BranchPerformance,
  * DistributionSummary, etc.) that today reach into `row.metrics` from a

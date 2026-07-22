@@ -15,24 +15,36 @@
   display: flex;
   align-items: center;
   gap: 0.375rem;
-  font-family: var(--font-body);
+  font-family: var(--font-display);
   font-size: var(--text-xs);
   font-weight: 600;
   color: var(--color-slate);
-  background: rgba(255, 255, 255, 0.7);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.5);
+  background: var(--color-white);
+  border: 1px solid var(--color-lavender);
   border-radius: var(--radius-md);
   padding: 0.5rem 0.875rem;
-  box-shadow: 0 2px 8px color-mix(in srgb, var(--color-indigo) 6%, transparent);
-  transition: background 0.2s ease, box-shadow 0.2s ease, opacity 0.2s ease;
+  box-shadow: var(--shadow-sm);
+  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease, opacity 0.2s ease;
   cursor: pointer;
 }
 
 .btn:hover:not(:disabled) {
-  background: rgba(255, 255, 255, 0.85);
-  box-shadow: 0 4px 16px color-mix(in srgb, var(--color-indigo) 10%, transparent);
+  background: var(--color-cloud);
+  border-color: var(--color-indigo-soft);
+  color: var(--color-indigo);
+}
+
+/* Active filter — solid indigo chip (mirrors the mockup .filter.on) */
+.btn[data-active='true'] {
+  background: var(--color-indigo);
+  border-color: var(--color-indigo);
+  color: var(--color-white);
+}
+
+.btn[data-active='true']:hover:not(:disabled) {
+  background: var(--color-indigo-deep);
+  border-color: var(--color-indigo-deep);
+  color: var(--color-white);
 }
 
 .btn:focus-visible {
@@ -54,13 +66,11 @@
   min-width: 180px;
   max-height: 280px;
   overflow-y: auto;
-  background: rgba(255, 255, 255, 0.92);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border: 1px solid var(--color-lavender);
+  background: var(--color-white);
+  border: 1px solid var(--card-bd);
   border-radius: var(--radius-md);
   padding: var(--space-1) 0;
-  box-shadow: 0 8px 32px color-mix(in srgb, var(--color-indigo) 12%, transparent), 0 2px 8px color-mix(in srgb, var(--color-indigo) 6%, transparent);
+  box-shadow: var(--shadow-lg);
   z-index: 30;
 }
 

@@ -14,10 +14,9 @@ import Sidebar from './sidebar/Sidebar';
 // `vendor-leaflet` (PR-7 partial — AUDIT-3-*).
 const UgandaMap = lazy(() => import('./map/UgandaMap'));
 import OverlayPanel from './overlay/OverlayPanel';
+import DistributorOverview from './overview/DistributorOverview';
 import DataCopilotPanel, { AskAiFab } from './overlay/DataCopilotPanel';
 import Breadcrumb from './overlay/Breadcrumb';
-import MetricsRow from './cards/MetricsRow';
-import TopBar from './overlay/TopBar';
 import CreateBranch from './branch/CreateBranch';
 import ViewBranches from './branch/ViewBranches';
 import ViewAgents from './agent/ViewAgents';
@@ -223,7 +222,7 @@ function NavAnnouncer() {
   );
 }
 
-function DashboardContent() {
+function DashboardContent({ mode, mapMounted }) {
   const isMobile = useIsMobile();
   // Lazy-mount panels so their data hooks don't fire on dashboard cold load.
   // Before PR-3, all seven panel components were mounted unconditionally,
@@ -242,29 +241,85 @@ function DashboardContent() {
     viewTicketsOpen,
     copilotOpen,
     setCopilotOpen,
+    drillTargetBranchId,
+    drillTargetAgentId,
+    level,
   } = useDashboard();
+
+  // Dashboard mode is a DESKTOP concept — mobile never mounts the map and keeps
+  // its existing overlay-summary + slide-in-drawer tree unchanged.
+  const dashMode = mode === 'dash' && !isMobile;
+
+  // Which page fills the dash-mode canvas. Same open-flag precedence as the
+  // sidebar's `active` highlight, so the two never disagree. In dash mode the
+  // sidebar enforces single-open, so at most one flag is true; the precedence
+  // just makes the fallback deterministic.
+  const selectedPage =
+    viewTicketsOpen ? 'tickets' :
+    viewReportsOpen ? 'reports' :
+    commissionsOpen ? 'commissions' :
+    settingsOpen ? 'settings' :
+    createBranchOpen ? 'createBranch' :
+    viewBranchesOpen ? 'branches' :
+    viewAgentsOpen ? 'agents' :
+    viewSubscribersOpen ? 'subscribers' :
+    'overview';
+
   return (
     <>
-      <main className={styles.main} id="main">
+      <main className={dashMode ? `${styles.main} ${styles.mainDash}` : styles.main} id="main">
         <NavAnnouncer />
-        {!isMobile && (
-          <Suspense fallback={null}>
-            <UgandaMap />
-          </Suspense>
+        {/* Map: built lazily on the first map-mode entry, then kept mounted and
+            hidden via CSS in dash mode so its Leaflet instance + drill state
+            survive across toggles. */}
+        {!isMobile && mapMounted && (
+          <div className={dashMode ? styles.mapHidden : styles.mapWrap}>
+            <Suspense fallback={null}>
+              <UgandaMap visible={mode === 'map'} />
+            </Suspense>
+          </div>
         )}
-        <Breadcrumb />
-        <OverlayPanel />
-        <TopBar />
-        <MetricsRow />
+        {/* Map-mode chrome (also the mobile overlay tree — mobile is never dashMode). */}
+        {!dashMode && <Breadcrumb />}
+        {!dashMode && <OverlayPanel />}
+        {/* Dash-mode canvas — the selected rail destination rendered full-page.
+            The same component is NOT also rendered as a sibling drawer below
+            (that block is gated to !dashMode), so there is never a double mount. */}
+        {dashMode && (
+          <div className={styles.dashHost}>
+            {/* Key by the drill target so clearing it (a rail click in dash mode)
+                remounts fresh at the LIST — ViewBranches/ViewAgents keep an
+                internal detail view that clearing the drill flag alone won't reset. */}
+            {selectedPage === 'branches' && <ViewBranches key={`vb-${drillTargetBranchId || 'list'}`} fullPage />}
+            {selectedPage === 'agents' && <ViewAgents key={`va-${drillTargetAgentId || 'list'}`} fullPage />}
+            {selectedPage === 'subscribers' && <ViewSubscribers fullPage />}
+            {selectedPage === 'commissions' && <CommissionPanel fullPage />}
+            {selectedPage === 'reports' && <ViewReports fullPage />}
+            {selectedPage === 'settings' && <Settings fullPage />}
+            {selectedPage === 'tickets' && <ViewTickets fullPage />}
+            {selectedPage === 'createBranch' && <CreateBranch fullPage />}
+            {/* Country level → the rich national dashboard; a deeper drill in dash
+                mode (region/district) falls back to the OverlayPanel summary. */}
+            {selectedPage === 'overview' && (level === 'country'
+              ? <DistributorOverview />
+              : <OverlayPanel fullPage />)}
+          </div>
+        )}
       </main>
-      {createBranchOpen && <CreateBranch />}
-      {viewBranchesOpen && <ViewBranches />}
-      {viewAgentsOpen && <ViewAgents />}
-      {viewSubscribersOpen && <ViewSubscribers />}
-      {viewReportsOpen && <ViewReports />}
-      {commissionsOpen && <CommissionPanel />}
-      {settingsOpen && <Settings />}
-      {viewTicketsOpen && <ViewTickets />}
+      {/* Slide-in drawers — map mode + mobile only. In dash mode these same pages
+          render full-page inside <main> above instead. */}
+      {!dashMode && (
+        <>
+          {createBranchOpen && <CreateBranch />}
+          {viewBranchesOpen && <ViewBranches />}
+          {viewAgentsOpen && <ViewAgents />}
+          {viewSubscribersOpen && <ViewSubscribers />}
+          {viewReportsOpen && <ViewReports />}
+          {commissionsOpen && <CommissionPanel />}
+          {settingsOpen && <Settings />}
+          {viewTicketsOpen && <ViewTickets />}
+        </>
+      )}
       {/* Ask-AI Network Copilot — additive FAB + slide-in drawer; the map/overlay
           are untouched. */}
       <AskAiFab onClick={() => setCopilotOpen(true)} />
@@ -277,6 +332,29 @@ function DashboardContent() {
 
 export default function DashboardShell() {
   const [menuOpen, setMenuOpen] = useState(false);
+  // Desktop rail expand/collapse. Defaults expanded so the wordmark logo + nav
+  // labels show; the rail collapses to the 64px icon-only form via its toggle.
+  const [railExpanded, setRailExpanded] = useState(true);
+  const handleRailToggle = useCallback(() => setRailExpanded((v) => !v), []);
+  // Whole-shell view mode. 'dash' = branch-admin dashboard (default, a full-page
+  // view per rail destination); 'map' = the Leaflet drill-down with slide-in
+  // panels. Local shell state (parallels railExpanded) — kept out of the shared
+  // DashboardContext so admin + the other roles are untouched. Page selection is
+  // the panel-open booleans / URL drill state, which are orthogonal to mode, so
+  // toggling mode preserves the current page for free.
+  const [mode, setMode] = useState('dash');
+  // Leaflet is expensive and cannot lay out while hidden, so we defer mounting
+  // UgandaMap until the first time the user enters map mode (when <main> is
+  // visible and correctly sized). Once mounted it stays mounted — dash mode just
+  // hides it via CSS so the instance + drill state survive across toggles.
+  const [mapMounted, setMapMounted] = useState(false);
+  const handleToggleMode = useCallback(() => {
+    setMode((m) => {
+      const next = m === 'map' ? 'dash' : 'map';
+      if (next === 'map') setMapMounted(true);
+      return next;
+    });
+  }, []);
   // Memoised handlers — inline arrows here recreated `onMenuToggle` and
   // `onClose` on every parent render, defeating any memoisation in
   // `MobileHeader`/`MobileDrawer` and re-running the drawer's keydown effect
@@ -287,11 +365,16 @@ export default function DashboardShell() {
   const handleMenuClose = useCallback(() => setMenuOpen(false), []);
   return (
     <DashboardProvider>
-      <div className={styles.shell}>
-        <Sidebar />
+      <div className={styles.shell} data-rail={railExpanded ? 'expanded' : 'collapsed'}>
+        <Sidebar
+          expanded={railExpanded}
+          onToggleExpand={handleRailToggle}
+          mapMode={mode === 'map'}
+          onToggleMapMode={handleToggleMode}
+        />
         <MobileHeader onMenuToggle={handleMenuToggle} menuOpen={menuOpen} />
         <MobileDrawer open={menuOpen} onClose={handleMenuClose} />
-        <DashboardContent />
+        <DashboardContent mode={mode} mapMounted={mapMounted} />
       </div>
     </DashboardProvider>
   );

@@ -17,15 +17,13 @@
   right: 16px;
   bottom: 16px;
   width: 560px;
-  background: linear-gradient(180deg, #F8F9FC 0%, #F0F1F8 100%);
+  background: var(--color-white);
   z-index: 210;
   display: flex;
   flex-direction: column;
   border-radius: var(--radius-xl);
-  border: 1px solid var(--color-lavender);
-  box-shadow:
-    0 24px 80px color-mix(in srgb, var(--color-indigo) 18%, transparent),
-    0 8px 24px color-mix(in srgb, var(--color-indigo) 8%, transparent);
+  border: 1px solid var(--card-bd);
+  box-shadow: var(--shadow-xl);
   overflow: hidden;
   overscroll-behavior: contain;
 }
@@ -42,7 +40,7 @@
 
 .header[data-view='detail'] {
   padding-bottom: var(--space-5);
-  border-bottom: 1px solid color-mix(in srgb, var(--color-indigo) 6%, transparent);
+  border-bottom: 1px solid var(--card-bd);
 }
 
 .headerTop {
@@ -132,10 +130,9 @@
   color: var(--color-slate);
   padding: 0 2.25rem 0 2.5rem;
   height: 40px;
-  border: 1.5px solid rgba(217, 220, 242, 0.6);
+  border: 1.5px solid var(--color-lavender);
   border-radius: var(--radius-full);
-  background: rgba(255, 255, 255, 0.7);
-  backdrop-filter: blur(8px);
+  background: var(--color-white);
   outline: none;
   transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
 }
@@ -185,10 +182,9 @@
   color: var(--color-gray);
   padding: 0.5rem 0.75rem;
   height: 40px;
-  border: 1.5px solid rgba(217, 220, 242, 0.6);
+  border: 1.5px solid var(--color-lavender);
   border-radius: var(--radius-full);
-  background: rgba(255, 255, 255, 0.7);
-  backdrop-filter: blur(8px);
+  background: var(--color-white);
   transition: border-color 0.15s ease, color 0.15s ease, background 0.15s ease;
   white-space: nowrap;
 }
@@ -196,7 +192,7 @@
 .filterBtn:hover {
   border-color: var(--color-indigo-soft);
   color: var(--color-indigo);
-  background: rgba(255, 255, 255, 0.9);
+  background: var(--color-white);
 }
 
 .filterBtn:focus-visible {
@@ -218,17 +214,10 @@
   min-width: 190px;
   max-height: 280px;
   overflow-y: auto;
-  background: linear-gradient(145deg, rgba(255, 255, 255, 0.95) 0%, rgba(246, 247, 251, 0.92) 100%);
-  backdrop-filter: blur(24px);
-  -webkit-backdrop-filter: blur(24px);
-  border: 1px solid rgba(255, 255, 255, 0.7);
-  border-top-color: rgba(255, 255, 255, 0.85);
-  border-left-color: rgba(255, 255, 255, 0.8);
+  background: var(--color-white);
+  border: 1px solid var(--card-bd);
   border-radius: var(--radius-md);
-  box-shadow:
-    0 8px 32px color-mix(in srgb, var(--color-indigo) 12%, transparent),
-    0 2px 8px color-mix(in srgb, var(--color-indigo) 6%, transparent),
-    0 1px 0 rgba(255, 255, 255, 0.5) inset;
+  box-shadow: var(--card-sh);
   z-index: 20;
   padding: 0.375rem;
 }
@@ -295,8 +284,8 @@
   color: var(--color-gray);
   padding: 0.375rem 0.875rem;
   border-radius: var(--radius-full);
-  border: 1.5px solid rgba(217, 220, 242, 0.6);
-  background: rgba(255, 255, 255, 0.5);
+  border: 1.5px solid var(--color-lavender);
+  background: var(--color-white);
   transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
   min-height: 34px;
 }
@@ -304,7 +293,7 @@
 .statusChip:hover {
   border-color: var(--color-indigo-soft);
   color: var(--color-indigo);
-  background: rgba(255, 255, 255, 0.8);
+  background: var(--color-white);
 }
 
 .statusChip:focus-visible {
@@ -325,7 +314,7 @@
   align-items: stretch;
   gap: var(--space-3);
   padding: var(--space-4) var(--space-7);
-  border-bottom: 1px solid color-mix(in srgb, var(--color-indigo) 6%, transparent);
+  border-bottom: 1px solid var(--card-bd);
   flex-shrink: 0;
 }
 
@@ -336,14 +325,10 @@
   align-items: center;
   gap: 0.25rem;
   padding: var(--space-3) var(--space-2);
-  background: linear-gradient(145deg, rgba(255, 255, 255, 0.78) 0%, rgba(246, 247, 251, 0.72) 100%);
-  backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.7);
-  border-top-color: rgba(255, 255, 255, 0.85);
+  background: var(--color-white);
+  border: 1px solid var(--card-bd);
   border-radius: var(--radius-md);
-  box-shadow:
-    0 2px 8px color-mix(in srgb, var(--color-indigo) 4%, transparent),
-    0 1px 0 rgba(255, 255, 255, 0.6) inset;
+  box-shadow: var(--card-sh);
 }
 
 .summaryChipIcon {
@@ -400,28 +385,22 @@
   align-items: center;
   gap: var(--space-3);
   padding: var(--space-3) var(--space-4);
-  border: 1px solid rgba(255, 255, 255, 0.6);
-  border-top-color: rgba(255, 255, 255, 0.75);
+  border: 1px solid var(--card-bd);
   border-radius: var(--radius-md);
   cursor: pointer;
   transition: background 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
   width: 100%;
   text-align: left;
-  background: linear-gradient(145deg, rgba(255, 255, 255, 0.72) 0%, rgba(246, 247, 251, 0.65) 100%);
-  backdrop-filter: blur(8px);
-  box-shadow:
-    0 1px 4px color-mix(in srgb, var(--color-indigo) 4%, transparent),
-    0 1px 0 rgba(255, 255, 255, 0.5) inset;
+  background: var(--color-white);
+  box-shadow: var(--card-sh);
   content-visibility: auto;
   contain-intrinsic-size: auto 72px;
 }
 
 .subItem:hover {
-  background: linear-gradient(145deg, rgba(255, 255, 255, 0.88) 0%, rgba(246, 247, 251, 0.82) 100%);
-  border-color: rgba(217, 220, 242, 0.5);
-  box-shadow:
-    0 4px 16px color-mix(in srgb, var(--color-indigo) 7%, transparent),
-    0 1px 0 rgba(255, 255, 255, 0.7) inset;
+  background: var(--color-white);
+  border-color: var(--card-bd-hi);
+  box-shadow: var(--card-sh-hi);
   transform: translateY(-1px);
 }
 
@@ -434,7 +413,7 @@
   width: 38px;
   height: 38px;
   border-radius: 50%;
-  background: linear-gradient(135deg, #2F8F9D 0%, #5BC4C8 100%);
+  background: var(--color-teal);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -547,7 +526,7 @@
 }
 
 .chevron {
-  color: rgba(217, 220, 242, 0.7);
+  color: var(--color-lavender);
   flex-shrink: 0;
   display: flex;
   transition: color 0.15s ease, transform 0.15s ease;
@@ -604,25 +583,18 @@
 }
 
 .kpiCard {
-  background: linear-gradient(145deg, rgba(255, 255, 255, 0.82) 0%, rgba(246, 247, 251, 0.75) 100%);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.65);
-  border-top-color: rgba(255, 255, 255, 0.85);
-  border-left-color: rgba(255, 255, 255, 0.75);
+  background: var(--color-white);
+  border: 1px solid var(--card-bd);
   border-radius: var(--radius-md);
   padding: var(--space-4);
-  box-shadow:
-    0 2px 8px color-mix(in srgb, var(--color-indigo) 5%, transparent),
-    0 1px 0 rgba(255, 255, 255, 0.6) inset;
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  box-shadow: var(--card-sh);
+  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.18s ease;
 }
 
 .kpiCard:hover {
   transform: translateY(-2px);
-  box-shadow:
-    0 6px 20px color-mix(in srgb, var(--color-indigo) 8%, transparent),
-    0 1px 0 rgba(255, 255, 255, 0.7) inset;
+  border-color: var(--card-bd-hi);
+  box-shadow: var(--card-sh-hi);
 }
 
 .kpiIcon {
@@ -682,19 +654,14 @@
 
 /* ── Info card ───────────────────────────────────────────────────────────── */
 .infoCard {
-  background: linear-gradient(145deg, rgba(255, 255, 255, 0.78) 0%, rgba(246, 247, 251, 0.72) 100%);
-  backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.65);
-  border-top-color: rgba(255, 255, 255, 0.85);
-  border-left-color: rgba(255, 255, 255, 0.75);
+  background: var(--color-white);
+  border: 1px solid var(--card-bd);
   border-radius: var(--radius-md);
   padding: var(--space-4);
   display: flex;
   flex-direction: column;
   gap: var(--space-3);
-  box-shadow:
-    0 2px 8px color-mix(in srgb, var(--color-indigo) 4%, transparent),
-    0 1px 0 rgba(255, 255, 255, 0.6) inset;
+  box-shadow: var(--card-sh);
 }
 
 .infoRow {
@@ -703,7 +670,7 @@
   align-items: center;
   gap: var(--space-4);
   padding-bottom: var(--space-3);
-  border-bottom: 1px solid color-mix(in srgb, var(--color-indigo) 5%, transparent);
+  border-bottom: 1px solid var(--card-bd);
 }
 
 .infoRow:last-child {
@@ -734,16 +701,11 @@
 
 /* ── Contributions chart ─────────────────────────────────────────────────── */
 .chartWrap {
-  background: linear-gradient(145deg, rgba(255, 255, 255, 0.78) 0%, rgba(246, 247, 251, 0.72) 100%);
-  backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.65);
-  border-top-color: rgba(255, 255, 255, 0.85);
-  border-left-color: rgba(255, 255, 255, 0.75);
+  background: var(--color-white);
+  border: 1px solid var(--card-bd);
   border-radius: var(--radius-md);
   padding: var(--space-4) var(--space-5);
-  box-shadow:
-    0 2px 8px color-mix(in srgb, var(--color-indigo) 4%, transparent),
-    0 1px 0 rgba(255, 255, 255, 0.6) inset;
+  box-shadow: var(--card-sh);
 }
 
 .chartBars {
@@ -762,7 +724,7 @@
   right: 0;
   top: 50%;
   height: 1px;
-  background: color-mix(in srgb, var(--color-indigo) 6%, transparent);
+  background: var(--card-bd);
   pointer-events: none;
 }
 
@@ -803,39 +765,23 @@
 
 /* ── Profile card ────────────────────────────────────────────────────────── */
 .profileCard {
-  background: linear-gradient(145deg, rgba(255, 255, 255, 0.82) 0%, rgba(246, 247, 251, 0.75) 100%);
-  backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.65);
-  border-top-color: rgba(255, 255, 255, 0.85);
-  border-left-color: rgba(255, 255, 255, 0.75);
+  background: var(--color-white);
+  border: 1px solid var(--card-bd);
   border-radius: var(--radius-md);
   padding: var(--space-5);
   display: flex;
   gap: var(--space-4);
   align-items: center;
-  box-shadow:
-    0 2px 8px color-mix(in srgb, var(--color-indigo) 5%, transparent),
-    0 1px 0 rgba(255, 255, 255, 0.6) inset;
+  box-shadow: var(--card-sh);
   position: relative;
   overflow: hidden;
-}
-
-.profileCard::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  bottom: 0;
-  width: 3px;
-  background: linear-gradient(180deg, #2F8F9D 0%, #5BC4C8 100%);
-  opacity: 0.6;
 }
 
 .profileAvatar {
   width: 56px;
   height: 56px;
   border-radius: 50%;
-  background: linear-gradient(135deg, #2F8F9D 0%, #5BC4C8 100%);
+  background: var(--color-teal);
   display: flex;
   align-items: center;
   justify-content: center;

@@ -21,7 +21,7 @@ import styles from '../adminPanels.module.css';
  * distributor (branches have no distributor_id; distributors hang off 'ug' as a
  * flat catalog), so only platform-wide totals + a distributor count are honest.
  */
-export default function ViewDistributors() {
+export default function ViewDistributors({ fullPage = false }) {
   const { viewDistributorsOpen, setViewDistributorsOpen, setCreateDistributorOpen } = useAdminPanel();
   const { data: distributors = [], isLoading } = useAllEntities('distributor');
   const { data: platform } = usePlatformOverview();
@@ -33,11 +33,11 @@ export default function ViewDistributors() {
   useEffect(() => {
     if (!viewDistributorsOpen) return;
     function onKey(e) {
-      if (e.key === 'Escape') setViewDistributorsOpen(false);
+      if (e.key === 'Escape' && !fullPage) setViewDistributorsOpen(false);
     }
     document.addEventListener('keydown', onKey);
     return () => document.removeEventListener('keydown', onKey);
-  }, [viewDistributorsOpen, setViewDistributorsOpen]);
+  }, [viewDistributorsOpen, setViewDistributorsOpen, fullPage]);
 
   async function handleConfirm() {
     if (!confirmTarget) return;
@@ -62,7 +62,7 @@ export default function ViewDistributors() {
   return (
     <>
       <AnimatePresence>
-        {viewDistributorsOpen && (
+        {viewDistributorsOpen && !fullPage && (
           <motion.div
             key="vd-backdrop"
             className={styles.backdrop}
@@ -79,13 +79,14 @@ export default function ViewDistributors() {
       </AnimatePresence>
 
       <AnimatePresence>
-        {viewDistributorsOpen && (
+        {(viewDistributorsOpen || fullPage) && (
           <motion.div
             key="vd-panel"
             className={styles.panel}
-            initial={{ x: '100%' }}
-            animate={{ x: 0, transition: { duration: 0.55, ease: EASE_OUT_EXPO } }}
-            exit={{ x: '100%', transition: { duration: 0.5, ease: EASE_OUT_EXPO } }}
+            initial={fullPage ? false : { x: '100%' }}
+            animate={fullPage ? { opacity: 1 } : { x: 0, transition: { duration: 0.55, ease: EASE_OUT_EXPO } }}
+            exit={fullPage ? { opacity: 0 } : { x: '100%', transition: { duration: 0.5, ease: EASE_OUT_EXPO } }}
+            style={fullPage ? { position: 'static', inset: 'auto', margin: '0 auto', width: '100%', maxWidth: '1040px', height: 'auto', maxHeight: 'none', overflow: 'visible', boxShadow: 'none', border: 'none' } : undefined}
           >
             <div className={styles.header}>
               <div className={styles.headerTop}>
@@ -99,11 +100,13 @@ export default function ViewDistributors() {
                   </svg>
                   New
                 </button>
-                <button className={styles.closeBtn} onClick={() => setViewDistributorsOpen(false)} aria-label="Close">
-                  <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" width="18" height="18">
-                    <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" />
-                  </svg>
-                </button>
+                {!fullPage && (
+                  <button className={styles.closeBtn} onClick={() => setViewDistributorsOpen(false)} aria-label="Close">
+                    <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" width="18" height="18">
+                      <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" />
+                    </svg>
+                  </button>
+                )}
               </div>
             </div>
 

@@ -17,15 +17,13 @@
   right: 16px;
   bottom: 16px;
   width: 600px;
-  background: linear-gradient(180deg, #F8F9FC 0%, #F0F1F8 100%);
+  background: var(--color-white);
   z-index: 210;
   display: flex;
   flex-direction: column;
   border-radius: var(--radius-xl);
-  border: 1px solid var(--color-lavender);
-  box-shadow:
-    0 24px 80px color-mix(in srgb, var(--color-indigo) 18%, transparent),
-    0 8px 24px color-mix(in srgb, var(--color-indigo) 8%, transparent);
+  border: 1px solid var(--card-bd);
+  box-shadow: var(--shadow-xl);
   overscroll-behavior: contain;
   overflow: hidden;
 }
@@ -37,18 +35,14 @@
   bottom: 24px;
   border: none;
   background: var(--color-white);
-  box-shadow:
-    0 1px 2px color-mix(in srgb, var(--color-indigo) 4%, transparent),
-    0 12px 32px color-mix(in srgb, var(--color-indigo) 8%, transparent),
-    0 32px 64px color-mix(in srgb, var(--color-indigo) 6%, transparent),
-    0 0 0 1px color-mix(in srgb, var(--color-indigo) 4%, transparent);
+  box-shadow: var(--shadow-xl);
 }
 
 /* ── Header ──────────────────────────────────────────────────────────────── */
 .header {
   padding: var(--space-5) var(--space-7);
   flex-shrink: 0;
-  border-bottom: 1px solid color-mix(in srgb, var(--color-indigo) 6%, transparent);
+  border-bottom: 1px solid var(--card-bd);
 }
 
 .headerTop {
@@ -151,14 +145,16 @@
   overflow-y: auto;
   overflow-x: hidden;
   padding: var(--space-5) var(--space-7) var(--space-7);
+  background: var(--color-cloud);
 }
 
 /* ── Overview hero ────────────────────────────────────────────────────────── */
 .overviewHero {
   padding: var(--space-5);
   background: var(--color-white);
-  border: 1px solid var(--color-lavender);
+  border: 1px solid var(--card-bd);
   border-radius: var(--radius-xl);
+  box-shadow: var(--card-sh);
   margin-bottom: var(--space-4);
 }
 
@@ -241,7 +237,7 @@
   align-items: center;
   gap: var(--space-2);
   padding: var(--space-2) var(--space-3);
-  background: color-mix(in srgb, var(--color-indigo) 3%, transparent);
+  background: var(--color-cloud);
   border-radius: var(--radius-sm);
 }
 
@@ -347,15 +343,16 @@
 .primaryCard {
   padding: var(--space-5) var(--space-4);
   background: var(--color-white);
-  border: 1px solid var(--color-lavender);
+  border: 1px solid var(--card-bd);
   border-radius: var(--radius-lg);
+  box-shadow: var(--card-sh);
   cursor: pointer;
   transition: box-shadow 0.2s ease, border-color 0.2s ease, transform 0.2s ease;
   text-align: center;
 }
 
 .primaryCard:hover {
-  box-shadow: var(--shadow-md);
+  box-shadow: var(--card-sh-hi);
   transform: translateY(-2px);
 }
 
@@ -470,8 +467,9 @@
   gap: var(--space-3);
   padding: var(--space-4);
   background: var(--color-white);
-  border: 1px solid var(--color-lavender);
+  border: 1px solid var(--card-bd);
   border-radius: var(--radius-md);
+  box-shadow: var(--card-sh);
   margin-bottom: var(--space-2);
   cursor: pointer;
   transition: box-shadow 0.2s ease, border-color 0.2s ease;
@@ -480,8 +478,8 @@
 }
 
 .attentionRow:hover {
-  box-shadow: var(--shadow-sm);
-  border-color: var(--color-indigo-soft);
+  box-shadow: var(--card-sh-hi);
+  border-color: var(--card-bd-hi);
 }
 
 .attentionAccent {
@@ -489,14 +487,6 @@
   align-self: stretch;
   border-radius: 2px;
   flex-shrink: 0;
-}
-
-.attentionAccent[data-type='disputed'] {
-  background: var(--color-status-poor);
-}
-
-.attentionAccent[data-type='requests'] {
-  background: var(--color-indigo-soft);
 }
 
 .attentionInfo {
@@ -565,10 +555,9 @@
   color: var(--color-slate);
   padding: 0 2.25rem 0 2.5rem;
   height: 40px;
-  border: 1.5px solid rgba(217, 220, 242, 0.6);
+  border: 1.5px solid var(--color-lavender);
   border-radius: var(--radius-full);
-  background: rgba(255, 255, 255, 0.7);
-  backdrop-filter: blur(8px);
+  background: var(--color-white);
   outline: none;
   transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
 }
@@ -612,8 +601,9 @@
   gap: var(--space-3);
   padding: var(--space-3) var(--space-4);
   background: var(--color-white);
-  border: 1px solid var(--color-lavender);
+  border: 1px solid var(--card-bd);
   border-radius: var(--radius-md);
+  box-shadow: var(--card-sh);
   margin-bottom: var(--space-2);
   cursor: pointer;
   transition: box-shadow 0.2s ease, border-color 0.2s ease, transform 0.2s ease;
@@ -622,8 +612,8 @@
 }
 
 .agentRow:hover {
-  box-shadow: var(--shadow-md);
-  border-color: var(--color-indigo-soft);
+  box-shadow: var(--card-sh-hi);
+  border-color: var(--card-bd-hi);
   transform: translateY(-1px);
 }
 
@@ -735,8 +725,9 @@
 .detailStat {
   padding: var(--space-3);
   background: var(--color-white);
-  border: 1px solid var(--color-lavender);
+  border: 1px solid var(--card-bd);
   border-radius: var(--radius-md);
+  box-shadow: var(--card-sh);
   text-align: center;
 }
 
@@ -812,8 +803,9 @@
   gap: var(--space-3);
   padding: var(--space-3) var(--space-4);
   background: var(--color-white);
-  border: 1px solid var(--color-lavender);
+  border: 1px solid var(--card-bd);
   border-radius: var(--radius-md);
+  box-shadow: var(--card-sh);
   margin-bottom: var(--space-2);
 }
 
@@ -892,8 +884,9 @@
   gap: var(--space-3);
   padding: var(--space-3) var(--space-4);
   background: var(--color-white);
-  border: 1px solid var(--color-lavender);
+  border: 1px solid var(--card-bd);
   border-radius: var(--radius-md);
+  box-shadow: var(--card-sh);
   margin-bottom: var(--space-2);
 }
 
@@ -1018,7 +1011,7 @@
 
 .modalHeader {
   padding: var(--space-5) var(--space-6);
-  border-bottom: 1px solid color-mix(in srgb, var(--color-indigo) 6%, transparent);
+  border-bottom: 1px solid var(--card-bd);
 }
 
 .modalTitle {
@@ -1045,7 +1038,7 @@
   align-items: center;
   justify-content: space-between;
   padding: var(--space-4);
-  background: color-mix(in srgb, var(--color-indigo) 4%, transparent);
+  background: var(--color-cloud);
   border-radius: var(--radius-md);
   margin-bottom: var(--space-4);
 }
@@ -1157,7 +1150,7 @@
 
 .modalConsequence {
   background: var(--color-cloud);
-  border: 1px solid var(--color-lavender);
+  border: 1px solid var(--card-bd);
   border-radius: var(--radius-md);
   padding: var(--space-3);
   margin-bottom: var(--space-3);
@@ -1321,16 +1314,17 @@
   min-width: 0;
   padding: var(--space-3) var(--space-4);
   background: var(--color-white);
-  border: 1px solid var(--color-lavender);
+  border: 1px solid var(--card-bd);
   border-radius: var(--radius-md);
+  box-shadow: var(--card-sh);
   cursor: pointer;
   transition: box-shadow 0.2s ease, border-color 0.2s ease, transform 0.2s ease;
   text-align: left;
 }
 
 .selectableContent:hover {
-  box-shadow: var(--shadow-md);
-  border-color: var(--color-indigo-soft);
+  box-shadow: var(--card-sh-hi);
+  border-color: var(--card-bd-hi);
   transform: translateY(-1px);
 }
 
@@ -1340,25 +1334,26 @@
   bottom: 0;
   margin: var(--space-4) calc(-1 * var(--space-7)) calc(-1 * var(--space-7));
   padding: var(--space-3) var(--space-5);
-  background: var(--color-indigo-deep);
+  background: var(--color-white);
+  border-top: 1px solid var(--card-bd);
   border-radius: 0 0 var(--radius-xl) var(--radius-xl);
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: var(--space-3);
-  box-shadow: 0 -8px 24px rgba(27, 26, 74, 0.2);
+  box-shadow: 0 -8px 24px rgba(41, 40, 103, 0.1);
 }
 
 .floatingInfo {
   font-family: var(--font-body);
   font-size: var(--text-sm);
-  color: rgba(255, 255, 255, 0.7);
+  color: var(--color-gray);
 }
 
 .floatingCount {
   font-family: var(--font-display);
   font-weight: 800;
-  color: white;
+  color: var(--color-indigo);
 }
 
 .floatingActions {
@@ -1385,8 +1380,8 @@
 }
 
 .floatingReject {
-  background: rgba(255, 255, 255, 0.12);
-  color: rgba(255, 255, 255, 0.9);
+  background: rgba(220, 53, 69, 0.1);
+  color: var(--color-status-poor);
 }
 
 .floatingApprove:hover,
@@ -1759,15 +1754,16 @@
 /* ═══════════════════════════════════════════════════════════════════════════ */
 
 .runCard {
-  background: linear-gradient(140deg, var(--color-indigo) 0%, var(--color-indigo-deep) 100%);
-  color: var(--color-white);
+  background: var(--color-cloud);
+  border: 1px solid var(--card-bd);
+  color: var(--color-slate);
   border-radius: var(--radius-xl);
   padding: var(--space-5) var(--space-6);
   display: flex;
   flex-direction: column;
   gap: var(--space-4);
   margin-bottom: var(--space-5);
-  box-shadow: 0 12px 32px rgba(27, 26, 74, 0.18);
+  box-shadow: var(--card-sh);
 }
 
 .runCardEyebrow {
@@ -1776,7 +1772,7 @@
   font-weight: 700;
   letter-spacing: 0.1em;
   text-transform: uppercase;
-  color: rgba(217, 220, 242, 0.78);
+  color: var(--color-gray);
 }
 
 .runCardTitle {
@@ -1785,6 +1781,7 @@
   font-weight: 800;
   letter-spacing: -0.02em;
   font-variant-numeric: tabular-nums;
+  color: var(--color-indigo);
 }
 
 .runCardMetrics {
@@ -1798,8 +1795,8 @@
   flex-direction: column;
   gap: 4px;
   padding: var(--space-3) var(--space-3);
-  background: rgba(255, 255, 255, 0.07);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: var(--color-white);
+  border: 1px solid var(--card-bd);
   border-radius: var(--radius-md);
 }
 
@@ -1809,7 +1806,7 @@
   font-weight: 700;
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  color: rgba(217, 220, 242, 0.62);
+  color: var(--color-gray);
 }
 
 .runMetricValue {
@@ -1817,7 +1814,7 @@
   font-size: var(--text-base);
   font-weight: 800;
   font-variant-numeric: tabular-nums;
-  color: var(--color-white);
+  color: var(--color-indigo);
 }
 
 .runCardActions {
@@ -1833,8 +1830,8 @@
   align-items: center;
   justify-content: center;
   gap: 8px;
-  background: var(--color-white);
-  color: var(--color-indigo);
+  background: var(--color-indigo);
+  color: var(--color-white);
   border: none;
   border-radius: var(--radius-full);
   font-family: var(--font-display);
@@ -1847,7 +1844,7 @@
 }
 
 .runPrimaryBtn:hover:not(:disabled) {
-  background: rgba(255, 255, 255, 0.92);
+  background: var(--color-indigo-deep);
   transform: translateY(-1px);
 }
 
@@ -1862,9 +1859,9 @@
   align-items: center;
   justify-content: center;
   gap: 8px;
-  background: rgba(255, 255, 255, 0.14);
-  color: var(--color-white);
-  border: 1px solid rgba(255, 255, 255, 0.22);
+  background: var(--color-white);
+  color: var(--color-indigo-soft);
+  border: 1px solid var(--color-lavender);
   border-radius: var(--radius-full);
   font-family: var(--font-display);
   font-weight: 700;
@@ -1876,7 +1873,7 @@
 }
 
 .runSecondaryBtn:hover {
-  background: rgba(255, 255, 255, 0.22);
+  background: var(--color-cloud);
 }
 
 .emptyRunCard {
@@ -1915,8 +1912,9 @@
 /* ── Cadence card ────────────────────────────────────────────────────────── */
 .cadenceCard {
   background: var(--color-white);
-  border: 1px solid var(--color-lavender);
+  border: 1px solid var(--card-bd);
   border-radius: var(--radius-md);
+  box-shadow: var(--card-sh);
   padding: var(--space-4);
   display: flex;
   flex-direction: column;
@@ -1999,15 +1997,16 @@
   align-items: flex-start;
   padding: var(--space-3);
   background: var(--color-white);
-  border: 1px solid var(--color-lavender);
+  border: 1px solid var(--card-bd);
   border-radius: var(--radius-md);
+  box-shadow: var(--card-sh);
   cursor: pointer;
   transition: transform 0.15s ease, box-shadow 0.15s ease;
 }
 
 .summaryItem:hover {
   transform: translateY(-1px);
-  box-shadow: var(--shadow-md);
+  box-shadow: var(--card-sh-hi);
 }
 
 .summaryItemLabel {
@@ -2160,8 +2159,9 @@
   gap: var(--space-3);
   padding: var(--space-3);
   background: var(--color-white);
-  border: 1px solid var(--color-lavender);
+  border: 1px solid var(--card-bd);
   border-radius: var(--radius-md);
+  box-shadow: var(--card-sh);
   margin-bottom: var(--space-2);
 }
 
@@ -2228,8 +2228,9 @@
 /* ── Run header (inside run-detail / branch-review views) ───────────────── */
 .runHeader {
   background: var(--color-white);
-  border: 1px solid var(--color-lavender);
+  border: 1px solid var(--card-bd);
   border-radius: var(--radius-md);
+  box-shadow: var(--card-sh);
   padding: var(--space-4);
   margin-bottom: var(--space-4);
 }
@@ -2281,8 +2282,9 @@
   width: 100%;
   padding: var(--space-3) var(--space-4);
   background: var(--color-white);
-  border: 1px solid var(--color-lavender);
+  border: 1px solid var(--card-bd);
   border-radius: var(--radius-md);
+  box-shadow: var(--card-sh);
   margin-bottom: var(--space-2);
   text-align: left;
   cursor: pointer;
@@ -2291,8 +2293,8 @@
 
 .runBranchRow:hover {
   transform: translateY(-1px);
-  box-shadow: var(--shadow-md);
-  border-color: var(--color-indigo-soft);
+  box-shadow: var(--card-sh-hi);
+  border-color: var(--card-bd-hi);
 }
 
 .runBranchMain {
@@ -2332,8 +2334,9 @@
 /* ── Agent block inside run-branch-detail ──────────────────────────────── */
 .agentBlock {
   background: var(--color-white);
-  border: 1px solid var(--color-lavender);
+  border: 1px solid var(--card-bd);
   border-radius: var(--radius-md);
+  box-shadow: var(--card-sh);
   padding: var(--space-3) var(--space-4);
   margin-bottom: var(--space-2);
 }
@@ -2359,7 +2362,7 @@
   gap: 4px;
   margin-top: var(--space-3);
   padding-top: var(--space-3);
-  border-top: 1px dashed color-mix(in srgb, var(--color-indigo) 8%, transparent);
+  border-top: 1px dashed var(--card-bd);
 }
 
 .agentLineRow {

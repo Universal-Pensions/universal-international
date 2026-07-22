@@ -201,7 +201,7 @@ function SubscriberDetail({ subscriber, agentsMap, branchesMap }) {
 /* ═══════════════════════════════════════════════════════════════════════════ */
 /*  ViewSubscribers — main panel                                              */
 /* ═══════════════════════════════════════════════════════════════════════════ */
-export default function ViewSubscribers() {
+export default function ViewSubscribers({ fullPage = false }) {
   const { viewSubscribersOpen, setViewSubscribersOpen } = useDashboard();
 
   const { data: allSubscribersRaw = [], isLoading: subsLoading } = useAllEntities('subscriber');
@@ -292,10 +292,10 @@ export default function ViewSubscribers() {
   // Escape key handler
   useEffect(() => {
     if (!viewSubscribersOpen) return;
-    function onKey(e) { if (e.key === 'Escape') handleClose(); }
+    function onKey(e) { if (e.key === 'Escape' && !fullPage) handleClose(); }
     document.addEventListener('keydown', onKey);
     return () => document.removeEventListener('keydown', onKey);
-  }, [viewSubscribersOpen, handleClose]);
+  }, [viewSubscribersOpen, handleClose, fullPage]);
 
   // Close sort dropdown on outside click + Escape. Memoise the refs array +
   // close callback so useOutsideClick doesn't tear down + re-add its document
@@ -324,7 +324,7 @@ export default function ViewSubscribers() {
   return (
     <>
       <AnimatePresence>
-        {viewSubscribersOpen && (
+        {viewSubscribersOpen && !fullPage && (
           <motion.div
             key="vs-backdrop"
             className={styles.backdrop}
@@ -338,19 +338,20 @@ export default function ViewSubscribers() {
       </AnimatePresence>
 
       <AnimatePresence>
-        {viewSubscribersOpen && (
+        {(viewSubscribersOpen || fullPage) && (
           <motion.div
             key="vs-panel"
             className={styles.panel}
-            initial={{ x: '100%' }}
-            animate={{
+            initial={fullPage ? false : { x: '100%' }}
+            animate={fullPage ? { opacity: 1 } : {
               x: 0,
               transition: { duration: 0.55, ease: EASE_OUT_EXPO },
             }}
-            exit={{
+            exit={fullPage ? { opacity: 0 } : {
               x: '100%',
               transition: { duration: 0.55, ease: EASE_OUT_EXPO },
             }}
+            style={fullPage ? { position: 'static', inset: 'auto', margin: '0 auto', width: '100%', maxWidth: '1040px', height: 'auto', maxHeight: 'none', overflow: 'visible', boxShadow: 'none', border: 'none' } : undefined}
           >
             {/* Header */}
             <div className={styles.header} data-view={view}>
@@ -382,11 +383,13 @@ export default function ViewSubscribers() {
                   </AnimatePresence>
                   <p className={styles.subtitle}>{headerSubtitle}</p>
                 </div>
-                <button className={styles.closeBtn} onClick={handleClose} aria-label="Close">
-                  <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" width="18" height="18">
-                    <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" />
-                  </svg>
-                </button>
+                {!fullPage && (
+                  <button className={styles.closeBtn} onClick={handleClose} aria-label="Close">
+                    <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" width="18" height="18">
+                      <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" />
+                    </svg>
+                  </button>
+                )}
               </div>
             </div>
 

@@ -142,12 +142,14 @@ function AgentDetail({ agent, branchesMap, districtsMap, regionsMap, onViewCommi
             </span>
           </div>
         </div>
-        <button className={styles.commissionLink} onClick={onViewCommissions}>
-          View Details
-          <svg aria-hidden="true" viewBox="0 0 12 12" fill="none" width="10" height="10">
-            <path d="M4.5 2.5l3.5 3.5-3.5 3.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
-        </button>
+        {onViewCommissions && (
+          <button className={styles.commissionLink} onClick={onViewCommissions}>
+            View Details
+            <svg aria-hidden="true" viewBox="0 0 12 12" fill="none" width="10" height="10">
+              <path d="M4.5 2.5l3.5 3.5-3.5 3.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </button>
+        )}
       </div>
 
       <div className={styles.section}>
@@ -187,7 +189,7 @@ function AgentDetail({ agent, branchesMap, districtsMap, regionsMap, onViewCommi
 /* ═══════════════════════════════════════════════════════════════════════════ */
 /*  ViewAgents — main panel                                                   */
 /* ═══════════════════════════════════════════════════════════════════════════ */
-export default function ViewAgents({ splitMode = false }) {
+export default function ViewAgents({ splitMode = false, fullPage = false, showCommissions = true }) {
   const { viewAgentsOpen, setViewAgentsOpen, setCommissionsOpen, drillTargetAgentId, closeDrillPanel } = useDashboard();
   const { branchId } = useBranchScope();
 
@@ -324,10 +326,10 @@ export default function ViewAgents({ splitMode = false }) {
 
   useEffect(() => {
     if (!viewAgentsOpen) return;
-    function onKey(e) { if (e.key === 'Escape') handleClose(); }
+    function onKey(e) { if (e.key === 'Escape' && !fullPage) handleClose(); }
     document.addEventListener('keydown', onKey);
     return () => document.removeEventListener('keydown', onKey);
-  }, [viewAgentsOpen, handleClose]);
+  }, [viewAgentsOpen, handleClose, fullPage]);
 
   // Memoise the refs arrays + close callbacks so useOutsideClick doesn't tear
   // down + re-add its document listeners on every render while a dropdown is open.
@@ -354,7 +356,7 @@ export default function ViewAgents({ splitMode = false }) {
   return (
     <>
       <AnimatePresence>
-        {viewAgentsOpen && !splitMode && (
+        {viewAgentsOpen && !splitMode && !fullPage && (
           <motion.div
             key="va-backdrop"
             className={styles.backdrop}
@@ -368,20 +370,21 @@ export default function ViewAgents({ splitMode = false }) {
       </AnimatePresence>
 
       <AnimatePresence>
-        {viewAgentsOpen && (
+        {(viewAgentsOpen || fullPage) && (
           <motion.div
             key="va-panel"
             className={styles.panel}
             data-split-mode={splitMode || undefined}
-            initial={{ x: '100%' }}
-            animate={{
+            initial={fullPage ? false : { x: '100%' }}
+            animate={fullPage ? { opacity: 1 } : {
               x: 0,
               transition: { duration: 0.55, ease: EASE_OUT_EXPO },
             }}
-            exit={{
+            exit={fullPage ? { opacity: 0 } : {
               x: '100%',
               transition: { duration: 0.55, ease: EASE_OUT_EXPO },
             }}
+            style={fullPage ? { position: 'static', inset: 'auto', margin: '0 auto', width: '100%', maxWidth: '1040px', height: 'auto', maxHeight: 'none', overflow: 'visible', boxShadow: 'none', border: 'none' } : undefined}
           >
             {/* Header */}
             <div className={styles.header} data-view={view}>
@@ -408,11 +411,13 @@ export default function ViewAgents({ splitMode = false }) {
                   </AnimatePresence>
                   <p className={styles.subtitle}>{headerSubtitle}</p>
                 </div>
-                <button className={styles.closeBtn} onClick={handleClose} aria-label="Close">
-                  <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" width="18" height="18">
-                    <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" />
-                  </svg>
-                </button>
+                {!fullPage && (
+                  <button className={styles.closeBtn} onClick={handleClose} aria-label="Close">
+                    <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" width="18" height="18">
+                      <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" />
+                    </svg>
+                  </button>
+                )}
               </div>
             </div>
 
@@ -620,7 +625,7 @@ export default function ViewAgents({ splitMode = false }) {
 
                 {view === 'detail' && selectedAgent && (
                   <motion.div key="va-detail" initial={{ opacity: 0, x: 24 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -24 }} transition={{ duration: 0.25, ease: EASE_OUT_EXPO }}>
-                    <AgentDetail agent={selectedAgent} branchesMap={BRANCHES_MAP} districtsMap={DISTRICTS_MAP} regionsMap={REGIONS_MAP} onViewCommissions={() => { setViewAgentsOpen(false); setCommissionsOpen(true); }} />
+                    <AgentDetail agent={selectedAgent} branchesMap={BRANCHES_MAP} districtsMap={DISTRICTS_MAP} regionsMap={REGIONS_MAP} onViewCommissions={showCommissions ? () => { setViewAgentsOpen(false); setCommissionsOpen(true); } : undefined} />
                   </motion.div>
                 )}
               </AnimatePresence>

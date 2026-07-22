@@ -29,6 +29,9 @@ import ViewTickets from '../dashboard/tickets/ViewTickets';
 // Admin-exclusive: country-level Summary card (true platform totals + distributor/
 // employer framing) shown instead of the distributor OverlayPanel at country level.
 import AdminCountryOverview from './AdminCountryOverview';
+// Admin-exclusive: rich national KPI landing shown in dash mode at country level
+// (the two-mode analogue of the distributor's DistributorOverview).
+import AdminOverview from './overview/AdminOverview';
 // Admin-exclusive panels.
 import ViewDistributors from './distributors/ViewDistributors';
 import CreateDistributor from './distributors/CreateDistributor';
@@ -239,7 +242,7 @@ function NavAnnouncer() {
   );
 }
 
-function AdminDashboardContent() {
+function AdminDashboardContent({ mode, mapMounted }) {
   const isMobile = useIsMobile();
   // Lazy-mount panels so their data hooks don't fire on dashboard cold load
   // (mirrors the distributor shell's AUDIT-1-10 fix).
@@ -251,6 +254,8 @@ function AdminDashboardContent() {
     viewReportsOpen,
     settingsOpen,
     viewTicketsOpen,
+    drillTargetBranchId,
+    drillTargetAgentId,
   } = useDashboard();
   const {
     viewDistributorsOpen,
@@ -269,37 +274,88 @@ function AdminDashboardContent() {
     setDetailEmployerId(id);
     setViewEmployerDetailOpen(true);
   }, [setDetailEmployerId, setViewEmployerDetailOpen]);
+
+  // Dashboard mode is a DESKTOP concept — mobile never mounts the map and keeps
+  // its existing overlay-summary + slide-in-drawer tree unchanged.
+  const dashMode = mode === 'dash' && !isMobile;
+
+  // Which page fills the dash canvas. LIST/leaf pages only — the create forms +
+  // employer-detail render as slide-in overlays ON TOP of the full-page list
+  // (below), never as the canvas itself. Same open-flag precedence as the
+  // sidebar's `active` highlight so the two never disagree.
+  const selectedPage =
+    viewTicketsOpen ? 'tickets' :
+    viewReportsOpen ? 'reports' :
+    settingsOpen ? 'settings' :
+    viewDistributorsOpen ? 'distributors' :
+    viewEmployersOpen ? 'employers' :
+    viewBranchesOpen ? 'branches' :
+    viewAgentsOpen ? 'agents' :
+    viewSubscribersOpen ? 'subscribers' :
+    'overview';
+
   return (
     <>
-      <main className={styles.main} id="main">
+      <main className={dashMode ? `${styles.main} ${styles.mainDash}` : styles.main} id="main">
         <NavAnnouncer />
-        {!isMobile && (
-          <Suspense fallback={null}>
-            <UgandaMap />
-          </Suspense>
+        {/* Map: built lazily on the first map-mode entry, then kept mounted and
+            hidden via CSS in dash mode so its Leaflet instance + drill state
+            survive across toggles. */}
+        {!isMobile && mapMounted && (
+          <div className={dashMode ? styles.mapHidden : styles.mapWrap}>
+            <Suspense fallback={null}>
+              <UgandaMap visible={mode === 'map'} />
+            </Suspense>
+          </div>
         )}
-        <Breadcrumb />
-        {/* Admin-framed Summary at country level; reuse the distributor overlay
-            for deeper geographic drill-down (region/district/branch/agent). */}
-        {level === 'country' ? <AdminCountryOverview /> : <OverlayPanel onEmployerSelect={handleEmployerSelect} />}
-        <TopBar />
-        <MetricsRow />
+        {/* Map-mode chrome (also the mobile overlay tree — mobile is never dashMode).
+            Admin-framed Summary at country level; the distributor overlay handles
+            deeper geographic drill-down (region/district/branch/agent). */}
+        {!dashMode && <Breadcrumb />}
+        {!dashMode && (level === 'country'
+          ? <AdminCountryOverview />
+          : <OverlayPanel onEmployerSelect={handleEmployerSelect} />)}
+        {!dashMode && <TopBar />}
+        {!dashMode && <MetricsRow />}
+        {/* Dash-mode canvas — the selected rail destination rendered full-page. */}
+        {dashMode && (
+          <div className={styles.dashHost}>
+            {selectedPage === 'distributors' && <ViewDistributors fullPage />}
+            {selectedPage === 'employers' && <ViewEmployers fullPage />}
+            {/* Key by the drill target so clearing it (a rail click in dash mode)
+                remounts fresh at the LIST — the panels keep an internal detail view
+                that clearing the drill flag alone won't reset. */}
+            {selectedPage === 'branches' && <ViewBranches key={`vb-${drillTargetBranchId || 'list'}`} readOnly fullPage />}
+            {selectedPage === 'agents' && <ViewAgents key={`va-${drillTargetAgentId || 'list'}`} fullPage showCommissions={false} />}
+            {selectedPage === 'subscribers' && <ViewSubscribers fullPage />}
+            {selectedPage === 'reports' && <ViewReports fullPage />}
+            {selectedPage === 'settings' && <Settings fullPage />}
+            {selectedPage === 'tickets' && <ViewTickets fullPage />}
+            {/* Country level → the rich national platform dashboard; a deeper drill
+                in dash mode (region/district/branch/agent) falls back to the shared
+                OverlayPanel summary. */}
+            {selectedPage === 'overview' && (level === 'country'
+              ? <AdminOverview />
+              : <OverlayPanel fullPage onEmployerSelect={handleEmployerSelect} />)}
+          </div>
+        )}
       </main>
-      {/* Admin-exclusive panels */}
-      {viewDistributorsOpen && <ViewDistributors />}
+      {/* Admin sub-panels that layer ON TOP — rendered in BOTH modes so they
+          overlay either the map-mode drawers or the dash-mode full-page list.
+          NB: no <CreateBranch> — admins have no branch-INSERT RLS grant. */}
       {createDistributorOpen && <CreateDistributor />}
-      {viewEmployersOpen && <ViewEmployers />}
       {createEmployerOpen && <CreateEmployer />}
       {viewEmployerDetailOpen && <ViewEmployerDetail />}
-      {/* Reused distributor-shell panels. NB: no <CreateBranch> — admins have no
-          branch-INSERT RLS grant, so that panel could never succeed; it was dead
-          (createBranchOpen is never set true) and has been removed. */}
-      {viewBranchesOpen && <ViewBranches readOnly />}
-      {viewAgentsOpen && <ViewAgents />}
-      {viewSubscribersOpen && <ViewSubscribers />}
-      {viewReportsOpen && <ViewReports />}
-      {settingsOpen && <Settings />}
-      {viewTicketsOpen && <ViewTickets />}
+      {/* Map-mode-only list drawers — in dash mode these same pages render
+          full-page inside <main> above instead (never a double mount). */}
+      {!dashMode && viewDistributorsOpen && <ViewDistributors />}
+      {!dashMode && viewEmployersOpen && <ViewEmployers />}
+      {!dashMode && viewBranchesOpen && <ViewBranches readOnly />}
+      {!dashMode && viewAgentsOpen && <ViewAgents showCommissions={false} />}
+      {!dashMode && viewSubscribersOpen && <ViewSubscribers />}
+      {!dashMode && viewReportsOpen && <ViewReports />}
+      {!dashMode && settingsOpen && <Settings />}
+      {!dashMode && viewTicketsOpen && <ViewTickets />}
       {/* Ask-AI Platform Copilot — additive FAB + slide-in drawer; the map/overlay
           are untouched. */}
       <AskAiFab onClick={() => setCopilotOpen(true)} />
@@ -312,17 +368,44 @@ function AdminDashboardContent() {
 
 export default function AdminDashboardShell() {
   const [menuOpen, setMenuOpen] = useState(false);
+  // Desktop rail expand/collapse. Defaults expanded so the wordmark logo + nav
+  // labels show; the rail collapses to the 64px icon-only form via its toggle.
+  const [railExpanded, setRailExpanded] = useState(true);
+  const handleRailToggle = useCallback(() => setRailExpanded((v) => !v), []);
+  // Whole-shell view mode. 'dash' = branch-admin dashboard (default, a full-page
+  // view per rail destination); 'map' = the Leaflet drill-down with slide-in
+  // panels. Local shell state (parallels railExpanded) — kept out of the shared
+  // contexts so the distributor + other roles are untouched. Page selection is
+  // the panel-open booleans / URL drill state, orthogonal to mode, so toggling
+  // mode preserves the current page for free.
+  const [mode, setMode] = useState('dash');
+  // Leaflet is expensive and cannot lay out while hidden, so defer mounting
+  // UgandaMap until the first map-mode entry. Once mounted it stays mounted —
+  // dash mode just hides it via CSS so the instance + drill state survive.
+  const [mapMounted, setMapMounted] = useState(false);
+  const handleToggleMode = useCallback(() => {
+    setMode((m) => {
+      const next = m === 'map' ? 'dash' : 'map';
+      if (next === 'map') setMapMounted(true);
+      return next;
+    });
+  }, []);
   const handleMenuToggle = useCallback(() => setMenuOpen((o) => !o), []);
   const handleMenuClose = useCallback(() => setMenuOpen(false), []);
   return (
     <DashboardProvider>
       <AdminPanelProvider>
         <DataScopeProvider defaultScope="all">
-          <div className={styles.shell}>
-            <AdminSidebar />
+          <div className={styles.shell} data-rail={railExpanded ? 'expanded' : 'collapsed'}>
+            <AdminSidebar
+              expanded={railExpanded}
+              onToggleExpand={handleRailToggle}
+              mapMode={mode === 'map'}
+              onToggleMapMode={handleToggleMode}
+            />
             <MobileHeader onMenuToggle={handleMenuToggle} menuOpen={menuOpen} />
             <MobileDrawer open={menuOpen} onClose={handleMenuClose} />
-            <AdminDashboardContent />
+            <AdminDashboardContent mode={mode} mapMounted={mapMounted} />
           </div>
         </DataScopeProvider>
       </AdminPanelProvider>

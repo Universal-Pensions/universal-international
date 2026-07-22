@@ -12,7 +12,7 @@ import styles from '../adminPanels.module.css';
  * roster rollup (members, active, AUM, contributions, insured) from the
  * get_all_employers_metrics RPC. "+ New Employer" opens the create form.
  */
-export default function ViewEmployers() {
+export default function ViewEmployers({ fullPage = false }) {
   const {
     viewEmployersOpen, setViewEmployersOpen, setCreateEmployerOpen,
     setDetailEmployerId, setViewEmployerDetailOpen,
@@ -29,11 +29,11 @@ export default function ViewEmployers() {
   useEffect(() => {
     if (!viewEmployersOpen) return;
     function onKey(e) {
-      if (e.key === 'Escape') setViewEmployersOpen(false);
+      if (e.key === 'Escape' && !fullPage) setViewEmployersOpen(false);
     }
     document.addEventListener('keydown', onKey);
     return () => document.removeEventListener('keydown', onKey);
-  }, [viewEmployersOpen, setViewEmployersOpen]);
+  }, [viewEmployersOpen, setViewEmployersOpen, fullPage]);
 
   const totals = employers.reduce(
     (acc, e) => ({
@@ -47,7 +47,7 @@ export default function ViewEmployers() {
   return (
     <>
       <AnimatePresence>
-        {viewEmployersOpen && (
+        {viewEmployersOpen && !fullPage && (
           <motion.div
             key="ve-backdrop"
             className={styles.backdrop}
@@ -63,13 +63,14 @@ export default function ViewEmployers() {
       </AnimatePresence>
 
       <AnimatePresence>
-        {viewEmployersOpen && (
+        {(viewEmployersOpen || fullPage) && (
           <motion.div
             key="ve-panel"
             className={styles.panel}
-            initial={{ x: '100%' }}
-            animate={{ x: 0, transition: { duration: 0.55, ease: EASE_OUT_EXPO } }}
-            exit={{ x: '100%', transition: { duration: 0.5, ease: EASE_OUT_EXPO } }}
+            initial={fullPage ? false : { x: '100%' }}
+            animate={fullPage ? { opacity: 1 } : { x: 0, transition: { duration: 0.55, ease: EASE_OUT_EXPO } }}
+            exit={fullPage ? { opacity: 0 } : { x: '100%', transition: { duration: 0.5, ease: EASE_OUT_EXPO } }}
+            style={fullPage ? { position: 'static', inset: 'auto', margin: '0 auto', width: '100%', maxWidth: '1040px', height: 'auto', maxHeight: 'none', overflow: 'visible', boxShadow: 'none', border: 'none' } : undefined}
           >
             <div className={styles.header}>
               <div className={styles.headerTop}>
@@ -85,11 +86,13 @@ export default function ViewEmployers() {
                   </svg>
                   New
                 </button>
-                <button className={styles.closeBtn} onClick={() => setViewEmployersOpen(false)} aria-label="Close">
-                  <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" width="18" height="18">
-                    <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" />
-                  </svg>
-                </button>
+                {!fullPage && (
+                  <button className={styles.closeBtn} onClick={() => setViewEmployersOpen(false)} aria-label="Close">
+                    <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" width="18" height="18">
+                      <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" />
+                    </svg>
+                  </button>
+                )}
               </div>
             </div>
 

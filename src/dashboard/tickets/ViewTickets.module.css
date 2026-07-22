@@ -18,15 +18,13 @@
   right: 16px;
   bottom: 16px;
   width: 560px;
-  background: linear-gradient(180deg, #F8F9FC 0%, #F0F1F8 100%);
+  background: var(--color-white);
   z-index: 210;
   display: flex;
   flex-direction: column;
   border-radius: var(--radius-xl);
-  border: 1px solid var(--color-lavender);
-  box-shadow:
-    0 24px 80px color-mix(in srgb, var(--color-indigo) 18%, transparent),
-    0 8px 24px color-mix(in srgb, var(--color-indigo) 8%, transparent);
+  border: 1px solid var(--card-bd);
+  box-shadow: var(--shadow-xl);
   overflow: hidden;
   overscroll-behavior: contain;
 }
@@ -39,7 +37,7 @@
 
 .header[data-view='thread'] {
   padding-bottom: var(--space-5);
-  border-bottom: 1px solid color-mix(in srgb, var(--color-indigo) 6%, transparent);
+  border-bottom: 1px solid var(--card-bd);
 }
 
 .headerTop {
@@ -129,10 +127,9 @@
   color: var(--color-gray);
   padding: 0.5rem 0.75rem;
   height: 40px;
-  border: 1.5px solid rgba(217, 220, 242, 0.6);
+  border: 1.5px solid var(--color-lavender);
   border-radius: var(--radius-full);
-  background: rgba(255, 255, 255, 0.7);
-  backdrop-filter: blur(8px);
+  background: var(--color-white);
   transition: border-color 0.15s ease, color 0.15s ease, background 0.15s ease;
   white-space: nowrap;
   max-width: 200px;
@@ -141,7 +138,7 @@
 .filterBtn:hover {
   border-color: var(--color-indigo-soft);
   color: var(--color-indigo);
-  background: rgba(255, 255, 255, 0.9);
+  background: var(--color-cloud);
 }
 
 .filterBtn:focus-visible {
@@ -163,17 +160,10 @@
   min-width: 200px;
   max-height: 280px;
   overflow-y: auto;
-  background: linear-gradient(145deg, rgba(255, 255, 255, 0.95) 0%, rgba(246, 247, 251, 0.92) 100%);
-  backdrop-filter: blur(24px);
-  -webkit-backdrop-filter: blur(24px);
-  border: 1px solid rgba(255, 255, 255, 0.7);
-  border-top-color: rgba(255, 255, 255, 0.85);
-  border-left-color: rgba(255, 255, 255, 0.8);
+  background: var(--color-white);
+  border: 1px solid var(--card-bd);
   border-radius: var(--radius-md);
-  box-shadow:
-    0 8px 32px color-mix(in srgb, var(--color-indigo) 12%, transparent),
-    0 2px 8px color-mix(in srgb, var(--color-indigo) 6%, transparent),
-    0 1px 0 rgba(255, 255, 255, 0.5) inset;
+  box-shadow: var(--shadow-lg);
   z-index: 20;
   padding: 0.375rem;
 }
@@ -233,8 +223,8 @@
   color: var(--color-gray);
   padding: 0.375rem 0.75rem;
   border-radius: var(--radius-full);
-  border: 1.5px solid rgba(217, 220, 242, 0.6);
-  background: rgba(255, 255, 255, 0.5);
+  border: 1.5px solid var(--color-lavender);
+  background: var(--color-white);
   transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
   min-height: 32px;
 }
@@ -242,7 +232,7 @@
 .agentChip:hover {
   border-color: var(--color-indigo-soft);
   color: var(--color-indigo);
-  background: rgba(255, 255, 255, 0.8);
+  background: var(--color-cloud);
 }
 
 .agentChip:focus-visible {
@@ -271,7 +261,7 @@
 
 .agentChip[data-active='true'] .agentChipCount {
   color: var(--color-white);
-  background: rgba(255, 255, 255, 0.22);
+  background: color-mix(in srgb, var(--color-white) 22%, var(--color-indigo));
 }
 
 /* ── Body (scrollable) ───────────────────────────────────────────────────── */
@@ -319,10 +309,8 @@
   border-radius: var(--radius-md);
   overflow: hidden;
   margin: 0 var(--space-5) var(--space-5);
-  border: 1px solid color-mix(in srgb, var(--color-indigo) 8%, transparent);
-  box-shadow:
-    0 2px 8px color-mix(in srgb, var(--color-indigo) 4%, transparent),
-    0 1px 0 rgba(255, 255, 255, 0.6) inset;
+  border: 1px solid var(--card-bd);
+  box-shadow: var(--card-sh);
 }
 
 /* ── Mobile ──────────────────────────────────────────────────────────────── */

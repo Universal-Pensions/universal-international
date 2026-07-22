@@ -3,8 +3,32 @@
   inset: 0;
   display: grid;
   grid-template-columns: var(--sidebar-width) 1fr;
-  background: var(--map-bg);
+  background: var(--color-cloud);
   overflow: hidden;
+  transition: grid-template-columns 0.28s var(--ease-out-expo);
+}
+
+/* Expanded desktop rail — widens the first grid column so the sidebar can show
+   the wordmark logo + nav labels. The ≤768px mobile tree hides the rail, so this
+   only affects desktop. Collapsed keeps the global 64px --sidebar-width. */
+@media (min-width: 769px) {
+  .shell[data-rail='expanded'] {
+    --sidebar-width: 232px;
+  }
+}
+
+/* Desktop radius override — mirrors body.branch-desktop-shell, which rewrites
+   md/lg/xl to 8px (sm stays 6px, full stays round). Scoped to the map-dashboard
+   shell (≥769px, distributor + admin, which both use styles.shell) so the
+   ≤768px mobile tree — and every other role that borrows a shared widget like
+   Settings — keeps its own radii. The --card-* tokens live globally in
+   index.css so those shared widgets never resolve an undefined var. */
+@media (min-width: 769px) {
+  .shell {
+    --radius-md: 0.5rem;
+    --radius-lg: 0.5rem;
+    --radius-xl: 0.5rem;
+  }
 }
 
 .main {
@@ -199,4 +223,39 @@
     outline: 2px solid var(--color-indigo);
     outline-offset: 2px;
   }
+}
+
+/* ── Two-mode (Dashboard ⇄ Map) — distributor desktop only ──────────────────
+   `mode` lives in DashboardShell as local state; these classes only ever apply
+   inside styles.shell, so the shared Admin sidebar/settings widgets that borrow
+   other classes from this file are unaffected. */
+
+/* Map host — absolutely fills <main> in both states. In dash mode it is kept
+   mounted but hidden (display:none) so the single Leaflet instance and its
+   drill state survive toggles; hiding avoids the 0×0 re-layout gray-tile bug. */
+.mapWrap {
+  position: absolute;
+  inset: 0;
+}
+.mapHidden {
+  position: absolute;
+  inset: 0;
+  display: none;
+}
+
+/* Dash mode marker on <main>. <main> stays overflow:hidden; the scroll lives in
+   .dashHost so the page canvas scrolls independently of the (hidden) map. */
+.mainDash {
+  background: var(--color-cloud);
+}
+
+/* Full-page canvas for the selected rail destination in dash mode. */
+.dashHost {
+  position: absolute;
+  inset: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+  padding: var(--space-8) var(--space-8) var(--space-16);
+  background: var(--color-cloud);
 }

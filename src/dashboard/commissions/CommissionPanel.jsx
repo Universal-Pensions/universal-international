@@ -97,7 +97,7 @@ function newSettlementNonce() {
 /* ═══════════════════════════════════════════════════════════════════════════ */
 /*  CommissionPanel                                                           */
 /* ═══════════════════════════════════════════════════════════════════════════ */
-export default function CommissionPanel({ splitMode = false }) {
+export default function CommissionPanel({ splitMode = false, fullPage = false }) {
   const { commissionsOpen, setCommissionsOpen } = useDashboard();
   const { branchId } = useBranchScope();
   const { addToast } = useToast();
@@ -211,11 +211,11 @@ export default function CommissionPanel({ splitMode = false }) {
   useEffect(() => {
     if (!commissionsOpen) return;
     function onKey(e) {
-      if (e.key === 'Escape') setCommissionsOpen(false);
+      if (e.key === 'Escape' && !fullPage) setCommissionsOpen(false);
     }
     document.addEventListener('keydown', onKey);
     return () => document.removeEventListener('keydown', onKey);
-  }, [commissionsOpen, setCommissionsOpen]);
+  }, [commissionsOpen, setCommissionsOpen, fullPage]);
 
   // Move focus to the newly shown view on a drill-down / back swap (§7c.3) so a
   // keyboard/SR user lands on the new content instead of <body> after the
@@ -502,9 +502,9 @@ export default function CommissionPanel({ splitMode = false }) {
 
   return (
     <AnimatePresence>
-      {commissionsOpen && (
+      {(commissionsOpen || fullPage) && (
         <>
-          {!splitMode && (
+          {!splitMode && !fullPage && (
             <motion.div
               className={styles.backdrop}
               initial={{ opacity: 0 }}
@@ -518,11 +518,12 @@ export default function CommissionPanel({ splitMode = false }) {
           <motion.div
             className={styles.panel}
             data-split-mode={splitMode || undefined}
-            initial={{ x: '100%' }}
-            animate={{ x: 0, transition: { duration: 0.55, ease: EASE_OUT_EXPO } }}
-            exit={{ x: '100%', transition: { duration: 0.55, ease: EASE_OUT_EXPO } }}
-            role="dialog"
-            aria-modal="true"
+            style={fullPage ? { position: 'static', inset: 'auto', margin: '0 auto', width: '100%', maxWidth: '1040px', height: 'auto', maxHeight: 'none', overflow: 'visible', boxShadow: 'none', border: 'none' } : undefined}
+            initial={fullPage ? false : { x: '100%' }}
+            animate={fullPage ? { opacity: 1 } : { x: 0, transition: { duration: 0.55, ease: EASE_OUT_EXPO } }}
+            exit={fullPage ? { opacity: 0 } : { x: '100%', transition: { duration: 0.55, ease: EASE_OUT_EXPO } }}
+            role={fullPage ? undefined : 'dialog'}
+            aria-modal={fullPage ? undefined : 'true'}
             aria-label="Commissions"
           >
             <div className={styles.header}>
@@ -546,9 +547,11 @@ export default function CommissionPanel({ splitMode = false }) {
                     </motion.div>
                   </AnimatePresence>
                 </div>
-                <button className={styles.closeBtn} onClick={() => setCommissionsOpen(false)} aria-label="Close commissions">
-                  {Icons.close}
-                </button>
+                {!fullPage && (
+                  <button className={styles.closeBtn} onClick={() => setCommissionsOpen(false)} aria-label="Close commissions">
+                    {Icons.close}
+                  </button>
+                )}
               </div>
             </div>
 

@@ -69,7 +69,7 @@ const STATUS_FILTERS = [
 /* ═══════════════════════════════════════════════════════════════════════════ */
 /*  ViewTickets — distributor network-wide, view-only support oversight       */
 /* ═══════════════════════════════════════════════════════════════════════════ */
-export default function ViewTickets() {
+export default function ViewTickets({ fullPage = false }) {
   const { viewTicketsOpen, setViewTicketsOpen } = useDashboard();
   const distributorId = useAuth().user?.distributorId ?? 'd-001';
 
@@ -179,10 +179,10 @@ export default function ViewTickets() {
 
   useEffect(() => {
     if (!viewTicketsOpen) return;
-    function onKey(e) { if (e.key === 'Escape') handleClose(); }
+    function onKey(e) { if (e.key === 'Escape' && !fullPage) handleClose(); }
     document.addEventListener('keydown', onKey);
     return () => document.removeEventListener('keydown', onKey);
-  }, [viewTicketsOpen, handleClose]);
+  }, [viewTicketsOpen, handleClose, fullPage]);
 
   // Memoise the refs array + close callback so useOutsideClick doesn't tear
   // down + re-add its document listeners on every render while the dropdown
@@ -200,7 +200,7 @@ export default function ViewTickets() {
   return (
     <>
       <AnimatePresence>
-        {viewTicketsOpen && (
+        {viewTicketsOpen && !fullPage && (
           <motion.div
             key="vt-backdrop"
             className={styles.backdrop}
@@ -214,13 +214,14 @@ export default function ViewTickets() {
       </AnimatePresence>
 
       <AnimatePresence>
-        {viewTicketsOpen && (
+        {(viewTicketsOpen || fullPage) && (
           <motion.div
             key="vt-panel"
             className={styles.panel}
-            initial={{ x: '100%' }}
-            animate={{ x: 0, transition: { duration: 0.55, ease: EASE_OUT_EXPO } }}
-            exit={{ x: '100%', transition: { duration: 0.55, ease: EASE_OUT_EXPO } }}
+            initial={fullPage ? false : { x: '100%' }}
+            animate={fullPage ? { opacity: 1 } : { x: 0, transition: { duration: 0.55, ease: EASE_OUT_EXPO } }}
+            exit={fullPage ? { opacity: 0 } : { x: '100%', transition: { duration: 0.55, ease: EASE_OUT_EXPO } }}
+            style={fullPage ? { position: 'static', inset: 'auto', margin: '0 auto', width: '100%', maxWidth: '1040px', height: 'auto', maxHeight: 'none', overflow: 'visible', boxShadow: 'none', border: 'none' } : undefined}
           >
             {/* Header */}
             <div className={styles.header} data-view={view}>
@@ -247,11 +248,13 @@ export default function ViewTickets() {
                   </AnimatePresence>
                   <p className={styles.subtitle}>{headerSubtitle}</p>
                 </div>
-                <button className={styles.closeBtn} onClick={handleClose} aria-label="Close">
-                  <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" width="18" height="18">
-                    <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" />
-                  </svg>
-                </button>
+                {!fullPage && (
+                  <button className={styles.closeBtn} onClick={handleClose} aria-label="Close">
+                    <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" width="18" height="18">
+                      <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" />
+                    </svg>
+                  </button>
+                )}
               </div>
             </div>
 

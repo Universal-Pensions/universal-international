@@ -16,37 +16,16 @@
 
 /* ── Secondary: elevated glass + signature left accent rail ─────────────── */
 .secondary {
-  background: linear-gradient(150deg, #fff 0%, var(--color-cloud) 100%);
-  border: 1px solid var(--color-lavender);
-  box-shadow:
-    0 1px 2px color-mix(in srgb, var(--color-indigo) 5%, transparent),
-    0 10px 24px -18px color-mix(in srgb, var(--color-indigo) 32%, transparent);
-  transition: transform 0.2s var(--ease-out-expo), box-shadow 0.2s var(--ease-out-expo);
-}
-
-/* Left accent rail — the tile's signature cue. Decorative (the label/value carry
-   the meaning), so it never stands alone as information. */
-.secondary::before {
-  content: '';
-  position: absolute;
-  left: 0;
-  top: 0;
-  bottom: 0;
-  width: 4px;
-  background: var(--tile-accent, var(--color-indigo));
-  border-radius: var(--radius-md) 0 0 var(--radius-md);
-  transition: width 0.2s var(--ease-out-expo);
+  background: var(--color-white);
+  border: 1px solid var(--card-bd);
+  box-shadow: var(--card-sh);
+  transition: transform 0.2s var(--ease-out-expo), box-shadow 0.2s var(--ease-out-expo), border-color 0.18s var(--ease-out-expo);
 }
 
 .secondary:hover {
   transform: translateY(-3px);
-  box-shadow:
-    0 2px 4px color-mix(in srgb, var(--color-indigo) 6%, transparent),
-    0 20px 38px -18px color-mix(in srgb, var(--color-indigo) 40%, transparent);
-}
-
-.secondary:hover::before {
-  width: 6px;
+  box-shadow: var(--card-sh-hi);
+  border-color: var(--card-bd-hi);
 }
 
 /* Accent map — explicit + wrap-order-independent (replaces KpiCard's :nth-child,
@@ -75,9 +54,9 @@
 
 /* ── Primary: filled indigo focal metric ───────────────────────────────── */
 .primary {
-  background: var(--gradient-hero);
-  color: var(--color-white);
-  box-shadow: var(--shadow-lg);
+  background: var(--color-cloud);
+  border: 1px solid var(--card-bd);
+  color: var(--color-slate);
 }
 
 /* Soft corner glow — depth without ornamentation. */
@@ -87,14 +66,13 @@
   right: -18%;
   width: 60%;
   height: 150%;
-  background: radial-gradient(circle, rgba(217, 220, 242, 0.22) 0%, transparent 64%);
   pointer-events: none;
   z-index: -1;
 }
 
 .primary .iconChip {
-  background: rgba(255, 255, 255, 0.14);
-  color: var(--color-white);
+  background: color-mix(in srgb, var(--color-indigo) 7%, transparent);
+  color: var(--color-indigo);
 }
 
 /* ── Shared inner bits ──────────────────────────────────────────────────── */
@@ -120,7 +98,7 @@
   color: var(--color-gray);
 }
 .primary .label {
-  color: var(--color-on-indigo-muted);
+  color: var(--color-gray);
 }
 
 .value {
@@ -136,7 +114,7 @@
 }
 .primary .value {
   font-size: clamp(1.625rem, 2.4vw, 2.375rem);
-  color: var(--color-white);
+  color: var(--color-indigo);
   margin-bottom: 2px;
 }
 
@@ -152,7 +130,7 @@
 }
 /* On the filled-indigo primary tile the muted sub-line needs the on-indigo tone. */
 .primary .context {
-  color: var(--color-on-indigo-muted);
+  color: var(--color-gray);
 }
 
 /* Primary stat row — units · invested · growth (subscriber) or
@@ -165,11 +143,11 @@
   margin-top: var(--space-3);
   font-family: var(--font-body);
   font-size: var(--text-sm);
-  color: var(--color-on-indigo-muted);
+  color: var(--color-gray);
   font-variant-numeric: tabular-nums;
 }
 .statRow strong {
-  color: var(--color-white);
+  color: var(--color-slate);
   font-weight: 700;
 }
 /* Secondary tiles carry the statRow too (the "Amount invested" tile's
@@ -188,8 +166,5 @@
   }
   .secondary:hover {
     transform: none;
-  }
-  .secondary:hover::before {
-    width: 4px;
   }
 }

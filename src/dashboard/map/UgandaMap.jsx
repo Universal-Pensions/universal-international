@@ -141,23 +141,33 @@ function TileOpacityController({ level }) {
 }
 
 // ─── Map controller ──────────────────────────────────────────────────────────
-function MapController({ bounds, center, zoom, fitOptions }) {
+function MapController({ bounds, center, zoom, fitOptions, visible = true }) {
   const map = useMap();
   useEffect(() => {
+    // Don't fit while hidden (dash mode → display:none → 0×0 container): a fit
+    // computed against a zero-size map lands wrong. When `visible` flips back to
+    // true this effect re-runs and fits against the real size. The synchronous
+    // invalidateSize guarantees the projection is current before we fit.
+    if (!visible) return;
+    map.invalidateSize({ animate: false });
     if (bounds) {
       const opts = { padding: [50, 50], maxZoom: 10, duration: 0.8, ...fitOptions };
       map.fitBounds(bounds, opts);
     } else if (center && zoom) {
       map.flyTo(center, zoom, { duration: 0.8 });
     }
-  }, [map, bounds, center, zoom, fitOptions]);
+  }, [map, bounds, center, zoom, fitOptions, visible]);
 
   // Keep Leaflet's pixel projection in sync with the real container size. If the
   // map mounts (or the layout shifts) while the container is mis-sized, Leaflet's
   // cached origin goes stale and click hit-testing (mouseEventToLayerPoint +
   // _containsPoint) lands OFF the region/district polygons — so hover still works
   // (DOM-based) but a click "does nothing". invalidateSize() recomputes it.
+  // Also re-runs whenever the map returns from hidden → visible (the dash⇄map
+  // toggle): a container measured under display:none is 0×0, so invalidateSize()
+  // must recompute the origin or click hit-testing lands off the polygons.
   useEffect(() => {
+    if (!visible) return undefined;
     const fix = () => map.invalidateSize({ animate: false });
     const raf = requestAnimationFrame(fix);
     // Deferred second pass — closes the initial-mount window (lazy + Suspense +
@@ -171,13 +181,13 @@ function MapController({ bounds, center, zoom, fitOptions }) {
       ro.observe(map.getContainer());
     } catch { /* ResizeObserver unsupported — the rAF + timeout passes still correct mount-time sizing */ }
     return () => { cancelAnimationFrame(raf); clearTimeout(t); ro?.disconnect(); };
-  }, [map]);
+  }, [map, visible]);
 
   return null;
 }
 
 // ─── Main component ──────────────────────────────────────────────────────────
-function UgandaMap() {
+function UgandaMap({ visible = true }) {
   const { level, selectedIds, drillDown } = useDashboard();
   const [regionsGeo, setRegionsGeo] = useState(null);
   const [districtsGeo, setDistrictsGeo] = useState(null);
@@ -502,6 +512,7 @@ function UgandaMap() {
           center={mapView.center}
           zoom={mapView.zoom}
           fitOptions={mapView.fitOptions}
+          visible={visible}
         />
 
         {/* Layer 1: Base country fill — bright white land, covers water */}

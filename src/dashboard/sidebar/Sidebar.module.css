@@ -2,21 +2,125 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  background: var(--color-indigo-deep);
+  background: var(--color-white);
+  border-right: 1px solid var(--color-lavender);
   height: 100vh;
   padding: var(--space-4) 0;
   z-index: 50;
 }
 
-.logo {
+/* ── Brand row (distributor + admin expandable rail): full wordmark + collapse toggle
+   when expanded; a clickable glyph mark that expands when collapsed. ── */
+.brand {
   display: flex;
   align-items: center;
   justify-content: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 40px;
+  margin-bottom: var(--space-6);
+}
+
+.sidebar[data-expanded='true'] .brand {
+  justify-content: space-between;
+  padding: 0 8px 0 10px;
+}
+
+.brandLogo {
+  height: 30px;
+  width: auto;
+  max-width: 100%;
+  object-fit: contain;
+  object-position: left center;
+  flex: 0 1 auto;
+  min-width: 0;
+}
+
+.brandMark {
+  display: grid;
+  place-items: center;
   width: 40px;
   height: 40px;
-  color: var(--color-white);
-  margin-bottom: var(--space-8);
-  opacity: 0.9;
+  border-radius: var(--radius-md);
+  color: var(--color-indigo);
+  transition: background 0.18s ease;
+}
+
+.brandMark:hover {
+  background: var(--color-cloud);
+}
+
+.collapseToggle {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  flex: 0 0 auto;
+  border-radius: var(--radius-md);
+  color: var(--color-gray);
+  transition: background 0.18s ease, color 0.18s ease;
+}
+
+.collapseToggle:hover {
+  background: var(--color-cloud);
+  color: var(--color-indigo);
+}
+
+.brandMark:focus-visible,
+.collapseToggle:focus-visible {
+  outline: 2px solid var(--color-indigo-soft);
+  outline-offset: 2px;
+}
+
+/* ── Expanded rail: labeled nav rows ── */
+.sidebar[data-expanded='true'] {
+  align-items: stretch;
+  padding-left: var(--space-3);
+  padding-right: var(--space-3);
+}
+
+.navLabel {
+  flex: 1;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: var(--text-sm);
+  letter-spacing: -0.005em;
+  text-align: left;
+}
+
+.sidebar[data-expanded='true'] .navBtn {
+  width: 100%;
+  height: 42px;
+  justify-content: flex-start;
+  gap: 12px;
+  padding: 0 10px;
+  border-radius: var(--radius-md);
+  transition: background 0.18s ease, color 0.18s ease;
+}
+
+.sidebar[data-expanded='true'] .navBtn:hover {
+  background: var(--color-cloud);
+}
+
+.sidebar[data-expanded='true'] .navBtn[data-active='true'] {
+  background: color-mix(in srgb, var(--color-indigo) 9%, transparent);
+}
+
+/* In the expanded row the tinted row carries the active/hover state, so the
+   icon keeps no pill background. */
+.sidebar[data-expanded='true'] .navBtn:hover .iconWrap,
+.sidebar[data-expanded='true'] .navBtn[data-active='true'] .iconWrap {
+  background: transparent;
+}
+
+.sidebar[data-expanded='true'] .iconWrap {
+  width: 24px;
+  height: 24px;
+  flex: 0 0 auto;
 }
 
 .navItems {
@@ -40,32 +144,30 @@
   justify-content: center;
   width: var(--sidebar-width);
   height: 48px;
-  color: rgba(217, 220, 242, 0.5);
+  color: var(--color-gray);
   transition: color 0.2s ease;
 }
 
 .navBtn:hover {
-  color: rgba(217, 220, 242, 0.85);
+  color: var(--color-indigo);
+}
+
+.navBtn:hover .iconWrap {
+  background: var(--color-cloud);
 }
 
 .navBtn[data-active='true'] {
-  color: var(--color-white);
+  color: var(--color-indigo);
 }
 
-.navBtn[data-active='true']::before {
-  content: '';
-  position: absolute;
-  left: 0;
-  top: 50%;
-  transform: translateY(-50%);
-  width: 3px;
-  height: 24px;
-  background: var(--color-teal);
-  border-radius: 0 var(--radius-full) var(--radius-full) 0;
+/* Active affordance is a centred rounded-square tint behind the icon — no
+   coloured left rail. */
+.navBtn[data-active='true'] .iconWrap {
+  background: color-mix(in srgb, var(--color-indigo) 9%, transparent);
 }
 
 .navBtn:focus-visible {
-  outline: 2px solid rgba(217, 220, 242, 0.6);
+  outline: 2px solid var(--color-indigo-soft);
   outline-offset: -2px;
   border-radius: var(--radius-md);
 }
@@ -74,6 +176,10 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-md);
+  transition: background 0.18s ease;
 }
 
 .tooltip {
@@ -102,21 +208,14 @@
   position: absolute;
   left: calc(var(--sidebar-width) + 10px);
   top: -4px;
-  background: linear-gradient(145deg, rgba(255,255,255,0.92) 0%, rgba(246,247,251,0.88) 100%);
-  backdrop-filter: blur(24px);
-  -webkit-backdrop-filter: blur(24px);
-  border: 1px solid rgba(217, 220, 242, 0.6);
-  border-top-color: rgba(255, 255, 255, 0.8);
-  border-left-color: rgba(255, 255, 255, 0.7);
+  background: var(--color-white);
+  border: 1px solid var(--card-bd);
   border-radius: var(--radius-md);
   padding: 0.625rem;
   display: flex;
   flex-direction: column;
   z-index: 205;
-  box-shadow:
-    0 8px 32px color-mix(in srgb, var(--color-indigo) 12%, transparent),
-    0 2px 8px color-mix(in srgb, var(--color-indigo) 6%, transparent),
-    0 1px 0 rgba(255, 255, 255, 0.5) inset;
+  box-shadow: var(--shadow-lg);
   min-width: 240px;
 }
 
@@ -240,4 +339,55 @@
 @media (max-width: 768px) {
   /* Hide entire sidebar on mobile — replaced by hamburger drawer in DashboardShell */
   .sidebar { display: none; }
+}
+
+/* ── "Map view" mode toggle ─────────────────────────────────────────────────
+   Composes .navBtn for all rail geometry (collapsed 48px centred, expanded
+   full-width row, hover, focus). Only the switch UI + active state are new. A
+   hairline under it sets the toggle apart from the page destinations below. */
+.modeToggle {
+  margin-bottom: var(--space-2);
+  padding-bottom: var(--space-2);
+  border-bottom: 1px solid var(--color-lavender);
+  border-radius: 0;
+}
+.sidebar[data-expanded='true'] .modeToggle {
+  border-radius: 0;
+}
+.modeToggle[data-mode-active='true'] {
+  color: var(--color-indigo);
+}
+.modeToggle[data-mode-active='true'] .iconWrap {
+  background: color-mix(in srgb, var(--color-indigo) 9%, transparent);
+}
+.sidebar[data-expanded='true'] .modeToggle[data-mode-active='true'] .iconWrap {
+  background: transparent;
+}
+
+/* Switch track + thumb (only shown in the expanded rail). */
+.switchTrack {
+  flex: 0 0 auto;
+  position: relative;
+  width: 32px;
+  height: 18px;
+  border-radius: 999px;
+  background: var(--color-lavender);
+  transition: background 0.2s ease;
+}
+.switchThumb {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--color-white);
+  box-shadow: 0 1px 2px rgba(41, 40, 103, 0.25);
+  transition: transform 0.2s var(--ease-out-expo);
+}
+.modeToggle[data-mode-active='true'] .switchTrack {
+  background: var(--color-indigo);
+}
+.modeToggle[data-mode-active='true'] .switchThumb {
+  transform: translateX(14px);
 }

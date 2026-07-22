@@ -7,6 +7,8 @@ import { formatNumber } from '../../utils/currency';
 import { useAuth } from '../../contexts/AuthContext';
 import { useDashboard } from '../../contexts/DashboardContext';
 import { useEntityMetrics } from '../../hooks/useEntity';
+import { useIsMobile } from '../../hooks/useIsMobile';
+import logo from '../../assets/logo.png';
 import styles from './Sidebar.module.css';
 
 function formatCount(n) {
@@ -212,12 +214,16 @@ const SUBSCRIBER_SUB = [
   },
 ];
 
-export default function Sidebar() {
+export default function Sidebar({ expanded = false, onToggleExpand, mapMode = false, onToggleMapMode }) {
   const [hovered, setHovered] = useState(null);
   const [moreOpen, setMoreOpen] = useState(false);
   const { logout } = useAuth();
   const navigate = useNavigate();
-  const { reset, branchMenuOpen, setBranchMenuOpen, createBranchOpen, setCreateBranchOpen, viewBranchesOpen, setViewBranchesOpen, agentMenuOpen, setAgentMenuOpen, viewAgentsOpen, setViewAgentsOpen, subscriberMenuOpen, setSubscriberMenuOpen, viewSubscribersOpen, setViewSubscribersOpen, setDrillTargetBranchId, setDrillTargetAgentId, viewReportsOpen, setViewReportsOpen, commissionsOpen, setCommissionsOpen, settingsOpen, setSettingsOpen, viewTicketsOpen, setViewTicketsOpen } = useDashboard();
+  // The two-mode flat/single-open nav is a DESKTOP concept. On mobile the rail is
+  // hidden and the bottom bar shares this handler, so mobile must keep the exact
+  // original (map-mode) click behavior — hence the `!isMobile` gate below.
+  const isMobile = useIsMobile();
+  const { reset, closeAllPanels, branchMenuOpen, setBranchMenuOpen, createBranchOpen, setCreateBranchOpen, viewBranchesOpen, setViewBranchesOpen, agentMenuOpen, setAgentMenuOpen, viewAgentsOpen, setViewAgentsOpen, subscriberMenuOpen, setSubscriberMenuOpen, viewSubscribersOpen, setViewSubscribersOpen, setDrillTargetBranchId, setDrillTargetAgentId, viewReportsOpen, setViewReportsOpen, commissionsOpen, setCommissionsOpen, settingsOpen, setSettingsOpen, viewTicketsOpen, setViewTicketsOpen } = useDashboard();
 
   // Real counts for the submenu headers — sourced from the country-level
   // rollup RPC (single call, 5-min staleTime). Replaces three earlier
@@ -239,13 +245,25 @@ export default function Sidebar() {
     if (viewReportsOpen) return 'reports';
     if (commissionsOpen) return 'commissions';
     if (settingsOpen) return 'settings';
+    // Dash mode: mirror DashboardShell.selectedPage, which reads the RAW view
+    // flags — so the rail highlight matches the full-page canvas even while a map
+    // drill target is set (drilling into a branch/agent renders its detail full
+    // page). Map mode keeps the menu-derived highlight (drill keeps the district
+    // context, so the rail should not light up Branches/Agents).
+    if (!mapMode) {
+      if (createBranchOpen || viewBranchesOpen) return 'branches';
+      if (viewAgentsOpen) return 'agents';
+      if (viewSubscribersOpen) return 'subscribers';
+      return 'overview';
+    }
     if (branchMenuOpen) return 'branches';
     if (agentMenuOpen) return 'agents';
     if (subscriberMenuOpen) return 'subscribers';
     return 'overview';
   }, [
     viewTicketsOpen, viewReportsOpen, commissionsOpen, settingsOpen,
-    branchMenuOpen, agentMenuOpen, subscriberMenuOpen,
+    branchMenuOpen, agentMenuOpen, subscriberMenuOpen, mapMode,
+    createBranchOpen, viewBranchesOpen, viewAgentsOpen, viewSubscribersOpen,
   ]);
 
   const closeMore = useCallback(() => setMoreOpen(false), []);
@@ -297,6 +315,30 @@ export default function Sidebar() {
 
   function handleClick(id) {
     setMoreOpen(false);
+    // Dash mode: flat single-open navigation. Close every panel + menu, then
+    // open exactly the target page. Flyouts render only in map mode, so
+    // Branches/Agents/Subscribers jump straight to their full page here. Enforcing
+    // single-open means the dash canvas's derived page can never get stuck on a
+    // panel whose only closer (its drawer close button) is hidden full-page.
+    if (!mapMode && !isMobile) {
+      closeAllPanels();
+      // Clear any map drill target so a rail click always yields a fresh page —
+      // e.g. clicking Branches after drilling into a branch shows the LIST, not
+      // the stale drilled branch detail that ViewBranches would auto-select.
+      // (Mirrors the existing "View Existing Branches" flyout action.)
+      setDrillTargetBranchId(null);
+      setDrillTargetAgentId(null);
+      if (id === 'overview') reset();
+      else if (id === 'branches') setViewBranchesOpen(true);
+      else if (id === 'agents') setViewAgentsOpen(true);
+      else if (id === 'subscribers') setViewSubscribersOpen(true);
+      else if (id === 'commissions') setCommissionsOpen(true);
+      else if (id === 'reports') setViewReportsOpen(true);
+      else if (id === 'tickets') setViewTicketsOpen(true);
+      else if (id === 'settings') setSettingsOpen(true);
+      else if (id === 'logout') { logout(); navigate('/'); }
+      return;
+    }
     if (id === 'branches') {
       setAgentMenuOpen(false);
       setSubscriberMenuOpen(false);
@@ -393,16 +435,78 @@ export default function Sidebar() {
   }
 
   return (
-    <nav className={styles.sidebar}>
-      <div className={styles.logo}>
-        <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" width="24" height="24">
-          <path d="M12 2L2 7l10 5 10-5-10-5z" stroke="currentColor" strokeWidth="1.75" strokeLinejoin="round"/>
-          <path d="M2 17l10 5 10-5" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round"/>
-          <path d="M2 12l10 5 10-5" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round"/>
-        </svg>
+    <nav className={styles.sidebar} data-expanded={expanded ? 'true' : undefined}>
+      <div className={styles.brand}>
+        {expanded ? (
+          <>
+            <img src={logo} alt="Universal Pensions" className={styles.brandLogo} width={148} height={34} />
+            <button
+              type="button"
+              className={styles.collapseToggle}
+              onClick={onToggleExpand}
+              aria-label="Collapse menu"
+              title="Collapse menu"
+            >
+              <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" width="18" height="18">
+                <path d="M15 6l-6 6 6 6" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+            </button>
+          </>
+        ) : (
+          <button
+            type="button"
+            className={styles.brandMark}
+            onClick={onToggleExpand}
+            aria-label="Expand menu"
+            title="Expand menu"
+          >
+            <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" width="24" height="24">
+              <path d="M12 2L2 7l10 5 10-5-10-5z" stroke="currentColor" strokeWidth="1.75" strokeLinejoin="round"/>
+              <path d="M2 17l10 5 10-5" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round"/>
+              <path d="M2 12l10 5 10-5" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+          </button>
+        )}
       </div>
 
       <div className={styles.navItems}>
+        {/* Whole-platform view toggle: dashboard (default) ⇄ map drill-down.
+            Orthogonal to page selection — it never changes the active page. */}
+        <button
+          type="button"
+          role="switch"
+          aria-checked={mapMode}
+          className={`${styles.navBtn} ${styles.modeToggle}`}
+          data-mode-active={mapMode ? 'true' : undefined}
+          onClick={onToggleMapMode}
+          onMouseEnter={() => setHovered('mapview')}
+          onMouseLeave={() => setHovered(null)}
+          title="Map view"
+          aria-label="Map view"
+        >
+          <span className={styles.iconWrap}>
+            <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" width="22" height="22">
+              <path d="M9 3 3 5v16l6-2 6 2 6-2V3l-6 2-6-2z" stroke="currentColor" strokeWidth="1.75" strokeLinejoin="round"/>
+              <path d="M9 3v16M15 5v16" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round"/>
+            </svg>
+          </span>
+          {expanded && <span className={styles.navLabel}>Map view</span>}
+          {expanded && (
+            <span className={styles.switchTrack} aria-hidden="true">
+              <span className={styles.switchThumb} />
+            </span>
+          )}
+          {!expanded && hovered === 'mapview' && (
+            <motion.span
+              className={styles.tooltip}
+              initial={{ opacity: 0, x: -4 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.15 }}
+            >
+              Map view
+            </motion.span>
+          )}
+        </button>
         {NAV_ITEMS.map((item) => (
           <div key={item.id} className={styles.navBtnWrap}>
             <button
@@ -418,7 +522,8 @@ export default function Sidebar() {
               {...(item.id === 'subscribers' ? { 'aria-expanded': subscriberMenuOpen } : {})}
             >
               <span className={styles.iconWrap}>{item.icon}</span>
-              {hovered === item.id && !branchMenuOpen && !agentMenuOpen && !subscriberMenuOpen && (
+              {expanded && <span className={styles.navLabel}>{item.label}</span>}
+              {!expanded && hovered === item.id && (!mapMode || (!branchMenuOpen && !agentMenuOpen && !subscriberMenuOpen)) && (
                 <motion.span
                   className={styles.tooltip}
                   initial={{ opacity: 0, x: -4 }}
@@ -433,7 +538,7 @@ export default function Sidebar() {
             {/* Branch submenu flyout */}
             {item.id === 'branches' && (
               <AnimatePresence>
-                {branchMenuOpen && (
+                {mapMode && branchMenuOpen && (
                   <motion.div
                     className={styles.subMenu}
                     initial={{ opacity: 0, x: -8, scale: 0.96 }}
@@ -476,7 +581,7 @@ export default function Sidebar() {
             {/* Agent submenu flyout */}
             {item.id === 'agents' && (
               <AnimatePresence>
-                {agentMenuOpen && (
+                {mapMode && agentMenuOpen && (
                   <motion.div
                     className={styles.subMenu}
                     initial={{ opacity: 0, x: -8, scale: 0.96 }}
@@ -519,7 +624,7 @@ export default function Sidebar() {
             {/* Subscriber submenu flyout */}
             {item.id === 'subscribers' && (
               <AnimatePresence>
-                {subscriberMenuOpen && (
+                {mapMode && subscriberMenuOpen && (
                   <motion.div
                     className={styles.subMenu}
                     initial={{ opacity: 0, x: -8, scale: 0.96 }}
@@ -576,7 +681,8 @@ export default function Sidebar() {
             aria-label={item.label}
           >
             <span className={styles.iconWrap}>{item.icon}</span>
-            {hovered === item.id && (
+            {expanded && <span className={styles.navLabel}>{item.label}</span>}
+            {!expanded && hovered === item.id && (
               <motion.span
                 className={styles.tooltip}
                 initial={{ opacity: 0, x: -4 }}

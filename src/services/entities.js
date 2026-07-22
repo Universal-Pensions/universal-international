@@ -748,6 +748,81 @@ export async function getEntityMetricsRollup(level, entityIds) {
   return data ?? {};
 }
 
+const TOP_ENTITY_PARENT_LEVEL = { branch: 'district', agent: 'branch' };
+const TOP_ENTITY_SORT_FIELD = { aum: 'aum', contributions: 'totalContributions', subscribers: 'totalSubscribers' };
+
+/**
+ * @endpoint RPC get_top_entities(p_level, p_sort_key, p_limit)
+ * @param {('branch'|'agent')} level
+ * @param {('aum'|'contributions'|'subscribers')} [sortKey] - defaults server-side
+ *   (aum for branch, contributions for agent).
+ * @param {number} [limit=6]
+ * @returns {Promise<Array<{ id: string, name: string, parentId: string,
+ *   parentName: string|null, managerName: string|null, status: string,
+ *   m: { totalSubscribers: number, activeRate: number, aum: number, totalContributions: number } }>>}
+ * @description Bounded, server-side top-N for the country overview's "Top branches"
+ *   / "Top agents" tables (0077). Replaces the old landing fan-out that pulled the
+ *   ENTIRE agent + branch collections into the browser via useAllEntities +
+ *   useAllEntitiesMetrics only to sort client-side and slice 6. Rows are
+ *   display-ready: identity + parent name + the four metrics the tables render.
+ *   Mock fallback mirrors the old client-side compute over the seeded maps.
+ * @cache ['topEntities', level, sortKey, limit]
+ */
+export async function getTopEntities(level, sortKey, limit = 6) {
+  const effLimit = Math.min(Math.max(limit || 6, 1), 50);
+  const effSort = sortKey || (level === 'agent' ? 'contributions' : 'aum');
+
+  if (!IS_SUPABASE_ENABLED) {
+    const all = getAllEntities(level) || [];
+    const parentLevel = TOP_ENTITY_PARENT_LEVEL[level];
+    const parents = parentLevel ? (getAllEntities(parentLevel) || []) : [];
+    const parentNameById = Object.fromEntries(parents.map((p) => [p.id, p.name]));
+    const field = TOP_ENTITY_SORT_FIELD[effSort] || 'aum';
+    return all
+      .map((e) => ({
+        id: e.id,
+        name: e.name,
+        parentId: e.parentId ?? null,
+        parentName: parentNameById[e.parentId] ?? null,
+        managerName: e.managerName ?? null,
+        status: e.status,
+        m: {
+          totalSubscribers: e.metrics?.totalSubscribers ?? 0,
+          activeRate: e.metrics?.activeRate ?? 0,
+          aum: e.metrics?.aum ?? 0,
+          totalContributions: e.metrics?.totalContributions ?? 0,
+        },
+      }))
+      .sort((a, b) => (b.m[field] || 0) - (a.m[field] || 0))
+      .slice(0, effLimit);
+  }
+
+  const { data, error } = await supabase.rpc('get_top_entities', {
+    p_level: level,
+    p_sort_key: effSort,
+    p_limit: effLimit,
+  });
+  if (error) {
+    console.warn('[getTopEntities] RPC failed', { level, sortKey: effSort, error });
+    throw error;
+  }
+  // PostgREST returns numeric/bigint columns as strings — coerce to Number.
+  return (data ?? []).map((r) => ({
+    id: r.id,
+    name: r.name,
+    parentId: r.parent_id,
+    parentName: r.parent_name,
+    managerName: r.manager_name,
+    status: r.status,
+    m: {
+      totalSubscribers: Number(r.total_subscribers) || 0,
+      activeRate: Number(r.active_rate) || 0,
+      aum: Number(r.aum) || 0,
+      totalContributions: Number(r.total_contributions) || 0,
+    },
+  }));
+}
+
 /**
  * @endpoint RPC get_branch_pending_contributions(p_branch_id)
  * @param {string} branchId

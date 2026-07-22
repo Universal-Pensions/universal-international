@@ -8,6 +8,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useDashboard } from '../../contexts/DashboardContext';
 import { useAdminPanel } from '../../contexts/AdminPanelContext';
 import { usePlatformOverview } from '../../hooks/useEntity';
+import logo from '../../assets/logo.png';
 // Reuse the distributor sidebar's styles verbatim so the admin rail is pixel-
 // identical to the map-theme it mirrors.
 import styles from '../../dashboard/sidebar/Sidebar.module.css';
@@ -204,7 +205,7 @@ const NETWORK_SUB = [
   },
 ];
 
-export default function AdminSidebar() {
+export default function AdminSidebar({ expanded = false, onToggleExpand, mapMode = false, onToggleMapMode }) {
   const [hovered, setHovered] = useState(null);
   const [moreOpen, setMoreOpen] = useState(false);
   // The "Distributor Network" group flyout (Distributors / Branches / Agents).
@@ -266,15 +267,22 @@ export default function AdminSidebar() {
   function handleClick(id) {
     setMoreOpen(false);
 
-    // Distributor Network group — toggle the flyout. Close sibling surfaces, but
-    // NOT the group's own child panels (those are reachable from the flyout).
+    // Distributor Network group — toggle the flyout launcher. In MAP mode, close
+    // the sibling surfaces (they overlay the map, so only one should show). In
+    // DASH mode the launcher must NOT close the current full-page canvas: the
+    // page is derived from the view-open flags, so clearing them here would blank
+    // the canvas back to Overview and lose the user's page if they dismiss the
+    // flyout without picking a child. handleNetworkSub already closes the
+    // siblings when a child IS chosen. Never close the group's own child panels.
     if (id === 'distributor-network') {
-      setViewSubscribersOpen(false);
-      setViewEmployersOpen(false);
-      setCreateEmployerOpen(false);
-      setViewReportsOpen(false);
-      setViewTicketsOpen(false);
-      setSettingsOpen(false);
+      if (mapMode) {
+        setViewSubscribersOpen(false);
+        setViewEmployersOpen(false);
+        setCreateEmployerOpen(false);
+        setViewReportsOpen(false);
+        setViewTicketsOpen(false);
+        setSettingsOpen(false);
+      }
       setNetworkMenuOpen((prev) => !prev);
       return;
     }
@@ -368,16 +376,78 @@ export default function AdminSidebar() {
   }
 
   return (
-    <nav className={styles.sidebar}>
-      <div className={styles.logo}>
-        <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" width="24" height="24">
-          <path d="M12 2L2 7l10 5 10-5-10-5z" stroke="currentColor" strokeWidth="1.75" strokeLinejoin="round"/>
-          <path d="M2 17l10 5 10-5" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round"/>
-          <path d="M2 12l10 5 10-5" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round"/>
-        </svg>
+    <nav className={styles.sidebar} data-expanded={expanded ? 'true' : undefined}>
+      <div className={styles.brand}>
+        {expanded ? (
+          <>
+            <img src={logo} alt="Universal Pensions" className={styles.brandLogo} width={148} height={34} />
+            <button
+              type="button"
+              className={styles.collapseToggle}
+              onClick={onToggleExpand}
+              aria-label="Collapse menu"
+              title="Collapse menu"
+            >
+              <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" width="18" height="18">
+                <path d="M15 6l-6 6 6 6" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+            </button>
+          </>
+        ) : (
+          <button
+            type="button"
+            className={styles.brandMark}
+            onClick={onToggleExpand}
+            aria-label="Expand menu"
+            title="Expand menu"
+          >
+            <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" width="24" height="24">
+              <path d="M12 2L2 7l10 5 10-5-10-5z" stroke="currentColor" strokeWidth="1.75" strokeLinejoin="round"/>
+              <path d="M2 17l10 5 10-5" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round"/>
+              <path d="M2 12l10 5 10-5" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+          </button>
+        )}
       </div>
 
       <div className={styles.navItems}>
+        {/* Whole-platform view toggle: dashboard (default) ⇄ map drill-down.
+            Orthogonal to page selection — it never changes the active page. */}
+        <button
+          type="button"
+          role="switch"
+          aria-checked={mapMode}
+          className={`${styles.navBtn} ${styles.modeToggle}`}
+          data-mode-active={mapMode ? 'true' : undefined}
+          onClick={onToggleMapMode}
+          onMouseEnter={() => setHovered('mapview')}
+          onMouseLeave={() => setHovered(null)}
+          title="Map view"
+          aria-label="Map view"
+        >
+          <span className={styles.iconWrap}>
+            <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" width="22" height="22">
+              <path d="M9 3 3 5v16l6-2 6 2 6-2V3l-6 2-6-2z" stroke="currentColor" strokeWidth="1.75" strokeLinejoin="round"/>
+              <path d="M9 3v16M15 5v16" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round"/>
+            </svg>
+          </span>
+          {expanded && <span className={styles.navLabel}>Map view</span>}
+          {expanded && (
+            <span className={styles.switchTrack} aria-hidden="true">
+              <span className={styles.switchThumb} />
+            </span>
+          )}
+          {!expanded && hovered === 'mapview' && (
+            <motion.span
+              className={styles.tooltip}
+              initial={{ opacity: 0, x: -4 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.15 }}
+            >
+              Map view
+            </motion.span>
+          )}
+        </button>
         {NAV_ITEMS.map((item) => (
           <div key={item.id} className={styles.navBtnWrap}>
             <button
@@ -391,7 +461,8 @@ export default function AdminSidebar() {
               {...(item.id === 'distributor-network' ? { 'aria-expanded': networkMenuOpen } : {})}
             >
               <span className={styles.iconWrap}>{item.icon}</span>
-              {hovered === item.id && !networkMenuOpen && (
+              {expanded && <span className={styles.navLabel}>{item.label}</span>}
+              {!expanded && hovered === item.id && !networkMenuOpen && (
                 <motion.span
                   className={styles.tooltip}
                   initial={{ opacity: 0, x: -4 }}
@@ -467,7 +538,8 @@ export default function AdminSidebar() {
             aria-label={item.label}
           >
             <span className={styles.iconWrap}>{item.icon}</span>
-            {hovered === item.id && (
+            {expanded && <span className={styles.navLabel}>{item.label}</span>}
+            {!expanded && hovered === item.id && (
               <motion.span
                 className={styles.tooltip}
                 initial={{ opacity: 0, x: -4 }}

@@ -470,10 +470,16 @@ function DistrictBifurcation({ branches, employers, getBranchSubCount, onDrillBr
   );
 }
 
-export default function OverlayPanel({ onEmployerSelect } = {}) {
+export default function OverlayPanel({ onEmployerSelect, fullPage = false } = {}) {
   const isMobile = useIsMobile();
   const { level, selectedIds, drillDown, drillUp, reset, branchMenuOpen, agentMenuOpen, subscriberMenuOpen, setViewReportsOpen, setReportContext, setCommissionsOpen } = useDashboard();
   const [listExpanded, setListExpanded] = useState(false);
+  // In dash mode this summary card IS the full-page overview: render it as a
+  // centred static card on the canvas instead of the map's absolutely-positioned
+  // top-left overlay. Keeps its own border/shadow/radius (it reads as a card).
+  const fullPageStyle = fullPage
+    ? { position: 'static', top: 'auto', left: 'auto', width: '100%', maxWidth: '480px', margin: '0 auto', maxHeight: 'none', transform: 'none' }
+    : undefined;
 
   // When drilled into a specific branch/agent, keep showing the parent district
   // context on the left so the user doesn't lose their place while the slide-in
@@ -540,6 +546,7 @@ export default function OverlayPanel({ onEmployerSelect } = {}) {
       return (
         <div
           className={styles.panel}
+          style={fullPageStyle}
           role="status"
           aria-busy="true"
           aria-label="Loading network overview"
@@ -551,6 +558,32 @@ export default function OverlayPanel({ onEmployerSelect } = {}) {
           <div className={styles.skeletonBlock} aria-hidden="true" style={{ height: 62 }} />
           <div className={styles.skeletonBlock} aria-hidden="true" style={{ height: 84 }} />
           <div className={styles.skeletonBlock} aria-hidden="true" style={{ height: 156, flex: '1 1 auto', minHeight: 0 }} />
+        </div>
+      );
+    }
+    // Full-page (dash mode): the map is hidden, so `return null` would blank the
+    // whole canvas and strand the user with only the rail. Render an empty card
+    // with a route back to the national overview instead. Map mode keeps the bare
+    // `return null` below (the still-visible map remains behind the hidden card).
+    if (fullPage) {
+      return (
+        <div className={styles.panel} style={fullPageStyle} role="status" aria-label="Overview unavailable">
+          <div className={styles.panelHeader}>
+            <button className={styles.backBtn} onClick={() => reset()}>
+              <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" width="16" height="16">
+                <path d="M15 19l-7-7 7-7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+              Back
+            </button>
+          </div>
+          <div className={styles.emptyState}>
+            <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" width="32" height="32">
+              <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="1.5"/>
+              <path d="M12 8v4M12 16h.01" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round"/>
+            </svg>
+            <h3 className={styles.emptyTitle}>Nothing to show here</h3>
+            <p className={styles.emptyText}>This area has no data to display right now.</p>
+          </div>
         </div>
       );
     }
@@ -624,8 +657,9 @@ export default function OverlayPanel({ onEmployerSelect } = {}) {
   return (
     <motion.div
       className={styles.panel}
-      data-offset={isOffset || undefined}
-      initial={{ opacity: 0 }}
+      data-offset={(!fullPage && isOffset) || undefined}
+      style={fullPageStyle}
+      initial={fullPage ? false : { opacity: 0 }}
       animate={{ opacity: 1 }}
       transition={{ duration: 0.45, ease: EASE }}
     >
