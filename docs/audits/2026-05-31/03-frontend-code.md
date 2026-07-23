@@ -1,3 +1,5 @@
+> **Agent guide.** Historical audit from 2026-05-31, covering frontend architecture and code quality across `src/` (money-math, hooks, services, dashboards) — a point-in-time snapshot, **not** current state. Read only for background on what was found or decided then. For the live system, start at `CLAUDE.md` and the `docs/` it links.
+
 # 03 — Frontend Architecture & Code Quality (Agent C, Phase 1)
 
 **Audit:** Deep Platform Audit — Universal Pensions Uganda

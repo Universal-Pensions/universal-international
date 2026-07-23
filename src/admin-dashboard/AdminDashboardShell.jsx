@@ -9,8 +9,10 @@ import { DataScopeProvider } from '../contexts/DataScopeContext';
 import { useAuth } from '../contexts/AuthContext';
 import { useCurrentEntity } from '../hooks/useEntity';
 import { useIsMobile } from '../hooks/useIsMobile';
+import { useIsDesktop } from '../hooks/useIsDesktop';
 import logo from '../assets/logo.png';
 import AdminSidebar from './sidebar/AdminSidebar';
+import AdminMobileShell from './shell/AdminMobileShell';
 // The admin dashboard mirrors the distributor map-theme, so it reuses the
 // distributor's map, overlay chrome, metrics row, and view panels verbatim —
 // they are role-blind (RLS scopes the data) and admin now has the SELECT grants.
@@ -366,7 +368,7 @@ function AdminDashboardContent({ mode, mapMounted }) {
   );
 }
 
-export default function AdminDashboardShell() {
+function AdminDesktopShell() {
   const [menuOpen, setMenuOpen] = useState(false);
   // Desktop rail expand/collapse. Defaults expanded so the wordmark logo + nav
   // labels show; the rail collapses to the 64px icon-only form via its toggle.
@@ -393,20 +395,35 @@ export default function AdminDashboardShell() {
   const handleMenuToggle = useCallback(() => setMenuOpen((o) => !o), []);
   const handleMenuClose = useCallback(() => setMenuOpen(false), []);
   return (
+    <div className={styles.shell} data-rail={railExpanded ? 'expanded' : 'collapsed'}>
+      <AdminSidebar
+        expanded={railExpanded}
+        onToggleExpand={handleRailToggle}
+        mapMode={mode === 'map'}
+        onToggleMapMode={handleToggleMode}
+      />
+      <MobileHeader onMenuToggle={handleMenuToggle} menuOpen={menuOpen} />
+      <MobileDrawer open={menuOpen} onClose={handleMenuClose} />
+      <AdminDashboardContent mode={mode} mapMounted={mapMounted} />
+    </div>
+  );
+}
+
+/**
+ * AdminDashboardShell — the super-admin role entry. Selects the phone shell
+ * (AdminMobileShell) below 1024px and the desktop two-mode (dash⇄map) rail shell
+ * at/above it, both inside the same DashboardProvider → AdminPanelProvider →
+ * DataScopeProvider(defaultScope="all") stack so platform scope + panel state are
+ * continuous across a resize. The pre-redesign hamburger-drawer mobile experience
+ * is retired in favour of AdminMobileShell.
+ */
+export default function AdminDashboardShell() {
+  const isDesktop = useIsDesktop();
+  return (
     <DashboardProvider>
       <AdminPanelProvider>
         <DataScopeProvider defaultScope="all">
-          <div className={styles.shell} data-rail={railExpanded ? 'expanded' : 'collapsed'}>
-            <AdminSidebar
-              expanded={railExpanded}
-              onToggleExpand={handleRailToggle}
-              mapMode={mode === 'map'}
-              onToggleMapMode={handleToggleMode}
-            />
-            <MobileHeader onMenuToggle={handleMenuToggle} menuOpen={menuOpen} />
-            <MobileDrawer open={menuOpen} onClose={handleMenuClose} />
-            <AdminDashboardContent mode={mode} mapMounted={mapMounted} />
-          </div>
+          {isDesktop ? <AdminDesktopShell /> : <AdminMobileShell />}
         </DataScopeProvider>
       </AdminPanelProvider>
     </DashboardProvider>

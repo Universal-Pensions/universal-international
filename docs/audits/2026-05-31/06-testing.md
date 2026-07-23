@@ -1,3 +1,5 @@
+> **Agent guide.** Historical audit from 2026-05-31, covering testing, QA and CI coverage (vitest, Playwright E2E, GitHub workflows) — a point-in-time snapshot, **not** current state. Read only for background on what was found or decided then. For the live system, start at `CLAUDE.md` and the `docs/` it links.
+
 # 06 — Testing, QA & CI Coverage (Agent F, Phase 1)
 
 **Audit:** Deep Platform Audit — Universal Pensions Uganda

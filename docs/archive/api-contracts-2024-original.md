@@ -1,3 +1,5 @@
+> **Agent guide.** Historical report from 2026-05-26, covering the original archived API-contract spec (a ~30-route REST design that was never built that way) — a point-in-time snapshot, **not** current state. Read only for background on what was found or decided then. For the live system, start at `CLAUDE.md` and the `docs/` it links.
+
 # API Contracts — Original (Archived 2026-05-26)
 
 ARCHIVED — this document describes a ~30-route REST API that was never built that way. The actual surface is 14 Vercel-style serverless routes + Supabase RPCs + PostgREST policies. See `docs/api-contracts.md` for the current surface, or `BACKEND.md` for the runtime details.

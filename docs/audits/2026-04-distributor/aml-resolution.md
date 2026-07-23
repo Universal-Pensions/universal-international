@@ -1,3 +1,5 @@
+> **Agent guide.** Historical validation from 2026-05-22 covering the investigation into the agent-onboarding AML step hang (finding AUDIT-4-7) — a point-in-time snapshot, **not** current state. Read only for background on what was found or decided then. For the live system, start at `CLAUDE.md` and the `docs/` it links.
+
 # AUDIT-4-7 — AML step hang resolution
 
 **Date:** 2026-05-22 19:02 local · **Phase:** Phase 0 (A0.4)

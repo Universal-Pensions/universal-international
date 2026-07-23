@@ -1,3 +1,5 @@
+> **Agent guide.** Historical validation from 2026-05-22, covering the production database perf changes applied in PR-1 and PR-6 (`0022_audit_perf.sql`) — a point-in-time snapshot, **not** current state. Read only for background on what was found or decided then. For the live system, start at `CLAUDE.md` and the `docs/` it links.
+
 # PR-1 + PR-6 (partial) — production validation report
 
 **Date:** 2026-05-22 19:25 local · **Phase:** Phase 1 (A1.1 + A1.2 + A1.4-partial)

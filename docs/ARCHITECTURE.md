@@ -1,3 +1,5 @@
+> **Agent guide.** This is the system-architecture reference for Universal Pensions Uganda — the layered patterns, role boundaries, and auth/write/realtime models that hold across the React SPA, the Render Express API, and Supabase Postgres. Read it when you need to see how the tiers fit together or which boundary a change crosses; for file-level detail go to `docs/FRONTEND.md` or `docs/BACKEND.md` instead, and start from `CLAUDE.md` for orientation. Treat it as cross-cutting patterns, not a file inventory — and note it is pinned to a May 2026 post-cleanup snapshot, so verify concrete counts (roles, shells, migration ranges) against `CLAUDE.md` and the code before relying on them.
+
 # ARCHITECTURE.md — Universal Pensions Uganda
 
 System architecture for the Uganda Pensions demo platform: the patterns and boundaries that hold across the React app, the Vercel serverless API, and the Supabase database. This doc is **about how the pieces fit together** — not file-level detail. For file-level inventories, see [`FRONTEND.md`](./FRONTEND.md) and [`BACKEND.md`](./BACKEND.md); for the slim orientation index, see [`CLAUDE.md`](../CLAUDE.md).

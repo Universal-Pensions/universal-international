@@ -1,3 +1,5 @@
+> **Agent guide.** Historical audit from 2026-04-30, covering the subscriber, branch-admin, and distributor-admin dashboards (`src/subscriber-dashboard/`, `src/branch-dashboard/`, `src/dashboard/`) — a point-in-time snapshot, **not** current state. Read only for background on what was found or decided then. For the live system, start at `CLAUDE.md` and the `docs/` it links.
+
 # Dashboard Audit — Subscriber, Branch Admin, Distributor Admin
 
 **Date:** 2026-04-30

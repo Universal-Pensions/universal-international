@@ -1,3 +1,5 @@
+> **Agent guide.** Historical audit from 2026-05-31, covering user flows, UX, accessibility and responsive behaviour across the built roles, landing and signup/KYC — a point-in-time snapshot, **not** current state. Read only for background on what was found or decided then. For the live system, start at `CLAUDE.md` and the `docs/` it links.
+
 # 05 — User Flows, UX, Accessibility & Responsive (Agent E)
 
 **Audit:** Deep Platform Audit — Universal Pensions Uganda

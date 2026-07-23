@@ -21,6 +21,11 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 // useIsMobile reads window.matchMedia (absent in jsdom); pin desktop so the map
 // branch is taken (it's mocked below).
 vi.mock('../hooks/useIsMobile', () => ({ useIsMobile: () => false }));
+// Force the DESKTOP branch of the shell selector (jsdom's stubbed matchMedia
+// reports <1024px, which would otherwise render the mobile shell). Stub the
+// mobile shell so this desktop test doesn't pull the mobile page tree.
+vi.mock('../hooks/useIsDesktop', () => ({ useIsDesktop: () => true }));
+vi.mock('./shell/AdminMobileShell', () => ({ default: () => <div data-testid="admin-mobile-shell" /> }));
 // useCurrentEntity (NavAnnouncer) would fire a data query; stub it idle.
 vi.mock('../hooks/useEntity', () => ({ useCurrentEntity: () => ({ data: null }) }));
 // AuthContext is only consumed by the (closed) MobileDrawer, but mock it so the

@@ -1,3 +1,5 @@
+> **Agent guide.** Historical report from 2026-05-22, covering the audit-remediation follow-up backlog of items deferred out of the sprint — a point-in-time snapshot, **not** current state. Read only for background on what was found or decided then. For the live system, start at `CLAUDE.md` and the `docs/` it links.
+
 # Deferred items — audit remediation follow-up backlog
 
 **Date:** 2026-05-22 · **Sprint:** Phase 7 close-out

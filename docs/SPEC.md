@@ -1,3 +1,5 @@
+> **Agent guide.** This is the product spec — personas, workflows, and business rules — written so a backend developer can grasp the whole system without reading frontend code. An AI agent should read it for product intent and business-rule context, but must verify each "Current state" note against the code, since several flows labelled here as mock or planned have since shipped. For code-level detail start at `CLAUDE.md`, then `docs/FRONTEND.md` and `docs/BACKEND.md`; do not treat this file as the sole source of truth on what is or isn't built.
+
 # Universal Pensions Uganda — Platform Specification
 
 > This document provides a complete product specification for the Universal Pensions Uganda platform.
@@ -56,7 +58,7 @@ Universal Pensions is a digital long-term savings and pension platform designed 
 - **Real-world role:** Network-level operations manager overseeing all branches and agents
 - **Why they use the platform:** Monitor network health, track performance, manage commissions, generate reports
 - **Key needs:** Network-wide visibility, branch/agent comparison, strategic reporting
-- **Status:** **Fully built** — interactive map dashboard with drill-down, panels, reports
+- **Status:** **Fully built** — interactive map dashboard with drill-down, panels, reports (desktop). On phones (<1024px, selected via `useIsDesktop()`) it now renders a mobile PWA shell — fixed app bar + scrollable routed canvas + five-tab bottom nav, no hamburger and no map — with the agents/branches/subscribers lists virtualized and fully browsable, matching the shipped branch and employer mobile pattern.
 
 ### Branch Admin
 - **Real-world role:** Local operations manager supervising agents within a single branch
@@ -74,7 +76,7 @@ Universal Pensions is a digital long-term savings and pension platform designed 
 - **Real-world role:** System administrator at head office
 - **Why they use the platform:** Manage users, configure system, oversee everything
 - **Key needs:** Full platform control, audit trail, user management
-- **Status:** Dashboard planned (shows "Coming Soon")
+- **Status:** A head-office **Admin** dashboard has since **shipped** (2026-06-08 — map-theme shell at `src/admin-dashboard/`, `0049`–`0051` RPCs: platform-wide reads + Distributors/Employers managers (list/metrics/create) + commission settlement; see §6 "Admin (shipped)"). On phones (<1024px via `useIsDesktop()`) it now renders a mobile PWA shell (fixed app bar + scrollable routed canvas + five-tab bottom nav, no hamburger, no map), matching the branch/employer/distributor mobile pattern. Broader system-configuration / user-management / audit-trail tooling remains planned.
 
 ---
 

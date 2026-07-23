@@ -1,3 +1,5 @@
+> **Agent guide.** Historical audit from 2026-05-22 covering backend hot-path correctness and inefficiencies across DB/RPC/RLS/triggers (Phase 2) — a point-in-time snapshot, **not** current state. Read only for background on what was found or decided then. For the live system, start at `CLAUDE.md` and the `docs/` it links.
+
 # Audit 02 — Backend hot-path correctness & inefficiencies
 
 **Date:** 2026-05-22 · **Auditor:** Claude (Opus 4.7) · **Phase:** 2 of 6

@@ -7,8 +7,10 @@ import { DashboardProvider, useDashboard } from '../contexts/DashboardContext';
 import { useAuth } from '../contexts/AuthContext';
 import { useCurrentEntity } from '../hooks/useEntity';
 import { useIsMobile } from '../hooks/useIsMobile';
+import { useIsDesktop } from '../hooks/useIsDesktop';
 import logo from '../assets/logo.png';
 import Sidebar from './sidebar/Sidebar';
+import DistributorMobileShell from './shell/DistributorMobileShell';
 // UgandaMap pulls leaflet + react-leaflet (~114 KB gzip + Leaflet CSS).
 // React.lazy here means the landing page bundle no longer modulepreloads
 // `vendor-leaflet` (PR-7 partial — AUDIT-3-*).
@@ -330,7 +332,7 @@ function DashboardContent({ mode, mapMounted }) {
   );
 }
 
-export default function DashboardShell() {
+function DistributorDesktopShell() {
   const [menuOpen, setMenuOpen] = useState(false);
   // Desktop rail expand/collapse. Defaults expanded so the wordmark logo + nav
   // labels show; the rail collapses to the 64px icon-only form via its toggle.
@@ -364,18 +366,33 @@ export default function DashboardShell() {
   const handleMenuToggle = useCallback(() => setMenuOpen((open) => !open), []);
   const handleMenuClose = useCallback(() => setMenuOpen(false), []);
   return (
+    <div className={styles.shell} data-rail={railExpanded ? 'expanded' : 'collapsed'}>
+      <Sidebar
+        expanded={railExpanded}
+        onToggleExpand={handleRailToggle}
+        mapMode={mode === 'map'}
+        onToggleMapMode={handleToggleMode}
+      />
+      <MobileHeader onMenuToggle={handleMenuToggle} menuOpen={menuOpen} />
+      <MobileDrawer open={menuOpen} onClose={handleMenuClose} />
+      <DashboardContent mode={mode} mapMounted={mapMounted} />
+    </div>
+  );
+}
+
+/**
+ * DashboardShell — the distributor role entry. Selects the phone shell
+ * (DistributorMobileShell, a routed app-bar + bottom-tab PWA) below 1024px and
+ * the desktop two-mode (dash⇄map) rail shell at/above it. Both share one
+ * DashboardProvider so panel/drill state is continuous across a resize. The
+ * pre-redesign hamburger-drawer + overlay-summary mobile experience is retired
+ * in favour of DistributorMobileShell.
+ */
+export default function DashboardShell() {
+  const isDesktop = useIsDesktop();
+  return (
     <DashboardProvider>
-      <div className={styles.shell} data-rail={railExpanded ? 'expanded' : 'collapsed'}>
-        <Sidebar
-          expanded={railExpanded}
-          onToggleExpand={handleRailToggle}
-          mapMode={mode === 'map'}
-          onToggleMapMode={handleToggleMode}
-        />
-        <MobileHeader onMenuToggle={handleMenuToggle} menuOpen={menuOpen} />
-        <MobileDrawer open={menuOpen} onClose={handleMenuClose} />
-        <DashboardContent mode={mode} mapMounted={mapMounted} />
-      </div>
+      {isDesktop ? <DistributorDesktopShell /> : <DistributorMobileShell />}
     </DashboardProvider>
   );
 }

@@ -1,3 +1,5 @@
+> **Agent guide.** Historical audit from 2026-05-31, covering the database schema, RLS policies and migrations (`0001`–`0031`) — a point-in-time snapshot, **not** current state. Read only for background on what was found or decided then. For the live system, start at `CLAUDE.md` and the `docs/` it links.
+
 # 01 — Database, Schema, RLS & Migrations (Phase 1, Agent A)
 
 **Audit:** Deep Platform Audit — Universal Pensions Uganda

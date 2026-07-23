@@ -1,3 +1,5 @@
+> **Agent guide.** Historical audit from 2026-05-31, covering infra, deploy, config, build scripts and the top-level docs — a point-in-time snapshot, **not** current state. Read only for background on what was found or decided then. For the live system, start at `CLAUDE.md` and the `docs/` it links.
+
 # 07 — Infra, Deploy, Config, Scripts & Docs (Phase 1, Agent G)
 
 **Audit:** Deep Platform Audit — Universal Pensions Uganda

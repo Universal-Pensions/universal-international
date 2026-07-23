@@ -1,3 +1,5 @@
+> **Agent guide.** This is the root orientation index for the Universal Pensions Uganda codebase — read it FIRST; it carries the routing table plus the hard rules, anti-patterns, brand/security constraints, and demo-scope boundaries every change must respect. When you need file-level depth it points you (via §2) to the specialist docs under `docs/` (`FRONTEND.md`, `BACKEND.md`, `ARCHITECTURE.md`, …). Treat its Hard rules (§4) and Anti-patterns (§5) as binding, not advisory.
+
 # CLAUDE.md — Universal Pensions Uganda
 
 Slim entry index for this repo. Two deep specialist docs live under `docs/`: **`docs/FRONTEND.md`** (React/Vite/CSS Modules) and **`docs/BACKEND.md`** (Express on Render + Supabase + RLS). Detail lives in those two files and the rest of `docs/`; this file (at the repo root) is for orientation only.

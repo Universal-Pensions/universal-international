@@ -1,3 +1,5 @@
+> **Agent guide.** Historical report from 2026-05-22, covering the audit-sprint remediation of the distributor-dashboard performance findings — a point-in-time snapshot, **not** current state. Read only for background on what was found or decided then. For the live system, start at `CLAUDE.md` and the `docs/` it links.
+
 # Remediation Report — Universal Pensions Uganda audit sprint
 
 **Date:** 2026-05-22 · **Sprint:** 6h wall-clock (audit + remediation in one session)

@@ -1,3 +1,5 @@
+> **Agent guide.** Historical report from 2026-05-22, covering the partially-completed PR-4 cursor-pagination work deferred to PR-4b — a point-in-time snapshot, **not** current state. Read only for background on what was found or decided then. For the live system, start at `CLAUDE.md` and the `docs/` it links.
+
 # PR-4 (Phase 3 cursor pagination) — partially complete; deferred
 
 **Date:** 2026-05-22 · **Phase:** 3 (of 7)

@@ -1,3 +1,5 @@
+> **Agent guide.** Historical audit from 2026-05-31, covering end-to-end data contracts and state integrity along the service → `/api` → Supabase RPC chain — a point-in-time snapshot, **not** current state. Read only for background on what was found or decided then. For the live system, start at `CLAUDE.md` and the `docs/` it links.
+
 # 04 — End-to-End Data Contracts & State Integrity (Agent D, Phase 1)
 
 **Audit:** Deep Platform Audit — Universal Pensions Uganda

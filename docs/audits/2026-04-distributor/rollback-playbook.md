@@ -1,3 +1,5 @@
+> **Agent guide.** Historical playbook from 2026-05-22, covering per-PR rollback and recovery procedures for the audit-remediation sprint — a point-in-time snapshot, **not** current state. Read only for background on what was found or decided then. For the live system, start at `CLAUDE.md` and the `docs/` it links.
+
 # Rollback playbook — sprint per-PR recovery procedures
 
 **Date:** 2026-05-22 · **Phase:** Phase 0 (A0.3)

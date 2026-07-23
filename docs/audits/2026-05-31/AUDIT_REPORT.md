@@ -1,3 +1,5 @@
+> **Agent guide.** Historical audit from 2026-05-31 — the Phase-2 synthesis of the Deep Platform Audit, covering the commission→settlement→notification simplification and the whole platform read end-to-end — a point-in-time snapshot, **not** current state. Read only for background on what was found or decided then. For the live system, start at `CLAUDE.md` and the `docs/` it links.
+
 # AUDIT_REPORT — Deep Platform Audit, Universal Pensions Uganda
 
 **Date:** 2026-05-31 · **Branch audited:** `feat/simplify-commissions` (working tree, not committed `main`)

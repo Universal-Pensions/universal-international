@@ -1,3 +1,5 @@
+> **Agent guide.** Historical audit from 2026-05-22, covering the distributor-dashboard slowness synthesis across baseline, backend hot-path, frontend perf, and per-role flows — a point-in-time snapshot, **not** current state. Read only for background on what was found or decided then. For the live system, start at `CLAUDE.md` and the `docs/` it links.
+
 # Universal Pensions Uganda — Audit Synthesis Report
 
 **Date:** 2026-05-22 · **Auditor:** Claude (Opus 4.7) · **Phase:** 6 of 6 (synthesis)

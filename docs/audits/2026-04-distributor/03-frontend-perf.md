@@ -1,3 +1,5 @@
+> **Agent guide.** Historical audit from 2026-05-22 covering frontend performance — bundles, render hot spots, virtualization — across all four dashboards (Phase 3) — a point-in-time snapshot, **not** current state. Read only for background on what was found or decided then. For the live system, start at `CLAUDE.md` and the `docs/` it links.
+
 # Audit 03 — Frontend performance audit (all 4 dashboards)
 
 **Date:** 2026-05-22 · **Auditor:** Claude (Opus 4.7) · **Phase:** 3 of 6 (parallel with Phase 2)

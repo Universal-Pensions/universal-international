@@ -3,6 +3,8 @@ name: qa
 description: Run, debug, and extend the Playwright + Supabase E2E QA suite for the Universal Pensions Uganda demo platform.
 ---
 
+> **Agent guide.** This is the operating manual for `/qa` — the Playwright + Supabase service-role end-to-end harness that drives each role's dashboard in a browser and verifies the DB side-effects of every UI action. Read it in full before you run, debug, or extend the E2E suite under `e2e/` (invoke the work through the `/qa` subcommands below); it carries the coverage map, the auth/DB spec patterns, the failure-triage playbook, and the known-bug list. It is not the unit-test guide (those live in `src/**/__tests__/` and run via `npm test`), and for app internals defer to `CLAUDE.md` plus `docs/FRONTEND.md` / `docs/BACKEND.md`.
+
 # /qa — Automated QA harness
 
 End-to-end browser tests (Playwright) plus a Supabase service-role client for verifying DB side-effects after every UI action. Unit tests live under `src/**/__tests__/` and run via `npm test` (vitest); E2E lives under `e2e/` and runs via the scripts below.

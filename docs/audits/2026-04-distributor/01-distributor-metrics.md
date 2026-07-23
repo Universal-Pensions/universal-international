@@ -1,3 +1,5 @@
+> **Agent guide.** Historical audit from 2026-05-22 covering the root-cause profile of slow-loading distributor dashboard metrics (Phase 1) — a point-in-time snapshot, **not** current state. Read only for background on what was found or decided then. For the live system, start at `CLAUDE.md` and the `docs/` it links.
+
 # Audit 01 — Distributor metrics load profile
 
 **Date:** 2026-05-22 · **Auditor:** Claude (Opus 4.7) · **Phase:** 1 of 6

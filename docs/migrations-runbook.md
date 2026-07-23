@@ -1,3 +1,5 @@
+> **Agent guide.** This is the one-time apply/verify/rollback runbook for the migrations (`0045`–`0057`) a human landed at the **G-DB** gate during the 2026-06 audit-remediation cutover of the live Singapore Supabase project. An AI agent almost never needs it for day-to-day work — read it only to reconstruct that specific cutover or to reuse its apply-in-order → verify-SELECT → reverse-`.down` pattern for a new migration campaign. Treat it as a historical record, not the current schema state (many later migrations have since shipped) nor a general migrations guide — for that, start at `docs/BACKEND.md`.
+
 # Migrations apply runbook — audit-remediation cutover (2026-06)
 
 Authoritative apply/verify/rollback procedure for the migrations that re-converge

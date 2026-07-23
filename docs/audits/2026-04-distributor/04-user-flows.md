@@ -1,3 +1,5 @@
+> **Agent guide.** Historical audit from 2026-05-22 covering per-role user-flow integrity — dead ends, missing wiring, permission drift (Phase 4) — a point-in-time snapshot, **not** current state. Read only for background on what was found or decided then. For the live system, start at `CLAUDE.md` and the `docs/` it links.
+
 # Audit 04 — User-flow audit per role
 
 **Date:** 2026-05-22 · **Auditor:** Claude (Opus 4.7) · **Phase:** 4 of 6

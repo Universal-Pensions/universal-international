@@ -1,3 +1,5 @@
+> **Agent guide.** Historical validation from 2026-05-22, covering the frontend metric-layer retire, lazy-mount, and cursor-pagination changes from PR-2/PR-3/PR-4 — a point-in-time snapshot, **not** current state. Read only for background on what was found or decided then. For the live system, start at `CLAUDE.md` and the `docs/` it links.
+
 # PR-2 + PR-3 + PR-4 — frontend validation report
 
 **Date:** 2026-05-22 19:30 local · **Phase:** Phase 2 + Phase 3

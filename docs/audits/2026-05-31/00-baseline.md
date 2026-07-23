@@ -1,3 +1,5 @@
+> **Agent guide.** Historical audit from 2026-05-31, covering the Phase-0 build/test/lint baseline and ground-truth seed signals for the Deep Platform Audit — a point-in-time snapshot, **not** current state. Read only for background on what was found or decided then. For the live system, start at `CLAUDE.md` and the `docs/` it links.
+
 # 00 — Baseline & Ground Truth (Phase 0)
 
 **Audit:** Deep Platform Audit — Universal Pensions Uganda

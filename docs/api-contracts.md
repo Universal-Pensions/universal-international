@@ -1,3 +1,5 @@
+> **Agent guide.** This is the HTTP request/response contract reference for the platform's real backend surface — the 14 `api/` routes, the Supabase RPCs called via `supabase.rpc()`, and the RLS-governed PostgREST reads, together with their cache-key and invalidation conventions. Read it when you are wiring or debugging a concrete request/response shape, error `code`, or RPC signature; for the wider auth flow, schema, and RLS narrative open `docs/BACKEND.md`, and for role × capability questions open `docs/role-permissions.md`. Do NOT read it as the aspirational ~30-route REST design in `docs/archive/api-contracts-2024-original.md` (that shape was never built), and note the intentional demo mocks (OTP / KYC / `chat`) documented below are current behavior, not TODOs.
+
 # Universal Pensions Uganda — API Contracts
 
 Current request/response contract for the platform's backend surface. The old `~30-route REST` design has been archived in `docs/archive/api-contracts-2024-original.md` — it described an aspirational shape that was never built. The real surface is much smaller:
@@ -231,7 +233,7 @@ Supabase realtime is **off for all `public.*` tables**. `0025_drop_realtime_publ
 | Surface | Count | Where defined |
 | --- | --- | --- |
 | API routes | 14 | `api/**/*.ts` (excl. `_lib/`, `*.test.ts`) |
-| Migrations | 0001–0042 | `supabase/migrations/*.sql` (42 files incl. backfilled `0019`; all applied to the new Singapore DB, cutover 2026-06-05) |
+| Migrations | 0001–0078 | `supabase/migrations/*.sql` (all applied to the Singapore DB, cutover 2026-06-05; range extended past 0042 as the platform matured — see `docs/migrations-runbook.md`. NB: the read RPC `get_top_entities` (0077/0078) backs the distributor/admin bounded top-N landing) |
 | RPCs (read) | 10 | `0002`, `0020_entity_metrics_rollup_v3.sql`, slimmed commission reads in `0029`, + 3 commission aggregates in `0041` |
 | RPCs (settlement / notification) | 2 | `0031_notifications.sql` (`apply_settlement`, `mark_notifications_read`) — replaced the 14 commission state-machine RPCs dropped in `0029` |
 | RPCs (other write) | 3 | `0002_rpc_functions.sql`, `0024_upsert_nominees.sql` |

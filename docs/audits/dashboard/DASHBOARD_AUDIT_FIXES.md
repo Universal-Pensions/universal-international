@@ -1,3 +1,5 @@
+> **Agent guide.** Historical fix-log report from 2026-04-30, recording what was fixed and deferred from the dashboard audit (companion to `DASHBOARD_AUDIT.md`) — a point-in-time snapshot, **not** current state. Read only for background on what was found or decided then. For the live system, start at `CLAUDE.md` and the `docs/` it links.
+
 # Dashboard Audit — Fix Log
 
 **Date:** 2026-04-30

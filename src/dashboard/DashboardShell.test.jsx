@@ -17,6 +17,11 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
 // ── Env / data hooks ─────────────────────────────────────────────────────────
 vi.mock('../hooks/useIsMobile', () => ({ useIsMobile: () => false }));
+// Force the DESKTOP branch of the shell selector (jsdom's stubbed matchMedia
+// reports <1024px, which would otherwise render the mobile shell). The mobile
+// shell is stubbed so this desktop test doesn't pull the whole mobile page tree.
+vi.mock('../hooks/useIsDesktop', () => ({ useIsDesktop: () => true }));
+vi.mock('./shell/DistributorMobileShell', () => ({ default: () => <div data-testid="distributor-mobile-shell" /> }));
 // NavAnnouncer (useCurrentEntity) + the real Sidebar's count labels (useEntityMetrics).
 vi.mock('../hooks/useEntity', () => ({
   useCurrentEntity: () => ({ data: null }),

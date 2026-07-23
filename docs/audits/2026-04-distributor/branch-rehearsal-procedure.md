@@ -1,3 +1,5 @@
+> **Agent guide.** Historical playbook from 2026-05-22, covering how to rehearse migrations on a Supabase preview branch before they touch production — a point-in-time snapshot, **not** current state. Read only for background on what was found or decided then. For the live system, start at `CLAUDE.md` and the `docs/` it links.
+
 # Supabase branch rehearsal protocol
 
 > ⚠️ **HISTORICAL — the production `project_id` in this procedure is dead.** The `zengmiugieqjqzaccbqe` project referenced below (lines ~29 / ~79) was the **old Tokyo** (`ap-northeast-1`) project, **retired 2026-06-05**. The live project is now **`ilkhfnoyxlxwqadebnkp`** (Singapore, `ap-southeast-1`). The "same region as production (Tokyo)" note (~line 105) is likewise historical — production is Singapore. The **branch-rehearsal mechanics below are still valid**; before re-using this procedure, substitute the live Singapore `project_id` for every `zengmiugieqjqzaccbqe`. See `CLAUDE.md §1` for the current project.

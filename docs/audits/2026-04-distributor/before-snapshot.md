@@ -1,3 +1,5 @@
+> **Agent guide.** Historical report from 2026-05-22 capturing the pre-remediation performance baseline metrics for the distributor audit — a point-in-time snapshot, **not** current state. Read only for background on what was found or decided then. For the live system, start at `CLAUDE.md` and the `docs/` it links.
+
 # Performance baseline snapshot (BEFORE remediation)
 
 **Date:** 2026-05-22 19:00 local · **Phase:** Phase 0 (A0.2)

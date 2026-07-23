@@ -1,3 +1,5 @@
+> **Agent guide.** Historical audit from March 29, 2025, covering a design QA review of the Distributor Admin dashboard — a point-in-time snapshot, **not** current state. Read only for background on what was found or decided then. For the live system, start at `CLAUDE.md` and the `docs/` it links.
+
 # Design QA Report: Distributor Admin Dashboard
 **Date**: March 29, 2025
 **Reviewer**: Claude (Design QA Skill)
