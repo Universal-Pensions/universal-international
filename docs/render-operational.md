@@ -53,7 +53,7 @@ Between step 2 and 3 there's a **30–60s window of 502s** as the old container 
 
 - **Instance hours:** 750/month free. The 14-min GHA keepalive keeps the service warm for ~720h/mo — under the cap with headroom.
 - **Memory:** 512MB ceiling. The current handler set + Express + Supabase client stays well under this in normal use; sustained spikes above ~400MB RSS suggest a leak (see "Silent-failure modes" below).
-- **CPU:** shared (0.1 vCPU). This is why `bcryptjs` was swapped to native `bcrypt` (audit B17) — pure-JS bcrypt blocks the shared CPU's event loop under load.
+- **CPU:** shared (0.1 vCPU). Password hashing uses pure-JS **`bcryptjs`** (cost 10) via the async API in `api/auth/_lib/password.ts` — a native `bcrypt` swap was considered (audit B17) but **not adopted**; the event-loop exposure is mitigated by the async hashing + rate limiters on the credential routes rather than a native binding.
 
 ---
 
@@ -97,7 +97,7 @@ These are the 3 documented failure modes where Render keeps running but the symp
 **Recovery:**
 - Confirm via Render logs: look for `SIGTERM` followed by a fresh boot line.
 - If Sentry is wired, the surge will show up there too.
-- Mitigation already in place: native `bcrypt` (audit B17) + rate limiters on the 4 high-risk routes (audit G18). If it recurs, add an `express-slow-down` layer or move bcrypt to a worker thread.
+- Mitigation in place: **`bcryptjs`** async hashing (cost 10, non-blocking) + rate limiters on the 4 high-risk routes (audit G18). Native `bcrypt` was NOT adopted (see §1). If event-loop blocking recurs, add an `express-slow-down` layer, move hashing to a worker thread, or adopt native `bcrypt`.
 
 ### 3. 512MB OOM ceiling
 

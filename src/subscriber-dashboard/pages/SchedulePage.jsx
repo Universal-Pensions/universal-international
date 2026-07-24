@@ -143,6 +143,18 @@ export default function SchedulePage() {
   function closeSettle() {
     if (settleSubmitting) return;
     const paid = settleView === 'success';
+    // E4 — a deferred "pay now" premium ("Maybe later") never funds the new cover
+    // (Route-A cover activates only on payment), yet the schedule's include_insurance
+    // flag was persisted optimistically at save. When the user defers a pending
+    // pay-now premium, re-derive the flag from the cover actually in force (held
+    // active/building policies) so it can't claim cover that was never bought. No
+    // money moves either way — a completed payment leaves the flag true as it should.
+    if (!paid && settle?.fundOp) {
+      const stillCovered = (sub?.policies ?? []).some(
+        (p) => p.status === 'active' || p.status === 'building',
+      );
+      updateSchedule.mutate({ includeInsurance: stillCovered });
+    }
     setSettle(null);
     if (paid) addToast('success', 'Payment complete — your plan is up to date.');
     navigate('/dashboard');

@@ -50,7 +50,7 @@ export default function RequestAccess() {
         <Link to={copy.back} className={styles.back}>← Back</Link>
       </header>
 
-      <main className={styles.main}>
+      <main id="main" className={styles.main}>
         {submitted ? (
           <div className={styles.done} role="status">
             <span className={styles.check} aria-hidden="true">

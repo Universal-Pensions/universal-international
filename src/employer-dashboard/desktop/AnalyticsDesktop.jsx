@@ -32,6 +32,7 @@ import {
   buildRunsExport,
 } from '../reports/deriveEmployeeAnalytics';
 import { PALETTE, STATUS_COLORS, axisTick, chartTooltip } from '../reports/chartConfig';
+import { groupInsuranceOn } from '../../utils/groupInsurance';
 import { deriveEmployerMetrics } from '../overview/employerCopilotContext';
 import { PageHead, MetricRow, Tile, Card, SectionHead, Btn } from './ui';
 import {
@@ -138,8 +139,9 @@ export default function AnalyticsDesktop() {
   // copilot use, not a hardcoded 100%.
   const participation = Math.round(deriveEmployerMetrics(metrics, employees).participationRate);
   const avgComp = a.kpis.avgMonthly;
-  const cover = Number(cfg?.groupCoverAmount) || 0;
-  const insuranceOn = (cfg?.insuranceEnabled ?? cover > 0) && cover > 0;
+  // Multi-product group insurance (Life / Health / Funeral) — "on" when ANY
+  // product is enabled, not just the legacy life-only groupCoverAmount.
+  const insuranceOn = groupInsuranceOn(cfg);
   const insuredStaff = insuranceOn ? headcount : (metrics.insuredCount ?? 0);
 
   // ── Chart series (live, from the windowed run history) ─────────────────────
@@ -347,7 +349,7 @@ export default function AnalyticsDesktop() {
           icon={shieldIcon(18)}
           label="Insured staff"
           value={formatNumber(insuredStaff)}
-          sub={insuranceOn ? 'Everyone — group life cover' : 'No group cover set up'}
+          sub={insuranceOn ? 'Everyone — group cover' : 'No group cover set up'}
         />
       </MetricRow>
 

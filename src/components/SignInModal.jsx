@@ -37,6 +37,10 @@ export default function SignInModal() {
   // Tracks the open/closed transition so the preset-role logic below can run
   // during render instead of in an effect.
   const [prevOpen, setPrevOpen] = useState(false);
+  // The step this modal session opened on. Preset-role opens (the landing
+  // "Sign in"/"Log in" CTAs call open('employer') etc.) start past the picker,
+  // so the picker is not a step the user can meaningfully go "back" to.
+  const [entryStep, setEntryStep] = useState('role');
   const prevStep = useRef('role');
 
   const modalRef = useRef(null);
@@ -118,6 +122,7 @@ export default function SignInModal() {
     if (!isOpen) {
       const timer = setTimeout(() => {
         setStep('role');
+        setEntryStep('role');
         setRole(null);
         setPhone('');
         setMethod('code');
@@ -136,9 +141,13 @@ export default function SignInModal() {
   // the role step exactly as before.
   if (isOpen !== prevOpen) {
     setPrevOpen(isOpen);
-    if (isOpen && initialRole) {
-      setRole(initialRole === 'distributor' ? null : initialRole);
-      setStep(initialRole === 'distributor' ? 'distributor' : 'phone');
+    if (isOpen) {
+      const opensOn = !initialRole ? 'role' : initialRole === 'distributor' ? 'distributor' : 'phone';
+      if (initialRole) {
+        setRole(initialRole === 'distributor' ? null : initialRole);
+        setStep(opensOn);
+      }
+      setEntryStep(opensOn);
     }
   }
 
@@ -263,12 +272,24 @@ export default function SignInModal() {
     }
   }
 
-  function handlePhoneBack() {
-    if (role === 'distributor' || role === 'branch' || role === 'agent') {
-      goTo('distributor');
-    } else {
-      goTo('role');
+  /**
+   * Back from whichever step the modal opened on means "leave sign-in", so it
+   * closes and drops the user back on the page they came from. Only walk to an
+   * earlier step when the user actually passed through it — a preset-role open
+   * (`open('employer')`) never showed the role picker, and surfacing it on Back
+   * offered every role to someone who had already picked one.
+   */
+  function backFrom(earlierStep) {
+    if (step === entryStep) {
+      close();
+      return;
     }
+    goTo(earlierStep);
+  }
+
+  function handlePhoneBack() {
+    const distributorFamily = role === 'distributor' || role === 'branch' || role === 'agent';
+    backFrom(distributorFamily ? 'distributor' : 'role');
   }
 
   // Progress: 0 = role, 1 = distributor/phone, 2 = otp/password
@@ -368,7 +389,7 @@ export default function SignInModal() {
                   >
                     <DistributorSelect
                       onSelect={handleDistributorSelect}
-                      onBack={() => goTo('role')}
+                      onBack={() => backFrom('role')}
                     />
                   </motion.div>
                 )}
@@ -412,7 +433,7 @@ export default function SignInModal() {
                         <button
                           type="button"
                           className={styles.altRole}
-                          onClick={handlePhoneBack}
+                          onClick={() => goTo('role')}
                         >
                           Not a subscriber? Choose a different role
                         </button>

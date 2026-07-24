@@ -6,6 +6,7 @@ import { formatUGXShort, formatUGX } from '../../utils/currency';
 import { activeCoverTotal } from '../../utils/policies';
 import { useCurrentSubscriber } from '../../hooks/useSubscriber';
 import { useIsDesktop } from '../../hooks/useIsDesktop';
+import ErrorCard from '../../components/feedback/ErrorCard';
 import { RETIREMENT_AGE } from '../../constants/savings';
 import styles from './WithdrawalsHubPage.module.css';
 import flow from './desktopFlow.module.css';
@@ -42,7 +43,7 @@ export default function WithdrawalsHubPage() {
   const navigate = useNavigate();
   const reducedMotion = useReducedMotion();
   const isDesktop = useIsDesktop();
-  const { data: sub } = useCurrentSubscriber();
+  const { data: sub, isError, error, refetch } = useCurrentSubscriber();
 
   const emergency = sub?.emergencyBalance || 0;
   const retirement = sub?.retirementBalance || 0;
@@ -65,6 +66,16 @@ export default function WithdrawalsHubPage() {
       ? `${formatUGX(cover)} cover active`
       : 'No active cover',
   };
+
+  // E3 — a subscriber-query failure would otherwise render a "0 available / No
+  // active cover" hub that looks like real (empty) data. Show the retry card.
+  if (isError) {
+    return (
+      <div className={styles.page}>
+        <ErrorCard title="We couldn't load your withdrawals" message={error} onRetry={refetch} />
+      </div>
+    );
+  }
 
   return (
     <div className={styles.page}>

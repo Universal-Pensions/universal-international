@@ -17,6 +17,7 @@ import {
 import { useToast } from '../../contexts/ToastContext';
 import { formatUGX } from '../../utils/currency';
 import { formatDate } from '../../utils/date';
+import { groupInsuranceProducts } from '../../utils/groupInsurance';
 import SkeletonRow from '../../components/SkeletonRow';
 import ErrorCard from '../../components/feedback/ErrorCard';
 import EmptyState from '../../components/EmptyState';
@@ -70,8 +71,11 @@ export default function MemberDetailBody({ employeeId }) {
   // Insurance is company-wide (all-or-nothing, one flat cover) — read it from the
   // employer config, never per-member fields (which don't exist under this model).
   const insCfg = employer?.defaultContributionConfig ?? {};
-  const insCover = Number(insCfg.groupCoverAmount) || 0;
-  const insEnabled = insCfg.insuranceEnabled ?? insCover > 0;
+  // Multi-product (Life / Health / Funeral): total per-member cover across ALL
+  // enabled products, not just the legacy life-only groupCoverAmount.
+  const insProducts = groupInsuranceProducts(insCfg);
+  const insEnabled = insProducts.length > 0;
+  const insCover = insProducts.reduce((s, p) => s + p.cover, 0);
 
   if (isCold) return <SkeletonRow count={6} label="Loading member" />;
   if (isError) return <ErrorCard title="We couldn't load this member" message={error} onRetry={refetch} />;

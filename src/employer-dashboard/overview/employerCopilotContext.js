@@ -13,6 +13,7 @@
  */
 
 import { formatUGX } from '../../utils/currency';
+import { groupInsuranceProducts } from '../../utils/groupInsurance';
 import { companyFundingLabel } from '../employees/fundingLabel';
 
 /** A member "contributes" if they have a non-zero monthly compensation — the v2
@@ -67,8 +68,10 @@ export function buildEmployerCopilotContext({
   runs = [],
 }) {
   const cfg = employer?.defaultContributionConfig;
-  const cover = Number(cfg?.groupCoverAmount) || 0;
-  const insOn = cfg?.insuranceEnabled ?? cover > 0;
+  // Multi-product group cover (Life / Health / Funeral): total per-member cover
+  // across ALL enabled products, not just the legacy life-only groupCoverAmount,
+  // so the copilot's "Do we have group insurance?" answer is truthful.
+  const coverSum = groupInsuranceProducts(cfg).reduce((s, p) => s + p.cover, 0);
   return {
     headcount: derived.headcount,
     active: derived.active,
@@ -77,7 +80,7 @@ export function buildEmployerCopilotContext({
     pendingKyc,
     pendingNames: pendingInvites.map((inv) => inv.prefill?.fullName).filter(Boolean),
     fundingLabel: companyFundingLabel(cfg),
-    coverLabel: insOn && cover > 0 ? formatUGX(cover, { compact: false }) : 'no group cover',
+    coverLabel: coverSum > 0 ? formatUGX(coverSum, { compact: false }) : 'no group cover',
     totalContributions: metrics.totalContributions || 0,
     lastRunLabel: runs[0]?.periodLabel || null,
   };

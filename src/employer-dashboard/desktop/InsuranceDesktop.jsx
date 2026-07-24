@@ -26,7 +26,7 @@ const HOW_IT_WORKS = [
   },
   {
     lead: 'Same flat amount for everyone',
-    rest: '— one flat amount of group life cover per member, regardless of pay or role.',
+    rest: '— one flat amount of group cover per member, regardless of pay or role.',
   },
   {
     lead: 'Premiums are fully employer-funded',
@@ -64,7 +64,7 @@ export default function InsuranceDesktop() {
         sub="Company-wide group insurance — Life, Health & Funeral cover, fully employer-funded."
       />
 
-      {/* 1) Group life cover summary */}
+      {/* 1) Group cover summary */}
       <Card accent="teal">
         <SectionHead
           icon={shieldIcon(20)}
@@ -138,7 +138,7 @@ export default function InsuranceDesktop() {
         ) : (
           <div className={styles.empty}>
             <p className={styles.insEmpty}>
-              No group cover set up yet. Turn on company-wide group life cover from Settings — it
+              No group cover set up yet. Turn on company-wide group cover from Settings — it
               applies to every staff member at the same flat amount.
             </p>
             <Btn variant="primary" to="/dashboard/settings">

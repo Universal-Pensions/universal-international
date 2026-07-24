@@ -257,7 +257,7 @@ All slide-in panels use `splitMode={true}`:
 ### Data Scope
 - **Visibility:** Own agent record + own subscribers + own commissions
 - **No access to:** Other agents, branch-level data, or network data
-- **Insurance:** sees which active policies a subscriber holds (Life/Health/Funeral product + status) but **never the cover amount or premium**. Insured-vs-uninsured counts (Home) remain **life-only** (`isInsured` reads life `cover>0`), so a health-only subscriber counts as "uninsured" on Home by design.
+- **Insurance:** sees which active policies a subscriber holds (Life/Health/Funeral product + status) but **never the cover amount or premium**. Insured-vs-uninsured counts (Home) treat a subscriber as **insured if they hold ANY active policy — life, health OR funeral** (`isInsured` in `src/agent-dashboard/home/agentHomeSummary.js` returns true when the agent-facing `policies` list has any active product), so a health-only or funeral-only subscriber now counts as **insured** on Home (matching the product+status chips on their detail page). Null/absent policies (e.g. RLS-filtered on live) count as uninsured.
 
 ### Actions (CRUD)
 | Action | Permission | Scope |

@@ -76,6 +76,18 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const tooLong = checkLen(reason, 1000, 'reason_too_long');
   if (tooLong) return res.status(400).json(tooLong);
 
+  // §2a.5 (audit D1): the optional pass-through fields also persist verbatim via
+  // the RLS-bypassing service-role client on this public, pre-JWT route, so
+  // type-guard (non-string → dropped) and length-cap them before the insert too.
+  const stage = typeof body.stage === 'string' ? body.stage : '';
+  const trackingId = typeof body.trackingId === 'string' ? body.trackingId : '';
+  const sessionId = typeof body.sessionId === 'string' ? body.sessionId : '';
+  const optTooLong =
+    checkLen(stage, 64, 'stage_too_long') ??
+    checkLen(trackingId, 128, 'tracking_id_too_long') ??
+    checkLen(sessionId, 128, 'session_id_too_long');
+  if (optTooLong) return res.status(400).json(optTooLong);
+
   const eta = 'within 24 hours';
   const ticketId = generateTicketId();
   const rowId = generateRowId();
@@ -85,9 +97,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     ticket_id: ticketId,
     phone,
     reason,
-    stage: body.stage ?? null,
-    tracking_id: body.trackingId ?? null,
-    session_id: body.sessionId ?? null,
+    stage: stage || null,
+    tracking_id: trackingId || null,
+    session_id: sessionId || null,
     status: 'open',
     eta,
   });

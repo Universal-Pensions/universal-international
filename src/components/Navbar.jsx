@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { Link } from 'react-router-dom';
 import { motion, useScroll, useMotionValueEvent, AnimatePresence } from 'framer-motion';
 import { EASE_OUT_EXPO } from '../utils/motion';
 
@@ -6,11 +7,16 @@ import { useSignIn } from '../contexts/SignInContext';
 import logo from '../assets/logo.png';
 import styles from './Navbar.module.css';
 
+// This legacy header renders on the support pages (Contact / FAQ / About). Its
+// original links pointed at #how-it-works / #for-you / … section anchors and
+// the CTA at #start — but those sections live only in the retired old-landing
+// components (unmounted since the React landing shipped), so on these routes
+// they resolved to nothing. Repoint at the live audience routes + /signup —
+// the same destinations the current LandingNav uses — as real router links.
 const NAV_LINKS = [
-  { href: '#how-it-works', label: 'How it works' },
-  { href: '#for-you',      label: 'For you' },
-  { href: '#your-journey', label: 'Our impact' },
-  { href: '#trust',        label: 'Why trust us' },
+  { to: '/',             label: 'For Subscribers' },
+  { to: '/employers',    label: 'For Employers' },
+  { to: '/distributors', label: 'For Distributors' },
 ];
 
 export default function Navbar() {
@@ -71,13 +77,13 @@ export default function Navbar() {
           {/* Desktop links */}
           <nav className={styles.links} aria-label="Main navigation">
             {NAV_LINKS.map(l => (
-              <a key={l.href} href={l.href} className={styles.link}>{l.label}</a>
+              <Link key={l.to} to={l.to} className={styles.link}>{l.label}</Link>
             ))}
           </nav>
 
           <div className={styles.actions}>
             <button className={styles.signIn} onClick={handleSignIn}>Sign in</button>
-            <a href="#start" className={styles.cta}>Start saving</a>
+            <Link to="/signup" className={styles.cta}>Start saving</Link>
           </div>
 
           {/* Hamburger button — mobile only */}
@@ -116,14 +122,14 @@ export default function Navbar() {
             >
               <nav className={styles.drawerNav} aria-label="Mobile navigation">
                 {NAV_LINKS.map(l => (
-                  <a key={l.href} href={l.href} className={styles.drawerLink} onClick={closeMenu}>
+                  <Link key={l.to} to={l.to} className={styles.drawerLink} onClick={closeMenu}>
                     {l.label}
-                  </a>
+                  </Link>
                 ))}
               </nav>
               <div className={styles.drawerActions}>
                 <button className={styles.drawerSignIn} onClick={handleDrawerSignIn}>Sign in</button>
-                <a href="#start" className={styles.drawerCta} onClick={closeMenu}>Start saving</a>
+                <Link to="/signup" className={styles.drawerCta} onClick={closeMenu}>Start saving</Link>
               </div>
             </motion.div>
           </>

@@ -120,7 +120,9 @@ export default function BranchHomeMobile() {
 
   const managerName = (user?.name || branch?.managerName || 'Branch Admin').split(' ')[0];
   const activePct = derived.totalSubs > 0 ? Math.round((derived.activeSubs / derived.totalSubs) * 100) : 0;
-  const tone = (sev) => (sev === 'alert' ? styles.tintRed : sev === 'ok' ? styles.tintGreen : styles.tintAmber);
+  // computeAttention only ever emits 'ok' or 'warning' severities, so the row
+  // tint is a two-way split (green when clear, amber when it needs attention).
+  const tone = (sev) => (sev === 'ok' ? styles.tintGreen : styles.tintAmber);
 
   return (
     <>

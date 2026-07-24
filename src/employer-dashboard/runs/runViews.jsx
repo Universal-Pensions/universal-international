@@ -20,7 +20,7 @@ import {
   useRunContribution,
 } from '../../hooks/useEmployer';
 import { formatUGX, formatNumber } from '../../utils/currency';
-import { groupPremiumPerMember } from '../../utils/groupInsurance';
+import { groupInsurancePremiumPerMember } from '../../utils/groupInsurance';
 import { formatDate } from '../../utils/date';
 import SkeletonRow from '../../components/SkeletonRow';
 import EmptyState from '../../components/EmptyState';
@@ -48,9 +48,10 @@ export const WIZARD_STEPS = [
  *   employer-only:   employeeLeg = 0
  *                    percent → employerLeg = round(comp * employerPct/100)
  *                    fixed   → employerLeg = round(employerAmount)
- * Plus the company-wide INSURANCE leg (employer-funded group-life premium,
- * the same for every covered member). Returns all three legs so the wizard can
- * surface employee / employer / insurance / grand.
+ * Plus the company-wide INSURANCE leg (employer-funded group insurance premium,
+ * summed across ALL enabled products — Life / Health / Funeral — the same for
+ * every covered member). Returns all three legs so the wizard can surface
+ * employee / employer / insurance / grand.
  */
 export function previewMemberLegs(member, cfg) {
   const mode = cfg?.mode ?? 'employer-only';
@@ -68,9 +69,10 @@ export function previewMemberLegs(member, cfg) {
       employerLeg = round(Number(cfg?.employerAmount ?? 0));
     }
   }
-  const cover = Number(cfg?.groupCoverAmount ?? 0);
-  const insOn = (cfg?.insuranceEnabled ?? cover > 0) && cover > 0;
-  const insuranceLeg = insOn ? groupPremiumPerMember(cover) : 0;
+  // Σ enabled products (Life / Health / Funeral), NOT the legacy life-only field,
+  // so the preview equals what the run actually posts (services/employer.js
+  // insuranceLeg / the 0067 RPC — group_insurance_premium_per_member).
+  const insuranceLeg = groupInsurancePremiumPerMember(cfg);
   return { employeeLeg, employerLeg, insuranceLeg };
 }
 

@@ -4,6 +4,8 @@
 // compensation, occupation, headcount growth, coverage). Also builds the rows/columns for the
 // CSV / Excel downloads. No React, no data imports — unit-testable in isolation.
 
+import { groupInsuranceProducts } from '../../utils/groupInsurance';
+
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
 const AGE_BUCKETS = [
@@ -42,8 +44,11 @@ export function deriveEmployeeAnalytics(employees = [], insConfig = {}) {
 
   // Insurance is company-wide (all-or-nothing), never per-member — derive the
   // group cover from the employer config, not from a per-member `insuranceStatus`.
-  const groupCover = Number(insConfig?.groupCoverAmount) || 0;
-  const insuranceEnabled = insConfig?.insuranceEnabled ?? groupCover > 0;
+  // Multi-product (Life / Health / Funeral): sum the per-member cover across ALL
+  // enabled products, not just the legacy life-only groupCoverAmount.
+  const insProducts = groupInsuranceProducts(insConfig);
+  const insuranceEnabled = insProducts.length > 0;
+  const groupCover = insProducts.reduce((s, p) => s + p.cover, 0);
 
   const ages = roster.map((e) => Number(e.age)).filter((a) => Number.isFinite(a) && a > 0);
   const avgAge = ages.length ? Math.round(ages.reduce((s, a) => s + a, 0) / ages.length) : 0;

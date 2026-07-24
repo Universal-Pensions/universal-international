@@ -73,6 +73,18 @@
   --shadow-lg:  0 12px 40px rgba(41,40,103,0.16);
   --shadow-xl:  0 24px 64px rgba(41,40,103,0.20);
 
+  /* Card recipe — one source of truth for white card surfaces on the
+     distributor/admin map dashboards (and any shared widget they lend to other
+     roles). Defined globally so a shared component — Settings, KpiCard,
+     MetricTile — never resolves an undefined var outside the distributor shell.
+     border: a lighter lavender than --color-lavender (the full-strength line
+     read heavy at small sizes); shadow: a 2-layer contact + wide ambient, which
+     stops a bordered card looking like a plain <div>. */
+  --card-bd:    #E7E9F5;
+  --card-bd-hi: rgba(41,40,103,0.18);
+  --card-sh:    0 1px 2px rgba(41,40,103,0.05), 0 6px 16px -8px rgba(41,40,103,0.13);
+  --card-sh-hi: 0 2px 4px rgba(41,40,103,0.06), 0 14px 28px -10px rgba(41,40,103,0.24);
+
   /* Gradients. --gradient-hero paints the subscriber mobile hero dome
      (HeroCapsule): brand indigo at the top deepening to indigo-deep at the
      curved bottom so the dome reads as grounded (HeroCapsule layers a soft

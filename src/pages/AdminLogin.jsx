@@ -28,7 +28,7 @@ export default function AdminLogin() {
 
   return (
     <div className={styles.page}>
-      <div className={styles.inner}>
+      <div id="main" className={styles.inner}>
         <img src={logo} alt="Universal Pensions" className={styles.logo} width={140} height={40} />
         <div className={styles.card}>
           <span className={styles.badge}>Admin portal · super-admin</span>

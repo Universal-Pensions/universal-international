@@ -12,6 +12,7 @@ import { useIsDesktop } from '../../hooks/useIsDesktop';
 import PageHeader from '../../components/PageHeader';
 import PaySheet from '../../components/PaySheet';
 import InlinePayPanel from '../../components/InlinePayPanel';
+import ErrorCard from '../../components/feedback/ErrorCard';
 import { MOBILE_MONEY_METHODS } from '../../constants/payment';
 import styles from './InsurancePage.module.css';
 import flow from './desktopFlow.module.css';
@@ -27,7 +28,7 @@ export default function InsurancePage() {
   const navigate = useNavigate();
   const reducedMotion = useReducedMotion();
   const isDesktop = useIsDesktop();
-  const { data: sub } = useCurrentSubscriber();
+  const { data: sub, isError, error, refetch } = useCurrentSubscriber();
   const { addToast } = useToast();
   const updateCover = useUpdateInsuranceCover(sub?.id);
   // Self-paid cover is funded on the ANNUAL model (migration 0073 fund_insurance_products):
@@ -79,6 +80,17 @@ export default function InsurancePage() {
 
   function scrollToPicker() {
     pickerRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  // E3 — a transient subscriber-query failure would otherwise fall through to
+  // `noPolicy` and render a misleading "No active policy" empty state. Surface
+  // the standard retry card instead (mirrors HomePage / SavePage).
+  if (isError) {
+    return (
+      <div className={styles.page}>
+        <ErrorCard title="We couldn't load your insurance" message={error} onRetry={refetch} />
+      </div>
+    );
   }
 
   // Upgrading (or first-time activation) takes a real premium payment via the

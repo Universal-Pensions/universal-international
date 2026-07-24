@@ -3,7 +3,7 @@ import { motion, useReducedMotion } from 'framer-motion';
 import { EASE_OUT_EXPO } from '../../utils/motion';
 import { formatUGX } from '../../utils/currency';
 import { formatDate } from '../../utils/date';
-import { deriveInvestmentGrowth, deriveEmployerSplit } from '../../utils/finance';
+import { deriveInvestmentGrowth, deriveEmployerSplit, normalizeFrequency, FREQUENCY_LABEL } from '../../utils/finance';
 import { activeCoverTotal, activeCoverProductsLabel, buildingCoverTotal, buildingProgress } from '../../utils/policies';
 import { useContributionBreakdown } from '../../hooks/useSubscriber';
 import { useCountUp } from '../../hooks/useCountUp';
@@ -159,7 +159,7 @@ export default function HomeMobile({ subscriber: sub }) {
               <span className={`${styles.fundIc} ${styles.tintIndigo}`}>{WalletIcon}</span>
               <span className={styles.fundK}>You contribute</span>
               <span className={styles.fundV} style={{ color: 'var(--color-indigo)' }}>{formatUGX(own)}</span>
-              <span className={styles.fundP}>{hasSchedule ? `${formatUGX(schedule.amount, { compact: false })} / month` : 'Your savings'}</span>
+              <span className={styles.fundP}>{hasSchedule ? `${formatUGX(schedule.amount, { compact: false })} · ${FREQUENCY_LABEL[normalizeFrequency(schedule.frequency)]}` : 'Your savings'}</span>
             </div>
             <div className={styles.fundCell}>
               <span className={`${styles.fundIc} ${styles.tintGreen}`}>{BuildingIcon}</span>

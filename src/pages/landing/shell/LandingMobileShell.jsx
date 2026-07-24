@@ -129,6 +129,7 @@ function ShellInner() {
       </header>
 
       <motion.div
+        id="main"
         key={path}
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}

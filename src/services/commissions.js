@@ -269,7 +269,7 @@ export async function getAgentCommissionDetail(agentId) {
 }
 
 /**
- * @endpoint SELECT subscribers JOIN commissions WHERE agent_id = ?
+ * @endpoint SELECT subscribers (+ subscriber_balances) JOIN commissions WHERE agent_id = ?
  * @cache ['commissionSubscribers', agentId, filter]
  */
 export async function getCommissionSubscribers(agentId, filter) {
@@ -277,7 +277,14 @@ export async function getCommissionSubscribers(agentId, filter) {
 
   const [{ data: commissions, error: cErr }, { data: subscribers, error: sErr }] = await Promise.all([
     supabase.from('commissions').select('subscriber_id, subscriber_name, status, first_contribution_date').eq('agent_id', agentId),
-    supabase.from('subscribers').select('id, name, registered_date, total_contributions, is_active').eq('agent_id', agentId),
+    // `total_contributions` is NOT a column on `subscribers` — it lived on the
+    // retired `employees` table (dropped in migration 0045). Selecting it 400s
+    // (PostgREST 42703, "column does not exist"), which threw here and broke the
+    // distributor/branch commission → agent → subscribers drill on real data.
+    // The per-subscriber contribution figure the drill renders is sourced from
+    // `subscriber_balances.total_balance` — the same proxy agent.js / subscriber.js
+    // use (there is no per-subscriber lifetime-contributions denorm column).
+    supabase.from('subscribers').select('id, name, registered_date, is_active, subscriber_balances(total_balance)').eq('agent_id', agentId),
   ]);
   if (cErr) throw _rpcError(cErr, 'getCommissionSubscribers:commissions');
   if (sErr) throw _rpcError(sErr, 'getCommissionSubscribers:subscribers');
@@ -287,13 +294,18 @@ export async function getCommissionSubscribers(agentId, filter) {
 
   return rows.map((c) => {
     const sub = subMap.get(c.subscriber_id) || {};
+    // PostgREST returns the embedded resource as an array (to-many shape) or an
+    // object; normalise to the single balance row, mirroring agent.js/subscriber.js.
+    const bal = Array.isArray(sub.subscriber_balances)
+      ? sub.subscriber_balances[0]
+      : sub.subscriber_balances;
     return {
       subscriberId: c.subscriber_id,
       subscriberName: c.subscriber_name || sub.name || 'Unknown',
       registeredDate: sub.registered_date || c.first_contribution_date,
       lastContribution: 0,           // not surfaced by current schema; left at 0 for backwards-compat
       lastContributionDate: '',      // ditto — CommissionPanel hides the "Last:" line when empty (BL-36)
-      totalContributions: Number(sub.total_contributions ?? 0),
+      totalContributions: Number(bal?.total_balance ?? 0),
       isActive: !!sub.is_active,
     };
   });

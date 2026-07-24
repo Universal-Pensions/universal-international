@@ -9,6 +9,7 @@ import { useDashboard } from '../../contexts/DashboardContext';
 import { useCurrentSubscriber } from '../../hooks/useSubscriber';
 import { useIsDesktop } from '../../hooks/useIsDesktop';
 import { getInitials } from '../../utils/dashboard';
+import { activeCoverTotal, activePolicies } from '../../utils/policies';
 import SettingsDesktop from './SettingsDesktop';
 import { SECTIONS } from './settingsSections';
 import styles from './SettingsPage.module.css';
@@ -30,6 +31,13 @@ export default function SettingsPage() {
   const memberSince = sub?.registeredDate
     ? formatDate(sub.registeredDate, { variant: 'month-year' })
     : null;
+
+  // Total ACTIVE cover + annual premium across ALL products (life + health +
+  // funeral), not the legacy life-only `sub.insurance` — so a member holding
+  // only health/funeral cover still sees their real cover here.
+  const coverTotal = activeCoverTotal(sub);
+  const coverPremiumAnnual = activePolicies(sub)
+    .reduce((s, p) => s + (Number(p.premiumMonthly) || 0), 0) * 12;
 
   function handleLogout() {
     logout();
@@ -97,9 +105,9 @@ export default function SettingsPage() {
             ))}
           </ul>
 
-          {sub?.insurance?.cover ? (
+          {coverTotal > 0 ? (
             <p className={styles.coverHint}>
-              Cover {formatUGX(sub.insurance.cover)} · Premium {formatUGX((sub.insurance.premiumMonthly || 0) * 12, { compact: false })} / year
+              Cover {formatUGX(coverTotal)} · Premium {formatUGX(coverPremiumAnnual, { compact: false })} / year
             </p>
           ) : null}
 

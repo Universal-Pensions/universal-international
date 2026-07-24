@@ -12,6 +12,7 @@ import { useIsDesktop } from '../../hooks/useIsDesktop';
 import { useToast } from '../../contexts/ToastContext';
 import PageHeader from '../../components/PageHeader';
 import MemberCard from '../../components/MemberCard';
+import ErrorCard from '../../components/feedback/ErrorCard';
 import styles from './ProfilePage.module.css';
 
 const UG_PREFIX = '+256';
@@ -38,7 +39,7 @@ export default function ProfilePage() {
   const navigate = useNavigate();
   const reducedMotion = useReducedMotion();
   const isDesktop = useIsDesktop();
-  const { data: sub } = useCurrentSubscriber();
+  const { data: sub, isError, error, refetch } = useCurrentSubscriber();
   const { data: districts = [] } = useAllEntities('district');
   const { addToast } = useToast();
   const updateProfile = useUpdateProfile(sub?.id);
@@ -102,6 +103,16 @@ export default function ProfilePage() {
     } finally {
       setSubmitting(false);
     }
+  }
+
+  // E3 — surface the standard retry card on a subscriber-query failure rather
+  // than silently rendering an empty/broken profile form (mirrors HomePage).
+  if (isError) {
+    return (
+      <div className={styles.page}>
+        <ErrorCard title="We couldn't load your profile" message={error} onRetry={refetch} />
+      </div>
+    );
   }
 
   return (

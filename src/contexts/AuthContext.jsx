@@ -2,7 +2,7 @@ import { createContext, useContext, useState, useCallback, useMemo, useEffect, u
 import { useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { onAuthExpired } from '../services/api';
-import { setToken, clearToken } from '../services/supabaseClient';
+import { setToken, clearToken, getToken, isJwtExpired } from '../services/supabaseClient';
 
 /**
  * @typedef {Object} AuthUser
@@ -128,6 +128,21 @@ export function AuthProvider({ children }) {
     });
   }
   useEffect(() => {
+    // MED-6 — startup token-expiry gate. Our JWT has a fixed 24h TTL and no
+    // refresh, so a returning visitor whose token lapsed while they were away
+    // would otherwise be restored (from `upensions_auth`) straight into a
+    // dashboard where every authed read 401s, with no automatic way out. If we
+    // booted with a stored session whose token is provably past `exp`, log out
+    // cleanly (clears keys + query cache) and route to sign-in — the same
+    // outcome as the mid-session 401 channel (onAuthExpired) below. Decode-only;
+    // PostgREST owns signature verification, and isJwtExpired fails OPEN on an
+    // unparseable/opaque token so a live token is never wrongly suppressed.
+    const storedToken = getToken();
+    if (storedToken && isJwtExpired(storedToken) && readStoredSession()) {
+      logoutRef.current();
+      navigateRef.current('/');
+    }
+
     // If the ref was nulled by a prior cleanup (StrictMode unmount/remount
     // sequence), re-register here. On the first mount this is a no-op
     // because the synchronous render block above already registered.

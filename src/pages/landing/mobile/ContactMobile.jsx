@@ -5,6 +5,7 @@ import { SUPPORT_EMAIL } from '../../../config/env';
 import styles from './landingMobile.module.css';
 
 const cx = (...c) => c.filter(Boolean).join(' ');
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export default function ContactMobile() {
   const navigate = useNavigate();
@@ -12,22 +13,51 @@ export default function ContactMobile() {
   const [loading, setLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [demo, setDemo] = useState(false);
-  const [errored, setErrored] = useState(false);
+  // Honest, per-error message string (mirrors the desktop Contact form) — NOT a
+  // blanket "this is a demo" note. Empty when there is nothing to report.
+  const [error, setError] = useState('');
 
   function handleChange(e) {
     setForm({ ...form, [e.target.name]: e.target.value });
+    if (error) setError('');
   }
 
   async function handleSubmit(e) {
     e.preventDefault();
-    setErrored(false);
+    setError('');
+    // Client-side validation, mirroring the desktop Contact form.
+    if (!form.name.trim()) {
+      setError('Please enter your name.');
+      return;
+    }
+    if (!EMAIL_PATTERN.test(form.email)) {
+      setError('Please enter a valid email address.');
+      return;
+    }
+    if (!form.message.trim()) {
+      setError('Please write a short message.');
+      return;
+    }
     setLoading(true);
     try {
       const res = await submitContactForm(form);
-      setDemo(!!res?.demo);
+      // Response-contract check (matches desktop Contact): the real (non-demo)
+      // path must return a non-empty id, else we can't confirm the message
+      // landed — show the email fallback rather than a false success. Demo mode
+      // legitimately returns { demo: true } with no id (no DB write).
+      const isDemo = !!res?.demo;
+      const hasValidId = typeof res?.id === 'string' && res.id.length > 0;
+      if (!isDemo && !hasValidId) {
+        setError(`We couldn't confirm your message was received. Please email ${SUPPORT_EMAIL} instead.`);
+        return;
+      }
+      setDemo(isDemo);
       setSubmitted(true);
-    } catch {
-      setErrored(true);
+    } catch (err) {
+      // Honest failure copy — a real 500 / network error / backend 400 is NOT a
+      // demo. Only the genuine demo path (res.demo, handled above + the success
+      // banner) says the message "wasn't actually sent".
+      setError(err?.message || `Couldn't send. Please email ${SUPPORT_EMAIL} instead.`);
     } finally {
       setLoading(false);
     }
@@ -98,7 +128,7 @@ export default function ContactMobile() {
           <button className={cx(styles.btn, styles['btn-sec'])} onClick={() => navigate('/')}>Back to home</button>
         </div>
       ) : (
-        <form className={styles.card} onSubmit={handleSubmit}>
+        <form className={styles.card} onSubmit={handleSubmit} noValidate>
           <div className={styles.fgroup}>
             <label className={styles.flabel} htmlFor="ct-name">Name</label>
             <input
@@ -139,10 +169,8 @@ export default function ContactMobile() {
           <button type="submit" className={cx(styles.btn, styles['btn-pri'], styles['btn-block'])} disabled={loading}>
             {loading ? 'Sending…' : 'Send message'}
           </button>
-          {errored && (
-            <p className={styles.demoNote}>
-              This is a demo, so your message wasn't actually sent. Please email {SUPPORT_EMAIL} directly.
-            </p>
+          {error && (
+            <p className={styles.demoNote} role="alert">{error}</p>
           )}
         </form>
       )}

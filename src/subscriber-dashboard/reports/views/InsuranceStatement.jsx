@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 import { useCurrentSubscriber, useSubscriberClaims } from '../../../hooks/useSubscriber';
 import { formatUGX } from '../../../utils/currency';
+import { activeCoverTotal, activePolicies } from '../../../utils/policies';
 
 import { formatDate } from '../../../utils/date';
 import { downloadCSV } from '../../../utils/csv';
@@ -41,6 +42,19 @@ export default function InsuranceStatement() {
     const claimsPaid = claims.filter((c) => c.status === 'paid').reduce((s, c) => s + c.amount, 0);
     return { premiumsPaid, claimsPaid, net: claimsPaid - premiumsPaid };
   }, [premiumTx, claims]);
+
+  // "Current cover" = total ACTIVE cover + annual premium across ALL products
+  // (life + health + funeral), not the legacy life-only `sub.insurance` — a member
+  // holding only health/funeral cover must not read "UGX 0 · Inactive" while covered.
+  const activeIns = activePolicies(sub);
+  const coverTotal = activeCoverTotal(sub);
+  const coverPremiumAnnual = activeIns.reduce((s, p) => s + (Number(p.premiumMonthly) || 0), 0) * 12;
+  const coverActive = coverTotal > 0;
+  // Policy start / renewal from the primary active policy (product-ordered: life
+  // first when held), falling back to the legacy life record for pre-0063 reads.
+  const primaryPolicy = activeIns[0] ?? null;
+  const policyStart = primaryPolicy?.policyStart ?? insurance.policyStart;
+  const renewalDate = primaryPolicy?.renewalDate ?? insurance.renewalDate;
 
   const claimColumns = [
     {
@@ -134,9 +148,9 @@ export default function InsuranceStatement() {
       <div className={frameStyles.kpiStrip}>
         <div className={frameStyles.kpi}>
           <span className={frameStyles.kpiLabel}>Current cover</span>
-          <span className={frameStyles.kpiValue}>{formatUGX(insurance.cover || 0)}</span>
+          <span className={frameStyles.kpiValue}>{formatUGX(coverTotal)}</span>
           <span className={frameStyles.kpiSub}>
-            {insurance.status === 'active' ? 'Active' : 'Inactive'} · {formatUGX((insurance.premiumMonthly || 0) * 12, { compact: false })} / yr
+            {coverActive ? 'Active' : 'Inactive'} · {formatUGX(coverPremiumAnnual, { compact: false })} / yr
           </span>
         </div>
         <div className={frameStyles.kpi}>
@@ -151,8 +165,8 @@ export default function InsuranceStatement() {
         </div>
         <div className={frameStyles.kpi}>
           <span className={frameStyles.kpiLabel}>Policy start</span>
-          <span className={frameStyles.kpiValue}>{formatDate(insurance.policyStart)}</span>
-          <span className={frameStyles.kpiSub}>Renews {formatDate(insurance.renewalDate)}</span>
+          <span className={frameStyles.kpiValue}>{formatDate(policyStart)}</span>
+          <span className={frameStyles.kpiSub}>Renews {formatDate(renewalDate)}</span>
         </div>
       </div>
 

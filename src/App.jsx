@@ -66,7 +66,7 @@ function ComingSoon() {
   }
 
   return (
-    <div style={{
+    <div id="main" style={{
       display: 'flex',
       flexDirection: 'column',
       alignItems: 'center',

@@ -12,6 +12,7 @@ import {
   buildSummaryExport,
   buildRunsExport,
 } from '../reports/deriveEmployeeAnalytics';
+import { groupInsuranceProducts } from '../../utils/groupInsurance';
 import EmptyState from '../../components/EmptyState';
 import s from './employerMobile.module.css';
 
@@ -81,8 +82,12 @@ export default function AnalyticsMobile() {
 
   const total = a.kpis.total;
   const active = metrics.active ?? a.kpis.active;
-  const cover = Number(cfg?.groupCoverAmount) || 0;
-  const insOn = (cfg?.insuranceEnabled ?? cover > 0) && cover > 0;
+  // Multi-product group insurance (Life / Health / Funeral): the "Group cover"
+  // KPI shows the total per-member cover across ALL enabled products, not just
+  // the legacy life-only groupCoverAmount.
+  const insProducts = groupInsuranceProducts(cfg);
+  const insOn = insProducts.length > 0;
+  const cover = insProducts.reduce((s, p) => s + p.cover, 0);
 
   const activeRoster = employees.filter((e) => e.status === 'active');
   const compDist = COMP_BANDS.map((b) => ({

@@ -8,6 +8,7 @@ import { useCurrentSubscriber, useUpdateNominees, useSubscriberNominees } from '
 import { useToast } from '../../contexts/ToastContext';
 import { useIsDesktop } from '../../hooks/useIsDesktop';
 import PageHeader from '../../components/PageHeader';
+import ErrorCard from '../../components/feedback/ErrorCard';
 import styles from './NomineesPage.module.css';
 
 const RELATIONSHIPS = ['spouse', 'child', 'parent', 'sibling', 'other'];
@@ -185,10 +186,10 @@ function NomineeRow({ nominee, onChange, onRemove, canRemove, expanded, onToggle
 export default function NomineesPage() {
   const reducedMotion = useReducedMotion();
   const isDesktop = useIsDesktop();
-  const { data: sub } = useCurrentSubscriber();
+  const { data: sub, isError: subError, error: subErrorObj, refetch: refetchSub } = useCurrentSubscriber();
   const { addToast } = useToast();
   const updateNominees = useUpdateNominees(sub?.id);
-  const { data: nominees } = useSubscriberNominees(sub?.id);
+  const { data: nominees, isError: nomError, error: nomErrorObj, refetch: refetchNom } = useSubscriberNominees(sub?.id);
 
   const [tab, setTab] = useState('pension');
   const [pensionList, setPensionList] = useState([]);
@@ -271,6 +272,20 @@ export default function NomineesPage() {
     } finally {
       setSubmitting(false);
     }
+  }
+
+  // E3 — if either the subscriber or the nominees query fails, show the standard
+  // retry card instead of a silently-empty nominees list.
+  if (subError || nomError) {
+    return (
+      <div className={styles.page}>
+        <ErrorCard
+          title="We couldn't load your nominees"
+          message={subErrorObj || nomErrorObj}
+          onRetry={() => { refetchSub(); refetchNom(); }}
+        />
+      </div>
+    );
   }
 
   return (

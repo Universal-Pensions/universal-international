@@ -34,7 +34,7 @@
     "smol-toml": "^1.6.1"
   },
   "dependencies": {
-    "@sentry/node": "^8.50.0",
+    "@sentry/node": "^10.57.0",
     "@supabase/postgrest-js": "^2.105.4",
     "@supabase/supabase-js": "^2.105.4",
     "@tanstack/react-query": "^5.96.2",
@@ -61,7 +61,7 @@
   "devDependencies": {
     "@eslint/js": "^9.39.4",
     "@playwright/test": "^1.60.0",
-    "@sentry/react": "^8.50.0",
+    "@sentry/react": "^10.57.0",
     "@testing-library/dom": "^10.4.1",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.2",

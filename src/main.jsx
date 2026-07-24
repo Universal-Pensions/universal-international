@@ -8,6 +8,7 @@ import { AuthProvider } from './contexts/AuthContext.jsx';
 import { ToastProvider } from './contexts/ToastContext.jsx';
 import ToastContainer from './components/Toast.jsx';
 import WarmupBanner from './components/WarmupBanner.jsx';
+import ErrorBoundary from './components/ErrorBoundary.jsx';
 import { scrubEvent, scrubBreadcrumb } from './utils/sentryScrub.js';
 import { registerSW } from './pwa/registerSW.js';
 import './index.css';
@@ -54,19 +55,27 @@ const queryClient = new QueryClient({
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>
-    <BrowserRouter>
-      <QueryClientProvider client={queryClient}>
-        <AuthProvider>
-          <ToastProvider>
-            <MotionConfig reducedMotion="user">
-              <WarmupBanner />
-              <App />
-              <ToastContainer />
-            </MotionConfig>
-          </ToastProvider>
-        </AuthProvider>
-      </QueryClientProvider>
-    </BrowserRouter>
+    {/* MED-7 — root error boundary. The per-route boundaries in App.jsx only
+        wrap the dashboard/signup subtrees, so an uncaught throw on the public
+        landing, the /admin login, or the app-root <SignInModal/> would blank
+        the whole screen. This top-level boundary is the backstop: it renders
+        the shared "Something went wrong" + refresh fallback (and forwards to
+        Sentry) instead. Inner boundaries still catch first for their subtree. */}
+    <ErrorBoundary>
+      <BrowserRouter>
+        <QueryClientProvider client={queryClient}>
+          <AuthProvider>
+            <ToastProvider>
+              <MotionConfig reducedMotion="user">
+                <WarmupBanner />
+                <App />
+                <ToastContainer />
+              </MotionConfig>
+            </ToastProvider>
+          </AuthProvider>
+        </QueryClientProvider>
+      </BrowserRouter>
+    </ErrorBoundary>
   </StrictMode>,
 );
 
