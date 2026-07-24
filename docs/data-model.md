@@ -1,3 +1,5 @@
+> **Agent guide.** The field-level data model — every entity, its fields (each classified Stored / Derived / Aggregated / Mock-only), their relationships, and the business rules + aggregation formulas that bind them. Read it before you compute a metric, add a column, or trust a field's origin, so you never treat a derived or mock-only value as stored truth. Start at `CLAUDE.md` for orientation; see `BACKEND.md` for the SQL/RPC that produces these fields.
+
 # Universal Pensions Uganda — Data Model
 
 > This document describes every entity in the system, their fields, relationships, and business rules.

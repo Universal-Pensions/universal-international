@@ -1,3 +1,5 @@
+> **Agent guide.** The deep backend reference — the Express + TypeScript routes under `api/**` (hosted on Render), the Supabase Postgres schema / RPCs / RLS in `supabase/migrations/*.sql`, the seed + utility scripts, and the hosted + local runbook. Read it whenever you touch an API route, a migration, an RPC, an RLS policy, or the auth/JWT flow; pair it with `CLAUDE.md` (the binding rules) and `FRONTEND.md` (the React side). Per repo discipline (`CLAUDE.md` §11), update this doc in the same change whenever you add a route, table, RPC, or migration.
+
 # BACKEND.md — Universal Pensions Uganda
 
 Deep backend reference. Pair with `CLAUDE.md` (slim index) and `FRONTEND.md` (deep frontend reference).

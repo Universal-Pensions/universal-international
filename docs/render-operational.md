@@ -1,3 +1,5 @@
+> **Agent guide.** The operational runbook for the `uganda-dashboard-api` backend on Render (free tier, Singapore) — deploy triggers, env, cold-start behaviour, and the incident playbook. Read it when deploying or debugging the hosted API (Render is manual-deploy: `npm run deploy:api`), not for application logic. For the code itself see `BACKEND.md`; start from `CLAUDE.md`.
+
 # Render Operational Notes
 
 Operational runbook for the `uganda-dashboard-api` service on Render (free tier, Singapore region). Authored during Phase 3 of the Render migration; see `/Users/shubhang/.claude/plans/dynamic-sparking-kite.md` for the full plan and `/Users/shubhang/Desktop/renderaudit-findings.md` for the underlying audit findings (B6, B7, B14, B15, B21, G5, G14, G15, G41, G59, G60, G61, G62, G63, G64, N27).

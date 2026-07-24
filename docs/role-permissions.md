@@ -1,3 +1,5 @@
+> **Agent guide.** The role × capability matrix — what each role (subscriber, agent, branch, distributor, employer, admin) may see and do. Read it before any access-related change so a UI capability and its RLS/RPC gate stay in agreement. All six roles are now built (desktop + mobile), so any "Planned" markers below are historical — verify against `CLAUDE.md` and the RLS in `BACKEND.md` / `supabase/migrations/*.sql`.
+
 # Universal Pensions Uganda — Role-Permission Matrix
 
 > This document defines what each user role can see and do on the platform.
