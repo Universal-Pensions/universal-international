@@ -262,6 +262,26 @@
   border-bottom: 0;
 }
 
+/* In-card payment block for narrow layouts (JS-gated via showInCardPay). Sits at
+   the foot of the wizard body, directly above the sticky footer Pay CTA, so the
+   method chooser and the pay button are visible together on phones/tablets. */
+.mobilePay {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  padding: 1rem;
+  border-top: 1px solid var(--color-lavender);
+  background: color-mix(in srgb, var(--color-indigo) 2.5%, var(--color-white));
+}
+
+/* Belt-and-braces: never show the in-card block on desktop (it's JS-gated to
+   narrow layouts, but this keeps the desktop path byte-identical if it renders). */
+@media (min-width: 1101px) {
+  .mobilePay {
+    display: none;
+  }
+}
+
 .pfoot {
   flex: none;
   display: flex;
@@ -2377,6 +2397,27 @@
 
   .splitPct {
     font-size: var(--text-xl);
+  }
+
+  /* Stack the "save up to cover" tin illustration above its copy so the fixed
+     112px pot + the "Cover starts at …" line don't overflow narrow phones. */
+  .tinArea {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.9rem;
+  }
+
+  /* Comfortable ≥44px tap targets on touch devices. */
+  .presetChip {
+    min-height: 44px;
+  }
+
+  .backBtn {
+    min-height: 44px;
+  }
+
+  .ptToggle {
+    min-height: 40px;
   }
 }
 

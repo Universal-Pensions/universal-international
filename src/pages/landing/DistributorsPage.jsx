@@ -99,7 +99,7 @@ export default function DistributorsPage() {
 
   return (
     <div className={styles.page}>
-      <LandingNav active="distributor" onSignIn={scrollToLogin} ctaLabel="Become a partner" ctaTo="/request-access" />
+      <LandingNav active="distributor" onSignIn={scrollToLogin} ctaLabel="Become a partner" ctaTo="/request-access?type=distributor" />
 
       <main id="main">
         {/* hero */}
@@ -109,7 +109,7 @@ export default function DistributorsPage() {
               <h1 className={styles.heroReveal} id="hero-title">Run your whole network<br /><span className={styles.accent}>from one map.</span></h1>
               <p className={cx(styles.sub, styles.heroReveal)}>Run your branches and field agents from one map — <strong>compare performance</strong>, <strong>manage commissions</strong>, and settle dues in a few clicks.</p>
               <div className={cx(styles.heroCta, styles.heroReveal)}>
-                <Link className={cx(styles.btn, styles.btnPrimary)} to="/request-access">Become a partner <Arrow /></Link>
+                <Link className={cx(styles.btn, styles.btnPrimary)} to="/request-access?type=distributor">Become a partner <Arrow /></Link>
                 <a className={cx(styles.btn, styles.btnSecondary)} href="#login">Log in to your account</a>
               </div>
               <p className={cx(styles.heroMeta, styles.heroReveal)}>
@@ -124,7 +124,7 @@ export default function DistributorsPage() {
             </div>
 
             {/* partner login card (distributor / branch / agent) */}
-            <LandingLoginCard roles={['distributor', 'branch', 'agent']} footerPrompt="New here?" footerLabel="Request access" footerHref="/request-access" />
+            <LandingLoginCard roles={['distributor', 'branch', 'agent']} footerPrompt="New here?" footerLabel="Request access" footerHref="/request-access?type=distributor" />
           </motion.div>
         </section>
 
@@ -182,7 +182,7 @@ export default function DistributorsPage() {
                 ))}
               </ul>
               <div className={styles.audActions}>
-                <Link className={cx(styles.btn, styles.btnPrimary)} to="/request-access">Become a partner <Arrow /></Link>
+                <Link className={cx(styles.btn, styles.btnPrimary)} to="/request-access?type=distributor">Become a partner <Arrow /></Link>
                 <a className={styles.txtlink} href="#login">Log in to your account <ArrowLink /></a>
               </div>
             </div>
@@ -332,7 +332,7 @@ export default function DistributorsPage() {
                   <h2 id="cta-title">Bring formal pensions<br /><span className={styles.accent}>to your community.</span></h2>
                   <p>Run branches and agents across Uganda — manage commissions, grow your member base, and lead the whole network from one map.</p>
                   <div className={styles.ctaActions}>
-                    <Link className={cx(styles.btn, styles.btnPrimary)} to="/request-access">Become a partner <Arrow /></Link>
+                    <Link className={cx(styles.btn, styles.btnPrimary)} to="/request-access?type=distributor">Become a partner <Arrow /></Link>
                     <a className={cx(styles.btn, styles.btnSecondary)} href="#login">Log in to your account</a>
                   </div>
                 </div>

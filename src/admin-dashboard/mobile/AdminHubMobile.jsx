@@ -19,6 +19,11 @@ const SupportIcon = (
     <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
   </svg>
 );
+const InboxIcon = (
+  <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <path d="M3 13h4l2 3h6l2-3h4" /><path d="M5 13V6a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v7" />
+  </svg>
+);
 const SettingsIcon = (
   <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
     <circle cx="12" cy="12" r="3" />
@@ -69,6 +74,10 @@ export default function AdminHubMobile() {
       </section>
 
       <div className={styles.tiles}>
+        <NavLink to="/dashboard/access-requests" className={styles.tile} aria-label="Access requests">
+          <span className={styles.tileIc} aria-hidden="true">{InboxIcon}</span>
+          <span><b>Access requests</b><small>Approve sign-ups</small></span>
+        </NavLink>
         <NavLink to="/dashboard/reports" className={styles.tile} aria-label="Reports">
           <span className={styles.tileIc} aria-hidden="true">{ReportsIcon}</span>
           <span><b>Reports</b><small>Download data</small></span>

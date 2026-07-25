@@ -33,6 +33,7 @@ const TAB = {
 };
 const FLOW = {
   '/dashboard/settings': 'Settings',
+  '/dashboard/access-requests': 'Access requests',
 };
 
 function resolve(pathname) {

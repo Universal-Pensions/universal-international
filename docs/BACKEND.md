@@ -118,6 +118,7 @@ The count went from 12 → 14 with the Phase 1 password rollout (`verify-passwor
 | 12 | POST | `/api/kyc/agent-referral` | Public | `{ phone, reason, stage?, trackingId?, sessionId? }` | `{ ticketId, eta }` | `api/kyc/agent-referral.ts` |
 | 13 | POST | `/api/chat` | `withOptionalAuth` | `{ message, context? }` | `{ reply, suggestions? }` | `api/chat.ts` |
 | 14 | POST | `/api/contact` | Public | `{ name, email, message }` | `{ submitted: true, id }` | `api/contact.ts` |
+| 15 | POST | `/api/access-request` | Public | `{ type: 'employer'\|'distributor', orgName, contactName?, contactEmail?, contactPhone?, sector?, district? }` | `{ submitted: true, id }` | `api/access-request.ts` |
 
 ### Cross-cutting notes
 
@@ -485,6 +486,7 @@ The remaining migrations use `IF NOT EXISTS` / `IF EXISTS` / `CREATE OR REPLACE`
 | `demo_personas` | `(phone, role) → entity_id` lookup for non-subscriber roles. 8 seeded rows: 3 agents, 2 branches, 2 distributors, 1 employer (`+256700000031` → `emp-001`). |
 | `agent_referrals` | KYC fallback referrals (from `/api/kyc/agent-referral`). |
 | `contact_submissions` | Landing-page contact form submissions (from `/api/contact`). |
+| `access_requests` (0079) | Public employer/distributor "request access" leads (from `/api/access-request`, service-role insert — no anon policy). Admin triages via `list_access_requests` / `approve_access_request` (provisions the real account via `create_distributor`/`create_employer`, resolving the free-text district name → `districts.id`) / `deny_access_request`; all three admin-gated SECURITY DEFINER, `REVOKE … anon`. |
 | `subscriber_signup_uploads` (0042) | Signup idempotency ledger (mirrors `settlement_uploads`): `nonce` PK + stored `result`. RPC-internal — RLS-forced with **no policies and no grants**; only the signup-entry RPCs (`create_subscriber_from_signup` / `create_subscriber_from_agent_onboard`) read/write it. A replayed signup with the same `p_nonce` returns the prior subscriber id instead of minting a duplicate chain. |
 
 ### Domain: Employer (`0034`, **unified into subscribers by `0043`–`0047`**)

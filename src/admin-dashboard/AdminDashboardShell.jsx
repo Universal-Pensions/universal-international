@@ -40,6 +40,7 @@ import CreateDistributor from './distributors/CreateDistributor';
 import ViewEmployers from './employers/ViewEmployers';
 import CreateEmployer from './employers/CreateEmployer';
 import ViewEmployerDetail from './employers/ViewEmployerDetail';
+import ViewAccessRequests from './access-requests/ViewAccessRequests';
 // Reuse the distributor shell layout styles for pixel-identical chrome.
 import styles from '../dashboard/DashboardShell.module.css';
 
@@ -47,6 +48,7 @@ const DRAWER_ITEMS = [
   { id: 'overview', label: 'Overview' },
   { id: 'distributors', label: 'Distributors' },
   { id: 'employers', label: 'Employers' },
+  { id: 'access-requests', label: 'Access requests' },
   { id: 'branches', label: 'View Branches' },
   { id: 'agents', label: 'View Agents' },
   { id: 'subscribers', label: 'Subscribers' },
@@ -106,6 +108,7 @@ function MobileDrawer({ open, onClose }) {
   const {
     setViewDistributorsOpen,
     setViewEmployersOpen,
+    setViewAccessRequestsOpen,
     closeAllPanels: adminCloseAllPanels,
   } = useAdminPanel();
 
@@ -145,6 +148,9 @@ function MobileDrawer({ open, onClose }) {
         break;
       case 'employers':
         setViewEmployersOpen(true);
+        break;
+      case 'access-requests':
+        setViewAccessRequestsOpen(true);
         break;
       case 'branches':
         setViewBranchesOpen(true);
@@ -267,6 +273,7 @@ function AdminDashboardContent({ mode, mapMounted }) {
     viewEmployerDetailOpen,
     setViewEmployerDetailOpen,
     setDetailEmployerId,
+    viewAccessRequestsOpen,
     copilotOpen,
     setCopilotOpen,
   } = useAdminPanel();
@@ -291,6 +298,7 @@ function AdminDashboardContent({ mode, mapMounted }) {
     settingsOpen ? 'settings' :
     viewDistributorsOpen ? 'distributors' :
     viewEmployersOpen ? 'employers' :
+    viewAccessRequestsOpen ? 'access-requests' :
     viewBranchesOpen ? 'branches' :
     viewAgentsOpen ? 'agents' :
     viewSubscribersOpen ? 'subscribers' :
@@ -324,6 +332,7 @@ function AdminDashboardContent({ mode, mapMounted }) {
           <div className={styles.dashHost}>
             {selectedPage === 'distributors' && <ViewDistributors fullPage />}
             {selectedPage === 'employers' && <ViewEmployers fullPage />}
+            {selectedPage === 'access-requests' && <ViewAccessRequests fullPage />}
             {/* Key by the drill target so clearing it (a rail click in dash mode)
                 remounts fresh at the LIST — the panels keep an internal detail view
                 that clearing the drill flag alone won't reset. */}
@@ -352,6 +361,7 @@ function AdminDashboardContent({ mode, mapMounted }) {
           full-page inside <main> above instead (never a double mount). */}
       {!dashMode && viewDistributorsOpen && <ViewDistributors />}
       {!dashMode && viewEmployersOpen && <ViewEmployers />}
+      {!dashMode && viewAccessRequestsOpen && <ViewAccessRequests />}
       {!dashMode && viewBranchesOpen && <ViewBranches readOnly />}
       {!dashMode && viewAgentsOpen && <ViewAgents showCommissions={false} />}
       {!dashMode && viewSubscribersOpen && <ViewSubscribers />}

@@ -363,7 +363,7 @@ Detection: react-router stores its own index on `window.history.state.idx`. Inde
 
 ---
 
-## 5. Services inventory (`src/services/` — 12 files)
+## 5. Services inventory (`src/services/` — 14 files)
 
 All public exports below. Every service file follows the `IS_SUPABASE_ENABLED ? supabase : mock` dual-branch pattern.
 
@@ -381,6 +381,8 @@ All public exports below. Every service file follows the `IS_SUPABASE_ENABLED ? 
 | `chat.js` | Keyword-matched chat (mocked) | `getChatResponse(message)`, `getAgentReply(message, agent)`, `getSubscriberChatResponse(message)` | Distributor / Branch / Subscriber co-pilot widgets; Agent DM (HelpPage, AgentPage) |
 | `search.js` | `search_entities` PG RPC (pg_trgm fuzzy) | `searchEntities(query)` | `useSearch` |
 | `contact.js` | Public `/api/contact` POST | `submitContactForm({ name, email, message })` | `pages/Contact.jsx` |
+| `requestAccess.js` | Public `/api/access-request` POST (employer/distributor lead form) | `submitAccessRequest({ type, orgName, contactName?, contactEmail?, contactPhone?, sector?, district? })` | `pages/RequestAccess.jsx`, `pages/landing/mobile/RequestAccessMobile.jsx` |
+| `accessRequests.js` | Admin triage of access requests (0079 RPCs) | `listAccessRequests(status?)`, `approveAccessRequest(id)`, `denyAccessRequest(id)` | `useAccessRequests` hooks → `admin-dashboard/access-requests/ViewAccessRequests` + `mobile/AdminAccessRequestsMobile` |
 
 ### 5.1 `api.js` — base HTTP client
 

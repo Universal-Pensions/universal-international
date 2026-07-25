@@ -55,6 +55,7 @@ vi.mock('./distributors/ViewDistributors', () => ({ default: () => null }));
 vi.mock('./distributors/CreateDistributor', () => ({ default: () => null }));
 vi.mock('./employers/ViewEmployers', () => ({ default: () => null }));
 vi.mock('./employers/CreateEmployer', () => ({ default: () => null }));
+vi.mock('./access-requests/ViewAccessRequests', () => ({ default: () => null }));
 
 const { default: AdminDashboardShell } = await import('./AdminDashboardShell');
 

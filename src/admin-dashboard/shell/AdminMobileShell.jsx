@@ -16,6 +16,7 @@ import EmployersMobile from '../mobile/EmployersMobile';
 import EmployerDetailMobile from '../mobile/EmployerDetailMobile';
 import AdminNetworkMobile from '../mobile/AdminNetworkMobile';
 import AdminSettingsMobile from '../mobile/AdminSettingsMobile';
+import AdminAccessRequestsMobile from '../mobile/AdminAccessRequestsMobile';
 import AdminHubMobile from '../mobile/AdminHubMobile';
 
 // Reused distributor pages — role-agnostic (RLS scopes the data; admin sees all).
@@ -53,6 +54,7 @@ function AnimatedOutlet() {
           <Route path="distributors" element={<DistributorsMobile />} />
           <Route path="employers/:employerId" element={<EmployerDetailMobile />} />
           <Route path="employers" element={<EmployersMobile />} />
+          <Route path="access-requests" element={<AdminAccessRequestsMobile />} />
           <Route path="network" element={<AdminNetworkMobile />} />
           <Route path="branches/:branchId" element={<BranchDetailMobile />} />
           <Route path="branches" element={<BranchesMobile />} />

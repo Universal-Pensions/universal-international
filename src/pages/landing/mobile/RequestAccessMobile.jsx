@@ -1,13 +1,16 @@
 import { useState } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
+import { submitAccessRequest } from '../../../services/requestAccess';
 import styles from './landingMobile.module.css';
 
 const cx = (...c) => c.filter(Boolean).join(' ');
+const EMAIL_PATTERN = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
 
 // Lead-capture form for the two roles that are NOT self-provisioned: employers
 // and distributors are created by an admin, so the public "get started" path is
-// a request-access form, not a signup wizard. Demo scope: the submit is mocked
-// (no backend) — it just shows a confirmation state.
+// a request-access form, not a signup wizard. The submit persists a pending row
+// to `access_requests`; a super-admin then approves (provisioning the account)
+// or denies. Fields mirror the admin "Create distributor/employer" forms.
 const COPY = {
   employer: {
     eyebrow: 'For employers',
@@ -29,14 +32,44 @@ export default function RequestAccessMobile() {
   const type = params.get('type') === 'distributor' ? 'distributor' : 'employer';
   const copy = COPY[type];
   const [submitted, setSubmitted] = useState(false);
-  const [form, setForm] = useState({ name: '', org: '', email: '', phone: '' });
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState('');
+  const [form, setForm] = useState({ name: '', org: '', email: '', phone: '', sector: '', district: '' });
 
-  const update = (key) => (e) => setForm((f) => ({ ...f, [key]: e.target.value }));
+  const update = (key) => (e) => {
+    if (error) setError('');
+    setForm((f) => ({ ...f, [key]: e.target.value }));
+  };
 
-  function handleSubmit(e) {
+  async function handleSubmit(e) {
     e.preventDefault();
-    // Demo: no backend — employer/distributor accounts are provisioned by an admin.
-    setSubmitted(true);
+    if (submitting) return;
+    setError('');
+    if (!form.org.trim()) {
+      setError(`Please enter your ${copy.orgLabel.toLowerCase()}.`);
+      return;
+    }
+    if (form.email.trim() && !EMAIL_PATTERN.test(form.email.trim())) {
+      setError('Please enter a valid email address.');
+      return;
+    }
+    setSubmitting(true);
+    try {
+      await submitAccessRequest({
+        type,
+        orgName: form.org,
+        contactName: form.name,
+        contactEmail: form.email,
+        contactPhone: form.phone,
+        sector: form.sector,
+        district: form.district,
+      });
+      setSubmitted(true);
+    } catch {
+      setError('Something went wrong sending your request. Please try again.');
+    } finally {
+      setSubmitting(false);
+    }
   }
 
   return (
@@ -54,7 +87,8 @@ export default function RequestAccessMobile() {
           </span>
           <h3>Request received</h3>
           <p>
-            Thanks{form.name ? `, ${form.name}` : ''}. Our team will reach out{form.email ? ` to ${form.email}` : ''} shortly to set up your {type} account.
+            Thanks{form.name ? `, ${form.name}` : ''}. An admin will review your request and approve
+            your {type} access within 24 hours{form.email ? ` — we’ll email ${form.email}` : ''}.
           </p>
           <button className={cx(styles.btn, styles['btn-sec'])} onClick={() => navigate('/')}>Back to home</button>
         </div>
@@ -62,24 +96,41 @@ export default function RequestAccessMobile() {
         <form onSubmit={handleSubmit}>
           <div className={styles.card}>
             <div className={styles.fgroup}>
-              <label className={styles.flabel} htmlFor="ra-name">Your name</label>
-              <input className={styles.finput} id="ra-name" value={form.name} onChange={update('name')} placeholder="Your full name" />
+              <label className={styles.flabel} htmlFor="ra-org">{copy.orgLabel}</label>
+              <input className={styles.finput} id="ra-org" value={form.org} onChange={update('org')} placeholder="Organisation" disabled={submitting} />
             </div>
             <div className={styles.fgroup}>
-              <label className={styles.flabel} htmlFor="ra-org">{copy.orgLabel}</label>
-              <input className={styles.finput} id="ra-org" value={form.org} onChange={update('org')} placeholder="Organisation" />
+              <label className={styles.flabel} htmlFor="ra-name">Your name</label>
+              <input className={styles.finput} id="ra-name" value={form.name} onChange={update('name')} placeholder="Your full name" disabled={submitting} />
             </div>
             <div className={styles.fgroup}>
               <label className={styles.flabel} htmlFor="ra-email">Work email</label>
-              <input className={styles.finput} id="ra-email" type="email" value={form.email} onChange={update('email')} placeholder="you@company.com" />
+              <input className={styles.finput} id="ra-email" type="email" value={form.email} onChange={update('email')} placeholder="you@company.com" disabled={submitting} />
             </div>
             <div className={styles.fgroup}>
               <label className={styles.flabel} htmlFor="ra-phone">Phone <em>(optional)</em></label>
-              <input className={styles.finput} id="ra-phone" type="tel" inputMode="tel" value={form.phone} onChange={update('phone')} placeholder="+256 …" />
+              <input className={styles.finput} id="ra-phone" type="tel" inputMode="tel" value={form.phone} onChange={update('phone')} placeholder="+256 …" disabled={submitting} />
             </div>
-            <p className={styles.regNote}>Employer and distributor accounts are set up by our team. We'll be in touch.</p>
+
+            {type === 'employer' && (
+              <>
+                <div className={styles.fgroup}>
+                  <label className={styles.flabel} htmlFor="ra-sector">Sector <em>(optional)</em></label>
+                  <input className={styles.finput} id="ra-sector" value={form.sector} onChange={update('sector')} placeholder="e.g. Manufacturing" disabled={submitting} />
+                </div>
+                <div className={styles.fgroup}>
+                  <label className={styles.flabel} htmlFor="ra-district">District <em>(optional)</em></label>
+                  <input className={styles.finput} id="ra-district" value={form.district} onChange={update('district')} placeholder="e.g. Kampala" disabled={submitting} />
+                </div>
+              </>
+            )}
+
+            <p className={styles.regNote}>Employer and distributor accounts are approved by an admin — you’ll get access within 24 hours.</p>
           </div>
-          <button type="submit" className={cx(styles.btn, styles['btn-pri'], styles['btn-block'])}>Request access</button>
+          <button type="submit" className={cx(styles.btn, styles['btn-pri'], styles['btn-block'])} disabled={submitting} aria-busy={submitting || undefined}>
+            {submitting ? 'Sending…' : 'Request access'}
+          </button>
+          {error && <p className={styles.demoNote} role="alert">{error}</p>}
         </form>
       )}
     </div>

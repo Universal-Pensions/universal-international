@@ -38,6 +38,34 @@ if (import.meta.env.VITE_SENTRY_DSN) {
   });
 }
 
+// Recover from stale lazy-chunk loads. After a redeploy an open tab still holds
+// the old index.html, which references content-hashed chunk filenames that may now
+// 404 (or a stale service-worker cache serves a mismatched chunk) — surfacing as
+// a "load error" on the next lazy route (signup, dashboard, …). Vite fires
+// `vite:preloadError` on a failed modulepreload/dynamic import; a full reload
+// fetches the fresh index.html + chunks (navigations are network-first). Throttled
+// via sessionStorage so a genuinely-broken build can't loop-reload.
+if (typeof window !== 'undefined') {
+  const CHUNK_RELOAD_KEY = 'up-chunk-reload-at';
+  const reloadOnce = () => {
+    const last = Number(sessionStorage.getItem(CHUNK_RELOAD_KEY) || 0);
+    if (Date.now() - last > 10_000) {
+      sessionStorage.setItem(CHUNK_RELOAD_KEY, String(Date.now()));
+      window.location.reload();
+    }
+  };
+  window.addEventListener('vite:preloadError', (e) => {
+    e.preventDefault?.();
+    reloadOnce();
+  });
+  window.addEventListener('unhandledrejection', (e) => {
+    const msg = String(e?.reason?.message || e?.reason || '');
+    if (/dynamically imported module|ChunkLoadError|module script failed/i.test(msg)) {
+      reloadOnce();
+    }
+  });
+}
+
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {

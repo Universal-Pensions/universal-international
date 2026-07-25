@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { calcFV, parseAmount, FREQUENCY, periodsPerYear } from '../../utils/finance';
 import { EASE_OUT_EXPO } from '../../utils/motion';
@@ -66,6 +66,24 @@ function getFreq(frequencyId) {
 
 function digitsOnly(str, max = 10) {
   return String(str).replace(/[^\d]/g, '').slice(0, max);
+}
+
+// Single-column breakpoint: below this the summary aside stacks under the wizard
+// card (see the @media (max-width:1100px) block in the stylesheet). We mirror it
+// in JS so `payMode` can render the payment picker IN the wizard card — right
+// above the sticky footer Pay CTA — instead of in the off-screen stacked aside.
+const NARROW_MQ = '(max-width: 1100px)';
+function subscribeNarrow(cb) {
+  const mql = window.matchMedia(NARROW_MQ);
+  mql.addEventListener('change', cb);
+  return () => mql.removeEventListener('change', cb);
+}
+function useIsNarrowLayout() {
+  return useSyncExternalStore(
+    subscribeNarrow,
+    () => window.matchMedia(NARROW_MQ).matches,
+    () => false,
+  );
 }
 
 /** Short product name for the compact cover cards ("Life insurance" → "Life"). */
@@ -419,6 +437,13 @@ export default function ContributionSettings({ initial, dob, phone, collectSched
   const amountInputRef = useRef(null);
   const pbodyRef = useRef(null);
   const shellRef = useRef(null);
+  const mobilePayRef = useRef(null);
+
+  // On phones/tablets the summary aside stacks below the tall wizard card, so the
+  // payment picker there is off-screen (and the sticky Pay footer scrolls away
+  // before you reach it). On narrow layouts we instead render the pay block IN
+  // the wizard card, keeping it adjacent to the footer CTA.
+  const isNarrow = useIsNarrowLayout();
 
   // Escape returns without saving.
   useEffect(() => {
@@ -428,6 +453,17 @@ export default function ContributionSettings({ initial, dob, phone, collectSched
     document.addEventListener('keydown', onKey);
     return () => document.removeEventListener('keydown', onKey);
   }, [onClose, processing]);
+
+  // When entering pay mode on a narrow layout, bring the in-card payment block
+  // into view so tapping "Continue to payment" visibly reveals the method chooser
+  // (rather than silently swapping the off-screen aside far below the fold).
+  useEffect(() => {
+    if (!(payMode && isNarrow)) return undefined;
+    const id = requestAnimationFrame(() => {
+      mobilePayRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+    return () => cancelAnimationFrame(id);
+  }, [payMode, isNarrow]);
 
   const amount = parseAmount(amountStr);
   const emergencyPct = 100 - retirementPct;
@@ -647,6 +683,9 @@ export default function ContributionSettings({ initial, dob, phone, collectSched
     : (payMode ? payLabel : 'Continue to payment');
   const ctaDisabled = page === 'insurance' && payMode && (!canPay || processing);
   const onInsurance = page === 'insurance';
+  // Narrow layouts render the pay block inside the wizard card (above the sticky
+  // footer); the aside is suppressed there to avoid a duplicate off-screen picker.
+  const showInCardPay = payMode && isNarrow;
   // Whether the checkout breakdown has anything to itemise (a cover payout and/or
   // a separate premium charge). Only then is the dropdown offered.
   const hasBreakdown = hasAmount && onInsurance && hasProducts;
@@ -1098,6 +1137,24 @@ export default function ContributionSettings({ initial, dob, phone, collectSched
               )}
             </section>
           </div>
+
+          {/* Narrow-layout payment block: on phones/tablets the summary aside
+              stacks off-screen below, so the picker lives here in-card, directly
+              above the sticky footer Pay CTA. Desktop uses the aside instead. */}
+          {showInCardPay && (
+            <div className={styles.mobilePay} ref={mobilePayRef}>
+              {payTodayNode}
+              <PaymentMethodPicker
+                method={method}
+                setMethod={setMethod}
+                momoProvider={momoProvider}
+                setMomoProvider={setMomoProvider}
+                momoPhone={momoPhone}
+                setMomoPhone={setMomoPhone}
+                processing={processing}
+              />
+            </div>
+          )}
         </div>
 
         {/* ── Pinned footer CTA ─────────────────────────────────── */}
@@ -1133,6 +1190,9 @@ export default function ContributionSettings({ initial, dob, phone, collectSched
       </motion.div>
 
       {/* ── Summary / checkout aside ──────────────────────────────── */}
+      {/* Suppressed on narrow layouts during pay mode — the pay block renders
+          in-card there (showInCardPay) so the picker isn't duplicated off-screen. */}
+      {!showInCardPay && (
       <motion.aside
         className={styles.summaryCard}
         aria-label="Your plan summary"
@@ -1216,6 +1276,7 @@ export default function ContributionSettings({ initial, dob, phone, collectSched
           </>
         )}
       </motion.aside>
+      )}
       </div>
     </main>
   );

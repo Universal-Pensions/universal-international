@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Navigate, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { useToast } from '../../contexts/ToastContext';
@@ -10,6 +10,7 @@ import { buildContributionPayload } from './contributionPayload';
 import ContributionSettings from './ContributionSettings';
 import SignupShell from '../SignupShell';
 import ActivatedStep from '../steps/ActivatedStep';
+import { warmupBackend } from '../../components/WarmupBanner';
 
 /**
  * Route wrapper for `/signup/contribution`.
@@ -34,6 +35,12 @@ export default function ContributionRoute() {
   const { addToast } = useToast();
   const [phase, setPhase] = useState('setup');
   const [completionSnapshot, setCompletionSnapshot] = useState(null);
+
+  // Pre-warm the Render backend on mount. The user spends a while here choosing a
+  // plan + payment method, and an idle instance cold-starts; warming now means the
+  // verify-otp call at the end of "Pay" resolves within budget instead of timing
+  // out (the "sign-in failed right after Pay, but works on reload" symptom).
+  useEffect(() => { warmupBackend(); }, []);
 
   // Activated branch runs FIRST — independent of signup context so the
   // Continue click (which resets signup) can't trigger the guard below

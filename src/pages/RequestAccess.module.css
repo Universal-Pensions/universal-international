@@ -156,9 +156,20 @@
   box-shadow: 0 4px 12px rgba(41, 40, 103, 0.22);
   transition: transform 0.15s ease, background 0.15s ease;
 }
-.primary:hover {
+.primary:hover:not(:disabled) {
   background: var(--color-indigo-deep);
   transform: translateY(-1px);
+}
+.primary:disabled {
+  opacity: 0.6;
+  cursor: progress;
+  box-shadow: none;
+}
+.error {
+  margin: 0;
+  font-size: 0.8125rem;
+  color: #b42318;
+  line-height: 1.5;
 }
 .note {
   font-size: 0.75rem;

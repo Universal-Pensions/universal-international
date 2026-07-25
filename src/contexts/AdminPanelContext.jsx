@@ -22,6 +22,8 @@ import { createContext, useContext, useState, useMemo, useCallback } from 'react
  * @property {(open: boolean) => void} setViewEmployerDetailOpen
  * @property {string|null} detailEmployerId
  * @property {(id: string|null) => void} setDetailEmployerId
+ * @property {boolean} viewAccessRequestsOpen - pending employer/distributor requests
+ * @property {(open: boolean) => void} setViewAccessRequestsOpen
  * @property {boolean} copilotOpen - Ask-AI "Platform Copilot" drawer
  * @property {(open: boolean) => void} setCopilotOpen
  * @property {() => void} closeAllPanels
@@ -39,6 +41,9 @@ export function AdminPanelProvider({ children }) {
   // employer; the panel reads it + `viewEmployerDetailOpen` to render.
   const [viewEmployerDetailOpen, setViewEmployerDetailOpen] = useState(false);
   const [detailEmployerId, setDetailEmployerId] = useState(null);
+  // Pending employer/distributor access requests (from the public request-access
+  // lead form) awaiting admin approval.
+  const [viewAccessRequestsOpen, setViewAccessRequestsOpen] = useState(false);
   // Ask-AI "Platform Copilot" drawer (map-overlay shell FAB).
   const [copilotOpen, setCopilotOpen] = useState(false);
 
@@ -50,6 +55,7 @@ export function AdminPanelProvider({ children }) {
     setViewEmployersOpen(false);
     setCreateEmployerOpen(false);
     setViewEmployerDetailOpen(false);
+    setViewAccessRequestsOpen(false);
     setCopilotOpen(false);
   }, []);
 
@@ -60,12 +66,14 @@ export function AdminPanelProvider({ children }) {
     createEmployerOpen, setCreateEmployerOpen,
     viewEmployerDetailOpen, setViewEmployerDetailOpen,
     detailEmployerId, setDetailEmployerId,
+    viewAccessRequestsOpen, setViewAccessRequestsOpen,
     copilotOpen, setCopilotOpen,
     closeAllPanels,
   }), [
     viewDistributorsOpen, createDistributorOpen,
     viewEmployersOpen, createEmployerOpen,
     viewEmployerDetailOpen, detailEmployerId,
+    viewAccessRequestsOpen,
     copilotOpen,
     closeAllPanels,
   ]);

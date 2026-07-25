@@ -58,7 +58,7 @@ export default function EmployersPage() {
 
   return (
     <div className={styles.page}>
-      <LandingNav active="employer" onSignIn={scrollToLogin} ctaLabel="Get started" ctaTo="/request-access" />
+      <LandingNav active="employer" onSignIn={scrollToLogin} ctaLabel="Get started" ctaTo="/request-access?type=employer" />
 
       <main id="main">
         {/* hero — employer copy + hero stats, login card on the right */}
@@ -68,7 +68,7 @@ export default function EmployersPage() {
               <h1 className={styles.heroReveal} id="hero-title">Grow your team&rsquo;s savings.<br /><span className={styles.accent}>Protect every staff member.</span></h1>
               <p className={cx(styles.sub, styles.heroReveal)}><strong>Pension contributions</strong> plus <strong>group Life, Health &amp; Funeral cover</strong> — one workspace, reporting your board will actually read.</p>
               <div className={cx(styles.heroCta, styles.heroReveal)}>
-                <Link className={cx(styles.btn, styles.btnPrimary)} to="/request-access">Set up your company <Arrow /></Link>
+                <Link className={cx(styles.btn, styles.btnPrimary)} to="/request-access?type=employer">Set up your company <Arrow /></Link>
                 <button type="button" className={cx(styles.btn, styles.btnSecondary)} onClick={scrollToLogin}>Log in to your account</button>
               </div>
               <p className={cx(styles.heroMeta, styles.heroReveal)}>
@@ -83,7 +83,7 @@ export default function EmployersPage() {
             </div>
 
             {/* employer login card (hero right) — real phone + OTP/password auth */}
-            <LandingLoginCard audience="employer" footerPrompt="New here?" footerLabel="Request a demo" footerHref="/request-access" />
+            <LandingLoginCard audience="employer" footerPrompt="New here?" footerLabel="Request a demo" footerHref="/request-access?type=employer" />
           </motion.div>
         </section>
 
@@ -106,7 +106,7 @@ export default function EmployersPage() {
                 ))}
               </ul>
               <div className={styles.audActions}>
-                <Link className={cx(styles.btn, styles.btnPrimary)} to="/request-access">Set up your company <Arrow /></Link>
+                <Link className={cx(styles.btn, styles.btnPrimary)} to="/request-access?type=employer">Set up your company <Arrow /></Link>
                 <a className={styles.txtlink} href="#how">See how onboarding works
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M13 6l6 6-6 6" /></svg>
                 </a>
@@ -218,7 +218,7 @@ export default function EmployersPage() {
                   <h2 id="cta-title">Set your team up in an afternoon.<br /><span className={styles.accent}>Run the first contribution today.</span></h2>
                   <p>Create your company account, upload your roster, set the split, and switch on group Life · Health · Funeral cover — all in one workspace.</p>
                   <div className={styles.ctaActions}>
-                    <Link className={cx(styles.btn, styles.btnPrimary)} to="/request-access">Set up your company <Arrow /></Link>
+                    <Link className={cx(styles.btn, styles.btnPrimary)} to="/request-access?type=employer">Set up your company <Arrow /></Link>
                     <Link className={cx(styles.btn, styles.btnSecondary)} to="/contact">Talk to our team</Link>
                   </div>
                 </div>

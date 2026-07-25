@@ -1,11 +1,14 @@
 import { useState } from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
+import { submitAccessRequest } from '../services/requestAccess';
 import styles from './RequestAccess.module.css';
 
 // Lead-capture form for the two roles that are NOT self-provisioned: employers
 // and distributors are created by an admin, so the public "get started" path is
-// a request-access form, not a signup wizard. Demo scope: the submit is mocked
-// (no backend) — it just shows a confirmation state.
+// a request-access form, not a signup wizard. The submit persists a pending row
+// to `access_requests` (via /api/access-request); a super-admin then approves —
+// which provisions the real account — or denies it. Fields mirror the admin
+// "Create distributor/employer" forms so an approval maps straight through.
 const COPY = {
   employer: {
     eyebrow: 'For employers',
@@ -23,19 +26,39 @@ const COPY = {
   },
 };
 
+const EMPTY = { name: '', org: '', email: '', phone: '', sector: '', district: '' };
+
 export default function RequestAccess() {
   const [params] = useSearchParams();
   const type = params.get('type') === 'distributor' ? 'distributor' : 'employer';
   const copy = COPY[type];
   const [submitted, setSubmitted] = useState(false);
-  const [form, setForm] = useState({ name: '', org: '', email: '', phone: '' });
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState('');
+  const [form, setForm] = useState(EMPTY);
 
   const update = (key) => (e) => setForm((f) => ({ ...f, [key]: e.target.value }));
 
-  function handleSubmit(e) {
+  async function handleSubmit(e) {
     e.preventDefault();
-    // Demo: no backend — employer/distributor accounts are provisioned by an admin.
-    setSubmitted(true);
+    if (submitting) return;
+    setError('');
+    setSubmitting(true);
+    try {
+      await submitAccessRequest({
+        type,
+        orgName: form.org,
+        contactName: form.name,
+        contactEmail: form.email,
+        contactPhone: form.phone,
+        sector: form.sector,
+        district: form.district,
+      });
+      setSubmitted(true);
+    } catch {
+      setError('Something went wrong sending your request. Please try again.');
+      setSubmitting(false);
+    }
   }
 
   return (
@@ -58,8 +81,8 @@ export default function RequestAccess() {
             </span>
             <h1 className={styles.title}>Request received</h1>
             <p className={styles.lede}>
-              Thanks{form.name ? `, ${form.name}` : ''}. Our team will reach out{form.email ? ` to ${form.email}` : ''} shortly
-              to set up your {type} account.
+              Thanks{form.name ? `, ${form.name}` : ''}. An admin will review your request and approve
+              your {type} access within 24 hours{form.email ? ` — we’ll email ${form.email}` : ''}.
             </p>
             <Link to="/" className={styles.primary}>Back to home</Link>
           </div>
@@ -69,13 +92,13 @@ export default function RequestAccess() {
             <h1 className={styles.title}>{copy.title}</h1>
             <p className={styles.lede}>{copy.lede}</p>
             <form onSubmit={handleSubmit} className={styles.form}>
-              <label className={styles.field} htmlFor="ra-name">
-                <span>Your name</span>
-                <input id="ra-name" aria-label="Your name" value={form.name} onChange={update('name')} required autoComplete="name" />
-              </label>
               <label className={styles.field} htmlFor="ra-org">
                 <span>{copy.orgLabel}</span>
                 <input id="ra-org" aria-label={copy.orgLabel} value={form.org} onChange={update('org')} required autoComplete="organization" />
+              </label>
+              <label className={styles.field} htmlFor="ra-name">
+                <span>Your name</span>
+                <input id="ra-name" aria-label="Your name" value={form.name} onChange={update('name')} required autoComplete="name" />
               </label>
               <label className={styles.field} htmlFor="ra-email">
                 <span>Work email</span>
@@ -85,9 +108,27 @@ export default function RequestAccess() {
                 <span>Phone <em>(optional)</em></span>
                 <input id="ra-phone" aria-label="Phone (optional)" type="tel" value={form.phone} onChange={update('phone')} autoComplete="tel" inputMode="tel" />
               </label>
-              <button type="submit" className={styles.primary}>Request access</button>
+
+              {type === 'employer' && (
+                <>
+                  <label className={styles.field} htmlFor="ra-sector">
+                    <span>Sector <em>(optional)</em></span>
+                    <input id="ra-sector" aria-label="Sector (optional)" value={form.sector} onChange={update('sector')} autoComplete="off" placeholder="e.g. Manufacturing" />
+                  </label>
+                  <label className={styles.field} htmlFor="ra-district">
+                    <span>District <em>(optional)</em></span>
+                    <input id="ra-district" aria-label="District (optional)" value={form.district} onChange={update('district')} autoComplete="address-level2" placeholder="e.g. Kampala" />
+                  </label>
+                </>
+              )}
+
+              {error && <p className={styles.error} role="alert">{error}</p>}
+
+              <button type="submit" className={styles.primary} disabled={submitting} aria-busy={submitting || undefined}>
+                {submitting ? 'Sending…' : 'Request access'}
+              </button>
               <p className={styles.note}>
-                Employer and distributor accounts are set up by our team — we will be in touch to get you started.
+                Employer and distributor accounts are approved by an admin — you’ll get access within 24 hours.
               </p>
             </form>
           </div>

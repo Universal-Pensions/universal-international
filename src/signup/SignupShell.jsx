@@ -64,7 +64,12 @@ export default function SignupShell({ stepId, onBack, canBack = true, pinnedStag
   // Scan your ID"). Terminals show their status; the activated "done" screen
   // relies on the "Done" stage label alone.
   const KYC_COUNT = STEPS.length - 1; // excludes the trailing 'done' step
-  const subProgress = !isPaused && !isComplete ? `Step ${idx + 1} of ${KYC_COUNT}` : null;
+  const inFineFlow = !isPaused && !isComplete;
+  const subProgress = inFineFlow ? `Step ${idx + 1} of ${KYC_COUNT}` : null;
+  // Numeric form of the fine step, so the topbar can render a determinate
+  // per-step progress bar on phones (where the coarse 3-stage labels are hidden
+  // and the naked stage numbers would otherwise sit frozen through all 8 steps).
+  const subStep = inFineFlow ? idx + 1 : null;
   const subLabel = isComplete ? null : label;
 
   const mainRef = useRef(null);
@@ -86,7 +91,14 @@ export default function SignupShell({ stepId, onBack, canBack = true, pinnedStag
 
   return (
     <div className={styles.page}>
-      <SignupTopbar stageKey={stageKey} paused={isPaused} subLabel={subLabel} subProgress={subProgress} />
+      <SignupTopbar
+        stageKey={stageKey}
+        paused={isPaused}
+        subLabel={subLabel}
+        subProgress={subProgress}
+        subStep={subStep}
+        subTotal={KYC_COUNT}
+      />
 
       <main id="main" className={styles.body}>
         <div

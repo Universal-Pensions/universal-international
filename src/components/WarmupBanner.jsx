@@ -23,6 +23,21 @@ function deriveHealthcheckUrl(apiBase) {
  * first. After that the banner hides regardless — the rest of the UI is
  * usable while the ping continues in the background.
  */
+/**
+ * Fire-and-forget backend warm-up. Pings `/readyz` (a cheap DB read) to wake an
+ * idle Render instance. Call from flows that will hit an auth/write endpoint
+ * shortly (e.g. the contribution "Pay" step) so the backend is warm by the time
+ * the real request fires, avoiding a cold-start timeout. Safe to call anytime;
+ * failures are swallowed.
+ */
+export function warmupBackend() {
+  try {
+    fetch(deriveHealthcheckUrl(API_BASE_URL), { method: 'GET' }).catch(() => {});
+  } catch {
+    /* ignore — the real request will surface any typed error via apiFetch */
+  }
+}
+
 export function useWarmup() {
   const [waking, setWaking] = useState(true);
 

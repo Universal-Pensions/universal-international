@@ -79,6 +79,16 @@ const MOBILE_NAV = [
 const NAV_ITEMS = [
   ...MOBILE_NAV,
   {
+    id: 'access-requests',
+    label: 'Access requests',
+    icon: (
+      <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" width="22" height="22">
+        <path d="M3 13h4l2 3h6l2-3h4" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round"/>
+        <path d="M5 13V6a2 2 0 012-2h10a2 2 0 012 2v7" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round"/>
+      </svg>
+    ),
+  },
+  {
     id: 'tickets',
     label: 'Support',
     icon: (
@@ -224,6 +234,7 @@ export default function AdminSidebar({ expanded = false, onToggleExpand, mapMode
   const {
     viewDistributorsOpen, setViewDistributorsOpen, createDistributorOpen, setCreateDistributorOpen,
     viewEmployersOpen, setViewEmployersOpen, createEmployerOpen, setCreateEmployerOpen,
+    viewAccessRequestsOpen, setViewAccessRequestsOpen,
     closeAllPanels: adminCloseAllPanels,
   } = useAdminPanel();
 
@@ -238,6 +249,7 @@ export default function AdminSidebar({ expanded = false, onToggleExpand, mapMode
     if (viewDistributorsOpen || createDistributorOpen || viewBranchesOpen
         || createBranchOpen || viewAgentsOpen || networkMenuOpen) return 'distributor-network';
     if (viewEmployersOpen || createEmployerOpen) return 'employers';
+    if (viewAccessRequestsOpen) return 'access-requests';
     if (viewTicketsOpen) return 'tickets';
     if (viewReportsOpen) return 'reports';
     if (settingsOpen) return 'settings';
@@ -246,6 +258,7 @@ export default function AdminSidebar({ expanded = false, onToggleExpand, mapMode
   }, [
     viewDistributorsOpen, createDistributorOpen, viewBranchesOpen, createBranchOpen,
     viewAgentsOpen, networkMenuOpen, viewEmployersOpen, createEmployerOpen,
+    viewAccessRequestsOpen,
     viewTicketsOpen, viewReportsOpen, settingsOpen, viewSubscribersOpen,
   ]);
 
@@ -322,6 +335,13 @@ export default function AdminSidebar({ expanded = false, onToggleExpand, mapMode
 
     // Everything below leaves the subscriber view; close it.
     setViewSubscribersOpen(false);
+    if (id === 'access-requests') {
+      setViewReportsOpen(false);
+      setViewTicketsOpen(false);
+      setSettingsOpen(false);
+      setViewAccessRequestsOpen(true);
+      return;
+    }
     if (id === 'settings') {
       setViewReportsOpen(false);
       setViewTicketsOpen(false);

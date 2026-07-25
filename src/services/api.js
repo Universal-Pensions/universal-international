@@ -124,6 +124,14 @@ export async function apiFetch(path, options = {}) {
   // other path keeps the 20s budget for cold-start tolerance.
   const isAuthPath = path.startsWith('/auth/');
   const timeoutMs = isAuthPath ? 8_000 : 20_000;
+  // verify-otp / verify-password are read-safe to replay (demo OTP accepts any
+  // code; password verify is a lookup + bcrypt compare, no mutation). They're
+  // hit at the END of the signup "Pay" flow, where a single cold-start abort
+  // would otherwise fail a fully-completed signup ("sign-in failed after Pay,
+  // works on reload"). Allow the one-shot retry the write-safety gate normally
+  // reserves for GET/HEAD — a completed pay shouldn't die on a transient blip.
+  const isRetrySafeAuth = path === '/auth/verify-otp' || path === '/auth/verify-password';
+  const canRetry = isIdempotent || isRetrySafeAuth;
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
   // Strip internal-only flags from the fetch init.
@@ -143,7 +151,7 @@ export async function apiFetch(path, options = {}) {
       // G49 — single retry on transient cold-start failures, idempotent only.
       // Writes (POST/PUT/PATCH/DELETE) fast-fail so a timed-out request is not
       // silently replayed (it may have already mutated server state).
-      if (!_retry && isIdempotent) {
+      if (!_retry && canRetry) {
         await new Promise((r) => setTimeout(r, 1500));
         return apiFetch(path, { ...options, _retry: true });
       }
@@ -175,7 +183,7 @@ export async function apiFetch(path, options = {}) {
     const err = createApiError('server_unavailable', 'Server unavailable', res.status);
     // G49 — single retry with 1.5s backoff, idempotent only. A 5xx on a write
     // may have partially applied server-side, so we never auto-replay it.
-    if (!_retry && isIdempotent) {
+    if (!_retry && canRetry) {
       await new Promise((r) => setTimeout(r, 1500));
       return apiFetch(path, { ...options, _retry: true });
     }
@@ -193,7 +201,7 @@ export async function apiFetch(path, options = {}) {
     // load-balancer HTML page interposed in front of the Express server.
     const err = createApiError('server_unavailable', 'Server unavailable', res.status);
     // Idempotent only — same write-safety reasoning as the 5xx branch above.
-    if (!_retry && isIdempotent) {
+    if (!_retry && canRetry) {
       await new Promise((r) => setTimeout(r, 1500));
       return apiFetch(path, { ...options, _retry: true });
     }

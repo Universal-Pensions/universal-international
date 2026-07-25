@@ -72,6 +72,32 @@
   font-weight: 700;
 }
 
+/* Phone-only determinate step bar. Replaces the naked coarse-stage numbers
+   (which freeze on "1" through all of Verify's sub-steps) with a fill that
+   advances per fine step. Hidden on desktop, where the labeled stepper reads
+   clearly; shown via the @media block below only when a fine step exists. */
+.miniProgress {
+  display: none;
+  width: min(240px, 56vw);
+}
+
+.miniTrack {
+  display: block;
+  width: 100%;
+  height: 4px;
+  border-radius: var(--radius-full);
+  background: var(--color-lavender);
+  overflow: hidden;
+}
+
+.miniFill {
+  display: block;
+  height: 100%;
+  border-radius: var(--radius-full);
+  background: var(--color-indigo);
+  transition: width 0.35s var(--ease-out-expo);
+}
+
 .stage {
   display: inline-flex;
   align-items: center;
@@ -178,6 +204,15 @@
   }
   .bar {
     flex-basis: 18px;
+  }
+  /* In the fine KYC flow, drop the frozen coarse-stage numbers and show the
+     per-step bar instead. Outside it (contribution "Plan & pay", done) the
+     numbered nodes still convey the coarse stage, so leave them visible. */
+  .center[data-fine] .stepper {
+    display: none;
+  }
+  .center[data-fine] .miniProgress {
+    display: block;
   }
 }
 

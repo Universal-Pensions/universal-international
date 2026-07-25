@@ -29,9 +29,17 @@ function getStageIndex(stageKey) {
  * @param {string}  subLabel    friendly name of the current fine-grained step
  *                              (e.g. "Scan your ID") shown under the stepper
  * @param {string}  subProgress optional "Step N of M" prefix for subLabel
+ * @param {number}  subStep     current fine step (1-based); drives the phone
+ *                              progress bar. Null outside the fine KYC flow.
+ * @param {number}  subTotal    total fine steps, for the phone progress bar
  */
-export default function SignupTopbar({ stageKey = 'verify', paused = false, subLabel = null, subProgress = null }) {
+export default function SignupTopbar({ stageKey = 'verify', paused = false, subLabel = null, subProgress = null, subStep = null, subTotal = null }) {
   const activeIndex = getStageIndex(stageKey);
+  // On phones the coarse stage labels are hidden, so the naked stage numbers
+  // would sit frozen on "1" through all of Verify's sub-steps. When we have a
+  // fine step, swap those numbers for a determinate bar that advances per step.
+  const hasFine = subStep != null && subTotal > 0;
+  const finePct = hasFine ? Math.round((subStep / subTotal) * 100) : 0;
 
   return (
     <header className={styles.header}>
@@ -40,7 +48,7 @@ export default function SignupTopbar({ stageKey = 'verify', paused = false, subL
           <img src={logo} alt="" width={132} height={36} />
         </Link>
 
-        <div className={styles.center}>
+        <div className={styles.center} data-fine={hasFine || undefined}>
           <ol
             className={styles.stepper}
             aria-label={`Signup progress — ${paused ? 'paused at ' : ''}${STAGES[activeIndex].label}`}
@@ -76,6 +84,14 @@ export default function SignupTopbar({ stageKey = 'verify', paused = false, subL
               );
             })}
           </ol>
+
+          {hasFine && (
+            <div className={styles.miniProgress} aria-hidden="true">
+              <span className={styles.miniTrack}>
+                <span className={styles.miniFill} style={{ width: `${finePct}%` }} />
+              </span>
+            </div>
+          )}
 
           {subLabel && (
             <p className={styles.subLabel}>
