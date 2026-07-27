@@ -3,7 +3,9 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { EASE_OUT_EXPO } from '../../utils/motion';
 
 import { useAdminPanel } from '../../contexts/AdminPanelContext';
-import { useAllEntities, usePlatformOverview, useSetDistributorStatus } from '../../hooks/useEntity';
+import {
+  useAllEntities, usePlatformOverview, useSetDistributorStatus, useDistributorRollup,
+} from '../../hooks/useEntity';
 import { useToast } from '../../contexts/ToastContext';
 import { formatNumber, formatUGXShort } from '../../utils/currency';
 import { formatDate } from '../../utils/date';
@@ -16,15 +18,19 @@ import styles from '../adminPanels.module.css';
  * the agent-tree-only country rollup) plus a list of distributor entities, each
  * with profile + status. "+ New Distributor" opens the create form.
  *
- * NOTE: per-distributor rollups (subscribers/agents/branches per distributor)
- * are intentionally absent — the schema does not partition the network by
- * distributor (branches have no distributor_id; distributors hang off 'ug' as a
- * flat catalog), so only platform-wide totals + a distributor count are honest.
+ * Each row shows that distributor's OWN branch/agent/subscriber/AUM counts via
+ * `get_distributor_rollup` (0088); the strip at the top is the platform total.
+ * This was impossible before 0060 added `branches.distributor_id` (0081 then
+ * made it the ownership edge for every scoped read), which is why earlier
+ * versions of this file repeated the platform totals under every row.
  */
 export default function ViewDistributors({ fullPage = false }) {
   const { viewDistributorsOpen, setViewDistributorsOpen, setCreateDistributorOpen } = useAdminPanel();
   const { data: distributors = [], isLoading } = useAllEntities('distributor');
   const { data: platform } = usePlatformOverview();
+  // Per-distributor counts (0088). Before this the rows could only show
+  // identity fields, because nothing partitioned the network by distributor.
+  const { data: rollup = {} } = useDistributorRollup();
   const setStatus = useSetDistributorStatus();
   const { addToast } = useToast();
   // The distributor whose deactivate/reactivate is awaiting confirmation.
@@ -111,7 +117,10 @@ export default function ViewDistributors({ fullPage = false }) {
             </div>
 
             <div className={styles.body}>
-              {/* Network totals — the national distributor's reach = the platform. */}
+              {/* Platform-wide totals, repeated under every distributor row.
+                  This was accurate while d-001 was the singleton owner of all
+                  316 branches; it is not any more (d-001: 289, d-002: 27). See
+                  the file-header note — these should become per-row counts. */}
               <div className={styles.rowMetrics} style={{ marginBottom: 'var(--space-5)' }}>
                 {platformKpis.map((k) => (
                   <div className={styles.metric} key={k.label}>
@@ -161,14 +170,25 @@ export default function ViewDistributors({ fullPage = false }) {
                           </button>
                         </div>
                       </div>
+                      {/* This distributor's OWN reach, not the platform's — see
+                          get_distributor_rollup (0088). `Parent` was dropped: it
+                          is 'ug' for every row and carried no information. */}
                       <div className={styles.rowMetrics}>
                         <div className={styles.metric}>
-                          <span className={styles.metricVal}>{d.parentId || 'ug'}</span>
-                          <span className={styles.metricLabel}>Parent</span>
+                          <span className={styles.metricVal}>{formatNumber(rollup[d.id]?.branches ?? 0)}</span>
+                          <span className={styles.metricLabel}>Branches</span>
                         </div>
                         <div className={styles.metric}>
-                          <span className={styles.metricVal}>{d.managerEmail ? '✓' : '—'}</span>
-                          <span className={styles.metricLabel}>Email on file</span>
+                          <span className={styles.metricVal}>{formatNumber(rollup[d.id]?.agents ?? 0)}</span>
+                          <span className={styles.metricLabel}>Agents</span>
+                        </div>
+                        <div className={styles.metric}>
+                          <span className={styles.metricVal}>{formatNumber(rollup[d.id]?.subscribers ?? 0)}</span>
+                          <span className={styles.metricLabel}>Subscribers</span>
+                        </div>
+                        <div className={styles.metric}>
+                          <span className={styles.metricVal}>{formatUGXShort(rollup[d.id]?.aum ?? 0)}</span>
+                          <span className={styles.metricLabel}>AUM</span>
                         </div>
                         <div className={styles.metric}>
                           <span className={styles.metricVal}>{formatDate(d.createdAt)}</span>
@@ -199,8 +219,8 @@ export default function ViewDistributors({ fullPage = false }) {
               <h3 className={styles.confirmTitle}>{title}</h3>
               <p className={styles.confirmBody}>
                 {isActive
-                  ? 'Its branches and agents will be deactivated, and every subscriber under this distributor will be reset to self-onboarded — they stay active and keep their pension.'
-                  : 'This reactivates the distributor, its branches, and its agents. Subscribers that were reset to self-onboarded are not re-linked.'}
+                  ? 'Its branches and agents will be deactivated, and every subscriber under this distributor will be reset to self-onboarded — they stay active and keep their pension. Reactivating restores their agent links.'
+                  : 'This reactivates the distributor, and restores its branches, agents and subscriber agent-links to exactly what they were before it was deactivated.'}
               </p>
               <div className={styles.confirmActions}>
                 <button type="button" className={styles.cancelBtn} onClick={() => setConfirmTarget(null)} disabled={setStatus.isPending}>

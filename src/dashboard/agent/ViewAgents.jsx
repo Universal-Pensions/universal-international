@@ -347,7 +347,11 @@ export default function ViewAgents({ splitMode = false, fullPage = false, showCo
   }
 
   let headerTitle = 'Existing Agents';
-  let headerSubtitle = `${allAgents.length} agents across Uganda`;
+  // Derived from the (RLS-scoped) agent list rather than asserting "Uganda".
+  const agentBranchCount = new Set(allAgents.map((a) => a.parentId).filter(Boolean)).size;
+  let headerSubtitle = agentBranchCount
+    ? `${allAgents.length} agents across ${agentBranchCount} ${agentBranchCount === 1 ? 'branch' : 'branches'}`
+    : `${allAgents.length} agents`;
   if (view === 'detail' && selectedAgent) {
     headerTitle = selectedAgent.name;
     headerSubtitle = `Agent at ${branchName(selectedAgent, BRANCHES_MAP)}`;

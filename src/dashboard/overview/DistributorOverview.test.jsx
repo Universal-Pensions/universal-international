@@ -36,8 +36,12 @@ vi.mock('../../hooks/useEntity', () => ({
     },
   }),
   useAllEntities: () => ({ data: [] }),
+  useAllEntitiesMap: () => ({ data: {} }),
   useChildren: () => ({ data: [] }),
   useChildrenMetrics: () => ({ data: {} }),
+  // The header now shows the operator's OWN name (a regional distributor is not
+  // "National Network"). Undefined here exercises the fallback.
+  useEntity: () => ({ data: undefined }),
   // Bounded server-side top-N (0077). Rows are display-ready incl. parentName.
   useTopEntities: (level) => ({
     data: level === 'branch'
@@ -46,6 +50,8 @@ vi.mock('../../hooks/useEntity', () => ({
   }),
 }));
 vi.mock('../../hooks/useCommission', () => ({ useEntityCommissionSummary: () => ({ data: null }) }));
+// The component reads `user.distributorId` to resolve its own name/footprint.
+vi.mock('../../contexts/AuthContext', () => ({ useAuth: () => ({ user: { distributorId: 'd-001' } }) }));
 vi.mock('../shared/MiniChart', () => ({ default: () => <div data-testid="mini-chart" /> }));
 
 const { default: DistributorOverview } = await import('./DistributorOverview');

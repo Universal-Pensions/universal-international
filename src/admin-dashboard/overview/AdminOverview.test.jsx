@@ -52,6 +52,9 @@ vi.mock('../../hooks/useEntity', () => ({
   useAllEntities: () => ({ data: [] }),
   useChildren: () => ({ data: [] }),
   useChildrenMetrics: () => ({ data: {} }),
+  // Employer-channel geo rollup — folded into `emptyRegions` so a region served
+  // only by employers is not reported as having no members.
+  useEmployerGeoRollup: () => ({ data: { byRegion: {}, byDistrict: {} } }),
   // Bounded server-side top-N (0077). Rows are display-ready incl. parentName.
   useTopEntities: (level) => ({
     data: level === 'branch'

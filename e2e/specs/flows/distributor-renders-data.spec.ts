@@ -92,20 +92,23 @@ test.describe('distributor → renders live data (UI + DB)', () => {
     console.log(`[metrics] subscribers=${subs} agents=${agents} branches=${branches}`);
   });
 
-  test('OverlayPanel subscriber tile reports a count above 29 000', async ({ page }) => {
-    // The total subscriber count surfaces in TWO places:
-    //   1. OverlayPanel `.countNum` (source: useDistributorMetrics, exact
-    //      COUNT(*) — ~30 003 at the time of the brief).
-    //   2. ViewSubscribers header subtitle (source: useAllEntities, which
-    //      hits PostgREST without an explicit `range()` and is capped at
-    //      1 000 by Supabase's default page size).
+  test('subscriber count agrees between the rollup tile and the Subscribers list', async ({ page }) => {
+    // REGRESSION GUARD (2026-07-27). The same total surfaces from two
+    // independent sources, and they silently disagreed in production:
+    //   1. OverlayPanel / Overview KPI — `get_entity_metrics_rollup`, which
+    //      counts through the agent tree (branches -> agents -> subscribers).
+    //   2. ViewSubscribers header — `useAllEntities('subscriber')`, a direct
+    //      PostgREST read governed only by RLS.
+    // Source (2) was unscoped for the distributor role, so it returned every
+    // subscriber on the platform (5,062) while (1) correctly returned the
+    // distributor's own network (5,004) — the 58-row delta being the
+    // employer-onboarded members that belong to no distributor.
+    // Migration 0081 scopes (2) via RLS; 0082 scopes (1)'s country level.
     //
-    // (2) is a known UI limitation — the slide-in panel paginates the
-    // table virtualizer, so `allSubscribersRaw.length` reflects what's
-    // loaded, not the global total. The audit "metrics live" assertion
-    // belongs to (1), which is where the >29k Phase 2 wiring actually
-    // surfaces. We open ViewSubscribers afterwards purely to verify it
-    // opens cleanly, not to read the count.
+    // Assert AGREEMENT rather than a hardcoded figure: the seed's totals move,
+    // but these two numbers must never diverge again. The old form of this test
+    // asserted `> 29_000` against a seed that has since shrunk to ~5k, so it
+    // could not have caught this.
     await page.goto('/dashboard');
     await expect(selectors.dashboardShell.overviewTab(page)).toBeVisible();
 
@@ -118,19 +121,33 @@ test.describe('distributor → renders live data (UI + DB)', () => {
     await expect(subscribersTile).toBeVisible({ timeout: 20_000 });
 
     const tileText = await subscribersTile.innerText();
-    const total = Number(tileText.replace(/[^\d]/g, '')) || 0;
-    expect(total, `subscriber tile parsed from ${JSON.stringify(tileText)}`).toBeGreaterThan(29_000);
+    const rollupTotal = Number(tileText.replace(/[^\d]/g, '')) || 0;
+    expect(rollupTotal, `rollup tile parsed from ${JSON.stringify(tileText)}`).toBeGreaterThan(0);
     // eslint-disable-next-line no-console
-    console.log(`[count] OverlayPanel Subscribers tile = ${total}`);
+    console.log(`[count] rollup Subscribers tile = ${rollupTotal}`);
 
     // ViewSubscribers panel must open without breakage.
     await selectors.dashboardShell.subscribersTab(page).click();
     await selectors.viewListPanel.viewExistingSubscribers(page).click();
     await expect(page.getByRole('heading', { name: /subscribers/i, level: 2 })).toBeVisible();
-    // The count line is present (even if it caps at 1 000 — that's the
-    // known UI pagination limit).
-    await expect(page.getByText(/Showing\s+[\d,\s.]+\s+of\s+[\d,\s.]+\s+subscribers/i).first()).toBeVisible({ timeout: 20_000 });
+
+    const showing = page.getByText(/Showing\s+[\d,\s.]+\s+of\s+[\d,\s.]+\s+subscribers/i).first();
+    await expect(showing).toBeVisible({ timeout: 20_000 });
     await expect(page.getByText(/Showing 0 of 0/i)).toHaveCount(0);
+
+    // THE assertion: the list's own total must equal the rollup's. `getAllAtLevel`
+    // pages past PostgREST's 1 000-row default, so this is a true total, not a
+    // first-page count.
+    const showingText = await showing.innerText();
+    const listTotal = Number((showingText.match(/of\s+([\d,\s.]+)\s+subscribers/i)?.[1] ?? '').replace(/[^\d]/g, '')) || 0;
+    // eslint-disable-next-line no-console
+    console.log(`[count] ViewSubscribers list total = ${listTotal}`);
+    expect(
+      listTotal,
+      `Subscribers list (${listTotal}) must equal the agent-tree rollup (${rollupTotal}). ` +
+        'A list total LARGER than the rollup means the distributor is reading subscribers ' +
+        'outside its own branch tree — employer-onboarded or another distributor\'s. See 0081/0082.',
+    ).toBe(rollupTotal);
   });
 
   test('drill country → region → district → branch → agent → subscriber via URL', async ({ page }) => {

@@ -1,6 +1,6 @@
 import { NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
-import { useEntityMetrics } from '../../hooks/useEntity';
+import { useEntityMetrics, useEntity } from '../../hooks/useEntity';
 import { formatNumber } from '../../utils/currency';
 import styles from './distributorMobile.module.css';
 
@@ -56,6 +56,9 @@ export default function DistributorHubMobile() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const { data: metrics = {} } = useEntityMetrics('country', 'ug');
+  // The operator's own name — "National Network" mislabels every distributor
+  // that isn't d-001.
+  const { data: distributor } = useEntity('distributor', user?.distributorId ?? 'd-001');
 
   const name = user?.name || 'Distributor Admin';
   const agents = metrics.totalAgents || 0;
@@ -74,7 +77,7 @@ export default function DistributorHubMobile() {
           <div className={styles.acctAv} aria-hidden="true">{initials(name)}</div>
           <div>
             <div className={styles.acctNm}>{name}</div>
-            <div className={styles.acctMt}>Distributor Admin · National Network</div>
+            <div className={styles.acctMt}>Distributor Admin · {distributor?.name || 'National Network'}</div>
           </div>
         </div>
         <div style={{ display: 'flex', gap: 8, marginTop: 14, flexWrap: 'wrap' }}>

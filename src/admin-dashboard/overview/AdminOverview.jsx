@@ -9,6 +9,7 @@ import {
   useChildren,
   useChildrenMetrics,
   useTopEntities,
+  useEmployerGeoRollup,
 } from '../../hooks/useEntity';
 import { formatUGX, formatNumber } from '../../utils/currency';
 import { EASE_OUT_EXPO as EASE } from '../../utils/motion';
@@ -170,9 +171,18 @@ export default function AdminOverview() {
   // branches, and coverageRate isn't rolled up at country level).
   const health = activeRate;
 
+  // `regionMetrics` counts ONLY the distributor channel (it walks the agent
+  // tree). Employer-onboarded members have no agent, so a region served purely
+  // by employers looked empty — the admin was reporting "Northern & Western
+  // have no members" while the employer rollup showed 11 and 7 there. This is
+  // the platform view, so a region is empty only when BOTH channels are zero.
+  const { data: employerGeo } = useEmployerGeoRollup();
   const emptyRegions = useMemo(
-    () => regions.filter((r) => (regionMetrics[r.id]?.totalSubscribers ?? 0) === 0),
-    [regions, regionMetrics],
+    () => regions.filter((r) => (
+      (regionMetrics[r.id]?.totalSubscribers ?? 0)
+      + (employerGeo?.byRegion?.[r.id]?.subscribers ?? 0)
+    ) === 0),
+    [regions, regionMetrics, employerGeo],
   );
   const inactiveBranches = useMemo(
     () => branchesRaw.filter((b) => b.status === 'inactive'),

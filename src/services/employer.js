@@ -802,7 +802,8 @@ export async function updateMemberCompensation(employerId, subscriberId, compens
  * @endpoint RPC set_employer_status(p_employer_id, p_status) — admin-only
  *   SECURITY DEFINER (0060). Flips employers.status; on 'inactive' detaches all
  *   members (employer_id -> NULL, is_active untouched → self-onboarded).
- *   Reactivate is a pure status flip (detached members do NOT re-tag).
+ *   Since 0080 the detach is JOURNALLED and reactivate REPLAYS it — every
+ *   detached member returns to the roster (rows re-tagged meanwhile are kept).
  * @param {string} id
  * @param {'active'|'inactive'} status
  * @returns {Promise<{id:string,status:string,membersDetached:number}>}

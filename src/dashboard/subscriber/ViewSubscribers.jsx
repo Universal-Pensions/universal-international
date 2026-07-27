@@ -4,6 +4,7 @@ import { useDebouncedValue } from '../../hooks/useDebouncedValue';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { useAllEntities } from '../../hooks/useEntity';
+import { useSubscriberTransactions } from '../../hooks/useSubscriber';
 import { EASE_OUT_EXPO } from '../../utils/motion';
 
 import { formatUGX, formatUGXShort, formatNumber } from '../../utils/currency';
@@ -31,9 +32,15 @@ function kycLabel(status) {
   return 'KYC Incomplete';
 }
 
-/** Compute a balance-like value from contributions minus withdrawals */
+/**
+ * The subscriber's balance. Prefer the real `total_balance` from
+ * `subscriber_balances` (now embedded on the list read); the
+ * contributions-minus-withdrawals form is only a fallback, and on the list path
+ * it always evaluated to 0 - 0 because those two aggregates live in
+ * `transactions`, not on a column any list query selects.
+ */
 function subscriberBalance(sub) {
-  return sub.totalContributions - sub.totalWithdrawals;
+  return sub.totalBalance || (sub.totalContributions - sub.totalWithdrawals);
 }
 
 /** Monthly average from the 12-month contribution history */
@@ -60,6 +67,23 @@ function SubscriberDetail({ subscriber, agentsMap, branchesMap }) {
   const status = subscriberStatus(subscriber);
   const balance = subscriberBalance(subscriber);
   const avg = monthlyAverage(subscriber);
+  // Lifetime contribution/withdrawal totals are aggregates over `transactions`;
+  // they are NOT columns on `subscribers` or `subscriber_balances`, so the list
+  // row carries 0 for both and this pane showed "Total Contributions UGX 0" for
+  // subscribers that plainly had a balance. One id-bounded read on open fixes
+  // it without touching the list query. RLS scopes it to the caller's network.
+  const { data: txns } = useSubscriberTransactions(subscriber.id);
+  const lifetime = useMemo(() => {
+    if (!Array.isArray(txns)) return null;
+    return txns.reduce((acc, t) => {
+      const amt = Math.abs(Number(t.amount) || 0);
+      if (t.type === 'contribution') acc.contributions += amt;
+      else if (t.type === 'withdrawal') acc.withdrawals += amt;
+      return acc;
+    }, { contributions: 0, withdrawals: 0 });
+  }, [txns]);
+  const totalContributions = lifetime?.contributions ?? subscriber.totalContributions;
+  const totalWithdrawals = lifetime?.withdrawals ?? subscriber.totalWithdrawals;
   const agent = agentsMap[subscriber.parentId];
   const branch = agent ? branchesMap[agent.parentId] : null;
 
@@ -99,7 +123,7 @@ function SubscriberDetail({ subscriber, agentsMap, branchesMap }) {
       {/* KPI cards */}
       <div className={styles.kpiRow}>
         <KpiCard icon={Icons.aum} label="Balance" value={formatUGX(balance)} />
-        <KpiCard icon={Icons.contributions} label="Total Contributions" value={formatUGX(subscriber.totalContributions)} />
+        <KpiCard icon={Icons.contributions} label="Total Contributions" value={formatUGX(totalContributions)} />
         <KpiCard icon={Icons.activeRate} label="Monthly Average" value={formatUGX(avg)} />
         <KpiCard
           icon={
@@ -151,11 +175,11 @@ function SubscriberDetail({ subscriber, agentsMap, branchesMap }) {
         <div className={styles.infoCard}>
           <div className={styles.infoRow}>
             <span className={styles.infoLabel}>Total Contributions</span>
-            <span className={`${styles.infoValue} ${styles.tabular}`}>{formatUGX(subscriber.totalContributions)}</span>
+            <span className={`${styles.infoValue} ${styles.tabular}`}>{formatUGX(totalContributions)}</span>
           </div>
           <div className={styles.infoRow}>
             <span className={styles.infoLabel}>Total Withdrawals</span>
-            <span className={`${styles.infoValue} ${styles.tabular}`}>{formatUGX(subscriber.totalWithdrawals)}</span>
+            <span className={`${styles.infoValue} ${styles.tabular}`}>{formatUGX(totalWithdrawals)}</span>
           </div>
           <div className={styles.infoRow}>
             <span className={styles.infoLabel}>Net Balance</span>
@@ -315,7 +339,10 @@ export default function ViewSubscribers({ fullPage = false }) {
   }
 
   let headerTitle = 'Subscribers';
-  let headerSubtitle = `${formatNumber(allSubscribersRaw.length)} subscribers across Uganda`;
+  // "across Uganda" was only true for the national distributor and the admin.
+  // The list is RLS-scoped to the caller, so a regional operator was told its
+  // 399-member book spanned the country. Describe the set, not the geography.
+  let headerSubtitle = `${formatNumber(allSubscribersRaw.length)} subscribers in your network`;
   if (view === 'detail' && selectedSubscriber) {
     headerTitle = selectedSubscriber.name;
     headerSubtitle = `Subscriber${selectedSubscriber.phone ? ` \u00B7 ${selectedSubscriber.phone}` : ''}`;

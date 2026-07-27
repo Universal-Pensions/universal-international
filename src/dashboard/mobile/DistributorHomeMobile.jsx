@@ -3,9 +3,12 @@ import { NavLink } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import {
   useEntityMetrics,
+  useAllEntities,
+  useAllEntitiesMap,
   useChildren,
   useChildrenMetrics,
   useTopEntities,
+  useEntity,
 } from '../../hooks/useEntity';
 import { useEntityCommissionSummary } from '../../hooks/useCommission';
 import { formatUGX, formatUGXShort, formatNumber } from '../../utils/currency';
@@ -90,7 +93,9 @@ export default function DistributorHomeMobile() {
   const m = metrics ?? {};
   const subs = m.totalSubscribers || 0;
   const activeRate = Math.round(m.activeRate || 0);
-  const active = Math.round((subs * (m.activeRate || 0)) / 100);
+  // Exact count from 0082; the multiply drifts because activeRate is a ROUNDed
+  // whole percent (see DistributorOverview.jsx for the same fix).
+  const active = m.activeSubscribers ?? Math.round((subs * (m.activeRate || 0)) / 100);
   const inactive = Math.max(0, subs - active);
   const agentCount = m.totalAgents || 0;
   const branchCount = m.totalBranches || 0;
@@ -105,9 +110,23 @@ export default function DistributorHomeMobile() {
   // same choice as DistributorOverview).
   const health = activeRate;
 
+  // Mirrors the desktop DistributorOverview: a coverage gap is only meaningful
+  // inside the operator's OWN footprint (regions where it owns branches).
+  // `branchesRaw` is RLS-scoped (0084); `regions` is un-scoped reference geography.
+  const { data: branchesRaw = [] } = useAllEntities('branch');
+  const { data: districtsMap = {} } = useAllEntitiesMap('district');
+  const { data: distributor } = useEntity('distributor', user?.distributorId ?? 'd-001');
+  const operatedRegions = useMemo(() => {
+    const ids = new Set(
+      branchesRaw.map((b) => districtsMap[b.parentId]?.parentId).filter(Boolean),
+    );
+    const hit = regions.filter((r) => ids.has(r.id));
+    return hit.length ? hit : regions;
+  }, [branchesRaw, districtsMap, regions]);
+
   const emptyRegions = useMemo(
-    () => regions.filter((r) => (regionMetrics[r.id]?.totalSubscribers ?? 0) === 0),
-    [regions, regionMetrics],
+    () => operatedRegions.filter((r) => (regionMetrics[r.id]?.totalSubscribers ?? 0) === 0),
+    [operatedRegions, regionMetrics],
   );
 
   if (isError) {
@@ -124,7 +143,7 @@ export default function DistributorHomeMobile() {
       {/* HERO — funds under management */}
       <section className={`${styles.card} ${styles.cardGrad}`} aria-label="Network overview">
         <div className={styles.greetLine}>
-          <b>Welcome back, {firstName}</b> · National Network
+          <b>Welcome back, {firstName}</b> · {distributor?.name || 'National Network'}
         </div>
         <div className={styles.frame}>
           <div className={styles.frameLbl}>Funds under management · total subscriber savings</div>

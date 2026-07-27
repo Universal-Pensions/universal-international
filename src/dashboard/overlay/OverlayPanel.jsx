@@ -623,7 +623,10 @@ export default function OverlayPanel({ onEmployerSelect, fullPage = false } = {}
   // geo rollup. The filter picks distributor / employer / sum. Contributions,
   // withdrawals, agents, branches, coverage have NO employer equivalent.
   const distSubs = metrics?.totalSubscribers || 0;
-  const distActiveCount = Math.round(distSubs * ((metrics?.activeRate || 0) / 100));
+  // 0082 returns the exact count; the multiply is a pre-0082 fallback that
+  // drifts because activeRate is a ROUNDed whole percent.
+  const distActiveCount = metrics?.activeSubscribers
+    ?? Math.round(distSubs * ((metrics?.activeRate || 0) / 100));
   const empSubs = empGeo?.subscribers ?? 0;
   const empActiveCount = empGeo?.active ?? 0;
   const empCount = empGeo?.employers ?? 0;
@@ -642,7 +645,8 @@ export default function OverlayPanel({ onEmployerSelect, fullPage = false } = {}
   // percentage (barSubs × barActiveRate%) double-rounds and can drift ±25.
   const barActiveCount = employerAware
     ? scopedActiveCount
-    : Math.round((metrics?.totalSubscribers || 0) * ((metrics?.activeRate || 0) / 100));
+    : (metrics?.activeSubscribers
+        ?? Math.round((metrics?.totalSubscribers || 0) * ((metrics?.activeRate || 0) / 100)));
   const barInactiveCount = Math.max(0, barSubs - barActiveCount);
   // Hide the contributions/withdrawals footer under the Employers scope (no
   // employer per-region contribution figures exist).

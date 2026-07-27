@@ -1,5 +1,8 @@
 import { useState, useMemo } from 'react';
-import { useAllEntities, useAllEntitiesMap, useChildren } from '../../../hooks/useEntity';
+import {
+  useAllEntities, useAllEntitiesMap, useChildren,
+  useAllEntitiesMetrics, useChildrenMetrics,
+} from '../../../hooks/useEntity';
 import { useBranchScope } from '../../../contexts/BranchScopeContext';
 import { formatNumber } from '../../../utils/currency';
 import ReportView from '../ReportView';
@@ -30,7 +33,16 @@ export default function SubscriberGrowth({ onBack }) {
     [regionsMap]
   );
 
-  const rows = isBranch ? branchAgents : districts;
+  // `useAllEntities`/`useChildren` return identity rows whose `metrics` is
+  // EMPTY_METRICS — the entity mappers do not carry aggregates. Every other
+  // report merges the rollup in; this one didn't, so every column rendered 0.
+  const { data: districtMetricsMap = {} } = useAllEntitiesMetrics('district');
+  const { data: agentMetricsMap = {} } = useChildrenMetrics('branch', branchId);
+  const rows = useMemo(() => {
+    const src = isBranch ? branchAgents : districts;
+    const metricsMap = isBranch ? agentMetricsMap : districtMetricsMap;
+    return src.map((r) => ({ ...r, metrics: metricsMap[r.id] ?? r.metrics }));
+  }, [isBranch, branchAgents, districts, agentMetricsMap, districtMetricsMap]);
 
   const enriched = useMemo(() => rows.map((row) => {
     const region = isBranch ? null : regionsMap[row.parentId];

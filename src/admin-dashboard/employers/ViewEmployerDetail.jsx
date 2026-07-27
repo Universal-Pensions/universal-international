@@ -252,7 +252,7 @@ export default function ViewEmployerDetail() {
             <h3 className={styles.confirmTitle}>{isInactive ? `Reactivate ${emp.name}?` : `Deactivate ${emp.name}?`}</h3>
             <p className={styles.confirmBody}>
               {isInactive
-                ? 'This reactivates the employer. Members that were reset to self-onboarded are not re-linked.'
+                ? 'This reactivates the employer and puts every member that was reset to self-onboarded back on its roster.'
                 : `This resets ${formatNumber(headcount)} member${headcount === 1 ? '' : 's'} to self-onboarded — they stay active and keep their pension, but leave this employer's roster. The employer can't log in or invite new members until reactivated.`}
             </p>
             <div className={styles.confirmActions}>

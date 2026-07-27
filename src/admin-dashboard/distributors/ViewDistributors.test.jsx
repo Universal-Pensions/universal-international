@@ -27,6 +27,9 @@ vi.mock('../../services/entities', () => ({
   getAllAtLevel: vi.fn(),
   getPlatformOverview: vi.fn(),
   setDistributorStatus: vi.fn(),
+  // Per-distributor counts (0088) — each row shows its own reach, not the
+  // platform's. Empty map is fine here; the rows fall back to 0.
+  getDistributorRollup: vi.fn(() => Promise.resolve({})),
 }));
 
 const entities = await import('../../services/entities');

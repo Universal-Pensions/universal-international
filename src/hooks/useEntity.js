@@ -441,6 +441,19 @@ export function usePlatformOverview() {
  *   fires this admin-only query.
  * @returns {import('@tanstack/react-query').UseQueryResult<Object>}
  */
+/**
+ * Admin: per-distributor branch/agent/subscriber/AUM counts (0088), keyed by
+ * distributor id. Bounded server-side aggregate — one row per distributor.
+ * @returns {import('@tanstack/react-query').UseQueryResult<Object>}
+ */
+export function useDistributorRollup() {
+  return useQuery({
+    queryKey: ['distributorRollup'],
+    queryFn: entities.getDistributorRollup,
+    staleTime: 5 * 60 * 1000,
+  });
+}
+
 export function useEmployerGeoRollup(enabled = true) {
   return useQuery({
     queryKey: ['employerGeoRollup'],
@@ -584,6 +597,10 @@ export function useSetDistributorStatus() {
       queryClient.invalidateQueries({ queryKey: ['entityMetrics'] });
       queryClient.invalidateQueries({ queryKey: ['allEntitiesMetrics'] });
       queryClient.invalidateQueries({ queryKey: ['entity-page'] });
+      // get_top_entities counts subscribers/AUM through subscribers.agent_id, so a
+      // status flip moves its numbers too. Its 15-min staleTime otherwise leaves the
+      // admin + distributor overviews showing pre-flip top-N rows (see 0080).
+      queryClient.invalidateQueries({ queryKey: ['topEntities'] });
     },
   });
 }

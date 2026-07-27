@@ -20,8 +20,11 @@ const ChevIcon = (
 function initials(name = '') {
   return name.split(' ').filter(Boolean).slice(0, 2).map((w) => w[0]).join('').toUpperCase() || '?';
 }
+// Prefer the real `total_balance` (embedded on the list read); the
+// contributions-minus-withdrawals form only ever yielded 0 here, because those
+// aggregates live in `transactions` and no list query selects them.
 function subBalance(s) {
-  return (s.totalContributions || 0) - (s.totalWithdrawals || 0);
+  return s.totalBalance || ((s.totalContributions || 0) - (s.totalWithdrawals || 0));
 }
 
 const STATUS_FILTERS = [

@@ -4,10 +4,13 @@ import { useDashboard } from '../../contexts/DashboardContext';
 import {
   useEntityMetrics,
   useAllEntities,
+  useAllEntitiesMap,
   useChildren,
   useChildrenMetrics,
   useTopEntities,
+  useEntity,
 } from '../../hooks/useEntity';
+import { useAuth } from '../../contexts/AuthContext';
 import { useEntityCommissionSummary } from '../../hooks/useCommission';
 import { formatUGX, formatNumber } from '../../utils/currency';
 import { EASE_OUT_EXPO as EASE } from '../../utils/motion';
@@ -120,6 +123,13 @@ export default function DistributorOverview() {
   const { data: branchesRaw = [] } = useAllEntities('branch');
   const { data: regions = [] } = useChildren('country', 'ug');
   const { data: regionMetrics = {} } = useChildrenMetrics('country', 'ug');
+  // This distributor's own identity + footprint. `regions` is reference
+  // geography (all 4, un-scoped); `branchesRaw` IS scoped to the caller (0084),
+  // so the branch list is what tells us where this operator actually trades.
+  const { user } = useAuth();
+  const distributorId = user?.distributorId ?? 'd-001';
+  const { data: distributor } = useEntity('distributor', distributorId);
+  const { data: districtsMap = {} } = useAllEntitiesMap('district');
   const { data: commission } = useEntityCommissionSummary('country', 'ug');
   // Bounded server-side top-N (0077) — replaces the old whole-collection pull +
   // client-side sort of every agent/branch just to render two 6-row tables. Rows
@@ -130,7 +140,10 @@ export default function DistributorOverview() {
   const m = metrics ?? {};
   const subs = m.totalSubscribers || 0;
   const activeRate = Math.round(m.activeRate || 0);
-  const active = Math.round((subs * (m.activeRate || 0)) / 100);
+  // `activeRate` is ROUNDed to a whole percent server-side, so reconstructing a
+  // headcount from it drifts (5,004 x 79% = 3,953 against a true 3,940). 0082
+  // returns the exact count; the multiply is only a pre-0082 fallback.
+  const active = m.activeSubscribers ?? Math.round((subs * (m.activeRate || 0)) / 100);
   const inactive = Math.max(0, subs - active);
   const agentCount = m.totalAgents || 0;
   const branchCount = m.totalBranches || 0;
@@ -149,9 +162,25 @@ export default function DistributorOverview() {
   // at country level).
   const health = activeRate;
 
+  // Regions this distributor actually OPERATES IN — i.e. where it owns at least
+  // one branch. d-001 is national (4); d-002 runs the Busoga cluster (1).
+  const operatedRegions = useMemo(() => {
+    const ids = new Set(
+      branchesRaw.map((b) => districtsMap[b.parentId]?.parentId).filter(Boolean),
+    );
+    const hit = regions.filter((r) => ids.has(r.id));
+    // Before the branch list resolves, fall back to all regions rather than
+    // flashing "0 regions".
+    return hit.length ? hit : regions;
+  }, [branchesRaw, districtsMap, regions]);
+
+  // A coverage gap only means something inside your OWN footprint. Filtering
+  // over all four regions told a regional operator it had "3 regions with no
+  // members" — Central, Northern and Western, which it has never traded in and
+  // cannot see. That reads as failure rather than as a deliberate territory.
   const emptyRegions = useMemo(
-    () => regions.filter((r) => (regionMetrics[r.id]?.totalSubscribers ?? 0) === 0),
-    [regions, regionMetrics],
+    () => operatedRegions.filter((r) => (regionMetrics[r.id]?.totalSubscribers ?? 0) === 0),
+    [operatedRegions, regionMetrics],
   );
   const inactiveBranches = useMemo(
     () => branchesRaw.filter((b) => b.status === 'inactive'),
@@ -172,18 +201,22 @@ export default function DistributorOverview() {
       <div className={styles.header}>
         <p className={styles.eyebrow}>Distributor · Network overview</p>
         <div className={styles.titleRow}>
-          <h1 className={styles.title}>National Network</h1>
+          {/* The operator's OWN name. Hardcoding "National Network" was fine
+              while d-001 was the only distributor; it now mislabels every other
+              operator's dashboard as the national one. */}
+          <h1 className={styles.title}>{distributor?.name || 'National Network'}</h1>
           <span className={styles.roleBadge}><span className={styles.roleDot} />Distributor Admin</span>
         </div>
         <p className={styles.sub}>
-          Universal Pensions — Uganda · {regions.length || 4} regions · {formatNumber(branchCount)} branches · updated today
+          Universal Pensions — Uganda · {formatNumber(operatedRegions.length)}{' '}
+          {operatedRegions.length === 1 ? 'region' : 'regions'} · {formatNumber(branchCount)} branches · updated today
         </p>
       </div>
 
       {/* ── KPI tiles ── */}
       <div className={styles.tiles}>
         <Tile tone="indigo" icon={IC.wallet} label="Funds under management" value={formatUGX(aum)}
-          sub={`Across ${regions.length || 4} regions · ${formatNumber(branchCount)} branches`} />
+          sub={`Across ${formatNumber(operatedRegions.length)} ${operatedRegions.length === 1 ? 'region' : 'regions'} · ${formatNumber(branchCount)} branches`} />
         <Tile tone="green" icon={IC.coins} label="Contributions" value={formatUGX(m.totalContributions || 0)}
           sub={monthChange != null
             ? <span className={styles.chg} data-dir={monthChange >= 0 ? 'up' : 'down'}>{monthChange >= 0 ? IC.up(11) : IC.down(11)}{Math.abs(monthChange)}% this month</span>

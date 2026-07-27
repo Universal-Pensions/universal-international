@@ -1,5 +1,8 @@
 import { useMemo } from 'react';
-import { useAllEntities, useAllEntitiesMap, useChildren } from '../../../hooks/useEntity';
+import {
+  useAllEntities, useAllEntitiesMap, useChildren,
+  useAllEntitiesMetrics, useChildrenMetrics,
+} from '../../../hooks/useEntity';
 import { useBranchScope } from '../../../contexts/BranchScopeContext';
 import { formatNumber } from '../../../utils/currency';
 import ReportView from '../ReportView';
@@ -12,7 +15,16 @@ export default function SubscriberDemographics({ onBack }) {
   const { data: branchAgents = [], isLoading: loadingAgents } = useChildren('branch', branchId);
   const { data: regionsMap = {} } = useAllEntitiesMap('region');
 
-  const rows = isBranch ? branchAgents : districts;
+  // Identity rows carry EMPTY_METRICS; the aggregates come from the rollup.
+  // Without this merge every gender/age/KYC column rendered 0 (see the twin fix
+  // in SubscriberGrowth.jsx).
+  const { data: districtMetricsMap = {} } = useAllEntitiesMetrics('district');
+  const { data: agentMetricsMap = {} } = useChildrenMetrics('branch', branchId);
+  const rows = useMemo(() => {
+    const src = isBranch ? branchAgents : districts;
+    const metricsMap = isBranch ? agentMetricsMap : districtMetricsMap;
+    return src.map((r) => ({ ...r, metrics: metricsMap[r.id] ?? r.metrics }));
+  }, [isBranch, branchAgents, districts, agentMetricsMap, districtMetricsMap]);
 
   const enriched = useMemo(() => rows.map((row) => {
     const region = isBranch ? null : regionsMap[row.parentId];

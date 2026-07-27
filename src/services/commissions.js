@@ -121,34 +121,38 @@ function _rowToBranchDues(row) {
  * ═══════════════════════════════════════════════════════════════════════════ */
 
 /**
- * @endpoint GET commission_config.rate
+ * @endpoint RPC get_commission_rate() — the CALLER'S OWN effective rate (0089).
+ * @description Rates are per-distributor since 0089. This used to read
+ *   `commission_config` directly at `id='default'`, which now returns the
+ *   PLATFORM FALLBACK rather than the signed-in operator's rate — i.e. it would
+ *   silently show the wrong number to any distributor that has set its own.
+ *   The RPC resolves `distributorId` → that operator's row, falling back to the
+ *   platform row for roles without the claim (admin, branch, agent).
  * @cache ['commissionRate']
  */
 export async function getCommissionRate() {
   if (!IS_SUPABASE_ENABLED) return _legacy_mock_getCommissionRate();
-  const { data, error } = await supabase
-    .from('commission_config')
-    .select('rate')
-    .eq('id', 'default')
-    .maybeSingle();
+  const { data, error } = await supabase.rpc('get_commission_rate');
   if (error) throw _rpcError(error, 'getCommissionRate');
-  return data?.rate != null ? Number(data.rate) : 0;
+  return data != null ? Number(data) : 0;
 }
 
 /**
  * @endpoint RPC set_commission_rate(p_rate numeric)
- * @scope Distributor only.
+ * @scope Distributor (its OWN rate) or admin (the platform fallback).
  * @description Routes the commission-rate write through a SECURITY DEFINER RPC
- *   (migration 0055) that gates app_role='distributor' and range-checks the rate
- *   (0 ≤ rate ≤ 1,000,000 UGX) server-side. Replaces the prior unvalidated direct
+ *   (migration 0055) that range-checks the rate (0 ≤ rate ≤ 1,000,000 UGX)
+ *   server-side. Replaces the prior unvalidated direct
  *   `commission_config.update({rate})` client write (audit §4a F-7) — a §7.3
  *   money-config direct-write with no bound check and no audit. The RPC stamps
  *   last_updated_by/updated_at and returns the persisted rate, so the hook
  *   contract is unchanged.
  *
- *   DORMANT until migration 0055 is applied at the G-DB gate: a live call before
- *   then returns PGRST202/404 (function-not-found). The mock branch below is
- *   unaffected.
+ *   0089: rates are PER-DISTRIBUTOR. The RPC upserts the caller's own row, so a
+ *   distributor can no longer change the rate another operator's commissions are
+ *   generated at (the direct-UPDATE RLS grant that allowed that is dropped).
+ *   Changing a rate is never retroactive — the amount is stamped onto the
+ *   `commissions` row when it is generated on first contribution.
  */
 export async function setCommissionRate(amount) {
   if (!IS_SUPABASE_ENABLED) return _legacy_mock_setCommissionRate(amount);

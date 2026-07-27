@@ -36,6 +36,9 @@ const EMPTY_AGE_DISTRIBUTION = Object.freeze({
 
 const EMPTY_METRICS = Object.freeze({
   totalSubscribers: 0,
+  // Exact active headcount (0082). Distinct from `activeRate`, which is a
+  // ROUNDed whole percent and must never be multiplied back into a count.
+  activeSubscribers: 0,
   totalAgents: 0,
   totalBranches: 0,
   totalContributions: 0,
@@ -238,10 +241,22 @@ const LEVEL_MAPPERS = {
 const LEVEL_LIST_COLUMNS = {
   region: 'id, name, parent_id, center_lng, center_lat',
   district: 'id, name, region_id, center_lng, center_lat, active',
+  // `subscriber_balances(total_balance)` is an embed, not a column on
+  // `subscribers` — without it every list row rendered UGX 0 (mapSubscriber
+  // defaults the money fields), which read as "the balances are broken".
+  // ONLY `total_balance` may be embedded: `subscriber_balances` has exactly
+  // (subscriber_id, retirement_balance, emergency_balance, total_balance,
+  // units, updated_at) — there is NO total_contributions / total_withdrawals
+  // column, and naming one makes PostgREST reject the whole request with 400.
+  // Per-subscriber contribution/withdrawal totals exist only as aggregates over
+  // `transactions` and need a bounded RPC; they stay 0 on the list path.
+  // The embed is RLS-governed independently, and 0081 scopes
+  // `subscriber_balances` to the same set as `subscribers`, so the two agree.
   subscriber:
     'id, name, phone, email, gender, age, dob, nin, occupation, agent_id, ' +
     'district_id, kyc_status, is_active, registered_date, products_held, ' +
-    'contribution_history, current_unit_value, unit_value_as_of',
+    'contribution_history, current_unit_value, unit_value_as_of, ' +
+    'subscriber_balances(total_balance)',
   distributor:
     'id, name, parent_id, manager_name, manager_phone, manager_email, status, created_at',
 };
@@ -460,11 +475,20 @@ export async function getAllAtLevel(level) {
  * @param {string} [opts.sortKey='balance'] - 'balance' | 'contributions' | 'name' | 'registration'
  * @param {AbortSignal} [opts.signal]
  * @returns {Promise<{rows: Object[], total: number, hasMore: boolean}>}
- * @description Server-side filter + sort + paginate. For subscribers, embeds
- *   the balance row via PostgREST `subscriber_balances!left(...)` so the
- *   `balance` / `contributions` sort columns are real DB columns. Closes
- *   AUDIT-1-7 + AUDIT-2-1 — replaces the 30-page client-fanout with one
- *   server-side page-sized read.
+ * @description Server-side filter + sort + paginate. For subscribers, attaches
+ *   the balance row in a second id-bounded query so the `balance` sort column is
+ *   a real DB column. Closes AUDIT-1-7 + AUDIT-2-1 — replaces the 30-page
+ *   client-fanout with one server-side page-sized read.
+ *
+ * ⚠️ CURRENTLY UNUSED. Its only caller is `useInfiniteEntityList`
+ *   (src/hooks/useEntity.js), which itself has no consumers — the subscriber
+ *   list renders from `useAllEntities` + a client-side virtualizer instead.
+ *   Kept because it is the correct shape if the list ever outgrows that, but
+ *   note it has never run against the live schema: until now its balance query
+ *   named `total_contributions` / `total_withdrawals`, which do not exist on
+ *   `subscriber_balances`, so the first real call would have 400'd. Sort keys
+ *   'contributions' and the `contributions` field are therefore NOT backed by
+ *   real data on this path.
  * @cache ['entity-page', level, opts]
  */
 export async function getEntityPage(level, opts = {}) {
@@ -546,9 +570,16 @@ export async function getEntityPage(level, opts = {}) {
   let balancesByEntity = null;
   if (level === 'subscriber' && data && data.length > 0) {
     const ids = data.map((r) => r.id);
+    // `subscriber_balances` has exactly (subscriber_id, retirement_balance,
+    // emergency_balance, total_balance, units, updated_at). This used to also
+    // name total_contributions / total_withdrawals, which do not exist — the
+    // request would have 400'd and `throw balErr` below would have surfaced it.
+    // It never fired only because this whole code path has no callers (see the
+    // note on getEntityPage). Per-subscriber contribution/withdrawal totals are
+    // aggregates over `transactions` and need their own bounded RPC.
     const { data: balRows, error: balErr } = await supabase
       .from('subscriber_balances')
-      .select('subscriber_id, total_balance, total_contributions, total_withdrawals')
+      .select('subscriber_id, total_balance')
       .in('subscriber_id', ids);
     if (balErr) throw balErr;
     balancesByEntity = Object.fromEntries(
@@ -559,12 +590,7 @@ export async function getEntityPage(level, opts = {}) {
   const rows = (data ?? []).map((row) => {
     if (level === 'subscriber' && balancesByEntity) {
       const b = balancesByEntity[row.id];
-      const enriched = {
-        ...row,
-        total_balance: b?.total_balance ?? 0,
-        total_contributions: b?.total_contributions ?? 0,
-        total_withdrawals: b?.total_withdrawals ?? 0,
-      };
+      const enriched = { ...row, total_balance: b?.total_balance ?? 0 };
       const mapped = mapper(enriched);
       cacheEntity(level, mapped);
       return mapped;
@@ -768,6 +794,36 @@ const TOP_ENTITY_SORT_FIELD = { aum: 'aum', contributions: 'totalContributions',
  *   Mock fallback mirrors the old client-side compute over the seeded maps.
  * @cache ['topEntities', level, sortKey, limit]
  */
+/**
+ * @endpoint RPC get_distributor_rollup() — admin-only (0088).
+ * @description Per-distributor branch/agent/subscriber/AUM counts, aggregated
+ *   server-side. Bounded to one row per distributor, so it replaces what would
+ *   otherwise be a ~2k-agent + ~5k-subscriber client fan-out just to length the
+ *   collections (same reasoning as `get_top_entities`).
+ *   Before 0060 there was no ownership column and ViewDistributors repeated
+ *   PLATFORM totals under every row; with two real tenants that is misleading.
+ * @returns {Promise<Record<string, {branches:number, agents:number,
+ *   subscribers:number, activeSubscribers:number, aum:number}>>} keyed by distributor id
+ * @cache ['distributorRollup']
+ * @scope Admin only — the RPC returns no rows for any other app_role.
+ */
+export async function getDistributorRollup() {
+  if (!IS_SUPABASE_ENABLED) return {};
+  const { data, error } = await supabase.rpc('get_distributor_rollup');
+  if (error) {
+    console.warn('[getDistributorRollup] RPC failed', error);
+    throw error;
+  }
+  // PostgREST returns bigint/numeric as strings — coerce.
+  return Object.fromEntries((data ?? []).map((r) => [r.distributor_id, {
+    branches: Number(r.branches) || 0,
+    agents: Number(r.agents) || 0,
+    subscribers: Number(r.subscribers) || 0,
+    activeSubscribers: Number(r.active_subscribers) || 0,
+    aum: Number(r.aum) || 0,
+  }]));
+}
+
 export async function getTopEntities(level, sortKey, limit = 6) {
   const effLimit = Math.min(Math.max(limit || 6, 1), 50);
   const effSort = sortKey || (level === 'agent' ? 'contributions' : 'aum');
@@ -891,6 +947,13 @@ export async function createBranch(payload) {
     manager_phone: payload.adminPhone ?? payload.managerPhone ?? null,
     manager_email: payload.adminEmail ?? payload.managerEmail ?? null,
     status: payload.status ?? 'active',
+    // 0081 scopes EVERY distributor read through branches.distributor_id, so a
+    // NULL here would hide this branch — and every agent and subscriber under
+    // it — from the distributor that just created it. Omitted (or null) falls
+    // through to 0081's `branches_default_distributor` BEFORE INSERT trigger,
+    // which stamps the caller's own `distributorId` JWT claim; an admin may
+    // pass one explicitly to create on another distributor's behalf.
+    ...(payload.distributorId ? { distributor_id: payload.distributorId } : {}),
   };
   const { data, error } = await supabase
     .from('branches')
@@ -1067,7 +1130,9 @@ export async function createDistributor(payload) {
  *   SECURITY DEFINER (0060). Flips the distributor + its branches + its agents
  *   between 'active'/'inactive'; on 'inactive' also detaches every subscriber
  *   under its agent tree (agent_id -> NULL, is_active untouched → self-onboarded).
- *   Reactivate is a pure status flip (detached subscribers do NOT re-tag).
+ *   Since 0080 the detach is JOURNALLED and reactivate REPLAYS it: branch/agent
+ *   statuses and every detached agent_id are restored to their pre-deactivate
+ *   values (rows re-onboarded during the inactive window are left alone).
  * @param {string} id
  * @param {'active'|'inactive'} status
  * @returns {Promise<{id:string,status:string,branchesUpdated:number,agentsUpdated:number,subscribersDetached:number}>}

@@ -587,7 +587,14 @@ export default function ViewBranches({ readOnly = false, fullPage = false }) {
   }
 
   let headerTitle = 'Existing Branches';
-  let headerSubtitle = `${allBranches.length} branches across Uganda`;
+  // Derived from the (RLS-scoped) branch list rather than asserting "Uganda":
+  // a regional distributor's 27 branches sit in one region, not the country.
+  const branchRegionCount = new Set(
+    allBranches.map((b) => DISTRICTS_MAP[b.parentId]?.parentId).filter(Boolean),
+  ).size;
+  let headerSubtitle = branchRegionCount
+    ? `${allBranches.length} branches across ${branchRegionCount} ${branchRegionCount === 1 ? 'region' : 'regions'}`
+    : `${allBranches.length} branches`;
   if (view === 'detail' && selectedBranch) {
     headerTitle = selectedBranch.name;
     headerSubtitle = `${districtName(selectedBranch, DISTRICTS_MAP)}, ${regionName(selectedBranch, DISTRICTS_MAP, REGIONS_MAP)} Region`;
