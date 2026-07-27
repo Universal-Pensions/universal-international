@@ -324,3 +324,30 @@ export const BRANCH_DEFS = [
   { id: 'b-she-313', name: 'Sheema Central', districtId: 'd-sheema', center: [30.3749, -0.5789] },
   { id: 'b-she-314', name: 'Sheema Town', districtId: 'd-sheema', center: [30.3538, -0.6116] },
 ];
+
+// ─── Distributor ownership ───────────────────────────────────────────────────
+// `branches.distributor_id` (migration 0060) is the ONLY ownership edge in the
+// platform: every distributor-scoped read resolves
+// `branches.distributor_id -> agents.branch_id -> subscribers.agent_id`
+// (see migration 0081 and `public.distributor_branch_ids()`).
+//
+// The Busoga sub-region is operated by the SECONDARY distributor `d-002`;
+// everything else belongs to the national distributor `d-001`. This is what
+// makes multi-tenant isolation demonstrable — before it, d-002 owned nothing,
+// so a scoped dashboard would have rendered entirely empty.
+//
+// Keep this list here (not as a per-branch field) so the split stays legible
+// and survives a reseed: `scripts/seed-supabase.mjs` derives every branch's
+// `distributor_id` from it.
+export const D002_DISTRICT_IDS = new Set([
+  'd-jinja', 'd-kamuli', 'd-iganga', 'd-bugiri', 'd-mayuge', 'd-luuka',
+  'd-buyende', 'd-kaliro', 'd-namutumba', 'd-namayingo', 'd-bugweri',
+]);
+
+/**
+ * @param {string} districtId
+ * @returns {'d-001'|'d-002'} the distributor that owns branches in this district
+ */
+export function distributorIdForDistrict(districtId) {
+  return D002_DISTRICT_IDS.has(districtId) ? 'd-002' : 'd-001';
+}

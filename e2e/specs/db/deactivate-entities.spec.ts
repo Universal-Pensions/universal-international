@@ -221,7 +221,7 @@ test.describe('deactivate-entities enforcement (0060 + 0061)', () => {
     expect(okDetach, 'detach (employer_id → NULL) must be allowed').toBeNull();
   });
 
-  test('set_employer_status: deactivate flips status + detaches members; reactivate is a pure flip', async () => {
+  test('set_employer_status: deactivate flips status + detaches members; reactivate re-links them', async () => {
     // Sanity: the active throwaway employer holds its member.
     const { count: before, error: bErr } = await supabaseAdmin
       .from('subscribers')
@@ -251,7 +251,7 @@ test.describe('deactivate-entities enforcement (0060 + 0061)', () => {
     expect(aErr, 'post-deactivate member count').toBeNull();
     expect(after ?? 0, 'all members must detach on employer deactivate').toBe(0);
 
-    // Reactivate is a pure status flip — detached members do NOT re-link.
+    // Reactivate flips status back AND replays the detach journal (0080).
     const react = await adminRpc.rpc('set_employer_status', {
       p_employer_id: TST.employerActive, p_status: 'active',
     });
@@ -261,11 +261,15 @@ test.describe('deactivate-entities enforcement (0060 + 0061)', () => {
       .from('employers').select('status').eq('id', TST.employerActive).maybeSingle();
     expect((empRow2 as { status: string } | null)?.status).toBe('active');
 
+    // 0080: reactivate REPLAYS the detach journal, so every detached member is
+    // re-linked — the deactivate→reactivate pair is a round trip, not a one-way
+    // door. (Pre-0080 this asserted 0.) See 0080_reversible_entity_detach.sql.
     const { count: afterReact } = await supabaseAdmin
       .from('subscribers')
       .select('*', { count: 'exact', head: true })
       .eq('employer_id', TST.employerActive);
-    expect(afterReact ?? 0, 'reactivate must NOT re-link the detached member').toBe(0);
+    expect(afterReact ?? 0, 'reactivate must re-link every detached member (0080 journal replay)')
+      .toBe(before ?? 0);
   });
 
   test('set_distributor_status: deactivate flips distributor + branches + agents and detaches the agent tree', async () => {
@@ -310,7 +314,7 @@ test.describe('deactivate-entities enforcement (0060 + 0061)', () => {
       .from('subscribers').select('is_active').eq('id', TST.treeSub).maybeSingle();
     expect((detached as { is_active: boolean } | null)?.is_active, 'detached subscriber stays active').toBe(true);
 
-    // Reactivate flips status back without re-tagging the detached subscriber.
+    // Reactivate flips status back AND replays the detach journal (0080).
     const react = await adminRpc.rpc('set_distributor_status', {
       p_distributor_id: TST.distributor, p_status: 'active',
     });
@@ -320,10 +324,13 @@ test.describe('deactivate-entities enforcement (0060 + 0061)', () => {
       .from('distributors').select('status').eq('id', TST.distributor).maybeSingle();
     expect((distRow2 as { status: string } | null)?.status, 'distributor reactivated').toBe('active');
 
+    // 0080: the journal replay re-tags the whole detached agent tree.
+    // (Pre-0080 this asserted 0 — one-way detach.)
     const { count: subsReact } = await supabaseAdmin
       .from('subscribers')
       .select('*', { count: 'exact', head: true })
       .eq('agent_id', TST.agent);
-    expect(subsReact ?? 0, 'reactivate must NOT re-tag the detached subscriber').toBe(0);
+    expect(subsReact ?? 0, 'reactivate must re-tag the detached subscriber (0080 journal replay)')
+      .toBe(subsBefore ?? 0);
   });
 });

@@ -241,4 +241,33 @@ test.describe('DB invariants (ilkhfnoyxlxwqadebnkp)', () => {
       ).toBe(false);
     }
   });
+
+  // ── Attribution integrity (regression guard for the 2026-07-27 mass detach) ──
+  // On 2026-07-27 a single `set_distributor_status('d-001','inactive')` nulled
+  // `subscribers.agent_id` for 5,003 rows; reactivate never restored them, so every
+  // per-region/branch/agent subscriber + AUM number collapsed while country-level
+  // totals stayed right. Nothing in the suite noticed.
+  //
+  // We deliberately do NOT assert `agent_id IS NOT NULL` — a NULL agent_id is a
+  // LEGITIMATE state (employer-channel members, self-onboarded savers, and the
+  // in-flight detach that `deactivate-entities.spec.ts` creates on its own
+  // throwaway ids under `fullyParallel`). What is never legitimate is a subscriber
+  // that has NO agent and NO employer while its own commission rows still name the
+  // agent that sold it — that is precisely the orphaned-attribution signature.
+  test('no seeded subscriber is orphaned from an agent that still bills for it', async () => {
+    const { data: orphans, error } = await supabaseAdmin
+      .from('subscribers')
+      .select('id, agent_id, employer_id, commissions!inner(agent_id)')
+      .is('agent_id', null)
+      .is('employer_id', null)
+      .like('id', 's-%')
+      .limit(25);
+
+    expect(error, `orphaned-attribution probe: ${error?.message}`).toBeNull();
+    expect(
+      orphans?.length ?? 0,
+      `subscribers with no agent + no employer but live commission rows naming an agent — ` +
+        `mass-detach signature. Sample: ${JSON.stringify(orphans?.slice(0, 5) ?? [])}`,
+    ).toBe(0);
+  });
 });

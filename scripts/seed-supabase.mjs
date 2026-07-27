@@ -36,6 +36,9 @@ import bcrypt from 'bcryptjs';
 register('./seed-loader.mjs', import.meta.url);
 
 const mockData = await import('../src/data/mockData.js');
+// `distributorIdForDistrict` maps each branch to its owning distributor — the
+// ownership edge migration 0081's RLS resolves through. See the branches insert.
+const branchDefs = await import('../src/data/mockBranchDefs.js');
 const {
   REGIONS,
   BRANCHES,
@@ -377,7 +380,15 @@ async function main() {
         users,
         settlement_uploads,
         contribution_run_uploads,
-        subscriber_signup_uploads
+        subscriber_signup_uploads,
+        -- 0079 added access_requests; the seed was never updated, so a reseed
+        -- left approved requests pointing at distributors/employers and users
+        -- rows that no longer exist. (0080's two detach journals are NOT listed
+        -- because they FK to subscribers and the CASCADE above already clears
+        -- them — a reseed has no prior state worth replaying.)
+        -- NOTE: no backticks in this block. It lives inside a JS template
+        -- literal, so a backtick terminates the string and breaks the file.
+        access_requests
       RESTART IDENTITY CASCADE
     `);
 
@@ -462,11 +473,18 @@ async function main() {
         branches.map((b) => b.rank ?? null),
         branches.map((b) => b.districtRank ?? null),
         branches.map((b) => b.districtBranchCount ?? null),
-        // Migration 0060: the entire 316-branch agent tree belongs to the
-        // singleton national distributor d-001 (d-002 owns nothing). Without
-        // this column the admin "Deactivate distributor" cascade no-ops — the
-        // 0060 backfill set it on live, but a reseed previously dropped it.
-        branches.map((b) => b.distributorId ?? 'd-001'),
+        // Migration 0060 added this column; migration 0081 made it the single
+        // ownership edge every distributor-scoped read resolves through. It is
+        // NOT optional: a NULL here hides the branch, its agents and their
+        // subscribers from their own distributor's dashboard.
+        // The Busoga districts belong to the secondary distributor d-002, the
+        // rest to the national d-001 — see `D002_DISTRICT_IDS` in mockBranchDefs.
+        // NOTE: read the district from `parentId`, NOT `districtId`. mockData's
+        // BRANCHES builder maps the def's `districtId` onto `parentId` and does
+        // not keep the original key, so `b.districtId` is undefined here — which
+        // silently sent every branch to the d-001 fallback and erased the split.
+        branches.map((b) => b.distributorId
+          ?? branchDefs.distributorIdForDistrict(b.districtId ?? b.parentId)),
       ],
       'id'
     );
@@ -1041,7 +1059,11 @@ async function main() {
       'id'
     );
 
-    // ── commission_config (singleton) ──────────────────────────────────────
+    // ── commission_config (platform fallback + one row per distributor) ────
+    // 0089 made the rate PER-DISTRIBUTOR. The `id='default'` row is retained as
+    // the platform fallback; each distributor then gets its own row so a reseed
+    // reproduces the shape 0089 created rather than leaving every operator on
+    // the fallback. The relaxed CHECK requires `id = 'cfg-' || distributor_id`.
     console.log('• commission_config…');
     await client.query(
       `INSERT INTO commission_config (id, rate, cadence, next_run_date, last_updated_by)
@@ -1062,6 +1084,10 @@ async function main() {
         'seed',
       ]
     );
+
+    // NOTE: the per-distributor rows (0089) are inserted AFTER the
+    // `distributors` block below — `distributors` is seeded later in this
+    // script, so selecting from it here silently matches zero rows.
 
     // ── commissions ────────────────────────────────────────────────────────
     // Phase 1 commission-flow simplification (migration 0029): the run /
@@ -1309,6 +1335,27 @@ async function main() {
         distributorRows.map(() => 'active'),
       ],
       'id'
+    );
+
+    // Per-distributor commission_config rows (0089). MUST run here, after the
+    // distributors exist — the FK and the relaxed CHECK both require a real
+    // distributor id. Every operator starts on the platform rate and can then
+    // change its own without affecting the others.
+    console.log('• commission_config (per-distributor)…');
+    await client.query(
+      `INSERT INTO commission_config (id, distributor_id, rate, cadence, next_run_date, last_updated_by)
+       SELECT 'cfg-' || d.id, d.id, $1, $2, $3, 'seed'
+         FROM distributors d
+       ON CONFLICT (id) DO UPDATE
+         SET rate = EXCLUDED.rate,
+             cadence = EXCLUDED.cadence,
+             last_updated_by = EXCLUDED.last_updated_by,
+             updated_at = now()`,
+      [
+        COMMISSION_CONFIG.ratePerSubscriber,
+        COMMISSION_CONFIG.cadence ?? 'monthly-first',
+        COMMISSION_CONFIG.nextRunDate ?? null,
+      ]
     );
 
     // ── employers ──────────────────────────────────────────────────────────

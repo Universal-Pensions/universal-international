@@ -46,10 +46,27 @@ Sign-in flow: Role Select → (Distributor Sub-select if applicable) → Phone E
 | Top Bar | Full | Search, Filters (placeholder), Download (placeholder) |
 
 ### Data Scope
-- **Visibility:** All entities across the entire network (country-wide)
+- **Visibility (since `0081`): its OWN network only.** The ownership edge is
+  `branches.distributor_id` → `agents.branch_id` → `subscribers.agent_id`. A subscriber with
+  `agent_id IS NULL` — employer-onboarded, or a direct signup — belongs to **no** distributor and is
+  visible only to its employer, itself, and the super-admin.
+  Enforced in RLS via three `SECURITY DEFINER` helpers (`distributor_branch_ids()`,
+  `distributor_agent_ids()`, `distributor_subscriber_ids()`) across 12 tables, and in the
+  `SECURITY DEFINER` rollup RPC by `0082` (RLS cannot reach a DEFINER function).
+  Fails **closed**: a JWT without a `distributorId` claim matches nothing.
+  > Before `0081` every `*_select_distributor` policy was a bare `app_role = 'distributor'` with no
+  > ownership predicate, so any distributor could read the whole platform. That is why the Subscribers
+  > page showed 5,062 while the Overview KPI (which always walked the agent tree) showed 5,004.
+  **Still platform-wide, pending `0084`:** `agents` / `branches` (single shared
+  `*_select_authenticated` policy — needs a RESTRICTIVE policy, not an added permissive one) and the
+  region/district/branch/agent drill-down levels of `get_entity_metrics_rollup`.
 - **Drill-down:** Country → Distributor → Region → District → Branch → Agent → Subscriber
-- **Commission scope:** All commissions across all branches/agents
-- **Distributor row.** The `distributors` table (national singleton `d-001`, added in migration `0016`) is **read-visible to every authenticated role** via `distributors_select USING (true)` — needed so branch / agent / subscriber surfaces can render "Operated by Universal Pensions Uganda" attribution without leaking other tables. Only the distributor role can update, and only against its own row, via `distributors_update_self USING (auth.jwt() ->> 'distributorId' = id)`. See `BACKEND.md §8` for the policy text and `docs/data-model.md` for the entity definition.
+- **Commission scope:** commissions whose `branch_id` is in the distributor's own branches
+- **Distributor row.** `distributors` was readable by every authenticated role via
+  `distributors_select`; `0081` split that into `distributors_select_admin` (full catalog, for the
+  admin's ViewDistributors) and `distributors_select_self` (own row only), which is all Settings reads.
+  `distributors_update_self USING (auth.jwt() ->> 'distributorId' = id)` is unchanged. See
+  `BACKEND.md §8` and `docs/data-model.md`.
 
 ### Actions (CRUD)
 | Action | Permission | Scope |
@@ -305,8 +322,9 @@ The agent is now a pure observer of commissions. Lines auto-generate as `due` on
 | Create distributor | Create | `create_distributor` RPC (admin-gated SECURITY DEFINER, `0049`) |
 | Create employer | Create | `create_employer` RPC (admin-gated SECURITY DEFINER, `0049`) |
 | View all-employers rollup | Read | `get_all_employers_metrics` RPC (admin-gated, `0049`; re-emitted by `0060` to add each employer's `status`) |
-| Deactivate / reactivate a distributor | Update | `set_distributor_status` RPC (admin-gated SECURITY DEFINER, `0060`) — flips the distributor + its branches + its agents between `active`/`inactive`; on deactivate also detaches every subscriber under the distributor's agent tree (`agent_id → NULL`; `is_active` untouched) |
-| Deactivate / reactivate an employer | Update | `set_employer_status` RPC (admin-gated SECURITY DEFINER, `0060`) — flips `employers.status`; on deactivate detaches every member (`employer_id → NULL`) |
+| Set the commission rate | Update | `set_commission_rate` RPC. **Per-distributor since `0089`** — a distributor upserts its OWN `commission_config` row (`distributor_id`); the admin edits the platform fallback (`id='default'`), used by any distributor without a row. The direct-UPDATE RLS grant is dropped, so no operator can change another's rate. Never retroactive: the amount is stamped onto the `commissions` row when it is generated on first contribution |
+| Deactivate / reactivate a distributor | Update | `set_distributor_status` RPC (admin-gated SECURITY DEFINER, `0060`; made reversible by `0080`) — flips the distributor + its branches + its agents between `active`/`inactive`; on deactivate also detaches every subscriber under the distributor's agent tree (`agent_id → NULL`; `is_active` untouched). **Reversible since `0080`:** the detach and the prior branch/agent statuses are journalled, and reactivate replays them |
+| Deactivate / reactivate an employer | Update | `set_employer_status` RPC (admin-gated SECURITY DEFINER, `0060`; made reversible by `0080`) — flips `employers.status`; on deactivate detaches every member (`employer_id → NULL`), journalled so reactivate restores the roster |
 | Filter platform overview by channel | Read | All / Distributors / Employers scope filter (`get_platform_overview` `byChannel`, `0058`; `get_employer_activity_rollup`, `0059`; `get_employer_geo_rollup`, `0058`) |
 | Reused distributor actions (create branch, settle commissions, etc.) | As distributor | Inherited from the reused panels |
 

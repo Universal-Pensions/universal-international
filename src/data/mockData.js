@@ -236,12 +236,74 @@ function generateSubscribers() {
   const subs = {};
   const agentIds = Object.keys(AGENTS);
   const TARGET_SUBS = 5000;
-  const subsPerAgent = Math.ceil(TARGET_SUBS / agentIds.length);
   let subCounter = 0;
 
+  // ── Book allocation ────────────────────────────────────────────────────────
+  // PREVIOUSLY: `count = randInt(Math.max(5, subsPerAgent - 5), subsPerAgent + 5)`.
+  // With 2,043 agents, subsPerAgent = ceil(5000/2043) = 3, so the floor
+  // `Math.max(5, -2)` forced EVERY agent to 5–8 subscribers. The 5,000 budget
+  // was exhausted after ~778 agents and the `subCounter < TARGET_SUBS` guard
+  // silently stopped the loop. Agents are keyed in district order, so those 778
+  // were all Central + Eastern — leaving Northern and Western with ZERO
+  // subscribers, 1,265 agents with an empty book, and the demo personas
+  // a-042 ("Northern region agent") / a-118 ("Western region agent") showing
+  // nothing at all.
+  //
+  // NOW: allocate the same 5,000 across the whole network, weighted by region
+  // and with a realistic long tail. Total is unchanged — only the distribution.
+  const REGION_SHARE = {
+    'r-central':  0.34,  // Kampala metro — highest formal-savings uptake
+    'r-eastern':  0.25,
+    'r-western':  0.24,
+    'r-northern': 0.17,  // lowest penetration, still materially covered
+  };
+  const DORMANT_AGENT_RATE = 0.12;   // newly-recruited / inactive: empty book
+  // Demo-login agents must always have a book to show.
+  const DEMO_AGENTS = new Set(['a-001', 'a-042', 'a-118']);
+
+  const regionOfAgent = (agentId) => {
+    const branch = BRANCHES[AGENTS[agentId]?.parentId];
+    return DISTRICTS[branch?.parentId]?.parentId ?? null;
+  };
+
+  // Raw per-agent weight. `rand()^2.2` gives a long right tail: most agents
+  // modest, a handful of strong performers — rather than a flat 5–8 everywhere.
+  const byRegion = {};
   agentIds.forEach((agentId) => {
-    const count = randInt(Math.max(5, subsPerAgent - 5), subsPerAgent + 5);
-    for (let i = 0; i < count && subCounter < TARGET_SUBS; i++) {
+    const region = regionOfAgent(agentId);
+    if (!region || !(region in REGION_SHARE)) return;
+    const dormant = !DEMO_AGENTS.has(agentId) && rand() < DORMANT_AGENT_RATE;
+    const weight = dormant ? 0 : Math.pow(rand(), 2.2) + 0.05;
+    (byRegion[region] ||= []).push({ agentId, weight });
+  });
+
+  // Distribute each region's target by weight, using largest-remainder so the
+  // regional totals — and therefore the 5,000 grand total — land exactly.
+  const countByAgent = {};
+  Object.entries(byRegion).forEach(([region, list]) => {
+    const target = Math.round(TARGET_SUBS * REGION_SHARE[region]);
+    const totalWeight = list.reduce((s, a) => s + a.weight, 0) || 1;
+    let assigned = 0;
+    const withRemainder = list.map((a) => {
+      const exact = (a.weight / totalWeight) * target;
+      const base = Math.floor(exact);
+      countByAgent[a.agentId] = base;
+      assigned += base;
+      return { agentId: a.agentId, rem: exact - base };
+    });
+    withRemainder.sort((a, b) => b.rem - a.rem);
+    for (let i = 0; assigned < target; i++, assigned++) {
+      countByAgent[withRemainder[i % withRemainder.length].agentId] += 1;
+    }
+  });
+  // Guarantee the demo agents are never empty.
+  DEMO_AGENTS.forEach((id) => {
+    if (id in countByAgent && countByAgent[id] < 3) countByAgent[id] = 3;
+  });
+
+  agentIds.forEach((agentId) => {
+    const count = countByAgent[agentId] ?? 0;
+    for (let i = 0; i < count; i++) {
       subCounter++;
       const gRoll = rand();
       const gender = gRoll < 0.55 ? 'male' : gRoll < 0.98 ? 'female' : 'other';

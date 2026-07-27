@@ -1,0 +1,34 @@
+-- 0083_repair_search_entities_path.sql
+-- Repairs global search, which has been 100% broken in production.
+--
+-- ── THE BUG ──────────────────────────────────────────────────────────────────
+-- `search_entities` ranks with pg_trgm's `similarity()` / `%`, unqualified.
+-- pg_trgm lives in the `extensions` schema (moved there by 0012), so the
+-- function needs `extensions` on its search_path. 0012 set exactly that — and
+-- then `0028_replay_safety_guards.sql` re-emitted the function with
+-- `SET search_path = public, pg_temp`, unconditionally stripping `extensions`
+-- back off. Since then EVERY search call has thrown:
+--
+--     ERROR 42883: function similarity(text, text) does not exist
+--
+-- Verified against the live DB on 2026-07-27, still throwing. The frontend
+-- swallows the rejection into an empty result (`OverlayPanel` catches and
+-- renders "no results"), so it reads as "search finds nothing" rather than as
+-- an error — which is why it survived this long.
+--
+-- ── ORDERING (load-bearing) ──────────────────────────────────────────────────
+-- This migration MUST land AFTER 0081. `search_entities` is SECURITY INVOKER,
+-- so it is governed by the caller's RLS. Before 0081 the distributor's policies
+-- were unscoped, meaning a working search would have returned every subscriber
+-- on the platform to any distributor. The outage was the only thing hiding that
+-- leak. Repairing search first would have converted a latent cross-tenant leak
+-- into a live one in the same deploy.
+--
+-- With 0081 applied, the repaired search is automatically scoped: a distributor
+-- can only match rows its own RLS policies expose.
+--
+-- Fix shape: ALTER the setting rather than re-emitting the body, so we cannot
+-- accidentally revert any of the behaviour 0028 added.
+
+ALTER FUNCTION public.search_entities(text)
+  SET search_path = public, extensions, pg_temp;

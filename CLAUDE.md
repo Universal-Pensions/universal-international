@@ -137,14 +137,14 @@ Also — env-var sourcing under the new Vercel-frontend / Render-backend split:
 
 ## 8. Demo credentials & personas
 
-The seeded demo data is generated via `npm run seed` (`scripts/seed-supabase.mjs`, mechanics in `BACKEND.md §12`). Phone numbers use the synthetic `+25671XXXXXXX` range. Every demo login supports **OTP or password, the user's choice**: OTP accepts **any 6-digit code**; password is the shared demo secret **`Demo1234`** (seeded onto every `users` row, hashed with bcrypt cost 10). Sign in per-audience from the landing pages (subscriber `/`, employer `/employers`, distributor/branch/agent `/distributors`) or admin from `/admin`.
+The seeded demo data is generated via `npm run seed` (`scripts/seed-supabase.mjs`, mechanics in `BACKEND.md §12`). Phone numbers use the synthetic `+25671XXXXXXX` range. Every demo login supports **OTP or password, the user's choice**: OTP accepts **any 6-digit code**; password is the shared demo secret **`Demo1234`** (seeded onto every `users` row, hashed with bcrypt cost 10). Sign in per-audience from the landing pages (subscriber `/`, employer `/employers`, distributor/branch/agent `/distributors`) or admin from the Administrator landing page `/admin` (the bare portal is `/admin/login`).
 
 Role | Quick login | Seeded count
 --- | --- | ---
 Subscriber | 5 seeded phones, e.g. `+25671 100 0001`, `…0002`, `…0003`, `…0004`, `…0005` | ~5,000
 Agent | Any `agent` role login; `demo_personas` falls back to `a-001` if no phone match | ~2,049
 Branch | Any `branch` role login; fallback to `b-kam-015` (Kampala branch) | ~316
-Distributor | Any `distributor` role login; fallback to `d-001` | 1 (singleton)
+Distributor | `+25670 000 0021` → `d-001` (national), `+25670 000 0022` → `d-002` (Busoga). Any other `distributor` login falls back to `d-001` | 2 (each sees only its own network)
 Employer | `EMPLOYER_DEMO_PHONE` = `+25670 000 0031` (`src/data/employerSeed.js`); `demo_personas` falls back to `emp-001` if no phone match | 1 employer / 16 employees
 Admin | Any `admin` role login; `demo_personas` falls back to `admin-001`. **Password login uses the pinned admin phone `+25670 000 0099`** (only seeded admin `users` row) | 1 (head-office, global)
 
@@ -161,7 +161,7 @@ Term | Meaning
 Subscriber | Individual saver — a member with a balance and contribution schedule.
 Agent | Field agent who onboards and supports subscribers (mobile-first, routed dashboard).
 Branch | Sub-distributor entity that supervises agents in a district.
-Distributor | Top-of-tree network operator (one in the demo seed: `d-001`).
+Distributor | Top-of-tree network operator. **Two in the demo seed:** `d-001` (national — 289 branches) and `d-002` (Busoga sub-region — 27 branches), split by `branches.distributor_id`. That column is the ownership edge every distributor-scoped read resolves through (`branches.distributor_id → agents.branch_id → subscribers.agent_id`, migrations `0081`/`0084`); a distributor sees only its own network, and commission rates are per-distributor (`0089`).
 Employer | B2B account managing a **standalone** staff roster (`employees`, outside the agent→subscriber tree — no agent commissions). Funds staff pension via "contribution runs"; desktop-first dashboard mirroring branch admin. Scoped by the `employerId` JWT claim. See `BACKEND.md §8`/§12 + `docs/data-model.md`.
 Admin | Head-office platform admin with global rights. Map-theme dashboard (`src/admin-dashboard/`) reusing the distributor map/panels (platform-wide reads via `*_select_admin` RLS) plus Distributors & Employers managers (list/metrics/create via `0049` RPCs). No scope claim — sees everything.
 Commission settlement | Two-state flow `due → paid`. Commissions auto-generate as `due` at the configured flat rate-per-subscriber on a subscriber's first contribution. The distributor pays offline, then downloads a per-agent Excel template (prefilled with pending dues), fills Amount Paid + payment reference/date, and re-uploads; the matching agent's `due` lines flip to `paid` via the `apply_settlement` RPC, which also records a `settlement_batches` row and notifies the agent + branch. No maker-checker, runs, branch review, holds, disputes, or cadence. See `BACKEND.md §11`.

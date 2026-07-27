@@ -1,0 +1,183 @@
+-- 0086_scope_top_entities_and_lock_anon.sql
+-- Three things, all finishing work started earlier in this series.
+--
+-- 1. `get_top_entities` (0077) is distributor-scoped. It is SECURITY DEFINER, so
+--    neither 0081's RLS nor 0084's RESTRICTIVE policies reach it: the "top
+--    branches" / "top agents" tables on the distributor overview were ranking
+--    across the WHOLE platform. With two real tenants that means d-002's
+--    overview could name d-001's branches. Only the driving table needs the
+--    filter — the metric CTEs attach by LEFT JOIN, so an unowned row drops out.
+--
+-- 2. A deterministic tiebreaker. Both arms ordered by a metric alone, so rows
+--    with equal sort keys (very common at 0) were returned in plan-dependent
+--    order — the top-N could differ between identical calls. `, b.id` / `, a.id`
+--    makes it stable.
+--
+-- 3. anon EXECUTE revoked on 9 SECURITY DEFINER RPCs. Every one is already
+--    role-gated in-body and fails closed, so this is defence in depth, not a
+--    live hole. Deliberately NOT revoked: `create_subscriber_from_signup` and
+--    `create_subscriber_from_employer_invite`, which are genuinely pre-auth.
+--
+--    ⚠️ `get_top_branch`, `search_entities` and `get_agent_commission_detail`
+--    need `REVOKE ... FROM PUBLIC`, not just FROM anon: each ACL carries a bare
+--    `=X/postgres` (PUBLIC) entry, so anon holds EXECUTE transitively rather
+--    than directly and a FROM-anon revoke silently does nothing. This is the
+--    same class of trap 0076 documented for column-level REVOKEs, and it is why
+--    the existing `REVOKE ... FROM anon` at 0022_audit_perf.sql:135 never took.
+
+CREATE OR REPLACE FUNCTION public.get_top_entities(
+  p_level    TEXT,
+  p_sort_key TEXT DEFAULT NULL,
+  p_limit    INT  DEFAULT 6
+)
+RETURNS TABLE (
+  id                  TEXT,
+  name                TEXT,
+  parent_id           TEXT,
+  parent_name         TEXT,
+  manager_name        TEXT,
+  status              TEXT,
+  total_subscribers   BIGINT,
+  active_rate         INT,
+  aum                 NUMERIC,
+  total_contributions NUMERIC
+)
+LANGUAGE plpgsql
+STABLE
+SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
+DECLARE
+  -- COALESCE NULL→'' so the NOT-IN gate raises reliably (NULL NOT IN (...) is NULL).
+  v_role  TEXT := COALESCE(auth.jwt() ->> 'app_role', '');
+  v_sort  TEXT := COALESCE(p_sort_key, CASE WHEN p_level = 'agent' THEN 'contributions' ELSE 'aum' END);
+  v_limit INT  := LEAST(GREATEST(COALESCE(p_limit, 6), 1), 50);
+  -- 0086: same contract as 0082/0085 — only 'distributor' is filtered.
+  v_dist  TEXT := auth.jwt() ->> 'distributorId';
+  v_all   BOOLEAN := (COALESCE(auth.jwt() ->> 'app_role', '') <> 'distributor');
+BEGIN
+  IF v_role = '' THEN
+    RAISE EXCEPTION 'unauthenticated' USING ERRCODE = 'P0001';
+  END IF;
+  -- Only distributor + admin land on the country overview that renders these
+  -- tables; branch/agent have their own dashboards.
+  IF v_role NOT IN ('distributor', 'admin') THEN
+    RAISE EXCEPTION 'role_not_permitted' USING ERRCODE = 'P0002';
+  END IF;
+
+  IF p_level = 'branch' THEN
+    RETURN QUERY
+    WITH sub_per_branch AS (
+      SELECT a.branch_id AS bid,
+             COUNT(s.id)                            AS total_subs,
+             COUNT(s.id) FILTER (WHERE s.is_active) AS active_subs
+        FROM public.agents a
+        LEFT JOIN public.subscribers s ON s.agent_id = a.id
+       GROUP BY a.branch_id
+    ),
+    aum_per_branch AS (
+      SELECT a.branch_id AS bid, COALESCE(SUM(sb.total_balance), 0) AS aum
+        FROM public.agents a
+        JOIN public.subscribers s ON s.agent_id = a.id
+        JOIN public.subscriber_balances sb ON sb.subscriber_id = s.id
+       GROUP BY a.branch_id
+    ),
+    contrib_per_branch AS (
+      SELECT a.branch_id AS bid,
+             COALESCE(SUM(t.amount) FILTER (WHERE t.type = 'contribution'), 0) AS total_contrib
+        FROM public.agents a
+        JOIN public.subscribers s ON s.agent_id = a.id
+        JOIN public.transactions t ON t.subscriber_id = s.id
+       GROUP BY a.branch_id
+    )
+    SELECT b.id, b.name, b.district_id, d.name, b.manager_name, b.status,
+           COALESCE(spb.total_subs, 0)::BIGINT,
+           CASE WHEN COALESCE(spb.total_subs, 0) > 0
+                THEN ROUND(spb.active_subs::NUMERIC / spb.total_subs * 100)::INT
+                ELSE 0 END,
+           COALESCE(apb.aum, 0)::NUMERIC,
+           COALESCE(cpb.total_contrib, 0)::NUMERIC
+      FROM public.branches b
+      LEFT JOIN public.districts   d   ON d.id  = b.district_id
+      LEFT JOIN sub_per_branch     spb ON spb.bid = b.id
+      LEFT JOIN aum_per_branch     apb ON apb.bid = b.id
+      LEFT JOIN contrib_per_branch cpb ON cpb.bid = b.id
+     WHERE v_all OR b.distributor_id = v_dist
+     ORDER BY CASE v_sort
+                WHEN 'contributions' THEN COALESCE(cpb.total_contrib, 0)
+                WHEN 'subscribers'   THEN COALESCE(spb.total_subs, 0)::NUMERIC
+                ELSE COALESCE(apb.aum, 0)
+              END DESC, b.id
+     LIMIT v_limit;
+    RETURN;
+  END IF;
+
+  IF p_level = 'agent' THEN
+    RETURN QUERY
+    WITH sub_per_agent AS (
+      SELECT s.agent_id AS aid,
+             COUNT(*)                            AS total_subs,
+             COUNT(*) FILTER (WHERE s.is_active) AS active_subs
+        FROM public.subscribers s
+       GROUP BY s.agent_id
+    ),
+    aum_per_agent AS (
+      SELECT s.agent_id AS aid, COALESCE(SUM(sb.total_balance), 0) AS aum
+        FROM public.subscribers s
+        JOIN public.subscriber_balances sb ON sb.subscriber_id = s.id
+       GROUP BY s.agent_id
+    ),
+    contrib_per_agent AS (
+      SELECT s.agent_id AS aid,
+             COALESCE(SUM(t.amount) FILTER (WHERE t.type = 'contribution'), 0) AS total_contrib
+        FROM public.subscribers s
+        JOIN public.transactions t ON t.subscriber_id = s.id
+       GROUP BY s.agent_id
+    )
+    SELECT a.id, a.name, a.branch_id, br.name, NULL::TEXT, a.status,
+           COALESCE(spa.total_subs, 0)::BIGINT,
+           CASE WHEN COALESCE(spa.total_subs, 0) > 0
+                THEN ROUND(spa.active_subs::NUMERIC / spa.total_subs * 100)::INT
+                ELSE 0 END,
+           COALESCE(apa.aum, 0)::NUMERIC,
+           COALESCE(cpa.total_contrib, 0)::NUMERIC
+      FROM public.agents a
+      LEFT JOIN public.branches     br  ON br.id = a.branch_id
+      LEFT JOIN sub_per_agent       spa ON spa.aid = a.id
+      LEFT JOIN aum_per_agent       apa ON apa.aid = a.id
+      LEFT JOIN contrib_per_agent   cpa ON cpa.aid = a.id
+     WHERE v_all OR a.branch_id IN (SELECT public.distributor_branch_ids())
+     ORDER BY CASE v_sort
+                WHEN 'aum'         THEN COALESCE(apa.aum, 0)
+                WHEN 'subscribers' THEN COALESCE(spa.total_subs, 0)::NUMERIC
+                ELSE COALESCE(cpa.total_contrib, 0)
+              END DESC, a.id
+     LIMIT v_limit;
+    RETURN;
+  END IF;
+
+  RAISE EXCEPTION 'unknown_level: %', p_level USING ERRCODE = 'P0004';
+END;
+$$;
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- Lock the mutating + rollup RPC surface away from `anon`.
+-- ─────────────────────────────────────────────────────────────────────────────
+REVOKE EXECUTE ON FUNCTION public.set_distributor_status(text, text)          FROM anon;
+REVOKE EXECUTE ON FUNCTION public.set_employer_status(text, text)             FROM anon;
+REVOKE EXECUTE ON FUNCTION public.set_commission_rate(numeric)                FROM anon;
+REVOKE EXECUTE ON FUNCTION public.create_distributor(text, text, text, text, text) FROM anon;
+REVOKE EXECUTE ON FUNCTION public.create_employer(text, text, text, text, text, text, text, text, jsonb) FROM anon;
+REVOKE EXECUTE ON FUNCTION public.get_entity_metrics_rollup(text, text[])     FROM anon;
+
+-- These three hold their anon access via a bare PUBLIC grant (`=X/postgres` in
+-- proacl), so `REVOKE ... FROM anon` is a documented NO-OP — the privilege is
+-- not held by anon directly. Verified on the live DB: revoking FROM anon left
+-- has_function_privilege('anon', ...) = true for all three. Revoke PUBLIC and
+-- re-grant the role that actually needs it.
+REVOKE EXECUTE ON FUNCTION public.get_top_branch(text, text)        FROM PUBLIC, anon;
+REVOKE EXECUTE ON FUNCTION public.search_entities(text)             FROM PUBLIC, anon;
+REVOKE EXECUTE ON FUNCTION public.get_agent_commission_detail(text) FROM PUBLIC, anon;
+GRANT  EXECUTE ON FUNCTION public.get_top_branch(text, text)        TO authenticated;
+GRANT  EXECUTE ON FUNCTION public.search_entities(text)             TO authenticated;
+GRANT  EXECUTE ON FUNCTION public.get_agent_commission_detail(text) TO authenticated;
