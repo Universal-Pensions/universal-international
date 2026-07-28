@@ -5,12 +5,13 @@ import { MemoryRouter, useLocation, useNavigate } from 'react-router-dom';
 const { openSpy } = vi.hoisted(() => ({ openSpy: vi.fn() }));
 vi.mock('../../../contexts/SignInContext', () => ({ useSignIn: () => ({ open: openSpy }) }));
 
-// Stub the 7 screens so this test exercises the SHELL's own composition (app bar,
+// Stub the 8 screens so this test exercises the SHELL's own composition (app bar,
 // action bar, audience, sheets) without pulling in the screens' data/services.
 // Factories are hoisted, so the JSX is inlined (no shared top-level helper).
 vi.mock('../mobile/SubscribersMobile', () => ({ default: (p) => <button type="button" data-testid="sub-screen" onClick={p.openCalc}>sub</button> }));
 vi.mock('../mobile/EmployersMobile', () => ({ default: () => <div data-testid="emp-screen" /> }));
 vi.mock('../mobile/DistributorsMobile', () => ({ default: () => <div data-testid="dist-screen" /> }));
+vi.mock('../mobile/AdminMobile', () => ({ default: () => <div data-testid="admin-screen" /> }));
 vi.mock('../mobile/AboutMobile', () => ({ default: () => <div data-testid="about-screen" /> }));
 vi.mock('../mobile/FAQMobile', () => ({ default: () => <div data-testid="faq-screen" /> }));
 vi.mock('../mobile/ContactMobile', () => ({ default: () => <div data-testid="contact-screen" /> }));
@@ -78,6 +79,17 @@ describe('LandingMobileShell', () => {
     renderAt('/distributors');
     fireEvent.click(screen.getByText('Become a partner'));
     expect(screen.getByTestId('loc').textContent).toBe('/request-access?type=distributor');
+  });
+
+  it('maps the Administrator action bar to sign-in and Contact us', () => {
+    renderAt('/admin');
+    expect(screen.getByTestId('admin-screen')).toBeInTheDocument();
+    fireEvent.click(screen.getByText('Sign in'));
+    expect(openSpy).toHaveBeenCalledWith('admin');
+    // Admin accounts are provisioned by the team — the primary CTA is a
+    // conversation, NOT the request-access form the other audiences get.
+    fireEvent.click(screen.getByText('Contact us'));
+    expect(screen.getByTestId('loc').textContent).toBe('/contact');
   });
 
   it('hides the action bar on request-access (the screen owns its submit)', () => {

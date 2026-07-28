@@ -8,9 +8,11 @@ import { useLoginFlow } from '../components/signin/useLoginFlow';
 import logo from '../assets/logo-white.png';
 import styles from './AdminLogin.module.css';
 
-// Dedicated super-admin login portal at /admin. Reuses the shared sign-in
-// sub-components (phone → OTP | password) with the role fixed to 'admin', and
-// the shared `useLoginFlow` orchestration (AuthContext.login + navigate).
+// Dedicated super-admin login portal at /admin/login (the /admin route is the
+// Administrator landing page, which signs admins in from its own inline login
+// card). Reuses the shared sign-in sub-components (phone → OTP | password) with
+// the role fixed to 'admin', and the shared `useLoginFlow` orchestration
+// (AuthContext.login + navigate).
 const ROLE = 'admin';
 
 export default function AdminLogin() {
@@ -21,7 +23,7 @@ export default function AdminLogin() {
     handlePhoneSubmit, handleVerify, handleResend, handlePasswordVerify, handleSwitchToCode, setStep,
   } = useLoginFlow({ role: ROLE, initialStep: 'phone' });
 
-  // An already-signed-in visitor hitting /admin goes straight to their dashboard.
+  // An already-signed-in visitor hitting this portal goes straight to their dashboard.
   useEffect(() => {
     if (isAuthenticated) navigate('/dashboard', { replace: true });
   }, [isAuthenticated, navigate]);

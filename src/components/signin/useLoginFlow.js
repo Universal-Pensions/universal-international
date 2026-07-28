@@ -8,7 +8,7 @@ import { hasDashboard, sendOtp, verifyOtp, signInWithPassword, AuthError } from 
  * used to live inline in `SignInModal`. Extracted so every login surface drives
  * the exact same flow and error handling:
  *   - `SignInModal`      (role picker → distributor sub-select → phone → …)
- *   - `AdminLogin` (/admin, role fixed to 'admin')
+ *   - `AdminLogin` (/admin/login, role fixed to 'admin')
  *   - the landing inline login cards (`LandingLoginCard`, subscriber hero tab)
  *
  * The caller owns *how* a role is chosen (a fixed role, the modal's picker, or

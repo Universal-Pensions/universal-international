@@ -85,7 +85,7 @@ createRoot(document.getElementById('root')).render(
   <StrictMode>
     {/* MED-7 — root error boundary. The per-route boundaries in App.jsx only
         wrap the dashboard/signup subtrees, so an uncaught throw on the public
-        landing, the /admin login, or the app-root <SignInModal/> would blank
+        landing, the /admin/login portal, or the app-root <SignInModal/> would blank
         the whole screen. This top-level boundary is the backstop: it renders
         the shared "Something went wrong" + refresh fallback (and forwards to
         Sentry) instead. Inner boundaries still catch first for their subtree. */}

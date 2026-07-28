@@ -14,6 +14,7 @@ import InstallBanner from './InstallBanner';
 import SubscribersMobile from '../mobile/SubscribersMobile';
 import EmployersMobile from '../mobile/EmployersMobile';
 import DistributorsMobile from '../mobile/DistributorsMobile';
+import AdminMobile from '../mobile/AdminMobile';
 import AboutMobile from '../mobile/AboutMobile';
 import FAQMobile from '../mobile/FAQMobile';
 import ContactMobile from '../mobile/ContactMobile';
@@ -21,12 +22,13 @@ import RequestAccessMobile from '../mobile/RequestAccessMobile';
 
 import styles from '../mobile/landingMobile.module.css';
 
-// The 7 landing paths → their phone screen. Picked by pathname (no nested
+// The 8 landing paths → their phone screen. Picked by pathname (no nested
 // <Routes>, so there's no base-path ambiguity under the pathless layout route).
 const SCREENS = {
   '/': SubscribersMobile,
   '/employers': EmployersMobile,
   '/distributors': DistributorsMobile,
+  '/admin': AdminMobile,
   '/about': AboutMobile,
   '/faq': FAQMobile,
   '/contact': ContactMobile,
@@ -34,8 +36,8 @@ const SCREENS = {
 };
 
 // Which paths are audience "homes" (drive the app-bar logo + action-bar CTAs).
-const HOME_AUD = { '/': 'sub', '/employers': 'emp', '/distributors': 'dist' };
-const AUD_HOME = { sub: '/', emp: '/employers', dist: '/distributors' };
+const HOME_AUD = { '/': 'sub', '/employers': 'emp', '/distributors': 'dist', '/admin': 'admin' };
+const AUD_HOME = { sub: '/', emp: '/employers', dist: '/distributors', admin: '/admin' };
 const TITLES = {
   '/about': 'About',
   '/faq': 'FAQ',
@@ -48,6 +50,9 @@ const AUD_CTA = {
   sub: { pri: 'Start saving', priTo: '/signup', sec: 'Sign in', role: 'subscriber' },
   emp: { pri: 'Set up your company', priTo: '/request-access?type=employer', sec: 'Log in', role: 'employer' },
   dist: { pri: 'Become a partner', priTo: '/request-access?type=distributor', sec: 'Log in', role: 'distributor' },
+  // Admin accounts are provisioned by the platform team — no self-signup, so
+  // the primary action is a conversation rather than a request-access form.
+  admin: { pri: 'Contact us', priTo: '/contact', sec: 'Sign in', role: 'admin' },
 };
 
 const BackIcon = (

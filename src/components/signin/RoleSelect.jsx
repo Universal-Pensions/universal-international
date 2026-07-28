@@ -36,8 +36,9 @@ const ROLES = [
       </svg>
     ),
   },
-  // Admin is intentionally omitted — super-admin signs in only from the
-  // dedicated /admin portal, not the generic role picker.
+  // Admin is intentionally omitted — super-admin signs in from the Administrator
+  // landing page (/admin, via its inline login card) or the bare portal at
+  // /admin/login, not from the generic role picker.
 ];
 
 const container = {

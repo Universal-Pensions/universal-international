@@ -7,6 +7,7 @@ import SignInModal from './components/SignInModal';
 import SubscribersPage from './pages/landing/SubscribersPage';
 import EmployersPage from './pages/landing/EmployersPage';
 import DistributorsPage from './pages/landing/DistributorsPage';
+import AdminPage from './pages/landing/AdminPage';
 import ScrollToTop from './components/ScrollToTop';
 import { hasDashboard } from './services/auth';
 import FAQ from './pages/FAQ';
@@ -160,6 +161,7 @@ export default function App() {
           <Route index element={<SubscribersPage />} />
           <Route path="employers" element={<EmployersPage />} />
           <Route path="distributors" element={<DistributorsPage />} />
+          <Route path="admin" element={<AdminPage />} />
           <Route path="faq" element={<FAQ />} />
           <Route path="contact" element={<Contact />} />
           <Route path="about" element={<About />} />
@@ -167,8 +169,11 @@ export default function App() {
           <Route path="request-access" element={<RequestAccess />} />
         </Route>
         <Route path="/coming-soon" element={<ComingSoon />} />
-        {/* Super-admin login portal (role-fixed to admin). */}
-        <Route path="/admin" element={<AdminLogin />} />
+        {/* /admin is the Administrator landing page (in the LandingLayout group
+            above, so the phone shell picks it up) and signs admins in from its
+            own inline login card. This is the bare super-admin portal
+            (role-fixed to admin) — nothing links to it; it is reached by URL. */}
+        <Route path="/admin/login" element={<AdminLogin />} />
         <Route
           path="/signup/*"
           element={

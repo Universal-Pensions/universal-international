@@ -20,13 +20,14 @@ import styles from './landing.module.css';
 //                  supplies framing, e.g. the subscriber hero's Sign-in tab).
 //   - footerPrompt/footerLabel/footerHref: the "New here? → …" line under the form.
 
-const ROLE_TAB_LABELS = { distributor: 'Distributor', branch: 'Branch', agent: 'Agent', employer: 'Employer', subscriber: 'Subscriber' };
+const ROLE_TAB_LABELS = { distributor: 'Distributor', branch: 'Branch', agent: 'Agent', employer: 'Employer', subscriber: 'Subscriber', admin: 'Administrator' };
 const ROLE_KICKERS = {
   distributor: 'Distributor sign-in',
   branch: 'Branch sign-in',
   agent: 'Agent sign-in',
   employer: 'Employer sign-in',
   subscriber: 'Subscriber sign-in',
+  admin: 'Administrator sign-in',
 };
 
 function LockIcon() {

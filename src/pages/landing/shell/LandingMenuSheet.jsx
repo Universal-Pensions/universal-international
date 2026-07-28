@@ -16,7 +16,7 @@ const Chevron = (
 
 const AUDIENCES = [
   {
-    key: 'sub', path: '/', label: 'Individuals', tint: styles['t-in'],
+    key: 'sub', path: '/', label: 'Subscribers', tint: styles['t-in'],
     icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="4" /><path d="M4 21a8 8 0 0 1 16 0" /></svg>,
   },
   {
@@ -26,6 +26,10 @@ const AUDIENCES = [
   {
     key: 'dist', path: '/distributors', label: 'Distributors', tint: styles['t-teal'],
     icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M9 18V5l12-2v13" /><circle cx="6" cy="18" r="3" /><circle cx="18" cy="16" r="3" /></svg>,
+  },
+  {
+    key: 'admin', path: '/admin', label: 'Administrator', tint: styles['t-soft'],
+    icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><rect x="3" y="11" width="18" height="10" rx="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" /></svg>,
   },
 ];
 
@@ -44,18 +48,14 @@ const LINKS = [
   },
 ];
 
-const AdminIcon = (
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><rect x="3" y="11" width="18" height="10" rx="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" /></svg>
-);
-
 const InstallIcon = (
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 5v14M5 12l7 7 7-7" /></svg>
 );
 
 /**
  * LandingMenuSheet — the "More" sheet: switch audience (routes to a home),
- * jump to About/FAQ/Contact, add-to-home-screen, the discreet admin portal,
- * and legal links. All navigation closes the sheet.
+ * jump to About/FAQ/Contact, add-to-home-screen, and legal links. All
+ * navigation closes the sheet.
  */
 export default function LandingMenuSheet({ open, onClose, audience, onOpenInstall }) {
   const navigate = useNavigate();
@@ -101,12 +101,6 @@ export default function LandingMenuSheet({ open, onClose, audience, onOpenInstal
         >
           <span className={styles.mIc}>{InstallIcon}</span>
           <b>Add to Home Screen</b>
-          <span className={styles.mChev}>{Chevron}</span>
-        </button>
-
-        <button type="button" className={styles.menuRow} onClick={() => go('/admin')}>
-          <span className={styles.mIc}>{AdminIcon}</span>
-          <b>Admin portal</b>
           <span className={styles.mChev}>{Chevron}</span>
         </button>
 

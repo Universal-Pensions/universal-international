@@ -13,9 +13,9 @@ import styles from './Footer.module.css';
  */
 const LINKS = {
   Platform: [
-    { label: 'For subscribers', type: 'route', to: '/' },
-    { label: 'For employers', type: 'route', to: '/employers' },
-    { label: 'For distributors', type: 'route', to: '/distributors' },
+    { label: 'Subscribers', type: 'route', to: '/' },
+    { label: 'Employers', type: 'route', to: '/employers' },
+    { label: 'Distributors', type: 'route', to: '/distributors' },
     { label: 'How it works', type: 'hash', to: '/#how' },
   ],
   Company: [
@@ -42,8 +42,6 @@ const BOTTOM_LINKS = [
   { label: 'Privacy', type: 'external', href: LEGAL_PRIVACY_URL },
   { label: 'Terms', type: 'external', href: LEGAL_TERMS_URL },
   { label: 'Cookies', type: 'pending' },
-  // Discreet super-admin entry point.
-  { label: 'Admin', type: 'route', to: '/admin' },
 ];
 
 function FooterItem({ item, className }) {

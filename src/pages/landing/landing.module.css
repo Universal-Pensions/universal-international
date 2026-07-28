@@ -91,9 +91,11 @@
   border: 1px solid var(--lavender); display: grid; place-items: center; color: var(--indigo); }
 .brand .mark svg { width: 19px; height: 19px; }
 .brand small { display: block; font-family: var(--fb); font-weight: 500; font-size: 11px; letter-spacing: .02em; color: var(--gray); margin-top: -1px; }
-.navLinks { display: flex; align-items: center; gap: 6px; margin-left: auto; }
+/* gap + link padding are tight on purpose — four audience tabs have to clear the
+   960px collapse point with room to spare (the page body hides any overflow) */
+.navLinks { display: flex; align-items: center; gap: 4px; margin-left: auto; }
 .navLinks a { font-family: var(--fd); font-weight: 600; font-size: .9375rem; color: var(--slate);
-  padding: 8px 12px; position: relative; transition: color .15s; }
+  padding: 8px 10px; position: relative; transition: color .15s; }
 .navLinks a:hover { color: var(--indigo); }
 .navLinks a[aria-current="page"] { color: var(--indigo); font-weight: 700; }
 .navActions { display: flex; align-items: center; gap: 10px; margin-left: 20px; }
@@ -461,8 +463,15 @@
   .ts:nth-child(-n+2) { border-top: none; }
   .evGrid { grid-template-columns: 1fr; }
 }
+/* Four audience tabs + sign-in + CTA need ~875px of viewport (measured on the
+   distributor page, the longest CTA). The tabs are the navigation, so the CTA
+   steps aside first — it is still in the hero and the closing band — and the bar
+   keeps its tabs inline down to the phone breakpoint below. */
+@media (max-width: 920px) {
+  .navActions .btn { display: none; }
+}
 @media (max-width: 768px) {
-  .navLinks, .navSignin, .navActions .btn { display: none; }
+  .navLinks, .navSignin { display: none; }
   .hamburger { display: flex; }
   .navActions { margin-left: auto; }
   .hero { padding: 48px 0 40px; min-height: auto; overflow: visible; }

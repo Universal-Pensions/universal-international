@@ -13,10 +13,14 @@ import styles from './Navbar.module.css';
 // components (unmounted since the React landing shipped), so on these routes
 // they resolved to nothing. Repoint at the live audience routes + /signup —
 // the same destinations the current LandingNav uses — as real router links.
+// The fourth tab, Administrator, is the head-office console's landing page; it
+// used to sit as a discreet "Admin" link in the footer and now rides here with
+// the other audiences (the bare sign-in portal moved to /admin/login).
 const NAV_LINKS = [
-  { to: '/',             label: 'For Subscribers' },
-  { to: '/employers',    label: 'For Employers' },
-  { to: '/distributors', label: 'For Distributors' },
+  { to: '/',             label: 'Subscribers' },
+  { to: '/employers',    label: 'Employers' },
+  { to: '/distributors', label: 'Distributors' },
+  { to: '/admin',        label: 'Administrator' },
 ];
 
 export default function Navbar() {

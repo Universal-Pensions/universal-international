@@ -11,18 +11,19 @@ const Arrow = () => (
 );
 
 const AUDIENCES = [
-  { key: 'subscriber', to: '/', label: 'For Subscribers' },
-  { key: 'employer', to: '/employers', label: 'For Employers' },
-  { key: 'distributor', to: '/distributors', label: 'For Distributors' },
+  { key: 'subscriber', to: '/', label: 'Subscribers' },
+  { key: 'employer', to: '/employers', label: 'Employers' },
+  { key: 'distributor', to: '/distributors', label: 'Distributors' },
+  { key: 'admin', to: '/admin', label: 'Administrator' },
 ];
 
 /**
  * Shared landing/marketing header + mobile drawer. Renders the real Universal
- * Pensions logo, the three audience tabs (with `active` driving aria-current),
+ * Pensions logo, the four audience tabs (with `active` driving aria-current),
  * a role-scoped "Sign in" action, and a primary CTA.
  *
  * @param {object} props
- * @param {'subscriber'|'employer'|'distributor'} [props.active]
+ * @param {'subscriber'|'employer'|'distributor'|'admin'} [props.active]
  * @param {() => void} props.onSignIn   what "Sign in" does on this page
  *   (subscriber: focus the hero Sign-in tab; B2B: scroll to the login card;
  *   marketing: open the sign-in modal).

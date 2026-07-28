@@ -36,10 +36,12 @@
 }
 
 /* ── Desktop links ── */
+/* gap is tight on purpose — four audience tabs have to clear the 768px
+   collapse point once the CTA has stepped aside */
 .links {
   display: flex;
   align-items: center;
-  gap: 2rem;
+  gap: 1.25rem;
   margin-left: auto;
 }
 
@@ -210,6 +212,15 @@
 
 .drawerCta:hover {
   background: var(--color-indigo-soft);
+}
+
+/* ── CTA collapse ── four audience tabs + sign-in + CTA need ~875px of viewport
+   (measured). The tabs are the navigation, so the CTA steps aside first; it stays
+   reachable from the drawer and the page body. ── */
+@media (max-width: 920px) {
+  .cta {
+    display: none;
+  }
 }
 
 /* ── Mobile breakpoint ── */
