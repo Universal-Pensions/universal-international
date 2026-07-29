@@ -1422,13 +1422,16 @@
 .ftext {
   width: 100%;
   font-family: var(--fb);
-  font-size: 14px;
+  /* 16px, not 14: iOS Safari zooms the viewport on focus for any input under
+     16px, which throws the user out of the form layout. Flagged by the
+     2026-07-27 phone audit (45+ sub-16px inputs). */
+  font-size: 16px;
   color: var(--indigo);
   background: var(--cloud);
   border: 1.5px solid var(--lavender);
   border-radius: var(--r-md);
   padding: 14px;
-  outline: none;
+  outline: none; /* replaced by the :focus-visible ring below */
 }
 
 .finput:focus,
@@ -1436,6 +1439,30 @@
   border-color: var(--indigo-soft);
   background: #fff;
 }
+
+/* `outline: none` above needs a real replacement or keyboard users lose the
+   focus indicator entirely (CLAUDE.md §5 anti-pattern 3). */
+.finput:focus-visible,
+.ftext:focus-visible {
+  outline: 2px solid var(--indigo-soft);
+  outline-offset: 2px;
+}
+
+.finput[aria-invalid='true'],
+.ftext[aria-invalid='true'] {
+  border-color: var(--status-poor, #c0392b);
+}
+
+/* Field-level hint + error, mirroring the desktop variant. */
+.fhint,
+.ferr {
+  display: block;
+  font-size: 12.5px;
+  line-height: 1.35;
+  margin-top: 6px;
+}
+.fhint { color: var(--gray); }
+.ferr { color: var(--status-poor, #c0392b); font-weight: 500; }
 
 .finput::placeholder,
 .ftext::placeholder {

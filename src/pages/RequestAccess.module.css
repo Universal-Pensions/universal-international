@@ -1,3 +1,30 @@
+/* Request-access page (desktop only — below 768px LandingLayout swaps in
+   mobile/RequestAccessMobile.jsx).
+
+   LAYOUT INTENT: a two-pane split, brand rail left / form panel right. The page
+   previously stacked one narrow centred card, so the employer variant's six
+   fields needed scrolling on a 1440px desktop — a form asking for six short
+   answers should never scroll on a laptop.
+
+   HEIGHT BUDGET (employer, the taller variant, at 1280x800):
+     page padding            32 + 32 = 64
+     panel padding           36 + 36 = 72
+     "All fields are required" 18 + 14 gap = 32
+     3 field rows            3 x (18 label + 6 + 44 input) = 204
+       (+ 2 x 20 row gap                                   =  40)
+     hint line under phone                                 =  16
+     actions block (44 button + 14 gap + 34 note)          =  92
+     ------------------------------------------------------------
+     total                                                 = 520  < 800 - 64 = 736
+   The distributor variant is shorter (2 rows). Headroom absorbs a wrapped note
+   and browser 125% scaling. Re-check this budget if you add a field or a line
+   of copy.
+
+   NOT SET ANYWHERE: `overflow: hidden` on .page. Clipping the document to force
+   "no scroll" would trap users at 200% zoom or with Chrome auto-translate, which
+   is a worse defect than the one being fixed. It fits by measurement; the
+   document scrollbar stays available as the escape hatch. */
+
 .page {
   min-height: 100vh;
   min-height: 100dvh;
@@ -7,194 +34,263 @@
     linear-gradient(to bottom, rgba(41, 40, 103, 0.045) 1px, transparent 1px);
   background-size: 54px 54px;
   display: flex;
-  flex-direction: column;
 }
 
-.top {
-  display: flex;
+.shell {
+  display: grid;
+  grid-template-columns: minmax(320px, 0.85fr) minmax(520px, 1fr);
+  gap: 48px;
   align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  max-width: 1160px;
   width: 100%;
+  max-width: 1160px;
   margin: 0 auto;
-  padding: 22px 24px;
+  padding: 32px 24px;
+}
+
+/* ── Brand rail ─────────────────────────────────────────────────────────── */
+.rail {
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+  align-self: stretch;
+  justify-content: center;
+  padding: 8px 0;
 }
 .brand {
   display: inline-flex;
   align-items: center;
-  gap: 10px;
-  font-family: var(--font-display);
-  font-weight: 800;
-  letter-spacing: -0.02em;
-  color: var(--color-indigo);
-  font-size: 1.0625rem;
   text-decoration: none;
+  align-self: flex-start;
 }
-.mark {
-  width: 34px;
-  height: 34px;
-  border-radius: 8px;
-  display: grid;
-  place-items: center;
-  color: var(--color-indigo);
-  background: linear-gradient(150deg, #fff, var(--color-cloud));
-  border: 1px solid var(--color-lavender);
-}
-.mark svg { width: 19px; height: 19px; }
-.back {
-  font-family: var(--font-display);
-  font-weight: 600;
-  font-size: 0.9375rem;
-  color: var(--color-indigo);
-  text-decoration: none;
-  padding: 8px 12px;
-  border-radius: 8px;
-}
-.back:hover { background: rgba(41, 40, 103, 0.06); }
-
-.main {
-  flex: 1;
-  display: grid;
-  place-items: center;
-  padding: 20px 24px 64px;
+.brand img { display: block; height: 34px; width: auto; }
+.brand:focus-visible {
+  outline: 2px solid var(--color-indigo);
+  outline-offset: 4px;
+  border-radius: 6px;
 }
 
-.card,
-.done {
-  width: 100%;
-  max-width: 520px;
-  background: var(--color-white);
-  border: 1px solid var(--color-lavender);
-  border-radius: 14px;
-  box-shadow: 0 1px 2px rgba(41, 40, 103, 0.05), 0 24px 48px -28px rgba(41, 40, 103, 0.4);
-  padding: 34px 34px 30px;
-}
+.railBody { display: flex; flex-direction: column; }
 
 .eyebrow {
-  font-family: var(--font-display);
-  font-weight: 700;
   font-size: 0.75rem;
+  font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: var(--color-indigo-soft);
+  color: var(--color-indigo-soft, var(--color-indigo));
+  margin-bottom: 10px;
 }
 .title {
   font-family: var(--font-display);
   font-weight: 800;
   letter-spacing: -0.03em;
-  color: var(--color-indigo);
-  font-size: clamp(1.6rem, 3vw, 2rem);
   line-height: 1.1;
-  margin: 10px 0 0;
-  text-wrap: balance;
+  font-size: clamp(1.9rem, 2.6vw, 2.6rem);
+  color: var(--color-indigo);
+  margin: 0 0 12px;
 }
 .lede {
   font-size: 1rem;
-  color: var(--color-slate);
   line-height: 1.55;
-  margin: 14px 0 0;
-  text-wrap: pretty;
+  color: var(--color-gray);
+  margin: 0 0 26px;
+  max-width: 42ch;
 }
 
-.form {
+/* The three steps exist to earn the now-mandatory phone number: they say
+   plainly that the call to that number IS how the account gets opened. */
+.steps {
+  list-style: none;
+  margin: 0;
+  padding: 0;
   display: flex;
   flex-direction: column;
-  gap: 16px;
-  margin-top: 24px;
+  gap: 14px;
 }
-.field {
-  display: flex;
-  flex-direction: column;
-  gap: 7px;
-}
-.field > span {
-  font-family: var(--font-display);
+.steps li { display: flex; align-items: flex-start; gap: 12px; }
+.stepNum {
+  flex: none;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-size: 0.75rem;
   font-weight: 700;
-  font-size: 0.8125rem;
-  color: var(--color-slate);
+  color: var(--color-indigo);
+  background: #fff;
+  border: 1px solid var(--color-lavender);
 }
-.field em {
-  font-style: normal;
-  font-weight: 500;
+.stepTx { display: flex; flex-direction: column; gap: 1px; }
+.stepTx b {
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: var(--color-indigo);
+  line-height: 1.35;
+}
+.stepTx small { font-size: 0.8125rem; color: var(--color-gray); line-height: 1.4; }
+
+.back {
+  align-self: flex-start;
+  font-size: 0.875rem;
+  font-weight: 600;
   color: var(--color-gray);
+  text-decoration: none;
+  padding: 8px 12px;
+  margin-left: -12px;
+  border-radius: 8px;
+  transition: background-color 160ms ease, color 160ms ease;
+}
+.back:hover { background: rgba(41, 40, 103, 0.06); color: var(--color-indigo); }
+.back:focus-visible { outline: 2px solid var(--color-indigo); outline-offset: 2px; }
+
+/* ── Form panel ─────────────────────────────────────────────────────────── */
+.panel {
+  background: #fff;
+  border: 1px solid var(--color-lavender);
+  border-radius: 18px;
+  padding: 36px;
+  box-shadow: 0 18px 48px -32px rgba(41, 40, 103, 0.4);
+}
+
+.form { display: flex; flex-direction: column; }
+
+/* One statement instead of six "(required)" marks — less noise, and it reads
+   before the fields rather than field-by-field. */
+.allReq {
+  font-size: 0.8125rem;
+  color: var(--color-gray);
+  margin: 0 0 14px;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px 18px;
+}
+/* Org name spans both columns — it is the longest value on the form. */
+.wide { grid-column: 1 / -1; }
+
+.field { display: flex; flex-direction: column; min-width: 0; }
+.field label {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--color-indigo);
+  margin-bottom: 6px;
 }
 .field input {
   width: 100%;
-  height: 46px;
-  padding: 0 14px;
+  height: 44px;
+  padding: 0 13px;
   font-family: var(--font-body);
   font-size: 0.9375rem;
-  color: var(--color-slate);
-  background: var(--color-white);
+  color: var(--color-indigo);
+  background: #fff;
   border: 1px solid var(--color-lavender);
-  border-radius: 8px;
-  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  border-radius: 10px;
+  transition: border-color 160ms ease, box-shadow 160ms ease;
 }
-.field input:focus {
-  outline: none;
-  border-color: var(--color-indigo-soft);
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-indigo-soft) 18%, transparent);
+.field input::placeholder { color: color-mix(in srgb, var(--color-gray) 65%, transparent); }
+.field input:focus-visible {
+  outline: none; /* replaced by the ring below */
+  border-color: var(--color-indigo);
+  box-shadow: 0 0 0 3px rgba(41, 40, 103, 0.14);
+}
+.field input[aria-invalid='true'] {
+  border-color: var(--color-status-poor, #c0392b);
+}
+.field input[aria-invalid='true']:focus-visible {
+  box-shadow: 0 0 0 3px rgba(192, 57, 43, 0.16);
+}
+
+.hint, .fieldErr {
+  font-size: 0.75rem;
+  line-height: 1.35;
+  margin-top: 5px;
+}
+.hint { color: var(--color-gray); }
+.fieldErr { color: var(--color-status-poor, #c0392b); font-weight: 500; }
+
+.actions {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin-top: 22px;
 }
 
 .primary {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
   height: 46px;
-  padding: 0 20px;
+  padding: 0 22px;
+  font-family: var(--font-body);
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: #fff;
+  background: var(--color-indigo);
   border: none;
   border-radius: 10px;
-  background: var(--color-indigo);
-  color: #fff;
-  font-family: var(--font-display);
-  font-weight: 700;
-  font-size: 0.9375rem;
   cursor: pointer;
   text-decoration: none;
-  box-shadow: 0 4px 12px rgba(41, 40, 103, 0.22);
-  transition: transform 0.15s ease, background 0.15s ease;
+  transition: background-color 160ms ease, transform 160ms ease;
 }
 .primary:hover:not(:disabled) {
-  background: var(--color-indigo-deep);
-  transform: translateY(-1px);
+  background: color-mix(in srgb, var(--color-indigo) 88%, #000);
 }
-.primary:disabled {
-  opacity: 0.6;
-  cursor: progress;
-  box-shadow: none;
-}
+.primary:active:not(:disabled) { transform: translateY(1px); }
+.primary:focus-visible { outline: 2px solid var(--color-indigo); outline-offset: 3px; }
+.primary:disabled { opacity: 0.6; cursor: default; }
+
+.note { font-size: 0.8125rem; color: var(--color-gray); margin: 0; line-height: 1.45; }
+
 .error {
-  margin: 0;
-  font-size: 0.8125rem;
-  color: #b42318;
-  line-height: 1.5;
-}
-.note {
-  font-size: 0.75rem;
-  color: var(--color-gray);
-  line-height: 1.5;
-  margin: 2px 0 0;
+  margin: 16px 0 0;
+  padding: 10px 12px;
+  font-size: 0.875rem;
+  color: var(--color-status-poor, #c0392b);
+  background: rgba(192, 57, 43, 0.07);
+  border: 1px solid rgba(192, 57, 43, 0.22);
+  border-radius: 10px;
 }
 
-.done {
-  text-align: center;
-}
+/* ── Success state ──────────────────────────────────────────────────────── */
+.done { display: flex; flex-direction: column; align-items: flex-start; gap: 14px; }
 .check {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
   display: grid;
   place-items: center;
-  width: 52px;
-  height: 52px;
-  margin: 0 auto 4px;
-  border-radius: 50%;
-  background: color-mix(in srgb, var(--color-green) 14%, #fff);
-  color: var(--color-green);
+  color: var(--color-status-good, #2e7d55);
+  background: rgba(46, 125, 85, 0.1);
 }
-.check svg { width: 26px; height: 26px; }
-.done .title { margin-top: 12px; }
-.done .primary { margin-top: 24px; }
+.check svg { width: 22px; height: 22px; }
+.doneTitle {
+  font-family: var(--font-display);
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  font-size: 1.6rem;
+  color: var(--color-indigo);
+  margin: 0;
+}
+.doneTitle:focus-visible { outline: 2px solid var(--color-indigo); outline-offset: 4px; border-radius: 6px; }
+.doneTx { font-size: 0.9375rem; line-height: 1.55; color: var(--color-gray); margin: 0; max-width: 46ch; }
 
-@media (max-width: 520px) {
-  .card, .done { padding: 26px 22px 24px; }
+/* ── Narrow desktop / tablet ────────────────────────────────────────────── */
+/* Below ~1024px the two panes stop fitting side by side. Stack them, and let
+   the document scroll — at that height a 6-field form legitimately does not
+   fit, and a clipped page would be worse than a scrolled one.
+   NEVER collapse `.grid` to one column on the distributor variant: measured,
+   a single-column distributor form is TALLER than the two-column employer one,
+   so the role we ask less of would get the longer page. */
+@media (max-width: 1024px) {
+  .shell {
+    grid-template-columns: 1fr;
+    gap: 28px;
+    align-items: start;
+    max-width: 720px;
+  }
+  .rail { gap: 20px; }
+  .steps { display: none; } /* the panel carries the ask at this width */
+  .panel { padding: 28px; }
 }

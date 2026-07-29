@@ -1,138 +1,252 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
+import { motion, useReducedMotion } from 'framer-motion';
+import { EASE_OUT_EXPO } from '../utils/motion';
+import logo from '../assets/logo.png';
 import { submitAccessRequest } from '../services/requestAccess';
+import {
+  validateAccessRequest, FIELD_ORDER, MAX_LEN, messageForCode,
+} from './landing/validateAccessRequest';
+import { toCanonicalUGPhone } from '../utils/phone';
+import { DISTRICT_NAMES } from '../constants/districts';
 import styles from './RequestAccess.module.css';
 
 // Lead-capture form for the two roles that are NOT self-provisioned: employers
 // and distributors are created by an admin, so the public "get started" path is
-// a request-access form, not a signup wizard. The submit persists a pending row
-// to `access_requests` (via /api/access-request); a super-admin then approves —
-// which provisions the real account — or denies it. Fields mirror the admin
-// "Create distributor/employer" forms so an approval maps straight through.
+// a request form, not a signup wizard. Submitting persists a pending
+// `access_requests` row; a super-admin then approves — which provisions the real
+// account and (migration 0090) writes the `demo_personas` row that lets the
+// phone captured below sign in as THAT account.
+//
+// EVERY field is required. The phone especially: it is the sign-in key, and an
+// account approved without one is unreachable forever. The three-step strip
+// below exists to earn that ask rather than just demanding it.
+
+const STEPS = [
+  ['You send this form', 'It takes about a minute.'],
+  ['We check it', 'Within 24 hours on a working day.'],
+  ['We call you and open your account', 'On the phone number you give here.'],
+];
+
 const COPY = {
   employer: {
     eyebrow: 'For employers',
-    title: "Set up Universal Pensions for your team",
-    lede: "Tell us about your company and our team will get your employer workspace ready — staff pensions plus group Life, Health & Funeral cover, onboarded from one spreadsheet.",
+    title: 'Set up pensions for your team',
+    lede: 'Staff pensions plus group Life, Health and Funeral cover — set up from one staff list.',
     orgLabel: 'Company name',
+    orgPlaceholder: 'e.g. Kampala Steel Ltd',
     back: '/employers',
+    backLabel: 'Back to employers',
   },
   distributor: {
     eyebrow: 'For distributors',
-    title: 'Become a Universal Pensions partner',
-    lede: "Tell us about your network and our team will set up your distributor account — run branches and agents across Uganda, manage commissions, and grow from one map.",
-    orgLabel: 'Network / organisation name',
+    title: 'Run your network with us',
+    lede: 'Branches, field agents and commissions across Uganda — managed from one map.',
+    orgLabel: 'Network name',
+    orgPlaceholder: 'e.g. Busoga Financial Services',
     back: '/distributors',
+    backLabel: 'Back to distributors',
   },
 };
 
-const EMPTY = { name: '', org: '', email: '', phone: '', sector: '', district: '' };
+const EMPTY = { org: '', name: '', email: '', phone: '', sector: '', district: '' };
+
+// Module scope, NOT redefined inside the component — a component identity that
+// changes every render remounts each input and steals focus on every keystroke.
+function Field({ id, label, hint, error, wide, ...input }) {
+  const describedBy = [hint && `${id}-hint`, error && `${id}-err`].filter(Boolean).join(' ');
+  return (
+    <div className={wide ? `${styles.field} ${styles.wide}` : styles.field}>
+      <label htmlFor={id}>{label}</label>
+      <input
+        id={id}
+        aria-invalid={error ? true : undefined}
+        aria-describedby={describedBy || undefined}
+        {...input}
+      />
+      {hint && !error && <span className={styles.hint} id={`${id}-hint`}>{hint}</span>}
+      {error && <span className={styles.fieldErr} id={`${id}-err`}>{error}</span>}
+    </div>
+  );
+}
 
 export default function RequestAccess() {
   const [params] = useSearchParams();
-  const type = params.get('type') === 'distributor' ? 'distributor' : 'employer';
+  // Normalise so `?type=Distributor` isn't silently coerced to an employer.
+  const raw = String(params.get('type') ?? '').trim().toLowerCase();
+  const type = raw === 'distributor' ? 'distributor' : 'employer';
   const copy = COPY[type];
+  const reduce = useReducedMotion();
+
   const [submitted, setSubmitted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState('');
+  const [errors, setErrors] = useState({});       // per-field
+  const [formError, setFormError] = useState(''); // transport / server level
   const [form, setForm] = useState(EMPTY);
+  const doneRef = useRef(null);
 
-  const update = (key) => (e) => setForm((f) => ({ ...f, [key]: e.target.value }));
+  const update = (key) => (e) => {
+    const { value } = e.target;
+    setFormError('');
+    setErrors((prev) => (prev[key] ? { ...prev, [key]: undefined } : prev));
+    setForm((f) => ({ ...f, [key]: value }));
+  };
 
   async function handleSubmit(e) {
     e.preventDefault();
     if (submitting) return;
-    setError('');
+
+    const found = validateAccessRequest(form, type);
+    if (Object.keys(found).length) {
+      setErrors(found);
+      const first = FIELD_ORDER[type].find((k) => found[k]);
+      document.getElementById(`ra-${first}`)?.focus();
+      return;
+    }
+
+    setErrors({});
+    setFormError('');
     setSubmitting(true);
     try {
       await submitAccessRequest({
         type,
-        orgName: form.org,
-        contactName: form.name,
-        contactEmail: form.email,
-        contactPhone: form.phone,
-        sector: form.sector,
-        district: form.district,
+        orgName: form.org.trim(),
+        contactName: form.name.trim(),
+        contactEmail: form.email.trim(),
+        // Store the sign-in key in the canonical form the auth layer computes.
+        contactPhone: toCanonicalUGPhone(form.phone),
+        sector: form.sector.trim(),
+        district: form.district.trim(),
       });
       setSubmitted(true);
-    } catch {
-      setError('Something went wrong sending your request. Please try again.');
+      requestAnimationFrame(() => doneRef.current?.focus());
+    } catch (err) {
+      setFormError(messageForCode(err?.code));
       setSubmitting(false);
     }
   }
 
+  const rise = reduce
+    ? {}
+    : {
+      initial: { opacity: 0, y: 14 },
+      animate: { opacity: 1, y: 0 },
+      transition: { duration: 0.5, ease: EASE_OUT_EXPO },
+    };
+
   return (
     <div className={styles.page}>
-      <header className={styles.top}>
-        <Link to="/" className={styles.brand} aria-label="Universal Pensions home">
-          <span className={styles.mark} aria-hidden="true">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 3 4 7v5c0 4.5 3.4 7.7 8 9 4.6-1.3 8-4.5 8-9V7z" /><path d="m9 12 2 2 4-4" /></svg>
-          </span>
-          Universal Pensions
-        </Link>
-        <Link to={copy.back} className={styles.back}>← Back</Link>
-      </header>
+      <main id="main" className={styles.shell}>
+        {/* ── Brand rail: the real logo, the pitch, and what happens next ── */}
+        <motion.aside className={styles.rail} {...rise}>
+          <Link to="/" className={styles.brand} aria-label="Universal Pensions home">
+            {/* logo.png is 2670x1080 (2.472:1) — at 34px tall that is 84px wide. */}
+            <img src={logo} alt="Universal Pensions" width={84} height={34} />
+          </Link>
 
-      <main id="main" className={styles.main}>
-        {submitted ? (
-          <div className={styles.done} role="status">
-            <span className={styles.check} aria-hidden="true">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round"><path d="m5 13 4 4L19 7" /></svg>
-            </span>
-            <h1 className={styles.title}>Request received</h1>
-            <p className={styles.lede}>
-              Thanks{form.name ? `, ${form.name}` : ''}. An admin will review your request and approve
-              your {type} access within 24 hours{form.email ? ` — we’ll email ${form.email}` : ''}.
-            </p>
-            <Link to="/" className={styles.primary}>Back to home</Link>
-          </div>
-        ) : (
-          <div className={styles.card}>
+          <div className={styles.railBody}>
             <span className={styles.eyebrow}>{copy.eyebrow}</span>
             <h1 className={styles.title}>{copy.title}</h1>
             <p className={styles.lede}>{copy.lede}</p>
-            <form onSubmit={handleSubmit} className={styles.form}>
-              <label className={styles.field} htmlFor="ra-org">
-                <span>{copy.orgLabel}</span>
-                <input id="ra-org" aria-label={copy.orgLabel} value={form.org} onChange={update('org')} required autoComplete="organization" />
-              </label>
-              <label className={styles.field} htmlFor="ra-name">
-                <span>Your name</span>
-                <input id="ra-name" aria-label="Your name" value={form.name} onChange={update('name')} required autoComplete="name" />
-              </label>
-              <label className={styles.field} htmlFor="ra-email">
-                <span>Work email</span>
-                <input id="ra-email" aria-label="Work email" type="email" value={form.email} onChange={update('email')} required autoComplete="email" />
-              </label>
-              <label className={styles.field} htmlFor="ra-phone">
-                <span>Phone <em>(optional)</em></span>
-                <input id="ra-phone" aria-label="Phone (optional)" type="tel" value={form.phone} onChange={update('phone')} autoComplete="tel" inputMode="tel" />
-              </label>
 
-              {type === 'employer' && (
-                <>
-                  <label className={styles.field} htmlFor="ra-sector">
-                    <span>Sector <em>(optional)</em></span>
-                    <input id="ra-sector" aria-label="Sector (optional)" value={form.sector} onChange={update('sector')} autoComplete="off" placeholder="e.g. Manufacturing" />
-                  </label>
-                  <label className={styles.field} htmlFor="ra-district">
-                    <span>District <em>(optional)</em></span>
-                    <input id="ra-district" aria-label="District (optional)" value={form.district} onChange={update('district')} autoComplete="address-level2" placeholder="e.g. Kampala" />
-                  </label>
-                </>
-              )}
-
-              {error && <p className={styles.error} role="alert">{error}</p>}
-
-              <button type="submit" className={styles.primary} disabled={submitting} aria-busy={submitting || undefined}>
-                {submitting ? 'Sending…' : 'Request access'}
-              </button>
-              <p className={styles.note}>
-                Employer and distributor accounts are approved by an admin — you’ll get access within 24 hours.
-              </p>
-            </form>
+            <ol className={styles.steps}>
+              {STEPS.map(([head, sub], i) => (
+                <li key={head}>
+                  <span className={styles.stepNum} aria-hidden="true">{i + 1}</span>
+                  <span className={styles.stepTx}>
+                    <b>{head}</b>
+                    <small>{sub}</small>
+                  </span>
+                </li>
+              ))}
+            </ol>
           </div>
-        )}
+
+          <Link to={copy.back} className={styles.back}>← {copy.backLabel}</Link>
+        </motion.aside>
+
+        {/* ── Form panel ── */}
+        <motion.section
+          className={styles.panel}
+          {...(reduce ? {} : { ...rise, transition: { ...rise.transition, delay: 0.06 } })}
+        >
+          {submitted ? (
+            <div className={styles.done} role="status">
+              <span className={styles.check} aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round"><path d="m5 13 4 4L19 7" /></svg>
+              </span>
+              <h2 className={styles.doneTitle} ref={doneRef} tabIndex={-1}>Request received</h2>
+              <p className={styles.doneTx}>
+                Thank you. We will check your request and call you on{' '}
+                <b>{form.phone.trim()}</b> within 24 hours to open your account.
+              </p>
+              <Link to="/" className={styles.primary}>Back to home</Link>
+            </div>
+          ) : (
+            <form onSubmit={handleSubmit} className={styles.form} noValidate>
+              <p className={styles.allReq}>All fields are required.</p>
+
+              <div className={styles.grid}>
+                <Field
+                  id="ra-org" label={copy.orgLabel} wide
+                  value={form.org} onChange={update('org')} error={errors.org}
+                  autoComplete="organization" placeholder={copy.orgPlaceholder}
+                  maxLength={MAX_LEN.org[type]}
+                />
+                <Field
+                  id="ra-name" label="Your name"
+                  value={form.name} onChange={update('name')} error={errors.name}
+                  autoComplete="name" maxLength={MAX_LEN.name}
+                />
+                <Field
+                  id="ra-email" label="Work email" type="email"
+                  value={form.email} onChange={update('email')} error={errors.email}
+                  autoComplete="email" maxLength={MAX_LEN.email}
+                />
+                <Field
+                  id="ra-phone" label="Phone number" type="tel" inputMode="tel"
+                  value={form.phone} onChange={update('phone')} error={errors.phone}
+                  autoComplete="tel" placeholder="0771 234 567" maxLength={MAX_LEN.phone}
+                  hint="You will sign in with this number."
+                />
+
+                {type === 'employer' && (
+                  <>
+                    <Field
+                      id="ra-sector" label="What your company does"
+                      value={form.sector} onChange={update('sector')} error={errors.sector}
+                      autoComplete="off" placeholder="e.g. Manufacturing"
+                      maxLength={MAX_LEN.sector}
+                    />
+                    <Field
+                      id="ra-district" label="District"
+                      value={form.district} onChange={update('district')} error={errors.district}
+                      autoComplete="address-level2" placeholder="e.g. Kampala"
+                      list="ra-districts" maxLength={MAX_LEN.district}
+                    />
+                    <datalist id="ra-districts">
+                      {DISTRICT_NAMES.map((d) => <option key={d} value={d} />)}
+                    </datalist>
+                  </>
+                )}
+              </div>
+
+              {formError && <p className={styles.error} role="alert">{formError}</p>}
+
+              <div className={styles.actions}>
+                <button
+                  type="submit" className={styles.primary}
+                  disabled={submitting} aria-busy={submitting || undefined}
+                >
+                  {submitting ? 'Sending…' : 'Request access'}
+                </button>
+                <p className={styles.note}>
+                  An admin approves employer and distributor accounts — usually within 24 hours.
+                </p>
+              </div>
+            </form>
+          )}
+        </motion.section>
       </main>
     </div>
   );

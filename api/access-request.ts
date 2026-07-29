@@ -13,6 +13,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import supabaseAdmin from './_lib/supabase-admin.js';
 import { checkLen } from './_lib/assertLen.js';
+import { toCanonicalUGPhone } from './_lib/phone.js';
 
 // Same regex the frontend uses for client-side validation.
 const EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
@@ -48,7 +49,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   res.setHeader('Cache-Control', 'no-store');
 
   const body = (req.body ?? {}) as AccessRequestBody;
-  const kind = body.type === 'distributor' ? 'distributor' : 'employer';
+  // Normalise rather than silently coerce: `?type=Distributor` used to fall
+  // through to 'employer', quietly filing the wrong kind of request.
+  const rawType = String(body.type ?? '').trim().toLowerCase();
+  if (rawType && rawType !== 'employer' && rawType !== 'distributor') {
+    return res.status(400).json({ code: 'invalid_type' });
+  }
+  const kind = rawType === 'distributor' ? 'distributor' : 'employer';
   const orgName = str(body.orgName);
   const contactName = str(body.contactName);
   const contactEmail = str(body.contactEmail);
@@ -57,17 +64,30 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const district = str(body.district);
   const message = str(body.message);
 
+  // EVERY field is required, and the server enforces it independently of the
+  // form. The phone matters most: it is the sign-in key that migration 0090
+  // writes into `demo_personas` at approval, so a request without a usable one
+  // provisions an account nobody can ever sign in to. Canonicalise it here so
+  // what we store is byte-identical to what `verify-otp` computes at login.
+  const canonicalPhone = toCanonicalUGPhone(contactPhone);
   if (!orgName) return res.status(400).json({ code: 'invalid_org_name' });
-  if (contactEmail && !EMAIL_RE.test(contactEmail)) {
+  if (!contactName) return res.status(400).json({ code: 'invalid_contact_name' });
+  if (!contactEmail || !EMAIL_RE.test(contactEmail)) {
     return res.status(400).json({ code: 'invalid_email' });
+  }
+  if (!canonicalPhone) return res.status(400).json({ code: 'invalid_phone' });
+  if (kind === 'employer') {
+    if (!sector) return res.status(400).json({ code: 'invalid_sector' });
+    if (!district) return res.status(400).json({ code: 'invalid_district' });
   }
 
   // Explicit per-field length caps before the RLS-bypassing insert — these fields
   // persist verbatim on a public unauthenticated form (storage-spam vector).
   // Caps mirror the create_distributor / create_employer validators so an
   // accepted submission always provisions cleanly on approve.
+  // Org cap is per-kind: create_distributor truncates at 120, create_employer 160.
   const tooLong =
-    checkLen(orgName, 160, 'org_name_too_long') ??
+    checkLen(orgName, kind === 'distributor' ? 120 : 160, 'org_name_too_long') ??
     checkLen(contactName, 120, 'contact_name_too_long') ??
     checkLen(contactEmail, 254, 'contact_email_too_long') ??
     checkLen(contactPhone, 32, 'contact_phone_too_long') ??
@@ -75,6 +95,19 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     checkLen(district, 120, 'district_too_long') ??
     checkLen(message, 2000, 'message_too_long');
   if (tooLong) return res.status(400).json(tooLong);
+
+  // Idempotency: a requester who hits a validation error and resubmits used to
+  // create a second pending row. After 0090 the second approval would collide
+  // on the demo_personas phone+role uniqueness, so collapse it here instead.
+  const { data: existing } = await supabaseAdmin
+    .from('access_requests')
+    .select('id')
+    .eq('status', 'pending')
+    .eq('kind', kind)
+    .eq('contact_phone', canonicalPhone)
+    .limit(1)
+    .maybeSingle();
+  if (existing?.id) return res.status(200).json({ submitted: true, id: existing.id });
 
   const id = generateId();
 
@@ -84,7 +117,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     org_name: orgName,
     contact_name: contactName || null,
     contact_email: contactEmail || null,
-    contact_phone: contactPhone || null,
+    contact_phone: canonicalPhone,   // the sign-in key, canonical +256XXXXXXXXX
     sector: kind === 'employer' ? (sector || null) : null,
     district: kind === 'employer' ? (district || null) : null,
     message: message || null,

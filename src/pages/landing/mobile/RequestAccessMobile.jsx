@@ -1,10 +1,12 @@
 import { useState } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { submitAccessRequest } from '../../../services/requestAccess';
+import { validateAccessRequest, FIELD_ORDER, MAX_LEN, messageForCode } from '../validateAccessRequest';
+import { toCanonicalUGPhone } from '../../../utils/phone';
+import { DISTRICT_NAMES } from '../../../constants/districts';
 import styles from './landingMobile.module.css';
 
 const cx = (...c) => c.filter(Boolean).join(' ');
-const EMAIL_PATTERN = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
 
 // Lead-capture form for the two roles that are NOT self-provisioned: employers
 // and distributors are created by an admin, so the public "get started" path is
@@ -34,10 +36,12 @@ export default function RequestAccessMobile() {
   const [submitted, setSubmitted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
+  const [errors, setErrors] = useState({});
   const [form, setForm] = useState({ name: '', org: '', email: '', phone: '', sector: '', district: '' });
 
   const update = (key) => (e) => {
     if (error) setError('');
+    setErrors((prev) => (prev[key] ? { ...prev, [key]: undefined } : prev));
     setForm((f) => ({ ...f, [key]: e.target.value }));
   };
 
@@ -45,28 +49,31 @@ export default function RequestAccessMobile() {
     e.preventDefault();
     if (submitting) return;
     setError('');
-    if (!form.org.trim()) {
-      setError(`Please enter your ${copy.orgLabel.toLowerCase()}.`);
+    // Shared with the desktop variant so a field can never be required on one
+    // surface and optional on the other — which is exactly how the phone (the
+    // sign-in key) ended up optional here.
+    const found = validateAccessRequest(form, type);
+    if (Object.keys(found).length) {
+      setErrors(found);
+      const first = FIELD_ORDER[type].find((k) => found[k]);
+      document.getElementById(`ra-${first}`)?.focus();
       return;
     }
-    if (form.email.trim() && !EMAIL_PATTERN.test(form.email.trim())) {
-      setError('Please enter a valid email address.');
-      return;
-    }
+    setErrors({});
     setSubmitting(true);
     try {
       await submitAccessRequest({
         type,
-        orgName: form.org,
-        contactName: form.name,
-        contactEmail: form.email,
-        contactPhone: form.phone,
-        sector: form.sector,
-        district: form.district,
+        orgName: form.org.trim(),
+        contactName: form.name.trim(),
+        contactEmail: form.email.trim(),
+        contactPhone: toCanonicalUGPhone(form.phone),
+        sector: form.sector.trim(),
+        district: form.district.trim(),
       });
       setSubmitted(true);
-    } catch {
-      setError('Something went wrong sending your request. Please try again.');
+    } catch (err) {
+      setError(messageForCode(err?.code));
     } finally {
       setSubmitting(false);
     }
@@ -86,9 +93,12 @@ export default function RequestAccessMobile() {
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="m5 13 4 4L19 7" /></svg>
           </span>
           <h3>Request received</h3>
+          {/* Promise the call, not an email — there is no mail provider wired
+              up anywhere in this repo, so "we'll email you" was a promise the
+              platform could not keep. The phone is now always present. */}
           <p>
-            Thanks{form.name ? `, ${form.name}` : ''}. An admin will review your request and approve
-            your {type} access within 24 hours{form.email ? ` — we’ll email ${form.email}` : ''}.
+            Thank you. We will check your request and call you on{' '}
+            <b>{form.phone.trim()}</b> within 24 hours to open your account.
           </p>
           <button className={cx(styles.btn, styles['btn-sec'])} onClick={() => navigate('/')}>Back to home</button>
         </div>
@@ -97,40 +107,63 @@ export default function RequestAccessMobile() {
           <div className={styles.card}>
             <div className={styles.fgroup}>
               <label className={styles.flabel} htmlFor="ra-org">{copy.orgLabel}</label>
-              <input className={styles.finput} id="ra-org" value={form.org} onChange={update('org')} placeholder="Organisation" disabled={submitting} />
+              <input className={styles.finput} id="ra-org" value={form.org} onChange={update('org')} placeholder="Organisation" maxLength={MAX_LEN.org[type]} disabled={submitting}
+                aria-invalid={errors.org ? true : undefined}
+                aria-describedby={errors.org ? 'ra-org-err' : undefined} />
+              {errors.org && <span className={styles.ferr} id="ra-org-err">{errors.org}</span>}
             </div>
             <div className={styles.fgroup}>
               <label className={styles.flabel} htmlFor="ra-name">Your name</label>
-              <input className={styles.finput} id="ra-name" value={form.name} onChange={update('name')} placeholder="Your full name" disabled={submitting} />
+              <input className={styles.finput} id="ra-name" value={form.name} onChange={update('name')} placeholder="Your full name" maxLength={MAX_LEN.name} disabled={submitting}
+                aria-invalid={errors.name ? true : undefined}
+                aria-describedby={errors.name ? 'ra-name-err' : undefined} />
+              {errors.name && <span className={styles.ferr} id="ra-name-err">{errors.name}</span>}
             </div>
             <div className={styles.fgroup}>
               <label className={styles.flabel} htmlFor="ra-email">Work email</label>
-              <input className={styles.finput} id="ra-email" type="email" value={form.email} onChange={update('email')} placeholder="you@company.com" disabled={submitting} />
+              <input className={styles.finput} id="ra-email" type="email" value={form.email} onChange={update('email')} placeholder="you@company.com" maxLength={MAX_LEN.email} disabled={submitting}
+                aria-invalid={errors.email ? true : undefined}
+                aria-describedby={errors.email ? 'ra-email-err' : undefined} />
+              {errors.email && <span className={styles.ferr} id="ra-email-err">{errors.email}</span>}
             </div>
             <div className={styles.fgroup}>
-              <label className={styles.flabel} htmlFor="ra-phone">Phone <em>(optional)</em></label>
-              <input className={styles.finput} id="ra-phone" type="tel" inputMode="tel" value={form.phone} onChange={update('phone')} placeholder="+256 …" disabled={submitting} />
+              <label className={styles.flabel} htmlFor="ra-phone">Phone number</label>
+              <input className={styles.finput} id="ra-phone" type="tel" inputMode="tel" value={form.phone} onChange={update('phone')} placeholder="0771 234 567" maxLength={MAX_LEN.phone} disabled={submitting}
+                aria-invalid={errors.phone ? true : undefined}
+                aria-describedby={errors.phone ? 'ra-phone-err' : 'ra-phone-hint'} />
+              <span className={styles.fhint} id="ra-phone-hint">You will sign in with this number.</span>
+              {errors.phone && <span className={styles.ferr} id="ra-phone-err">{errors.phone}</span>}
             </div>
 
             {type === 'employer' && (
               <>
                 <div className={styles.fgroup}>
-                  <label className={styles.flabel} htmlFor="ra-sector">Sector <em>(optional)</em></label>
-                  <input className={styles.finput} id="ra-sector" value={form.sector} onChange={update('sector')} placeholder="e.g. Manufacturing" disabled={submitting} />
-                </div>
+              <label className={styles.flabel} htmlFor="ra-sector">What your company does</label>
+              <input className={styles.finput} id="ra-sector" value={form.sector} onChange={update('sector')} placeholder="e.g. Manufacturing" maxLength={MAX_LEN.sector} disabled={submitting}
+                aria-invalid={errors.sector ? true : undefined}
+                aria-describedby={errors.sector ? 'ra-sector-err' : undefined} />
+              {errors.sector && <span className={styles.ferr} id="ra-sector-err">{errors.sector}</span>}
+            </div>
                 <div className={styles.fgroup}>
-                  <label className={styles.flabel} htmlFor="ra-district">District <em>(optional)</em></label>
-                  <input className={styles.finput} id="ra-district" value={form.district} onChange={update('district')} placeholder="e.g. Kampala" disabled={submitting} />
-                </div>
+              <label className={styles.flabel} htmlFor="ra-district">District</label>
+              <input className={styles.finput} id="ra-district" value={form.district} onChange={update('district')} placeholder="e.g. Kampala" list="ra-districts-m" maxLength={MAX_LEN.district} disabled={submitting}
+                aria-invalid={errors.district ? true : undefined}
+                aria-describedby={errors.district ? 'ra-district-err' : undefined} />
+              {errors.district && <span className={styles.ferr} id="ra-district-err">{errors.district}</span>}
+            </div>
+                <datalist id="ra-districts-m">{DISTRICT_NAMES.map((d) => <option key={d} value={d} />)}</datalist>
               </>
             )}
 
-            <p className={styles.regNote}>Employer and distributor accounts are approved by an admin — you’ll get access within 24 hours.</p>
+            <p className={styles.regNote}>All fields are required. An admin approves employer and distributor accounts — usually within 24 hours.</p>
           </div>
+          {/* Above the button, and in the error colour — this used to render
+              BELOW the CTA styled as `demoNote`, the amber "this is a demo"
+              chip, so a failure read as an advisory. */}
+          {error && <p className={styles.ferr} role="alert" style={{ margin: '0 0 10px' }}>{error}</p>}
           <button type="submit" className={cx(styles.btn, styles['btn-pri'], styles['btn-block'])} disabled={submitting} aria-busy={submitting || undefined}>
             {submitting ? 'Sending…' : 'Request access'}
           </button>
-          {error && <p className={styles.demoNote} role="alert">{error}</p>}
         </form>
       )}
     </div>
