@@ -18,6 +18,14 @@ import { toCanonicalUGPhone } from './_lib/phone.js';
 // Same regex the frontend uses for client-side validation.
 const EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
 
+// `toCanonicalUGPhone` only checks that 9 digits remain — it does NOT check the
+// carrier prefix. Both the client (`isValidUGPhone` in src/utils/phone.js) and
+// the DB (`canonical_ug_phone()` in migration 0090) do. Without this check the
+// server would accept e.g. 0721234567, store it, and the request would then be
+// permanently UN-APPROVABLE because 0090 refuses to provision from it.
+// Keep this list in sync with those two.
+const UG_MOBILE_RE = /^\+256(70|71|74|75|76|77|78)\d{7}$/;
+
 type AccessRequestBody = {
   type?: string;
   orgName?: string;
@@ -75,7 +83,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (!contactEmail || !EMAIL_RE.test(contactEmail)) {
     return res.status(400).json({ code: 'invalid_email' });
   }
-  if (!canonicalPhone) return res.status(400).json({ code: 'invalid_phone' });
+  if (!canonicalPhone || !UG_MOBILE_RE.test(canonicalPhone)) {
+    return res.status(400).json({ code: 'invalid_phone' });
+  }
   if (kind === 'employer') {
     if (!sector) return res.status(400).json({ code: 'invalid_sector' });
     if (!district) return res.status(400).json({ code: 'invalid_district' });
