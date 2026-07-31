@@ -43,10 +43,10 @@ import styles from './OverviewDesktop.module.css';
    meet a roster with no monthly pay on file. */
 function fundingModel(cfg, activeRoster) {
   const c = normalizeContributionConfig(cfg);
-  const staffZero = isLegZero(c.employeeBasis, c.employeePct, c.employeeAmount);
-  const youZero = isLegZero(c.employerBasis, c.employerPct, c.employerAmount);
-  const staffRate = formatLegRate(c.employeeBasis, c.employeePct, c.employeeAmount);
-  const youRate = formatLegRate(c.employerBasis, c.employerPct, c.employerAmount);
+  const staffZero = isLegZero(c.employeePct);
+  const youZero = isLegZero(c.employerPct);
+  const staffRate = formatLegRate(c.employeePct);
+  const youRate = formatLegRate(c.employerPct);
 
   let staffMoney = 0;
   let youMoney = 0;
@@ -143,16 +143,16 @@ export default function OverviewDesktop() {
   const companyName = employer?.name || 'Your company';
   const contactName = employer?.contactName || user?.name || 'there';
 
-  // Per-leg tile captions. Each leg states its OWN rate ("10% of pay" /
-  // "UGX 50,000") — there is no combined mode to branch on, and a leg set to zero
-  // says so plainly instead of hiding behind a generic caption.
+  // Per-leg tile captions. Each leg states its OWN rate ("10% of pay") — there is
+  // no combined mode to branch on, and a leg set to zero says so plainly instead
+  // of hiding behind a generic caption.
   const legs = normalizeContributionConfig(cfg);
-  const employeeRateLabel = isLegZero(legs.employeeBasis, legs.employeePct, legs.employeeAmount)
+  const employeeRateLabel = isLegZero(legs.employeePct)
     ? 'Saved by staff · nothing set yet'
-    : `Saved by staff · ${formatLegRate(legs.employeeBasis, legs.employeePct, legs.employeeAmount)}`;
-  const employerRateLabel = isLegZero(legs.employerBasis, legs.employerPct, legs.employerAmount)
+    : `Saved by staff · ${formatLegRate(legs.employeePct)}`;
+  const employerRateLabel = isLegZero(legs.employerPct)
     ? 'Funded by you · nothing set yet'
-    : `Funded by you · ${formatLegRate(legs.employerBasis, legs.employerPct, legs.employerAmount)}`;
+    : `Funded by you · ${formatLegRate(legs.employerPct)}`;
 
   return (
     <div className={ui.stack}>

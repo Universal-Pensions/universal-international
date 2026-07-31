@@ -97,21 +97,16 @@ export default function HomeMobile({ subscriber: sub }) {
     : { employeeLeg: 0, employerLeg: 0 };
   // Judged on the configured RATE, not the shilling result, so a member whose
   // compensation isn't recorded yet still lands in the right state.
-  const payZero = !funding || isLegZero(funding.employeeBasis, funding.employeePct, funding.employeeAmount);
-  const topUpZero = !funding || isLegZero(funding.employerBasis, funding.employerPct, funding.employerAmount);
+  const payZero = !funding || isLegZero(funding.employeePct);
+  const topUpZero = !funding || isLegZero(funding.employerPct);
   // Nothing funded (0/0 is legal) or no employer at all → hide the card entirely
   // rather than print "UGX 0 · On top of your savings".
   const showFunding = Boolean(funding) && !(payZero && topUpZero);
   const fundedMonthly = payLeg + topUpLeg;
   const fundingSummary = funding ? memberFundingSummary(funding, employerName) : null;
-  // The rate under each cell's shilling figure. A FIXED leg's rate IS that same
-  // figure, so such a cell says only how often the money lands.
-  const payRate = funding?.employeeBasis === 'fixed'
-    ? 'Every month'
-    : `${formatLegRateForMember(funding?.employeeBasis, funding?.employeePct, funding?.employeeAmount)} · every month`;
-  const topUpRate = funding?.employerBasis === 'fixed'
-    ? 'Every month'
-    : `${formatLegRateForMember(funding?.employerBasis, funding?.employerPct, funding?.employerAmount)} · every month`;
+  // The rate under each cell's shilling figure.
+  const payRate = `${formatLegRateForMember(funding?.employeePct)} · every month`;
+  const topUpRate = `${formatLegRateForMember(funding?.employerPct)} · every month`;
   // An employer-funded member with no schedule of their own has nothing to set up —
   // their employer's legs post every payroll cycle. Offer the optional extra
   // top-up instead of "Set up a schedule".

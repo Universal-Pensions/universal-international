@@ -1,8 +1,9 @@
-// settingsTabs.jsx — the employer Settings tab bodies, extracted from
-// EmployerSettings.jsx so BOTH surfaces can render them:
-//   • the MOBILE EmployerSettings slide-in panel (thin wrapper in
-//     EmployerSettings.jsx), and
+// settingsTabs.jsx — the employer Settings tab bodies, rendered by BOTH surfaces:
+//   • the MOBILE SettingsMobile page, and
 //   • the DESKTOP routed SettingsDesktop page.
+// (Both mount `SettingsBody` directly; the old EmployerSettings.jsx slide-in
+// wrapper is gone — only its CSS module survives, which is why the styles below
+// are still imported from EmployerSettings.module.css.)
 //
 // `SettingsBody` owns the SHARED `default_contribution_config` draft (so the
 // Pension and Insurance tabs are a single source of truth) and exposes the one
@@ -29,6 +30,7 @@ import { formatUGX, formatNumber } from '../../utils/currency';
 import {
   normalizeContributionConfig,
   deriveContributionLegs,
+  contributionParticipants,
   isLegZero,
 } from '../../utils/contributionModel';
 import { groupInsuranceProducts, groupInsurancePremiumPerMember } from '../../utils/groupInsurance';
@@ -75,20 +77,24 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 export function SettingsBody({ tab, settingsOpen, employer, employerId, addToast, render }) {
   const updateProfile = useUpdateEmployerProfile(employerId);
 
-  // Unified contribution seed (migration 0092). ONE model: two INDEPENDENT
-  // legs — what staff put in, and what the company adds — each expressed either
-  // as a % of that member's monthly compensation or as a flat UGX amount per
-  // member per month. There is no funding mode any more, and the company leg is
-  // never a function of the staff leg.
+  // Contribution seed (migration 0093). ONE model: two INDEPENDENT legs — what
+  // staff put in, and what the company adds — each a percentage of that member's
+  // own monthly compensation. There is no funding mode and no flat-amount basis,
+  // and the company leg is never a function of the staff leg.
   //
-  // `normalizeContributionConfig` is the whole seed: it reads the six canonical
-  // keys when they are there, converts a legacy mode-switched config
+  // `normalizeContributionConfig` is the whole pension seed: it reads the two
+  // percentages when they are there, converts a legacy mode-switched config
   // money-identically (10% staff + a 50% employer match becomes employerPct 5),
   // and turns an empty `{}` — how `create_employer` and `approve_access_request`
   // provision a brand-new employer — into 0/0, a legal "nothing funded yet"
-  // state the employer can save as-is. Basis is read from the EXPLICIT stored
-  // key only; inferring it from the presence of an amount is what used to flip a
-  // percent employer to fixed on reload.
+  // state the employer can save as-is.
+  //
+  // `who` is DERIVED from the two percentages, never stored (see
+  // contributionParticipants). A stored discriminator is exactly what the old
+  // `mode` key was, and it brought a stale-key hazard with it. A brand-new
+  // employer normalises to 'none', which we seed as 'both' so the form opens on
+  // the common case with two empty-ish fields rather than on a state the
+  // employer has to click out of.
   //
   // `insuranceEnabled` / `groupCoverAmount` / `groupInsuranceProducts` ride
   // along on this single draft so the Pension and Insurance tabs edit the SAME
@@ -108,18 +114,16 @@ export function SettingsBody({ tab, settingsOpen, employer, employerId, addToast
       }
       return { enabled: false, cover: '' };
     };
-    // The six canonical pension keys, straight off the shared model. Numbers
-    // here; the inputs write back strings as the employer types (both shapes are
-    // read through Number()/deriveContributionLegs, so the mix is harmless and
-    // matches how every other numeric field on these tabs behaves).
+    // The two pension percentages, straight off the shared model. Numbers here;
+    // the inputs write back strings as the employer types (both shapes are read
+    // through Number()/deriveContributionLegs, so the mix is harmless and matches
+    // how every other numeric field on these tabs behaves).
     const legs = normalizeContributionConfig(cfg);
+    const who = contributionParticipants(cfg);
     return {
-      employeeBasis: legs.employeeBasis,
+      who: who === 'none' ? 'both' : who,
       employeePct: legs.employeePct,
-      employeeAmount: legs.employeeAmount,
-      employerBasis: legs.employerBasis,
       employerPct: legs.employerPct,
-      employerAmount: legs.employerAmount,
       groupInsuranceProducts: {
         life: prodDraft('life'),
         health: prodDraft('health'),
@@ -175,61 +179,46 @@ export function SettingsBody({ tab, settingsOpen, employer, employerId, addToast
       : null;
 
     // === The two pension legs — validated INDEPENDENTLY ======================
-    // Unified model (migration 0092): each leg is EITHER a % of the member's own
-    // monthly compensation OR a flat UGX amount per member per month, and the
-    // company leg is never derived from the staff leg. So each leg is checked on
-    // its own terms — only the figure that its basis actually uses. No cap, no
+    // Migration 0093: each leg is a % of the member's own monthly compensation,
+    // and the company leg is never derived from the staff leg. No cap, no
     // minimum; 0 is valid on either side (see the 0/0 note below).
     //
     // A blank input reads as 0 rather than an error. That keeps this seam safe
     // for the Insurance tab, which submits the SAME saveConfig with the SAME
     // shared draft and the SAME single `err` line: an employer editing only
     // insurance must never be blocked by the pension slice.
-    const readLeg = (basisRaw, pctRaw, amountRaw, pctMsg, amountMsg) => {
-      const basis = basisRaw === 'fixed' ? 'fixed' : 'percent';
-      const pct = pctRaw === '' || pctRaw == null ? 0 : Number(pctRaw);
-      const amount = amountRaw === '' || amountRaw == null ? 0 : Number(amountRaw);
-      if (basis === 'percent' && !(Number.isFinite(pct) && pct >= 0 && pct <= 100)) {
-        return { error: pctMsg };
-      }
-      if (basis === 'fixed' && !(Number.isFinite(amount) && amount >= 0)) {
-        return { error: amountMsg };
-      }
-      // Both figures are persisted for both bases on purpose: the unused one is
-      // whatever the employer last typed under the other basis, so switching
-      // basis back and forth never loses their number.
-      return {
-        basis,
-        pct: Number.isFinite(pct) ? pct : 0,
-        amount: Number.isFinite(amount) ? amount : 0,
-      };
+    const readPct = (raw, msg) => {
+      const pct = raw === '' || raw == null ? 0 : Number(raw);
+      if (!(Number.isFinite(pct) && pct >= 0 && pct <= 100)) return { error: msg };
+      return { pct };
     };
 
-    const staffLeg = readLeg(
-      draft.employeeBasis, draft.employeePct, draft.employeeAmount,
-      'The share of pay staff put in must be a number from 0 to 100.',
-      'The amount staff put in each month must be 0 or more.',
-    );
+    // A side that is not participating is written as 0 REGARDLESS of what is
+    // sitting in the draft. The draft deliberately keeps the hidden side's typed
+    // figure so toggling "Who contributes?" back and forth doesn't lose the
+    // employer's number — but persisting it would make `contributionParticipants`
+    // derive the wrong answer on the next load, since who-contributes is read
+    // back off the two percentages.
+    const staffPays = draft.who !== 'company';
+    const companyPays = draft.who !== 'staff';
+
+    const staffLeg = staffPays
+      ? readPct(draft.employeePct, 'The share of pay staff put in must be a number from 0 to 100.')
+      : { pct: 0 };
     if (staffLeg.error) { setErr(staffLeg.error); return; }
 
-    const companyLeg = readLeg(
-      draft.employerBasis, draft.employerPct, draft.employerAmount,
-      'The share of pay you add must be a number from 0 to 100.',
-      'The amount you add each month must be 0 or more.',
-    );
+    const companyLeg = companyPays
+      ? readPct(draft.employerPct, 'The share of pay you add must be a number from 0 to 100.')
+      : { pct: 0 };
     if (companyLeg.error) { setErr(companyLeg.error); return; }
 
-    // ALL SIX pension keys are always written — one flat shape, no `mode` and no
-    // `employerMatchPct`, per the migration 0092 DB contract. The three
-    // group-insurance keys ride along unchanged so the company-wide cover is
-    // persisted by the same save.
+    // Both pension keys are always written — one flat shape, no `mode`, no
+    // `employerMatchPct` and no basis/amount keys, per the migration 0093 DB
+    // contract. The three group-insurance keys ride along unchanged so the
+    // company-wide cover is persisted by the same save.
     const defaultContributionConfig = {
-      employeeBasis: staffLeg.basis,
       employeePct: staffLeg.pct,
-      employeeAmount: staffLeg.amount,
-      employerBasis: companyLeg.basis,
       employerPct: companyLeg.pct,
-      employerAmount: companyLeg.amount,
       insuranceEnabled,
       groupCoverAmount: cover,
       groupInsuranceProducts,
@@ -239,8 +228,7 @@ export function SettingsBody({ tab, settingsOpen, employer, employerId, addToast
     // 0/0 is a LEGAL configuration — it simply funds no pension — so it saves.
     // The employer is told, not stopped: a warning toast after the save, plus the
     // standing note in the tab's preview. Never a block, never a confirm dialog.
-    const fundsNothing = isLegZero(staffLeg.basis, staffLeg.pct, staffLeg.amount)
-      && isLegZero(companyLeg.basis, companyLeg.pct, companyLeg.amount);
+    const fundsNothing = isLegZero(staffLeg.pct) && isLegZero(companyLeg.pct);
 
     // ONE atomic call: the config patch + the roster-wide group cover commit in
     // the same `update_employer_profile` transaction. `insuranceEnabled` +
@@ -539,16 +527,30 @@ export function ProfileTab({ employer, employerId, addToast }) {
 
 // =============================================================================
 // Tab 2 — Pension contribution (the company-wide template every run starts
-// from). ONE unified model, no funding modes: TWO always-visible legs — what
-// staff put in, and what the company adds — each independently either a flat UGX
-// amount per member per month or a share of that member's own monthly pay.
-// Either leg may be 0 (0/0 saves and simply funds nothing). Company-wide only:
-// there is no per-member override anywhere in the product.
+// from). ONE model, asked in the order an employer actually decides it:
+//
+//   1. WHO contributes — staff only / staff and company / company only.
+//   2. HOW MUCH each participating side puts in, as a % of that member's own
+//      monthly pay.
+//
+// Company-wide only: there is no per-member override anywhere in the product.
+// Either leg may be 0 (0/0 saves and simply funds nothing).
+//
+// `who` is UI state, derived on seed from the two stored percentages and never
+// persisted as its own key — see the SettingsBody seed. The hidden side keeps
+// whatever the employer typed so toggling back and forth doesn't lose it;
+// saveConfig is what forces the excluded leg to 0.
 //
 // The draft + the atomic saveConfig seam are owned by SettingsBody; this tab is
 // presentational over the two-leg slice. Group insurance lives on its own
 // Insurance tab (Tab 3), not here.
 // =============================================================================
+
+const WHO_OPTIONS = [
+  { value: 'staff', label: 'Staff only', hint: 'Comes off each person’s pay' },
+  { value: 'both', label: 'Staff and company', hint: 'Both sides put money in' },
+  { value: 'company', label: 'Company only', hint: 'Your money, at no cost to staff' },
+];
 
 export function PensionContributionTab({
   draft,
@@ -558,10 +560,9 @@ export function PensionContributionTab({
   saving,
   saveConfig,
 }) {
-  // Which figure each leg is expressed in. Percent is the default for an
-  // unset/absent basis, matching normalizeContributionConfig.
-  const staffPercent = draft.employeeBasis !== 'fixed';
-  const companyPercent = draft.employerBasis !== 'fixed';
+  const who = draft.who ?? 'both';
+  const staffPays = who !== 'company';
+  const companyPays = who !== 'staff';
 
   // One setter for every field on this tab. `err` is SHARED with the Insurance
   // tab (both render the same single line), so clear it on any edit here.
@@ -573,55 +574,58 @@ export function PensionContributionTab({
   // Illustrative preview — display-only; a real run re-derives both legs for
   // each member from THAT member's own compensation. It calls the shared
   // deriveContributionLegs so this preview can never disagree with the run
-  // wizard, the seed, or `submit_employer_contribution_run` in SQL.
+  // wizard, the seed, or `submit_employer_contribution_run` in SQL. The excluded
+  // side is zeroed here exactly as saveConfig will zero it, so what the employer
+  // is shown is what will actually be saved.
   const EXAMPLE_COMP = 1000000;
   const preview = useMemo(() => {
-    const { employeeLeg, employerLeg } = deriveContributionLegs(draft, EXAMPLE_COMP);
+    const { employeeLeg, employerLeg } = deriveContributionLegs(
+      {
+        employeePct: staffPays ? draft.employeePct : 0,
+        employerPct: companyPays ? draft.employerPct : 0,
+      },
+      EXAMPLE_COMP,
+    );
     return { employeeLeg, employerLeg, total: employeeLeg + employerLeg };
-  }, [draft]);
+  }, [draft.employeePct, draft.employerPct, staffPays, companyPays]);
 
   // 0/0 is legal and saveable — flagged here (and again in a post-save toast) so
   // the employer knows nothing is funded, but never blocked.
-  const fundsNothing = isLegZero(draft.employeeBasis, draft.employeePct, draft.employeeAmount)
-    && isLegZero(draft.employerBasis, draft.employerPct, draft.employerAmount);
+  const fundsNothing = preview.total <= 0;
 
   return (
     <form className={styles.form} onSubmit={saveConfig} noValidate>
       <p className={styles.intro}>
-        Two things go into each person&apos;s pension every month: what{' '}
-        <strong>staff</strong> put in from their own pay, and what{' '}
-        <strong>you</strong> add on top. Set them both here. These figures apply
-        to <strong>every</strong> member the same way and cannot be changed for
-        one person. Leave a side at 0 if only one side is paying.
+        What goes into each person&apos;s pension every month. These figures
+        apply to <strong>every</strong> member the same way and cannot be changed
+        for one person.
       </p>
 
-      {/* Leg 1 — the staff side. Deducted from the member's pay and remitted on
-          their behalf. Its own radio `name` so it cannot share a group with the
-          company block below (one shared name would clear the other choice). */}
       <fieldset className={styles.fieldset}>
-        <legend className={styles.legend}>What staff contribute</legend>
+        <legend className={styles.legend}>Who contributes?</legend>
         <div className={styles.radioRow}>
-          <label className={styles.radio}>
-            <input
-              type="radio"
-              name="emp-employee-basis"
-              checked={!staffPercent}
-              onChange={() => setField('employeeBasis', 'fixed')}
-            />
-            A flat amount each month
-          </label>
-          <label className={styles.radio}>
-            <input
-              type="radio"
-              name="emp-employee-basis"
-              checked={staffPercent}
-              onChange={() => setField('employeeBasis', 'percent')}
-            />
-            A share of their pay
-          </label>
+          {WHO_OPTIONS.map((opt) => (
+            <label className={styles.radio} key={opt.value}>
+              <input
+                type="radio"
+                name="emp-who-contributes"
+                checked={who === opt.value}
+                onChange={() => setField('who', opt.value)}
+              />
+              {opt.label}
+            </label>
+          ))}
         </div>
+        <span className={styles.hint}>
+          {WHO_OPTIONS.find((o) => o.value === who)?.hint}
+        </span>
+      </fieldset>
 
-        {staffPercent ? (
+      {/* Leg 1 — the staff side. Deducted from the member's pay and remitted on
+          their behalf. */}
+      {staffPays && (
+        <fieldset className={styles.fieldset}>
+          <legend className={styles.legend}>What staff contribute</legend>
           <div className={styles.field}>
             <label className={styles.label} htmlFor="emp-employee-pct">
               Share of each person&apos;s pay (%)
@@ -641,54 +645,14 @@ export function PensionContributionTab({
               UGX 1,000,000 a month puts in UGX 100,000.
             </span>
           </div>
-        ) : (
-          <div className={styles.field}>
-            <label className={styles.label} htmlFor="emp-employee-amount">
-              Amount from each person, per month (UGX)
-            </label>
-            <input
-              id="emp-employee-amount"
-              className={styles.input}
-              type="number"
-              min="0"
-              step="1000"
-              value={draft.employeeAmount}
-              onChange={(e) => setField('employeeAmount', e.target.value)}
-            />
-            <span className={styles.hint}>
-              The same amount comes off every person&apos;s pay each month,
-              whatever they earn.
-            </span>
-          </div>
-        )}
-      </fieldset>
+        </fieldset>
+      )}
 
       {/* Leg 2 — the company side. Your own money, and a share of the member's
           PAY — never a share of what the member put in. */}
-      <fieldset className={styles.fieldset}>
-        <legend className={styles.legend}>What you contribute</legend>
-        <div className={styles.radioRow}>
-          <label className={styles.radio}>
-            <input
-              type="radio"
-              name="emp-employer-basis"
-              checked={!companyPercent}
-              onChange={() => setField('employerBasis', 'fixed')}
-            />
-            A flat amount each month
-          </label>
-          <label className={styles.radio}>
-            <input
-              type="radio"
-              name="emp-employer-basis"
-              checked={companyPercent}
-              onChange={() => setField('employerBasis', 'percent')}
-            />
-            A share of their pay
-          </label>
-        </div>
-
-        {companyPercent ? (
+      {companyPays && (
+        <fieldset className={styles.fieldset}>
+          <legend className={styles.legend}>What you contribute</legend>
           <div className={styles.field}>
             <label className={styles.label} htmlFor="emp-employer-pct">
               Share of each person&apos;s pay you add (%)
@@ -708,30 +672,11 @@ export function PensionContributionTab({
               add UGX 50,000 for every UGX 1,000,000 of monthly pay.
             </span>
           </div>
-        ) : (
-          <div className={styles.field}>
-            <label className={styles.label} htmlFor="emp-employer-amount">
-              Amount you add per person, per month (UGX)
-            </label>
-            <input
-              id="emp-employer-amount"
-              className={styles.input}
-              type="number"
-              min="0"
-              step="1000"
-              value={draft.employerAmount}
-              onChange={(e) => setField('employerAmount', e.target.value)}
-            />
-            <span className={styles.hint}>
-              You add this same amount for every person each month, whatever
-              they earn.
-            </span>
-          </div>
-        )}
-      </fieldset>
+        </fieldset>
+      )}
 
-      {/* Live preview of BOTH legs, always all three lines — either leg can now
-          be non-zero on its own, so nothing here is gated. */}
+      {/* Live preview of BOTH legs, always all three lines — either leg can be
+          non-zero on its own, so nothing here is gated. */}
       <div className={styles.preview} aria-live="polite">
         <span className={styles.previewLabel}>
           For someone paid {formatUGX(EXAMPLE_COMP, { compact: false })} a month

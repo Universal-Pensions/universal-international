@@ -67,10 +67,8 @@ export default function SchedulePage() {
   const fundingSummary = funding ? memberFundingSummary(funding, funding.employerName) : null;
   const employerFunded = Boolean(funding) && fundingSummary !== null;
   const employerName = funding?.employerName || 'your employer';
-  const payLegZero = !funding
-    || isLegZero(funding.employeeBasis, funding.employeePct, funding.employeeAmount);
-  const topUpLegZero = !funding
-    || isLegZero(funding.employerBasis, funding.employerPct, funding.employerAmount);
+  const payLegZero = !funding || isLegZero(funding.employeePct);
+  const topUpLegZero = !funding || isLegZero(funding.employerPct);
   // The save-to-cover sweep (migration 0072, `IF NEW.source = 'own'`) accrues ONLY
   // own-source contributions toward a building policy. A member whose employee leg
   // is zero never produces an 'own' row from payroll, so a "save up for it" policy
@@ -308,7 +306,7 @@ export default function SchedulePage() {
           <span className={styles.employerLegVal}>
             {payLegZero
               ? 'Nothing — at no cost to you'
-              : formatLegRateForMember(funding.employeeBasis, funding.employeePct, funding.employeeAmount)}
+              : formatLegRateForMember(funding.employeePct)}
           </span>
         </li>
         <li className={styles.employerLeg}>
@@ -316,7 +314,7 @@ export default function SchedulePage() {
           <span className={styles.employerLegVal}>
             {topUpLegZero
               ? 'Nothing'
-              : `${formatLegRateForMember(funding.employerBasis, funding.employerPct, funding.employerAmount)} · ${formatUGX(legs.employerLeg, { compact: false })} each month`}
+              : `${formatLegRateForMember(funding.employerPct)} · ${formatUGX(legs.employerLeg, { compact: false })} each month`}
           </span>
         </li>
       </ul>

@@ -33,18 +33,19 @@ beforeEach(() => supabaseMock.__reset());
 
 // The four config fixtures below deep-equal whatever object they are handed, so
 // they would stay GREEN forever on a dead vocabulary. They carry the UNIFIED
-// two-leg shape (migration 0092): all six canonical keys always written, each leg
-// an independent share of compensation or a flat UGX amount, `mode` /
-// `employerMatchPct` deleted. That is exactly what the Settings save now sends, so
-// these tests pin the real p_patch payload rather than a shape nothing writes.
+// two-leg shape (migration 0093): both pension percentages always written, each
+// leg an independent share of compensation, `mode` / `employerMatchPct` and the
+// per-leg basis/amount keys all deleted. That is exactly what the Settings save
+// now sends, so these tests pin the real p_patch payload rather than a shape
+// nothing writes.
 
 // The mapped row update_employer_profile returns (mapEmployer reads snake_case).
 const EMPLOYER_ROW = {
   id: 'emp-001',
   name: 'Nile Breweries Ltd',
   default_contribution_config: {
-    employeeBasis: 'percent', employeePct: 0, employeeAmount: 0,
-    employerBasis: 'fixed', employerPct: 0, employerAmount: 50000,
+    employeePct: 0,
+    employerPct: 5,
     insuranceEnabled: true, groupCoverAmount: 5000000,
   },
 };
@@ -57,15 +58,11 @@ describe('atomic employer config save — updateEmployerProfile insurance fold',
     supabaseMock.__queueRpc('update_employer_profile', { data: EMPLOYER_ROW, error: null });
 
     // This is the exact object saveConfig passes to updateProfile.mutate(...) —
-    // a company that funds the whole pension itself at a flat UGX 50,000/member
-    // (staff leg zero), plus group cover.
+    // a company that funds the whole pension itself at 5% of pay (staff leg zero,
+    // i.e. the "Company only" choice on the Pension tab), plus group cover.
     const defaultContributionConfig = {
-      employeeBasis: 'percent',
       employeePct: 0,
-      employeeAmount: 0,
-      employerBasis: 'fixed',
-      employerPct: 0,
-      employerAmount: 50000,
+      employerPct: 5,
       insuranceEnabled: true,
       groupCoverAmount: 5000000,
     };
@@ -99,8 +96,8 @@ describe('atomic employer config save — updateEmployerProfile insurance fold',
 
     await svc.updateEmployerProfile({
       defaultContributionConfig: {
-        employeeBasis: 'percent', employeePct: 0, employeeAmount: 0,
-        employerBasis: 'fixed', employerPct: 0, employerAmount: 50000,
+        employeePct: 0,
+        employerPct: 5,
         insuranceEnabled: false, groupCoverAmount: null,
       },
       insuranceEnabled: false,
@@ -138,8 +135,8 @@ describe('atomic employer config save — updateEmployerProfile insurance fold',
       // Both legs funded: staff 10% of pay, company 5% of pay. (Money-identical to
       // the legacy "10% + 50% match" this replaces — the match basis is deleted.)
       defaultContributionConfig: {
-        employeeBasis: 'percent', employeePct: 10, employeeAmount: 0,
-        employerBasis: 'percent', employerPct: 5, employerAmount: 0,
+        employeePct: 10,
+        employerPct: 5,
         insuranceEnabled: true, groupCoverAmount: 3000000,
       },
       insuranceEnabled: true,

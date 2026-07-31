@@ -13,7 +13,7 @@ import { useEmployerPanel } from '../../contexts/EmployerPanelContext';
 import { useEmployer, useEmployerMetrics, useEmployees, usePendingInvites } from '../../hooks/useEmployer';
 import { formatUGX, formatNumber } from '../../utils/currency';
 import { formatDate } from '../../utils/date';
-import { normalizeContributionConfig, isLegZero } from '../../utils/contributionModel';
+import { contributionParticipants } from '../../utils/contributionModel';
 import { PageHead, MetricRow, Tile, Avatar, StatusBadge, Btn, Tag } from './ui';
 import {
   employeesIcon,
@@ -37,14 +37,15 @@ const STATUS_FILTERS = [
 // two independent legs, either of which may be nothing. The chip has room for
 // who, not for how much; the two concrete figures live on the Overview funding
 // card and on each member's detail page. Same wording as the Overview card tag.
+const FUNDING_TAG = {
+  none: 'Not set up',
+  company: 'You only',
+  staff: 'Staff only',
+  both: 'Staff + you',
+};
+
 function fundingTag(cfg) {
-  const c = normalizeContributionConfig(cfg);
-  const staffZero = isLegZero(c.employeeBasis, c.employeePct, c.employeeAmount);
-  const youZero = isLegZero(c.employerBasis, c.employerPct, c.employerAmount);
-  if (staffZero && youZero) return 'Not set up';
-  if (staffZero) return 'You only';
-  if (youZero) return 'Staff only';
-  return 'Staff + you';
+  return FUNDING_TAG[contributionParticipants(cfg)];
 }
 
 export default function EmployeesDesktop() {

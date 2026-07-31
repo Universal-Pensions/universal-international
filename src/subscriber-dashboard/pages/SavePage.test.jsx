@@ -105,8 +105,8 @@ describe('<SavePage /> employer-funded member', () => {
   const FUNDING = {
     employerName: 'Nile Breweries Ltd',
     compensation: 1_400_000,
-    employeeBasis: 'percent', employeePct: 10, employeeAmount: 0,
-    employerBasis: 'percent', employerPct: 5, employerAmount: 0,
+    employeePct: 10,
+    employerPct: 5,
   };
 
   it('never locks to the schedule amount — that money is already taken from their pay', () => {

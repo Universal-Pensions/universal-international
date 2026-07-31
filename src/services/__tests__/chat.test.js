@@ -258,8 +258,8 @@ describe('getEmployerChatResponse — local, truthful employer copilot', () => {
   // rather than pasting a string: a change to the label's wording then shows up
   // here as a genuine copy change, not as a stale literal that keeps passing.
   const TWO_LEG_CONFIG = {
-    employeeBasis: 'percent', employeePct: 10, employeeAmount: 0,
-    employerBasis: 'percent', employerPct: 5, employerAmount: 0,
+    employeePct: 10,
+    employerPct: 5,
   };
   const FUNDING_LABEL = contributionFundingLabel(TWO_LEG_CONFIG);
 

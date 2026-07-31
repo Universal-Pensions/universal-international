@@ -5,8 +5,8 @@
 //
 // TWO-LEG run math (per ACTIVE member, derived from `compensation`). Both legs are
 // INDEPENDENT shares of compensation and either may be zero:
-//   employeeLeg = percent ? round(comp × employeePct/100) : round(employeeAmount)
-//   employerLeg = percent ? round(comp × employerPct/100) : round(employerAmount)
+//   employeeLeg = round(comp × employeePct / 100)
+//   employerLeg = round(comp × employerPct / 100)
 // The employer leg is NEVER a function of the employee leg (that was the deleted
 // `employerMatchPct` basis), and there is no cap and no minimum.
 //
@@ -87,21 +87,23 @@ const EXPECTED_INSURANCE_TOTAL = EXPECTED_FUNDED * EXPECTED_INSURANCE_LEG;
 // it; if only the run assertions below fail, the SERVICE regressed.
 // =============================================================================
 describe('employer seed contribution contract', () => {
-  it('emp-001 is on the unified two-leg config (no mode, no match basis)', () => {
+  it('emp-001 is on the percent-only two-leg config (no mode, no basis keys)', () => {
     const c = normalizeContributionConfig(CFG);
-    expect(c).toMatchObject({
-      employeeBasis: 'percent', employeePct: 10, employeeAmount: 0,
-      employerBasis: 'percent', employerPct: 5, employerAmount: 0,
-    });
+    expect(c).toMatchObject({ employeePct: 10, employerPct: 5 });
     // The deleted keys must not linger in the seed — nothing reads them for
     // funding any more, and a stale `mode` re-routes normalizeContributionConfig
     // down its legacy branch.
     expect(CFG).not.toHaveProperty('mode');
     expect(CFG).not.toHaveProperty('employerMatchPct');
     expect(CFG).not.toHaveProperty('matchPct');
+    // 0093 removed the per-leg basis and its flat-amount partner.
+    expect(CFG).not.toHaveProperty('employeeBasis');
+    expect(CFG).not.toHaveProperty('employerBasis');
+    expect(CFG).not.toHaveProperty('employeeAmount');
+    expect(CFG).not.toHaveProperty('employerAmount');
     // Both legs fund real money, so the run assertions below exercise both paths.
-    expect(isLegZero(c.employeeBasis, c.employeePct, c.employeeAmount)).toBe(false);
-    expect(isLegZero(c.employerBasis, c.employerPct, c.employerAmount)).toBe(false);
+    expect(isLegZero(c.employeePct)).toBe(false);
+    expect(isLegZero(c.employerPct)).toBe(false);
   });
 
   it('the 19-member active run population totals the seeded shillings exactly', () => {

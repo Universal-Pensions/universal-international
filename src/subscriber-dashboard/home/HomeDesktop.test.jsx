@@ -95,8 +95,8 @@ const EMPLOYER_MEMBER = { ...SPLIT_FIXTURE, id: 'empe-002', employerId: 'emp-001
 const FUNDING_BOTH_LEGS = {
   employerName: 'Nile Breweries Ltd',
   compensation: 1_400_000,
-  employeeBasis: 'percent', employeePct: 10, employeeAmount: 0,
-  employerBasis: 'percent', employerPct: 5, employerAmount: 0,
+  employeePct: 10,
+  employerPct: 5,
 };
 
 describe('<HomeDesktop /> savings split', () => {
@@ -155,8 +155,8 @@ describe('<HomeDesktop /> funding block — gating', () => {
     hookState.funding = {
       employerName: 'Nile Breweries Ltd',
       compensation: 1_400_000,
-      employeeBasis: 'percent', employeePct: 0, employeeAmount: 0,
-      employerBasis: 'percent', employerPct: 0, employerAmount: 0,
+      employeePct: 0,
+      employerPct: 0,
     };
     renderHome(EMPLOYER_MEMBER);
     expect(screen.getAllByText('Employer-sponsored')).toHaveLength(1);
@@ -211,7 +211,7 @@ describe('<HomeDesktop /> funding block — one tile per non-zero leg', () => {
     // saving. No "From your pay" tile may appear.
     hookState.funding = {
       ...FUNDING_BOTH_LEGS,
-      employeeBasis: 'percent', employeePct: 0, employeeAmount: 0,
+      employeePct: 0,
     };
     renderHome(EMPLOYER_MEMBER);
     expect(screen.getByText('How your pension is funded')).toBeInTheDocument();
@@ -226,7 +226,7 @@ describe('<HomeDesktop /> funding block — one tile per non-zero leg', () => {
   it('shows only the pay tile when the employer adds nothing on top', () => {
     hookState.funding = {
       ...FUNDING_BOTH_LEGS,
-      employerBasis: 'percent', employerPct: 0, employerAmount: 0,
+      employerPct: 0,
     };
     renderHome(EMPLOYER_MEMBER);
     expect(fundingBlock().getByText('From your pay')).toBeInTheDocument();
@@ -237,21 +237,15 @@ describe('<HomeDesktop /> funding block — one tile per non-zero leg', () => {
     ).toBeInTheDocument();
   });
 
-  it('reads a FIXED leg as a flat monthly amount, with no percentage claimed', () => {
-    // A mixed-basis pair (flat UGX beside a % of pay) is a configuration the old
-    // mode-switched model could not express at all. A fixed leg's rate IS its
-    // figure, so the rate line says only how often the money lands.
-    hookState.funding = {
-      ...FUNDING_BOTH_LEGS,
-      employerBasis: 'fixed', employerPct: 0, employerAmount: 50_000,
-    };
+  it('states each leg as a share of pay', () => {
+    // Migration 0093 removed the flat-UGX basis: a leg is always a percentage, so
+    // both rate lines quote a percentage and neither can restate its own figure.
+    hookState.funding = FUNDING_BOTH_LEGS;
     renderHome(EMPLOYER_MEMBER);
-    expect(screen.getByText('UGX 140,000')).toBeInTheDocument(); // 10% of pay
-    expect(screen.getByText('UGX 50,000')).toBeInTheDocument(); // the flat leg
-    expect(screen.getByText('Every month')).toBeInTheDocument();
-    expect(
-      screen.getByText('10% of your pay, plus UGX 50,000 from Nile Breweries Ltd.'),
-    ).toBeInTheDocument();
+    expect(fundingBlock().getByText('UGX 140,000')).toBeInTheDocument(); // 10% of pay
+    expect(fundingBlock().getByText('UGX 70,000')).toBeInTheDocument(); // 5% of pay
+    expect(fundingBlock().getByText('10% of your pay — every month')).toBeInTheDocument();
+    expect(fundingBlock().getByText('5% of your pay — every month')).toBeInTheDocument();
   });
 });
 

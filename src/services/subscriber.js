@@ -588,10 +588,8 @@ export async function getContributionBreakdown(id) {
  * @param {string} [subscriberId] MOCK BRANCH ONLY, exactly like the `phone` arg on
  *   `getCurrentSubscriber` — the live RPC takes no argument and trusts the JWT, so
  *   passing an id can never widen what a caller sees.
- * @returns {Promise<null | {employerName:string,
- *   employeeBasis:'percent'|'fixed', employeePct:number, employeeAmount:number,
- *   employerBasis:'percent'|'fixed', employerPct:number, employerAmount:number,
- *   compensation:number}>}
+ * @returns {Promise<null | {employerName:string, employeePct:number,
+ *   employerPct:number, compensation:number}>}
  */
 export async function getMyEmployerFunding(subscriberId) {
   if (!IS_SUPABASE_ENABLED) {

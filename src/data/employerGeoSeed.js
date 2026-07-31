@@ -41,8 +41,8 @@ function dobForAge(age) {
 // leg == 5% of pay) with zero rounding divergence across all 37 members, so a
 // reseed leaves every geo balance untouched.
 const GEO_CONTRIBUTION_CONFIG = Object.freeze({
-  employeeBasis: 'percent', employeePct: 10, employeeAmount: 0,
-  employerBasis: 'percent', employerPct: 5, employerAmount: 0,
+  employeePct: 10,
+  employerPct: 5,
   insuranceEnabled: false,
 });
 

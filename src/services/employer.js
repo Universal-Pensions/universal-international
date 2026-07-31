@@ -218,12 +218,12 @@ function mockRuns() {
 
 /**
  * Mock employer run — the offline (`VITE_USE_SUPABASE=false`) twin of
- * `submit_employer_contribution_run` (migration 0092). For each ACTIVE member it
+ * `submit_employer_contribution_run` (migration 0093). For each ACTIVE member it
  * derives the two INDEPENDENT legs from the member's `compensation` and the
  * company-wide config via the shared `deriveContributionLegs`, which the RPC
  * mirrors in PL/pgSQL:
- *   employeeLeg = percent ? round(comp × employeePct/100) : round(employeeAmount)
- *   employerLeg = percent ? round(comp × employerPct/100) : round(employerAmount)
+ *   employeeLeg = round(comp × employeePct / 100)
+ *   employerLeg = round(comp × employerPct / 100)
  * The employer leg is a share of COMPENSATION and is never a function of the
  * employee leg; either leg may be 0. The derivation is NOT re-implemented here —
  * a local copy is exactly how the mock, the seed and the RPC drifted apart before.

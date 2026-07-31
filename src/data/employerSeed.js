@@ -52,19 +52,19 @@ export const EMPLOYER = Object.freeze({
   district: 'Kampala',
   districtId: 'd-kampala',
   payrollCadence: 'monthly',
-  // Two independent legs (0092): staff put in 10% of pay, the company adds 5% of
-  // pay. Money-identical to the config this replaces (10% + a 50% match of that
-  // leg == 5% of pay) with ZERO rounding divergence across all 21 members, so a
-  // reseed leaves every balance, run header and transaction row untouched. All six
-  // canonical keys are written even when a basis makes one of them unused, because
-  // `normalizeContributionConfig` reads the basis — never infers it from a
-  // non-zero amount. Plus multi-product group insurance (all-or-nothing per
-  // product, employer-funded): Life 15M + Health 5M here. groupCoverAmount /
+  // Two independent legs: staff put in 10% of pay, the company adds 5% of pay.
+  // Each leg is a share of the member's OWN compensation — the employer leg is
+  // never a function of the employee leg. Money-identical to every earlier shape
+  // of this config (the pre-0092 "10% + a 50% match of that leg" == 5% of pay,
+  // and the 0092 six-key form) with ZERO rounding divergence across all 21
+  // members, so a reseed leaves every balance, run header and transaction row
+  // untouched. Plus multi-product group insurance (all-or-nothing per product,
+  // employer-funded): Life 15M + Health 5M here. groupCoverAmount /
   // insuranceEnabled are kept for back-compat with any legacy reader (the life
   // product mirrors them).
   defaultContributionConfig: {
-    employeeBasis: 'percent', employeePct: 10, employeeAmount: 0,
-    employerBasis: 'percent', employerPct: 5, employerAmount: 0,
+    employeePct: 10,
+    employerPct: 5,
     insuranceEnabled: true, groupCoverAmount: 15000000,
     groupInsuranceProducts: {
       life: { enabled: true, cover: 15000000 },

@@ -222,23 +222,17 @@ export default function HomeDesktop({ subscriber }) {
     : { employeeLeg: 0, employerLeg: 0 };
   // Zero-ness is judged on the configured RATE, not on the shilling result, so a
   // member whose compensation hasn't been recorded yet still gets the right state.
-  const payZero = !funding || isLegZero(funding.employeeBasis, funding.employeePct, funding.employeeAmount);
-  const topUpZero = !funding || isLegZero(funding.employerBasis, funding.employerPct, funding.employerAmount);
+  const payZero = !funding || isLegZero(funding.employeePct);
+  const topUpZero = !funding || isLegZero(funding.employerPct);
   // 0/0 is a legal employer configuration (it funds no pension) and so is "no
   // employer at all" — in both cases there is nothing true to say, so the whole
   // funding surface is hidden rather than showing "UGX 0 on top of your savings".
   const showFunding = Boolean(funding) && !(payZero && topUpZero);
   const fundedMonthly = payLeg + topUpLeg;
   const fundingSummary = funding ? memberFundingSummary(funding, employerName) : null;
-  // The rate under each tile's shilling figure. A FIXED leg's rate IS that same
-  // figure, so repeating it would read as a duplicate — such a tile says only how
-  // often the money lands.
-  const payRate = funding?.employeeBasis === 'fixed'
-    ? 'Every month'
-    : `${formatLegRateForMember(funding?.employeeBasis, funding?.employeePct, funding?.employeeAmount)} — every month`;
-  const topUpRate = funding?.employerBasis === 'fixed'
-    ? 'Every month'
-    : `${formatLegRateForMember(funding?.employerBasis, funding?.employerPct, funding?.employerAmount)} — every month`;
+  // The rate under each tile's shilling figure.
+  const payRate = `${formatLegRateForMember(funding?.employeePct)} — every month`;
+  const topUpRate = `${formatLegRateForMember(funding?.employerPct)} — every month`;
 
   // HISTORY, not configuration: how much of the pension built so far arrived from
   // the member's pay vs from the employer. The breakdown supplies only the real
