@@ -73,7 +73,11 @@ test.describe('admin → create employer (UI + DB)', () => {
     // CreateEmployer renders <h2>New Employer</h2>.
     await expect(page.getByRole('heading', { name: /new employer/i, level: 2 })).toBeVisible();
 
-    // ── Fill the company profile fields (v2: no funding mode / match %) ───────
+    // ── Fill the company profile fields ───────────────────────────────────────
+    // Profile only: the admin never sets contribution figures. create_employer
+    // provisions the employer with an empty config, which normalises to 0/0 — a
+    // legal state that funds no pension until the employer sets its two legs in
+    // Settings → Pension. There is no funding "mode" or match % to fill in.
     await page.locator('#ce-name').fill(employerName);
     await page.locator('#ce-sector').fill(sector);
 

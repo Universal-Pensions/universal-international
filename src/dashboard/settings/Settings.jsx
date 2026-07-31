@@ -290,7 +290,12 @@ export default function Settings({ splitMode = false, fullPage = false }) {
               opacity: 0.6,
               transition: { duration: 0.55, ease: EASE_OUT_EXPO },
             }}
-            role={fullPage ? undefined : 'dialog'}
+            /* Slide-in → dialog; routed full page → a labelled region. It must NOT
+               stay roleless in full-page mode: the aria-label below is then
+               attached to a plain generic, so the panel's name is dropped from the
+               a11y tree entirely (and nothing can address it). `region` is the
+               correct role for a titled top-level section of a page. */
+            role={fullPage ? 'region' : 'dialog'}
             aria-modal={fullPage ? undefined : 'true'}
             aria-label="Settings"
           >

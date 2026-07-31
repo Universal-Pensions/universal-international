@@ -1,7 +1,8 @@
 /* Subscriber "Tune your schedule" editor — annual-premium + save-to-cover model.
    Two tabs (Contribution / Insurance) + a live "your cover" summary aside. Light
    theme, lavender borders, indigo ink — matches the onboarding two-page flow.
-   Self-contained: the agent forks keep the shared ContributionSettingsForm. */
+   Also drives the agent schedule-edit pages (showInsurance={false} there), which
+   is why the .secondaryBtn / row footer exist. */
 
 .body {
   flex: 1;
@@ -853,6 +854,42 @@
   padding: var(--space-3) var(--space-4) var(--space-4);
   background: linear-gradient(180deg, rgba(246, 247, 251, 0) 0%, var(--color-cloud) 30%);
   display: flex;
+  /* Explicit row + gap for the optional secondary (cancel) button. The subscriber
+     page renders the primary alone, where these are inert. */
+  flex-direction: row;
+  gap: var(--space-2);
+}
+
+/* Optional cancel — only rendered when the host passes `onCancel` (the agent
+   schedule-edit pages, which navigate back to a subscriber detail route). */
+.secondaryBtn {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  color: var(--color-indigo);
+  border: 1.5px solid var(--color-lavender);
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: var(--text-base);
+  letter-spacing: -0.01em;
+  border-radius: var(--radius-full);
+  padding: 16px 20px;
+  min-height: 52px;
+  cursor: pointer;
+  touch-action: manipulation;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.secondaryBtn:hover:not(:disabled) {
+  border-color: var(--color-indigo-soft);
+  background: color-mix(in srgb, var(--color-indigo) 4%, transparent);
+}
+
+.secondaryBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 .primaryBtn {

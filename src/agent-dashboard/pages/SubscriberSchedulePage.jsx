@@ -5,7 +5,7 @@ import { useAgentSubscribers, useUpdateSubscriberSchedule } from '../../hooks/us
 import { useToast } from '../../contexts/ToastContext';
 import { useIsDesktop } from '../../hooks/useIsDesktop';
 import ErrorCard from '../../components/feedback/ErrorCard';
-import ContributionSettingsForm from '../../components/contribution/ContributionSettingsForm';
+import SubscriberScheduleForm from '../../components/contribution/SubscriberScheduleForm';
 import SkeletonRow from '../../components/SkeletonRow';
 import SubscriberScheduleDesktop from './SubscriberScheduleDesktop';
 import EditScheduleConsent from './subscriber/EditScheduleConsent';
@@ -114,14 +114,19 @@ export default function SubscriberSchedulePage() {
     <div className={styles.page}>
       {contextLine}
       {subscriber && (
-        <ContributionSettingsForm
+        <SubscriberScheduleForm
           initial={existing}
           age={subscriber.age}
+          // The agent's subscriber rows carry a redacted policy shape
+          // ({product, status} only — never cover/premium amounts, see
+          // services/agent.js buildAgentPolicies), which the held-cover panel
+          // can't read. Moot here: insurance is hidden on this surface.
+          heldPolicies={[]}
+          showInsurance={false}
           onSave={handleSave}
           onCancel={handleCancel}
           submitting={submitting}
           submitLabel={isNew ? 'Set up schedule' : undefined}
-          showInsurance={false}
         />
       )}
     </div>

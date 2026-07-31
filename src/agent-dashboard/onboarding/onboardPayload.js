@@ -9,12 +9,15 @@ import { INSURANCE_PRODUCTS, INSURANCE_COVER, INSURANCE_PREMIUM_MONTHLY } from '
 
 /**
  * Build the payload `create_subscriber_from_agent_onboard` expects from the
- * SignupContext snapshot + the locally-collected contribution schedule. Same
- * shape as the self-signup path — the RPC distinguishes by validating
- * `calling_agent_id` against the auth JWT.
+ * SignupContext snapshot + the collected contribution schedule. Same shape as the
+ * self-signup path — the RPC distinguishes by validating `calling_agent_id`
+ * against the auth JWT. The schedule now comes from the SAME
+ * `signup/contribution/ContributionSettings` wizard the subscriber uses, so
+ * `paymentMethod` and `insuranceSavingsPct` below finally carry real values (the
+ * retired agent-only form emitted neither, and both silently defaulted).
  *
- * Insurance is multi-product: `ContributionSettingsForm` emits `insuranceTypes`
- * (an array of 'life' | 'health' | 'funeral'). We split it for the signup chain
+ * Insurance is multi-product: the wizard emits `insuranceTypes` (an array of
+ * 'life' | 'health' | 'funeral'). We split it for the signup chain
  * (`_insert_subscriber_chain`, migration 0065):
  *   - life            → `insurancePolicy` (life row in `insurance_policies`).
  *   - health/funeral  → `insuranceProducts` (rows in `subscriber_insurance_products`).

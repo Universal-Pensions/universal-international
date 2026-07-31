@@ -17,6 +17,14 @@
   /* content scrolls in .shell so the topbar stays pinned at the top */
   overflow: hidden;
   color: var(--color-slate);
+  /* Query container for the single-column breakpoint below. The narrow switch has
+     to key off AVAILABLE width, not the viewport: when this component is embedded
+     in the agent onboarding shell the usable column is the viewport minus the
+     240px agent rail, so a viewport query reported "wide" while the real column
+     was ~797px (and could never see the rail collapse). `useIsNarrowContainer`
+     in ContributionSettings.jsx measures THIS element, so the JS gate and the
+     `.mobilePay` display rule can never disagree. */
+  container-type: inline-size;
 }
 
 /* ── Shell — scrolling two-column layout: panel + summary aside ──────── */
@@ -46,6 +54,62 @@
 .shell[data-pinned="true"] .summaryCard {
   top: 0;
   max-height: 100%;
+}
+
+/* ── Embedded mode (agent onboarding Schedule stage) ─────────────────────
+   The host already owns the page chrome AND the scrollport (`<main id="main">`
+   in AgentShell / AgentDesktopShell, both `overflow-y: auto`). A `100dvh`
+   child inside that produces a double scrollbar and — worse — measures the
+   card's internal scroll against the full viewport while the visible region is
+   offset by the host's stepper, PageHeader and top bar, stranding the pinned
+   footer (the Pay CTA) below the fold. On agent mobile it also ignores the
+   `padding-bottom` the shell reserves for the fixed BottomTabBar.
+
+   So embedded reproduces exactly what the ≤1100px block already does for
+   phones: page-scroll, card grows to its content, footer sticky. All rules are
+   attribute-scoped, so the self-signup path is untouched.
+
+   The two custom properties are host escape hatches: `--cs-footer-bottom` lifts
+   the sticky footer clear of a fixed bottom nav (sticky offsets ignore the
+   scroll container's padding), and `--cs-aside-top` pushes the sticky summary
+   below any floating host control. */
+.page[data-embedded="true"] {
+  height: auto;
+  min-height: 0;
+  overflow: visible;
+}
+
+/* The HOST owns the measure and the gutters now (see the schedule-stage cap in
+   OnboardPage.module.css). Keeping this component's own 1120px cap as well would
+   double-constrain the column and desync the rendered width from the 1100px
+   container threshold the JS gate reads. */
+.page[data-embedded="true"] .shell {
+  overflow: visible;
+  max-width: none;
+  padding-inline: 0;
+}
+
+.page[data-embedded="true"] .cardWizard {
+  align-self: auto;
+  max-height: none;
+  overflow: visible;
+}
+
+.page[data-embedded="true"] .pbody {
+  overflow: visible;
+  min-height: 0;
+}
+
+.page[data-embedded="true"] .pfoot {
+  position: sticky;
+  bottom: var(--cs-footer-bottom, 0);
+  z-index: 2;
+  box-shadow: 0 -3px 12px rgba(41, 40, 103, 0.07);
+}
+
+.page[data-embedded="true"] .summaryCard {
+  max-height: none;
+  top: var(--cs-aside-top, var(--space-6));
 }
 
 /* ── The white panel (left column) ──────────────────────────────────── */
@@ -265,8 +329,13 @@
 /* In-card payment block for narrow layouts (JS-gated via showInCardPay). Sits at
    the foot of the wizard body, directly above the sticky footer Pay CTA, so the
    method chooser and the pay button are visible together on phones/tablets. */
+/* Belt-and-braces: never show the in-card block on wide layouts (it's JS-gated to
+   narrow ones, but this keeps the wide path byte-identical if it renders). Stated
+   as a base `none` + a narrow-container override rather than a `min-width: 1101px`
+   query, so there is no fractional-width gap between 1100 and 1101 where neither
+   rule applies and the block leaks onto a wide layout. */
 .mobilePay {
-  display: flex;
+  display: none;
   flex-direction: column;
   gap: 1rem;
   padding: 1rem;
@@ -274,11 +343,9 @@
   background: color-mix(in srgb, var(--color-indigo) 2.5%, var(--color-white));
 }
 
-/* Belt-and-braces: never show the in-card block on desktop (it's JS-gated to
-   narrow layouts, but this keeps the desktop path byte-identical if it renders). */
-@media (min-width: 1101px) {
+@container (max-width: 1100px) {
   .mobilePay {
-    display: none;
+    display: flex;
   }
 }
 
@@ -2319,7 +2386,11 @@
 }
 
 /* ── Responsive ──────────────────────────────────────────────────────── */
-@media (max-width: 1100px) {
+/* Container query, not a media query: keyed to the width `.page` actually has so
+   the embedded agent-onboarding host collapses to one column when ITS column is
+   narrow, not when the whole viewport is. Every selector here is a `.page`
+   descendant, so all of them are queryable. */
+@container (max-width: 1100px) {
   .shell {
     grid-template-columns: minmax(0, 1fr);
     max-width: 720px;
@@ -2356,7 +2427,11 @@
   }
 }
 
-@media (max-width: 768px) {
+/* Phone-width LAYOUT rules — container-queried for the same reason as the 1100
+   block. This matters concretely when embedded: the agent mobile shell caps its
+   page at 560px, so at a 768–1023px viewport a media query would never fire and
+   `.freqGrid`'s six columns would render as ~85px slivers inside a 560px column. */
+@container (max-width: 768px) {
   .shell {
     padding: var(--space-4);
   }
@@ -2406,7 +2481,11 @@
     align-items: flex-start;
     gap: 0.9rem;
   }
+}
 
+/* Tap targets stay a MEDIA query — this is about input modality (a small screen
+   implies touch), not about how much room the component was given. */
+@media (max-width: 768px) {
   /* Comfortable ≥44px tap targets on touch devices. */
   .presetChip {
     min-height: 44px;

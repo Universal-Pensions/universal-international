@@ -3,7 +3,7 @@
 // An employer's staff are now REAL subscribers tagged with `employer_id`. This
 // module is the SINGLE SOURCE OF TRUTH for the employer demo data, consumed two
 // ways so the Supabase path and the offline mock path agree:
-//   * `scripts/seed-supabase.mjs` seeds the `employers` row + the 16 members as
+//   * `scripts/seed-supabase.mjs` seeds the `employers` row + the 21 members as
 //     tagged `subscribers` (+ balances / schedules / insurance / transactions)
 //     and the employer `contribution_runs` history.
 //   * The `src/services/employer.js` mock branch (VITE_USE_SUPABASE=false)
@@ -13,11 +13,12 @@
 // service, NEVER imported by a component (CLAUDE.md §4.1). Dates anchor to
 // `MOCK_NOW` (2026-05-26) for demo stability.
 //
-// Issue 2: the funding MODE is a SINGLE company-wide value on the employer
+// Issue 2: the funding setup is a SINGLE company-wide value on the employer
 // (`defaultContributionConfig`) — applied to every member, never per-member.
 
 import { MOCK_NOW } from './mockData';
 import { groupInsurancePremiumPerMember } from '../utils/groupInsurance';
+import { deriveContributionLegs } from '../utils/contributionModel';
 
 const DAY_MS = 86400000;
 const UNIT_PRICE = 1000; // UGX/unit — matches the contribution trigger.
@@ -33,11 +34,13 @@ function dobForAge(age) {
 }
 
 // ─── Employer (B2B account) ──────────────────────────────────────────────────
-// ONE company-wide contribution model (Issue 2). CONTRIBUTION MODEL v2 (migration
-// 0062): funding is driven by each member's monthly `compensation`, NOT a saving
-// amount. Co-contribution: the employee leg = compensation × employeePct, and the
-// employer leg = employeeLeg × employerMatchPct (NO cap). The insurance keys
-// (insuranceEnabled / groupCoverAmount) ride along unchanged.
+// ONE company-wide contribution setup (Issue 2), applied to every member. UNIFIED
+// TWO-LEG MODEL (migration 0092): funding is driven by each member's monthly
+// `compensation`, NOT a saving amount, and the two legs are INDEPENDENT — each is
+// either a percentage of compensation or a flat UGX amount. The employer leg is a
+// share of PAY, never a share of the employee leg. See src/utils/contributionModel.js
+// for the canonical math. The insurance keys (insuranceEnabled / groupCoverAmount /
+// groupInsuranceProducts) ride along unchanged — they are independent of the legs.
 export const EMPLOYER = Object.freeze({
   id: 'emp-001',
   name: 'Nile Breweries Demo Ltd',
@@ -49,13 +52,19 @@ export const EMPLOYER = Object.freeze({
   district: 'Kampala',
   districtId: 'd-kampala',
   payrollCadence: 'monthly',
-  // Co-contribution funding (v2): employee saves 10% of compensation, employer
-  // matches 50% of that leg. Plus multi-product group insurance (all-or-nothing
-  // per product, employer-funded): Life 15M + Health 5M here. groupCoverAmount /
+  // Two independent legs (0092): staff put in 10% of pay, the company adds 5% of
+  // pay. Money-identical to the config this replaces (10% + a 50% match of that
+  // leg == 5% of pay) with ZERO rounding divergence across all 21 members, so a
+  // reseed leaves every balance, run header and transaction row untouched. All six
+  // canonical keys are written even when a basis makes one of them unused, because
+  // `normalizeContributionConfig` reads the basis — never infers it from a
+  // non-zero amount. Plus multi-product group insurance (all-or-nothing per
+  // product, employer-funded): Life 15M + Health 5M here. groupCoverAmount /
   // insuranceEnabled are kept for back-compat with any legacy reader (the life
   // product mirrors them).
   defaultContributionConfig: {
-    mode: 'co-contribution', employeePct: 10, employerMatchPct: 50,
+    employeeBasis: 'percent', employeePct: 10, employeeAmount: 0,
+    employerBasis: 'percent', employerPct: 5, employerAmount: 0,
     insuranceEnabled: true, groupCoverAmount: 15000000,
     groupInsuranceProducts: {
       life: { enabled: true, cover: 15000000 },
@@ -65,46 +74,31 @@ export const EMPLOYER = Object.freeze({
   },
 });
 
-// Flat group life cover applied uniformly to EVERY member (the all-or-nothing
-// model — there is no per-member insurance). Premium is employer-included (0).
-const GROUP_COVER = 15000000;
+// Flat group LIFE cover applied uniformly to EVERY member (all-or-nothing — there
+// is no per-member insurance). Premium is employer-included (0). Read OFF the
+// company config rather than restated, so the member rows and the `employers` row
+// can never disagree about the cover — the seed script prices the run's insurance
+// leg from the config, so a divergence here would leave the ledger unreconcilable.
+const GROUP_COVER = EMPLOYER.defaultContributionConfig.groupInsuranceProducts.life.cover;
 
 // Demo employer login phone — resolves to emp-001 via demo_personas.
 export const EMPLOYER_DEMO_PHONE = '+256700000031';
 
 const COMPANY = EMPLOYER.defaultContributionConfig;
 
-// ─── TWO-LEG run math (CONTRIBUTION MODEL v2, migration 0062) ─────────────────
-// Both legs are derived from a member's monthly `compensation` + the company-wide
-// config, mirroring `submit_employer_contribution_run` / the employer-service mock
-// EXACTLY:
-//   co-contribution: employeeLeg = round(comp × employeePct/100)
-//                    employerLeg = round(employeeLeg × employerMatchPct/100)
-//   employer-only:   employeeLeg = 0;
-//                    percent → employerLeg = round(comp × employerPct/100)
-//                    fixed   → employerLeg = round(employerAmount)
+// ─── TWO-LEG run math (UNIFIED MODEL, migration 0092) ─────────────────────────
+// Both legs come from `deriveContributionLegs` — the ONE implementation of the
+// math, shared with the employer-service mock, the run-wizard preview and (mirrored
+// in PL/pgSQL) `submit_employer_contribution_run`. This module must never
+// re-implement it: a local copy is exactly how the old employer-leg basis
+// (a % of the EMPLOYEE leg) survived in the seed after the rest of the app moved on.
 /** Per-run contribution legs for one member under a config (defaults to COMPANY). */
 function memberLegs(comp, cfg = COMPANY) {
-  const c = Number(comp ?? 0);
-  const mode = cfg.mode ?? 'employer-only';
-  let employeeLeg = 0;
-  let employerLeg = 0;
-  if (mode === 'co-contribution') {
-    employeeLeg = round(c * Number(cfg.employeePct ?? 0) / 100);
-    employerLeg = round(employeeLeg * Number(cfg.employerMatchPct ?? 0) / 100);
-  } else {
-    employeeLeg = 0;
-    if (cfg.employerBasis === 'percent') {
-      employerLeg = round(c * Number(cfg.employerPct ?? 0) / 100);
-    } else {
-      employerLeg = round(Number(cfg.employerAmount ?? 0));
-    }
-  }
-  return { employeeLeg, employerLeg };
+  return deriveContributionLegs(cfg, comp);
 }
 
 // ─── Members (tagged subscribers) ────────────────────────────────────────────
-// 16 staff onboarded by the employer = real subscribers (agent_id NULL). Each
+// 21 staff onboarded by the employer = real subscribers (agent_id NULL). Each
 // member's balances are internally consistent with the two-leg model run for
 // `monthsActive` periods:
 //   ownContributions      = employeeLeg(comp) × monthsActive
@@ -190,10 +184,10 @@ export const MEMBERS = Object.freeze([
 const ACTIVE_MEMBERS = MEMBERS.filter((m) => m.status === 'active' && !m.recentHire);
 
 // ─── Member contribution history + run headers (linked) ──────────────────────
-// CONTRIBUTION MODEL v2 (migration 0062): each payroll date is recorded as one
+// UNIFIED TWO-LEG MODEL (migration 0092): each payroll date is recorded as one
 // contribution RUN that posts BOTH legs — the employee leg (source:'own') + the
-// employer leg (source:'employer'), derived from the member's `compensation` via
-// `memberLegs` — to every active member, each split by the member's retirementPct
+// employer leg (source:'employer'), each derived INDEPENDENTLY from the member's
+// `compensation` via `memberLegs` — to every active member, split by retirementPct
 // (default 80, rounding ONCE). Every leg carries its run's `contributionRunId`,
 // and each run header's totals are the Σ of its own legs, so the run drill-down
 // reconciles to its members (audit 2026-06-16: previously the legs were untagged
@@ -234,7 +228,15 @@ function buildContributionHistory() {
         const ret = round(employeeLeg * retPct / 100);
         txns.push({
           id: `t-own-${m.id}-${i + 1}`, subscriberId: m.id, type: 'contribution', source: 'own',
-          amount: employeeLeg, date: atMidday(date), method: 'MTN Mobile Money',
+          // The employee leg is the member's OWN money (source:'own') but it never
+          // passes through their hands — the employer deducts it from pay and remits
+          // it with the run. Stamping it 'MTN Mobile Money' made it read in the
+          // member's activity feed and notifications ("added to your savings via MTN
+          // Mobile Money") as a top-up they chose to make, which is a different story
+          // from a payroll deduction and the wrong one to tell in a demo. The label
+          // says what actually happened; the employer leg below is the company's own
+          // money and is remitted the same way.
+          amount: employeeLeg, date: atMidday(date), method: 'Payroll deduction',
           retirementAmount: ret, emergencyAmount: employeeLeg - ret, contributionRunId: runId,
         });
         employeeTotal += employeeLeg;

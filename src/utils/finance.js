@@ -237,33 +237,49 @@ export function deriveInvestmentGrowth(subscriber) {
 }
 
 /**
- * Split a member's contributed principal into own-vs-employer for the
- * employer-benefits card.
+ * Split a member's contributed principal into the part that reached the pension
+ * from their own pay and the part their employer added on top — the HISTORY
+ * figures behind the subscriber Home funding block.
  *
- * Root cause this fixes: the card used to SUM the `transactions` feed, but the
+ * Root cause this fixes: the block used to SUM the `transactions` feed, but the
  * seed only ever wrote a handful of contribution rows per member (e.g. 5 months
  * for a 21-month member), so that sum sat far below the member's real
- * `total_balance` snapshot — the card's "total contributed" (1.05M) flatly
+ * `total_balance` snapshot — the block's "total contributed" (1.05M) flatly
  * contradicted the hero balance (4.41M). The two were never the same source.
  *
  * Instead we split the SAME derived principal the hero shows
- * (`deriveInvestmentGrowth().invested`) by the member's real employer-match
- * ratio, so `own + employer === invested === balance − growth` and every surface
- * agrees. The raw breakdown is consulted only for the ratio, never the totals.
+ * (`deriveInvestmentGrowth().invested`) by the member's REAL own:employer ratio
+ * taken from the feed, so `own + employer === invested === balance − growth` and
+ * every surface agrees. The raw breakdown is consulted only for the ratio, never
+ * the totals.
+ *
+ * ⚠️ THERE IS DELIBERATELY NO FALLBACK RATIO. This used to assume a 1/3 employer
+ * share when the feed had no contribution rows, described as "a common 2:1
+ * member-to-employer top-up". It was really an artifact of the deleted
+ * mode-switched config, whose seed was 10% of pay plus a 50% employer MATCH OF
+ * THAT LEG — exactly 2:1. Under the unified two-leg model
+ * (`utils/contributionModel.js`) the two legs are independent shares of
+ * compensation, so employer-funds-everything (employee leg 0),
+ * member-funds-everything (employer leg 0) and 0/0 are ALL legal configurations
+ * and no default share is defensible. With no rows to measure we say so
+ * (`unknown: true`) and callers HIDE the funding surface instead of inventing a
+ * split the member would read as fact.
  *
  * @param {{ netBalance?: number, registeredDate?: string, id?: string }} subscriber
  * @param {{ own?: number, employer?: number }} [breakdown] raw per-source sums — used only for the ratio
- * @returns {{ own: number, employer: number, total: number }}
+ * @returns {{ own: number, employer: number, total: number, unknown: boolean }}
+ *   `unknown: true` means the feed carried no contribution rows, so the split is
+ *   genuinely unmeasurable — the three figures are 0 and must not be rendered.
  */
 export function deriveEmployerSplit(subscriber, breakdown) {
   const { invested } = deriveInvestmentGrowth(subscriber);
   const rawOwn = Number(breakdown?.own) || 0;
   const rawEmployer = Number(breakdown?.employer) || 0;
   const rawTotal = rawOwn + rawEmployer;
-  // Preserve the member's real match ratio; fall back to a 1/3 employer share
-  // (a common 2:1 member-to-employer top-up) when no contribution rows exist yet.
-  const employerShare = rawTotal > 0 ? rawEmployer / rawTotal : 1 / 3;
-  const employer = Math.round(invested * employerShare);
+  if (rawTotal <= 0) return { own: 0, employer: 0, total: 0, unknown: true };
+  // Preserve the member's real own:employer ratio, re-scaled onto the derived
+  // principal so own + employer ties out to `invested` exactly.
+  const employer = Math.round(invested * (rawEmployer / rawTotal));
   const own = Math.max(0, invested - employer);
-  return { own, employer, total: own + employer };
+  return { own, employer, total: own + employer, unknown: false };
 }

@@ -103,6 +103,9 @@ export async function getChatResponse(message) {
  * @param {object} ctx - { headcount, active, inactive, participationPct,
  *   pendingKyc, pendingNames[], fundingLabel, coverLabel, totalContributions,
  *   lastRunLabel } — all derived in EmployerHealthScore from live hooks.
+ *   `fundingLabel` is contributionFundingLabel(default_contribution_config) from
+ *   `utils/contributionModel` — the two payroll figures in plain words. This file
+ *   only interpolates it; never re-derive contribution wording here.
  * @returns {Promise<string>}
  */
 export async function getEmployerChatResponse(message, ctx = {}) {
@@ -153,7 +156,15 @@ const subscriberChatResponses = {
   contribute:
     "To add money, tap ‘Make a Contribution’ — you can use the default split (80/20) or customise just this top-up.",
   schedule:
-    "Your schedule controls how often and how much you save. Open the Schedule tab to change frequency, amount, or the retirement/emergency split.",
+    "Your schedule controls how often and how much you save with your own money. Open the Schedule tab to change frequency, amount, or the retirement/emergency split. If you joined through your job, the amounts your employer sends are set by them and are separate from this.",
+  // Employer-sponsored members. Without this arm, "how much does my employer put
+  // in?" fell through to `schedule`, which told them THEY control the amount —
+  // false for a payroll member: the company config sets both amounts and the
+  // member states neither. Plain words, no percentages, because this string is
+  // shared by every member (and can be served before sign-in), so it must never
+  // claim a figure it hasn't read.
+  employer:
+    "If you joined through your job, your employer sets two amounts each month — a part taken from your pay, and a part the company adds from its own money. Both go into your pension automatically, so there is nothing for you to pay. You can still save your own money on top any time, and any cover your company pays for shows under Insurance.",
   nominee:
     "Nominees receive your savings or insurance benefit. You can change them any time under ‘Update nominees’. Shares must total 100%.",
   claim:
@@ -227,7 +238,10 @@ function mockEmployerChatResponse(message, ctx = {}) {
     participationPct = 0,
     pendingKyc = 0,
     pendingNames = [],
-    fundingLabel = 'Company funding: not set',
+    // Mirrors contributionFundingLabel()'s zero-state string, so a ctx that
+    // hasn't loaded yet reads exactly like an employer who has set nothing up
+    // rather than inventing a second vocabulary for "unknown".
+    fundingLabel = 'No contributions set up yet',
     coverLabel = 'no group cover',
     totalContributions = 0,
     lastRunLabel = null,
@@ -267,9 +281,22 @@ function mockEmployerChatResponse(message, ctx = {}) {
     return `${participationPct}% of your ${formatNumber(active)} active staff are contributing.`;
   }
 
-  // Company funding model.
+  // Company funding — the two payroll amounts.
+  //
+  // `match` is deliberately KEPT as a routing keyword. Employers still ask "do
+  // you match staff contributions?", and dropping the keyword would drop them to
+  // the generic fallback. Only the ANSWER changed: `fundingLabel` is now
+  // contributionFundingLabel(config), which states the two concrete figures
+  // ("Staff put in 10% of pay · You add 5% of pay") instead of naming a mode.
+  // There is no match basis any more — the company's share is a share of pay (or
+  // a flat amount) in its own right, never a percentage of what staff put in.
+  //
+  // The second sentence stays true under the unified model and reads correctly
+  // next to all four label states (including "No contributions set up yet"):
+  // voluntary member saving is separate money the member chooses themselves, and
+  // it is never touched by a contribution run.
   if (l.includes('funding') || l.includes('split') || l.includes('match')) {
-    return `${fundingLabel}. Each member can save their own amount on top of this.`;
+    return `${fundingLabel}. Separately, each member can save their own money any time — that part is their choice, not payroll.`;
   }
 
   // Group insurance (company-wide, all-or-nothing).
@@ -524,6 +551,13 @@ function mockAgentReply(message, firstName) {
 
 function mockSubscriberChatResponse(message) {
   const l = (message || '').toLowerCase();
+  // FIRST, on purpose. An employer-sponsored member's question almost always
+  // also carries a general keyword ("what does my employer contribute?" has
+  // 'contribute'; "does my company set my schedule?" has 'schedule'), so any
+  // later position loses the question to a generic answer that is wrong for
+  // them. The employer string closes over the one real collision ('company' +
+  // cover) by pointing group cover at the Insurance tab.
+  if (l.includes('employer') || l.includes('company') || l.includes('salary') || l.includes('payroll')) return subscriberChatResponses.employer;
   if (l.includes('withdraw') || l.includes('take out')) return subscriberChatResponses.withdraw;
   if (l.includes('contribute') || l.includes('top up') || l.includes('top-up')) return subscriberChatResponses.contribute;
   if (l.includes('schedule') || l.includes('frequency') || l.includes('change my')) return subscriberChatResponses.schedule;

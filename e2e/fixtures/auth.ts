@@ -49,7 +49,7 @@ const PERSONAS: Record<Role, Persona> = {
     phone: '+256700000021',
     name: 'Default distributor',
   },
-  // Employer demo persona — EMPLOYER_DEMO_PHONE (src/data/employerSeed.js:61)
+  // Employer demo persona — EMPLOYER_DEMO_PHONE (src/data/employerSeed.js:85)
   // resolves to emp-001 via demo_personas; ROLE_DEFAULTS.employer is the same
   // fallback so the minted JWT lands on the live employer dashboard.
   employer: {

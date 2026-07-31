@@ -107,8 +107,15 @@ export const ID_UPLOAD_MIMETYPE = 'image/jpeg';
 export const ID_UPLOAD_BYTES = 32 * 1024;
 
 /**
- * Contribution onboarding "quick amount" button label tapped during the
- * payment step. The amount lands as a `transactions.amount` row of 10,000
- * UGX (10 units at the hardcoded 1,000 UGX/unit demo price).
+ * Contribution onboarding "quick amount" chip label tapped on page 1 of the
+ * Plan & pay wizard. The amount lands as a `transactions.amount` row of 20,000
+ * UGX (20 units at the hardcoded 1,000 UGX/unit demo price).
+ *
+ * MUST be a preset of the wizard's DEFAULT frequency (monthly). The quick amounts
+ * are frequency-tuned via `PRESETS_BY_FREQUENCY` / `presetsForFrequency`
+ * (src/constants/savings.js) and monthly starts at 20,000 — the previous value
+ * here, 'UGX 10,000', is a WEEKLY/DAILY preset and rendered no chip at all.
  */
-export const QUICK_CONTRIBUTION_LABEL = 'UGX 10,000';
+export const QUICK_CONTRIBUTION_LABEL = 'UGX 20,000';
+/** The numeric value of QUICK_CONTRIBUTION_LABEL, for DB assertions. */
+export const QUICK_CONTRIBUTION_AMOUNT = 20_000;

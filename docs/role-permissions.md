@@ -175,7 +175,7 @@ All slide-in panels use `splitMode={true}`:
 |------|--------|-------|
 | Home (6 widgets) | Full | PulseCard balance, TopUp, Projection, IfYouNeedIt (desktop only), Activity (last 3), CoPilot |
 | Save (multi-step) | Full | Pay-now contribution: amount + retirement split + method → confirm → success |
-| Schedule | Full | Frequency + amount + split via shared `ContributionSettingsForm` |
+| Schedule | Full | Frequency + amount + split + yearly step-up + insurance tab via shared `SubscriberScheduleForm` (also used, with `showInsurance={false}`, by the agent schedule-edit pages) |
 | Withdraw hub | Full | Choose savings withdrawal vs insurance claim |
 | Withdraw → savings | Full | Bucket + amount + reason |
 | Withdraw → claim | Full | Type + date + amount + description + **real File blob upload** (multipart-ready) |
@@ -267,7 +267,7 @@ All slide-in panels use `splitMode={true}`:
 | Onboard (4-stage flow) | Full | Awareness check → KYC (reuses signup STEPS) → Schedule → Done |
 | Subscribers list | Scoped | Own subscribers only; search + sort + active/dormant filter |
 | Subscriber detail | Scoped | KYC pill + KPIs + schedule + **active insurance policies as product+status chips (Life/Health/Funeral · Active)**. Agents see WHICH policies are active but **NOT the cover amount or premium** (`0065` adds agent `SELECT` RLS on `subscriber_insurance_products`; `services/agent.js` builds `subscriber.policies` = product+status only) |
-| Subscriber schedule edit | Scoped | Reuses `ContributionSettingsForm` with `showInsurance={false}` — the insurance section is hidden (an agent can't authorise a premium for someone else; insurance is the subscriber's own post-signup decision) |
+| Subscriber schedule edit | Scoped | Reuses the subscriber's own `SubscriberScheduleForm` with `showInsurance={false}` — the Insurance tab, its switches and the purchased-cover panel are all hidden, and the save payload omits every insurance key so the subscriber's flag is untouched (an agent can't authorise a premium for someone else — `fund_insurance_products` is subscriber-gated; insurance is the subscriber's own post-signup decision). Behind an `EditScheduleConsent` OTP gate for an existing schedule. The yearly step-up IS editable here (`contribution_indexation_pct` is PATCH-writable, unlike the RPC-locked funding-mode/target columns) |
 | Analytics | Scoped | Recharts demographics + saving habits + onboarding velocity from agent's portfolio |
 | Commissions home | Scoped | Earned (`paid`, grouped by paid month) + Owed (`due`) cards |
 | Commissions sub-views | Scoped | `/commissions/:view` ∈ `{earned, owed}` (confirm + disputes removed) |

@@ -24,7 +24,7 @@ const Shield = () => (
 const FEATURES = [
   ['Bulk enrolment & uploads', 'Onboard your entire roster from a single spreadsheet — no one-by-one forms, no branch visits.'],
   ['Group Life, Health & Funeral cover', 'Extend company-wide protection so a hard season never wipes out what your people have built.'],
-  ['Co-contribution splits', 'Set how much the company funds and how much each employee adds — applied automatically every run.'],
+  ['Staff and company contributions', 'Set what comes out of staff pay and what the company adds — a share of pay or a flat amount, and either can be nothing.'],
   ['Participation & compliance reporting', 'See enrolment, participation and contribution health at a glance — reporting your board will actually read.'],
 ];
 
@@ -32,7 +32,7 @@ const FEATURES = [
 const STEPS = [
   ['01', 'var(--indigo)', '41,40,103', <><path d="M3 21h18M5 21V8h14v13M9 21v-6h6v6M9 12h6" /></>, 'Create your company account', 'Register your business, add your details and invite your HR or finance team.', 'Minutes, not days'],
   ['02', 'var(--green-ink)', '46,139,87', <><path d="M14 3v4a1 1 0 0 0 1 1h4" /><path d="M17 21H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h7l5 5v11a2 2 0 0 1-2 2Z" /><path d="M9 13h6M9 17h4" /></>, 'Upload your staff roster', 'One spreadsheet enrols everyone — names, IDs and salaries in a single import.', 'Bulk, not one-by-one'],
-  ['03', 'var(--teal-ink)', '47,143,157', <><path d="M21 7.5 12 3 3 7.5 12 12l9-4.5Z" /><path d="M3 7.5v9L12 21l9-4.5v-9" /><path d="M12 12v9" /></>, 'Set the co-contribution split', 'Decide what the company funds and what each employee adds — applied automatically.', 'Employer + employee'],
+  ['03', 'var(--teal-ink)', '47,143,157', <><path d="M21 7.5 12 3 3 7.5 12 12l9-4.5Z" /><path d="M3 7.5v9L12 21l9-4.5v-9" /><path d="M12 12v9" /></>, 'Set the two contribution amounts', 'Decide what comes out of staff pay and what the company adds — a share of pay or a flat amount, applied automatically.', 'Employer + employee'],
   ['04', 'var(--indigo-soft)', '94,99,168', <><path d="M12 3 4 7v5c0 4.5 3.4 7.7 8 9 4.6-1.3 8-4.5 8-9V7z" /><path d="m9 12 2 2 4-4" /></>, 'Run contributions & cover', 'Settle the whole run in one upload and switch on Life · Health · Funeral cover company-wide.', 'One upload · fully covered'],
 ];
 
@@ -216,7 +216,7 @@ export default function EmployersPage() {
                 <div>
                   <p className={styles.eyebrow}>Set up your company · Onboard from one spreadsheet</p>
                   <h2 id="cta-title">Set your team up in an afternoon.<br /><span className={styles.accent}>Run the first contribution today.</span></h2>
-                  <p>Create your company account, upload your roster, set the split, and switch on group Life · Health · Funeral cover — all in one workspace.</p>
+                  <p>Create your company account, upload your roster, set what staff and the company each put in, and switch on group Life · Health · Funeral cover — all in one workspace.</p>
                   <div className={styles.ctaActions}>
                     <Link className={cx(styles.btn, styles.btnPrimary)} to="/request-access?type=employer">Set up your company <Arrow /></Link>
                     <Link className={cx(styles.btn, styles.btnSecondary)} to="/contact">Talk to our team</Link>
@@ -227,7 +227,7 @@ export default function EmployersPage() {
                   <div className={styles.pv}>UGX 9.6M</div>
                   <div className={styles.pmeta}><span className={styles.badge}>Settled</span><span className={styles.pn}>80 staff · 100% participation</span></div>
                   <div className={styles.pcover}><Shield /><span>Group Life · Health · Funeral cover, company-wide</span></div>
-                  <p className={styles.pcaveat}>Illustrative figures for a sample roster; actual runs reflect your own staff and splits.</p>
+                  <p className={styles.pcaveat}>Illustrative figures for a sample roster; actual runs reflect your own staff and the amounts you set.</p>
                 </div>
               </div>
             </Reveal>

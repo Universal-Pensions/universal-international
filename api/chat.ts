@@ -145,7 +145,15 @@ const subscriberResponses: Record<string, string> = {
   contribute:
     "To add money, tap 'Make a Contribution' — you can use the default split (80/20) or customise just this top-up.",
   schedule:
-    'Your schedule controls how often and how much you save. Head to Settings → Contribution schedule to change frequency, amount, or the retirement/emergency split.',
+    'Your schedule controls how often and how much you save with your own money. Head to Settings → Contribution schedule to change frequency, amount, or the retirement/emergency split. If you joined through your job, the amounts your employer sends are set by them and are separate from this.',
+  // Employer-sponsored members. Without this arm, "how much does my employer put
+  // in?" falls through to `schedule`, which tells a payroll member they control
+  // an amount their employer sets. Under the unified two-leg model the company
+  // config sets BOTH amounts — the part taken from the member's pay and the part
+  // the company adds — so the member controls neither. Kept verbatim in step with
+  // src/services/chat.js::subscriberChatResponses.employer.
+  employer:
+    'If you joined through your job, your employer sets two amounts each month — a part taken from your pay, and a part the company adds from its own money. Both go into your pension automatically, so there is nothing for you to pay. You can still save your own money on top any time, and any cover your company pays for shows under Insurance.',
   nominee:
     'Nominees receive your savings or insurance benefit. You can change them any time under "Update nominees". Shares must total 100%.',
   claim:
@@ -173,6 +181,13 @@ const subscriberSuggestions = [
 
 function subscriberReply(message: string): ChatResponse {
   const l = (message || '').toLowerCase();
+  // Employer arm FIRST, on purpose — parity with src/services/chat.js. An
+  // employer-sponsored member's question almost always carries a general keyword
+  // too ("what does my employer contribute?" hits 'contribute'), so a later arm
+  // would never win and they'd be told they control an amount their employer sets.
+  if (l.includes('employer') || l.includes('company') || l.includes('salary') || l.includes('payroll')) {
+    return { reply: subscriberResponses.employer, suggestions: subscriberSuggestions };
+  }
   if (l.includes('withdraw') || l.includes('take out')) {
     return { reply: subscriberResponses.withdraw, suggestions: subscriberSuggestions };
   }

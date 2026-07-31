@@ -13,6 +13,7 @@ import { useEmployerPanel } from '../../contexts/EmployerPanelContext';
 import { useEmployer, useEmployerMetrics, useEmployees, usePendingInvites } from '../../hooks/useEmployer';
 import { formatUGX, formatNumber } from '../../utils/currency';
 import { formatDate } from '../../utils/date';
+import { normalizeContributionConfig, isLegZero } from '../../utils/contributionModel';
 import { PageHead, MetricRow, Tile, Avatar, StatusBadge, Btn, Tag } from './ui';
 import {
   employeesIcon,
@@ -31,11 +32,19 @@ const STATUS_FILTERS = [
   { value: 'suspended', label: 'Inactive' },
 ];
 
-// One-word funding chip for a member row. The funding model is company-wide
-// (Issue 2), so the label comes from the employer's defaultContributionConfig.
+// Short funding chip for a member row: WHO puts money in. The funding setup is
+// company-wide (Issue 2), so it comes from the employer's contribution config —
+// two independent legs, either of which may be nothing. The chip has room for
+// who, not for how much; the two concrete figures live on the Overview funding
+// card and on each member's detail page. Same wording as the Overview card tag.
 function fundingTag(cfg) {
-  if (cfg?.mode === 'co-contribution') return 'Co-contribution';
-  return 'Employer-only';
+  const c = normalizeContributionConfig(cfg);
+  const staffZero = isLegZero(c.employeeBasis, c.employeePct, c.employeeAmount);
+  const youZero = isLegZero(c.employerBasis, c.employerPct, c.employerAmount);
+  if (staffZero && youZero) return 'Not set up';
+  if (staffZero) return 'You only';
+  if (youZero) return 'Staff only';
+  return 'Staff + you';
 }
 
 export default function EmployeesDesktop() {
@@ -70,8 +79,8 @@ export default function EmployeesDesktop() {
     );
   });
 
-  // Single company-wide funding model (Issue 2) — its short chip label is shared
-  // by every active row (per-member config no longer exists under this model).
+  // Single company-wide funding setup (Issue 2) — its short chip label is shared
+  // by every active row (there is no per-employee override in this model).
   const companyFundingTag = fundingTag(employer?.defaultContributionConfig);
 
   const isCold = isLoading && employees.length === 0;

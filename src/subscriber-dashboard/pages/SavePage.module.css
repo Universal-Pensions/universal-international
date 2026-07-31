@@ -221,6 +221,24 @@
   margin: 0;
 }
 
+/* Employer-funded members only: a flat lede above the amount hero saying their
+   workplace pension money arrives by itself, so the page reads as EXTRA saving
+   rather than a bill. Not a card — it must sit lighter than the hero below it. */
+.employerLede {
+  margin: 0;
+  padding: 0 var(--space-2);
+  font-family: var(--font-body);
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--color-gray);
+}
+
+.employerLede b {
+  font-family: var(--font-display);
+  font-weight: 700;
+  color: var(--color-indigo-soft);
+}
+
 /* ── Mobile redesign (PWA): amount-first hero + radio pay rows ────────────── */
 .amountHero {
   align-items: center;

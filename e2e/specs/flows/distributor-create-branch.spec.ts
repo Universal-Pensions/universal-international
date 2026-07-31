@@ -61,9 +61,21 @@ test.describe('distributor → create branch (UI + DB)', () => {
 
     await page.goto('/dashboard');
 
-    // Distributor sidebar: Branches → submenu → "Create New Branch".
-    // The Branches button uses aria-label="Branches"; click it to open
-    // the submenu, then click the "Create New Branch" item.
+    // Distributor sidebar, MAP MODE: Branches → flyout → "Create New Branch".
+    //
+    // The flyout submenus render only in map mode (`mapMode && branchMenuOpen` in
+    // Sidebar.jsx). In the default "dash" mode a Branches click jumps straight to
+    // the full-page branch LIST and returns — there is no Create entry on that
+    // path at all, even though DashboardShell still wires a `createBranch` page.
+    // So enable Map view first; this is currently the only route to the form.
+    // (Worth deciding separately whether dash mode should surface a Create CTA on
+    // the Branches page — flagged, not silently worked around.)
+    const mapViewToggle = page.getByRole('switch', { name: /map view/i });
+    await expect(mapViewToggle).toBeVisible();
+    if ((await mapViewToggle.getAttribute('aria-checked')) !== 'true') {
+      await mapViewToggle.click();
+    }
+
     await page.getByRole('button', { name: /^branches$/i }).first().click();
     await page.getByRole('button', { name: /create new branch/i }).click();
 

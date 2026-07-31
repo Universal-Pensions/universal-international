@@ -376,7 +376,12 @@
   color: var(--color-slate);
 }
 
-/* ── Employer-match card (employer-onboarded only) ───────────────────────── */
+/* ── "How your pension is funded" card ────────────────────────────────────
+   Rendered only when the member's employer funds at least one leg (0/0 is a legal
+   configuration, and a member may have no employer at all). One .empTile per
+   non-zero leg: .empTilePay = the leg the employer deducts from the member's pay,
+   .empTileTopUp = the employer's own money on top. The two legs are independent
+   shares of pay, so neither tile is "the other one plus a bit". */
 .emp {
   background: linear-gradient(150deg, #fff, var(--color-cloud));
   border: 1px solid var(--color-lavender);
@@ -415,8 +420,8 @@
   background: var(--ac);
 }
 
-.empTileOwn { --ac: var(--color-indigo); }
-.empTileAdded { --ac: var(--color-green); }
+.empTilePay { --ac: var(--color-indigo); }
+.empTileTopUp { --ac: var(--color-green); }
 
 .empTileK {
   display: flex;
@@ -442,7 +447,7 @@
   font-variant-numeric: tabular-nums;
 }
 
-.empTileAdded .empTileV { color: var(--color-green-ink); }
+.empTileTopUp .empTileV { color: var(--color-green-ink); }
 
 .empTilePct {
   font-family: var(--font-body);
@@ -473,8 +478,10 @@
   margin-top: var(--space-4);
 }
 
-.segOwn { background: var(--color-indigo); }
-.segEmp { flex: 1; background: var(--color-green); }
+/* History bar segments — same two colours as the tiles: indigo for the leg from
+   the member's pay, green for the employer's own money. */
+.segPay { background: var(--color-indigo); }
+.segTopUp { flex: 1; background: var(--color-green); }
 
 .empFoot {
   margin: var(--space-3) 0 0;
@@ -484,7 +491,11 @@
   color: var(--color-slate);
 }
 
-.empFoot strong { color: var(--color-green-ink); font-weight: 700; }
+/* Money figures in the footer sentence carry the SAME colour coding as the tiles —
+   indigo for the member's pay, green for the employer's own money — so the prose
+   and the tiles can't be read as describing different pots. */
+.empFoot strong { color: var(--color-indigo); font-weight: 700; }
+.empFoot .figTopUp { color: var(--color-green-ink); }
 
 /* ── "Your savings & cover" — 3 cohesive parallel items ──────────────────── */
 .swc {

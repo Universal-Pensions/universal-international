@@ -1,4 +1,5 @@
 import { useState, useMemo, useRef, useEffect, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useOutsideClick } from '../../hooks/useOutsideClick';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useVirtualizer } from '@tanstack/react-virtual';
@@ -122,7 +123,7 @@ function AgentDetail({ agent }) {
 /* ═══════════════════════════════════════════════════════════════════════════ */
 /*  Branch Detail View                                                        */
 /* ═══════════════════════════════════════════════════════════════════════════ */
-function BranchDetail({ branch, onSelectAgent, onEdit, agentsByBranch, readOnly = false }) {
+function BranchDetail({ branch, onSelectAgent, onEdit, agentsByBranch, readOnly = false, onViewSubscribers }) {
   const m = branch.metrics;
   const agents = useMemo(() => branchAgents(branch.id, agentsByBranch), [branch.id, agentsByBranch]);
   const { data: commission } = useEntityCommissionSummary('branch', branch.id);
@@ -141,6 +142,24 @@ function BranchDetail({ branch, onSelectAgent, onEdit, agentsByBranch, readOnly 
         <KpiCard icon={Icons.aum} label="AUM" value={formatUGX(m.aum)} />
         <KpiCard icon={Icons.activeRate} label="Active Rate" value={m.activeRate} suffix="%" />
       </div>
+
+      {/* Drill deeper: every subscriber under this branch. `subscribers` has no
+          branch_id — the list resolves branch → agents → subscribers server-side
+          (entities.getSubscribersForBranch). */}
+      {onViewSubscribers && (
+        <button
+          type="button"
+          className={styles.drillCta}
+          data-testid="branch-view-subscribers"
+          aria-label={`View subscribers for ${branch.name}`}
+          onClick={onViewSubscribers}
+        >
+          View subscribers
+          <svg aria-hidden="true" viewBox="0 0 12 12" fill="none" width="10" height="10">
+            <path d="M4.5 2.5l3.5 3.5-3.5 3.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        </button>
+      )}
 
       {/* Branch Score + Rank */}
       {branch.score != null && (
@@ -362,6 +381,7 @@ const SORT_OPTIONS = [
 ];
 
 export default function ViewBranches({ readOnly = false, fullPage = false }) {
+  const navigate = useNavigate();
   const { viewBranchesOpen, setViewBranchesOpen, drillTargetBranchId, closeDrillPanel } = useDashboard();
   const { addToast } = useToast();
   const updateBranchMutation = useUpdateBranch();
@@ -939,7 +959,14 @@ export default function ViewBranches({ readOnly = false, fullPage = false }) {
                     exit={{ opacity: 0, x: -24 }}
                     transition={{ duration: 0.25, ease: EASE_OUT_EXPO }}
                   >
-                    <BranchDetail branch={selectedBranch} onSelectAgent={handleSelectAgent} onEdit={handleEdit} agentsByBranch={AGENTS_BY_BRANCH} readOnly={readOnly} />
+                    <BranchDetail
+                      branch={selectedBranch}
+                      onSelectAgent={handleSelectAgent}
+                      onEdit={handleEdit}
+                      agentsByBranch={AGENTS_BY_BRANCH}
+                      readOnly={readOnly}
+                      onViewSubscribers={() => navigate(`/dashboard/branches/${selectedBranch.id}/subscribers`)}
+                    />
                   </motion.div>
                 )}
 

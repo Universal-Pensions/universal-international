@@ -3,9 +3,15 @@ import { motion, useReducedMotion } from 'framer-motion';
 import { EASE_OUT_EXPO } from '../../utils/motion';
 import { formatUGX } from '../../utils/currency';
 import { formatDate } from '../../utils/date';
-import { deriveInvestmentGrowth, deriveEmployerSplit, normalizeFrequency, FREQUENCY_LABEL } from '../../utils/finance';
+import { deriveInvestmentGrowth } from '../../utils/finance';
+import {
+  deriveContributionLegs,
+  formatLegRateForMember,
+  isLegZero,
+  memberFundingSummary,
+} from '../../utils/contributionModel';
 import { activeCoverTotal, activeCoverProductsLabel, buildingCoverTotal, buildingProgress } from '../../utils/policies';
-import { useContributionBreakdown } from '../../hooks/useSubscriber';
+import { useMyEmployerFunding } from '../../hooks/useSubscriber';
 import { useCountUp } from '../../hooks/useCountUp';
 import styles from './HomeMobile.module.css';
 
@@ -54,14 +60,15 @@ const Chevron = (
 /**
  * HomeMobile — the redesigned subscriber PHONE home (<1024px). Adopts the desktop
  * dashboard's design language (flat white→cloud cards, indigo-text balance,
- * lavender hairlines) rather than the old indigo HeroCapsule dome. Reuses every
- * derivation/hook verbatim — purely a presentation rebuild. Desktop still renders
- * HomeDesktop (gated upstream in HomePage), so this never mounts >=1024px.
+ * lavender hairlines) rather than the old indigo HeroCapsule dome. Every figure
+ * comes from the same hooks + helpers HomeDesktop uses — including
+ * `useMyEmployerFunding()` for the funding card — so the two viewports can never
+ * tell a member a different story about who pays for their pension. Desktop
+ * renders HomeDesktop (gated upstream in HomePage), so this never mounts >=1024px.
  */
 export default function HomeMobile({ subscriber: sub }) {
   const navigate = useNavigate();
   const reduce = useReducedMotion();
-  const { data: breakdown } = useContributionBreakdown(sub?.id);
 
   const balance = sub?.netBalance || 0;
   const counted = useCountUp(balance, 1100, !reduce);
@@ -73,8 +80,42 @@ export default function HomeMobile({ subscriber: sub }) {
   const schedule = sub?.contributionSchedule;
   const hasSchedule = Boolean(schedule?.amount);
 
-  const hasEmployer = Boolean(sub?.employerId);
-  const { own, employer } = deriveEmployerSplit(sub, breakdown);
+  // ── How the pension is funded ──────────────────────────────────────────────
+  // Same source and same four states as HomeDesktop: the employer's TWO
+  // INDEPENDENT legs read from their saved configuration (migration 0092 RPC) and
+  // turned into shillings by the one canonical run math. This card used to be
+  // gated on `sub.employerId` alone and to show feed-derived totals labelled "You
+  // contribute" / "Employer adds", which invented an employer figure for employers
+  // funding nothing and credited the member with a leg deducted from their pay.
+  //   payLeg   — taken from the member's pay by the employer and remitted for them.
+  //   topUpLeg — the employer's own money on top.
+  const { data: funding } = useMyEmployerFunding();
+  const employerName = funding?.employerName || '';
+  const who = employerName || 'your employer';
+  const { employeeLeg: payLeg, employerLeg: topUpLeg } = funding
+    ? deriveContributionLegs(funding, funding.compensation)
+    : { employeeLeg: 0, employerLeg: 0 };
+  // Judged on the configured RATE, not the shilling result, so a member whose
+  // compensation isn't recorded yet still lands in the right state.
+  const payZero = !funding || isLegZero(funding.employeeBasis, funding.employeePct, funding.employeeAmount);
+  const topUpZero = !funding || isLegZero(funding.employerBasis, funding.employerPct, funding.employerAmount);
+  // Nothing funded (0/0 is legal) or no employer at all → hide the card entirely
+  // rather than print "UGX 0 · On top of your savings".
+  const showFunding = Boolean(funding) && !(payZero && topUpZero);
+  const fundedMonthly = payLeg + topUpLeg;
+  const fundingSummary = funding ? memberFundingSummary(funding, employerName) : null;
+  // The rate under each cell's shilling figure. A FIXED leg's rate IS that same
+  // figure, so such a cell says only how often the money lands.
+  const payRate = funding?.employeeBasis === 'fixed'
+    ? 'Every month'
+    : `${formatLegRateForMember(funding?.employeeBasis, funding?.employeePct, funding?.employeeAmount)} · every month`;
+  const topUpRate = funding?.employerBasis === 'fixed'
+    ? 'Every month'
+    : `${formatLegRateForMember(funding?.employerBasis, funding?.employerPct, funding?.employerAmount)} · every month`;
+  // An employer-funded member with no schedule of their own has nothing to set up —
+  // their employer's legs post every payroll cycle. Offer the optional extra
+  // top-up instead of "Set up a schedule".
+  const fundedOnly = showFunding && !hasSchedule && fundedMonthly > 0;
 
   const retirement = sub?.retirementBalance || 0;
   const emergency = sub?.emergencyBalance || 0;
@@ -120,23 +161,33 @@ export default function HomeMobile({ subscriber: sub }) {
         </div>
       </motion.section>
 
-      {/* Next payment */}
+      {/* Next payment — or, for a member funded entirely by their employer, the
+          optional extra top-up (they have no schedule to set up). */}
       <motion.button
         variants={itemV}
         type="button"
         className={styles.paycard}
-        onClick={() =>
-          hasSchedule
-            ? navigate('/dashboard/save', { state: { prefillAmount: schedule.amount, scheduled: true } })
-            : navigate('/dashboard/save/schedule')
-        }
+        onClick={() => {
+          if (hasSchedule) {
+            navigate('/dashboard/save', { state: { prefillAmount: schedule.amount, scheduled: true } });
+            return;
+          }
+          navigate(fundedOnly ? '/dashboard/save' : '/dashboard/save/schedule');
+        }}
       >
-        <span className={styles.payIc}>{CalendarIcon}</span>
+        {/* Wallet, not calendar, for the funded-only member — there is no due date
+            to keep; the card is a voluntary extra. */}
+        <span className={styles.payIc}>{fundedOnly ? WalletIcon : CalendarIcon}</span>
         <span className={styles.payText}>
           {hasSchedule ? (
             <>
               <b>Next payment · {formatUGX(schedule.amount, { compact: false })}</b>
               <small>{schedule.nextDueDate ? `Due ${formatDate(schedule.nextDueDate, { variant: 'day-month' })}` : 'Tap to pay'}</small>
+            </>
+          ) : fundedOnly ? (
+            <>
+              <b>Top up extra</b>
+              <small>{formatUGX(fundedMonthly, { compact: false })} already goes in each month</small>
             </>
           ) : (
             <>
@@ -145,29 +196,35 @@ export default function HomeMobile({ subscriber: sub }) {
             </>
           )}
         </span>
-        <span className={styles.payPill}>{hasSchedule ? 'Pay' : 'Set up'}</span>
+        <span className={styles.payPill}>{hasSchedule ? 'Pay' : fundedOnly ? 'Top up' : 'Set up'}</span>
       </motion.button>
 
-      {/* Pension funding (employer-sponsored members only) */}
-      {hasEmployer && (
+      {/* How your pension is funded — one cell per non-zero leg, plus the plain
+          summary sentence. Hidden when nothing is funded (see showFunding). */}
+      {showFunding && (
         <motion.section variants={itemV} className={`${styles.card} ${styles.grad}`} aria-labelledby="funding-title">
           <div className={styles.cardHd}>
-            <h3 id="funding-title">Pension funding</h3>
+            <h3 id="funding-title">How your pension is funded</h3>
           </div>
-          <div className={styles.fundGrid}>
-            <div className={styles.fundCell}>
-              <span className={`${styles.fundIc} ${styles.tintIndigo}`}>{WalletIcon}</span>
-              <span className={styles.fundK}>You contribute</span>
-              <span className={styles.fundV} style={{ color: 'var(--color-indigo)' }}>{formatUGX(own)}</span>
-              <span className={styles.fundP}>{hasSchedule ? `${formatUGX(schedule.amount, { compact: false })} · ${FREQUENCY_LABEL[normalizeFrequency(schedule.frequency)]}` : 'Your savings'}</span>
-            </div>
-            <div className={styles.fundCell}>
-              <span className={`${styles.fundIc} ${styles.tintGreen}`}>{BuildingIcon}</span>
-              <span className={styles.fundK}>Employer adds</span>
-              <span className={styles.fundV} style={{ color: 'var(--color-green-ink, #1f6e44)' }}>{formatUGX(employer)}</span>
-              <span className={styles.fundP}>On top of your savings</span>
-            </div>
+          <div className={`${styles.fundGrid} ${payZero || topUpZero ? styles.fundGridSolo : ''}`}>
+            {!payZero && (
+              <div className={styles.fundCell}>
+                <span className={`${styles.fundIc} ${styles.tintIndigo}`}>{WalletIcon}</span>
+                <span className={styles.fundK}>From your pay</span>
+                <span className={styles.fundV} style={{ color: 'var(--color-indigo)' }}>{formatUGX(payLeg, { compact: false })}</span>
+                <span className={styles.fundP}>{payRate}</span>
+              </div>
+            )}
+            {!topUpZero && (
+              <div className={styles.fundCell}>
+                <span className={`${styles.fundIc} ${styles.tintGreen}`}>{BuildingIcon}</span>
+                <span className={styles.fundK}>From {who}</span>
+                <span className={styles.fundV} style={{ color: 'var(--color-green-ink, #1f6e44)' }}>{formatUGX(topUpLeg, { compact: false })}</span>
+                <span className={styles.fundP}>{topUpRate}</span>
+              </div>
+            )}
           </div>
+          {fundingSummary && <p className={styles.fundNote}>{fundingSummary}.</p>}
         </motion.section>
       )}
 

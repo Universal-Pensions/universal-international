@@ -14,7 +14,7 @@ import {
   ResponsiveContainer,
   BarChart, Bar,
   AreaChart, Area,
-  XAxis, YAxis, CartesianGrid, Tooltip,
+  XAxis, YAxis, CartesianGrid, Tooltip, Legend,
 } from 'recharts';
 import { useCurrentSubscriber, useSubscriberTransactions } from '../../hooks/useSubscriber';
 import { useToast } from '../../contexts/ToastContext';
@@ -34,6 +34,8 @@ import {
 import styles from './Analytics.module.css';
 
 const CHART_HEIGHT = 260;
+// Matches the employer dashboard's stacked-leg legend so both roles read the same.
+const LEGEND_STYLE = { fontFamily: 'var(--font-display)', fontSize: 12, fontWeight: 600, color: PALETTE.text, paddingTop: 4 };
 
 const DownloadIcon = (
   <svg aria-hidden="true" viewBox="0 0 20 20" fill="none" width="15" height="15">
@@ -141,6 +143,25 @@ export default function AnalyticsPanel() {
 
   const coverActive = a.kpis.insuranceStatus === 'active' && a.kpis.cover > 0;
 
+  // The monthly contributions bar is the one analytics surface where the two-leg
+  // story can actually be shown, so it stacks by WHO PAID rather than charting one
+  // anonymous total. Only the legs with money in them get a band — the unified
+  // model allows either leg to be 0 — so a self-funding member still sees exactly
+  // one teal bar per month, and only an employer-sponsored member gets a stack.
+  // Same colour convention (indigo = the member's pay, green = the employer's own
+  // money) and legend as the employer dashboard's contribution charts.
+  const bands = [
+    { key: 'selfPaid', name: 'You paid', total: a.kpis.selfPaidContributed, fill: PALETTE.teal },
+    { key: 'fromPay', name: 'From your pay', total: a.kpis.fromPayContributed, fill: PALETTE.indigo },
+    { key: 'fromEmployer', name: 'From your employer', total: a.kpis.employerContributed, fill: PALETTE.positive },
+  ].filter((b) => (b.total || 0) > 0);
+  // With nothing contributed at all the card renders its "No data yet." state, but
+  // keep one band so the chart never mounts with zero series.
+  const contribBands = bands.length > 0
+    ? bands
+    : [{ key: 'value', name: 'Contributions', total: 0, fill: PALETTE.teal }];
+  const contribSplit = contribBands.length > 1;
+
   return (
     <div className={styles.dash}>
       {/* KPI strip */}
@@ -152,7 +173,17 @@ export default function AnalyticsPanel() {
           sub={a.kpis.currentUnitValue ? `@ ${formatUGX(a.kpis.currentUnitValue, { compact: false })}/unit` : null}
           accent={PALETTE.teal}
         />
-        <Kpi label="Total contributed" value={formatUGX(a.kpis.totalContributed)} accent={PALETTE.positive} />
+        {/* "Total contributed" includes the employer's own money for a sponsored
+            member, so say how much of it is theirs rather than letting the member
+            read the whole figure as savings they funded. */}
+        <Kpi
+          label="Total contributed"
+          value={formatUGX(a.kpis.totalContributed)}
+          sub={a.kpis.employerContributed > 0
+            ? `incl. ${formatUGX(a.kpis.employerContributed)} from your employer`
+            : null}
+          accent={PALETTE.positive}
+        />
         <Kpi
           label="Insurance cover"
           value={coverActive ? formatUGX(a.kpis.cover) : 'Off'}
@@ -196,9 +227,11 @@ export default function AnalyticsPanel() {
           <ChartCard
             id="sa-contributions"
             title="Contributions"
-            sub="Contributed each month"
+            sub={contribSplit ? 'Contributed each month, by who paid' : 'Contributed each month'}
             hasData={a.contributionSeries.some((d) => d.value > 0)}
-            ariaLabel={`Monthly contributions over ${a.contributionSeries.length} months, ${formatUGX(a.kpis.totalContributed, { compact: false })} total`}
+            ariaLabel={contribSplit
+              ? `Monthly contributions over ${a.contributionSeries.length} months, ${formatUGX(a.kpis.totalContributed, { compact: false })} total — ${contribBands.map((b) => `${b.name} ${formatUGX(b.total, { compact: false })}`).join(', ')}`
+              : `Monthly contributions over ${a.contributionSeries.length} months, ${formatUGX(a.kpis.totalContributed, { compact: false })} total`}
           >
             <ResponsiveContainer width="100%" height={CHART_HEIGHT}>
               <BarChart data={a.contributionSeries} margin={{ top: 8, right: 8, left: -8, bottom: 4 }}>
@@ -206,7 +239,21 @@ export default function AnalyticsPanel() {
                 <XAxis dataKey="label" tick={axisTick} tickLine={false} axisLine={{ stroke: PALETTE.gridLine }} />
                 <YAxis tick={axisTick} tickLine={false} axisLine={false} width={56} tickFormatter={(v) => formatUGX(v)} />
                 <Tooltip cursor={{ fill: PALETTE.lavender, opacity: 0.4 }} content={(p) => chartTooltip({ ...p, valueFormatter: (v) => formatUGX(v, { compact: false }) })} />
-                <Bar dataKey="value" name="Contributions" fill={PALETTE.teal} radius={[6, 6, 0, 0]} isAnimationActive={!reduceMotion} />
+                {/* Only label the bands when there is more than one — a single-band
+                    chart is self-explanatory and the legend would be noise. */}
+                {contribSplit && <Legend verticalAlign="bottom" iconType="circle" wrapperStyle={LEGEND_STYLE} />}
+                {contribBands.map((b, i) => (
+                  <Bar
+                    key={b.key}
+                    dataKey={b.key}
+                    name={b.name}
+                    stackId="paidBy"
+                    fill={b.fill}
+                    // Round only the topmost band so the stack reads as one bar.
+                    radius={i === contribBands.length - 1 ? [6, 6, 0, 0] : undefined}
+                    isAnimationActive={!reduceMotion}
+                  />
+                ))}
               </BarChart>
             </ResponsiveContainer>
           </ChartCard>

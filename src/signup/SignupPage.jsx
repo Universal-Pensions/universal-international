@@ -112,6 +112,14 @@ function SignupFlow() {
             token: inviteToken,
             employerId: inv.employerId,
             employerName: inv.employerName,
+            // KYC DEPTH, not funding. `collect_schedule` says how complete a
+            // record this invite collects (insurance products + policies + both
+            // nominee sets, or pension nominees only) — it has never said
+            // anything about who pays. An invited member states NO contribution
+            // amount either way: their employer's own config sets both amounts,
+            // and `create_subscriber_from_employer_invite` forces the schedule
+            // amount to 0 and skips the signup deposit on both branches.
+            // Constant TRUE from migration 0092 onward.
             collectSchedule: inv.collectSchedule,
           },
           stepId: 'id-upload',

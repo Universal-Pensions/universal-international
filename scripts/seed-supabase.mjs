@@ -344,9 +344,12 @@ async function main() {
     //      data in these tables — NEVER point this at a project with data you
     //      care about. There is no undo.
     //
-    //  Table list is exhaustive: every table this script INSERTs/upserts into,
-    //  PLUS the app-written-only audit/idempotency tables (settlement_uploads,
-    //  contribution_run_uploads, subscriber_signup_uploads, and employer_invites)
+    //  Table list is exhaustive for tables this script INSERTs/upserts into,
+    //  EXCEPT `subscriber_insurance_products` — it FKs to subscribers ON DELETE
+    //  CASCADE, so naming `subscribers` already empties it (same for 0080's detach
+    //  journals, noted below). PLUS the app-written-only audit/idempotency tables
+    //  (settlement_uploads, contribution_run_uploads, subscriber_signup_uploads,
+    //  and employer_invites)
     //  — none are seeded here, but a demo populates them, so they'd otherwise
     //  grow unbounded across reseeds. (We deliberately do NOT touch the legacy
     //  `employees`/`contribution_run_lines` tables: they are retired by 0045 in
@@ -696,21 +699,18 @@ async function main() {
       'subscriber_id'
     );
 
-    // ── employer group insurance fan-out (migration 0067) ──────────────────
-    // Map employerId → its enabled group products [{product, cover, premiumMonthly}]
-    // so a sponsored member's policies are seeded employer-funded (funded_by=
-    // 'employer', premium 0), matching update_employer_profile's fan-out.
-    const employerProductMap = new Map();
-    for (const emp of [EMPLOYER, ...EXTRA_EMPLOYERS]) {
-      employerProductMap.set(emp.id, groupInsuranceProducts(emp.defaultContributionConfig));
-    }
-    const employerProductsFor = (s) => (s.employerId ? (employerProductMap.get(s.employerId) || []) : []);
-    const employerCoverFor = (s, product) => {
-      const p = employerProductsFor(s).find((x) => x.product === product);
-      return p ? p.cover : null;
-    };
+    // NOTE — employer group insurance (migration 0067) is NOT fanned out here.
+    // `subscribers` is the mockData population: 5,000 agent-channel savers, none of
+    // which carries an `employerId` field at all. Mapping the employer configs over
+    // this list matched zero rows, so the three "employer-funded" branches that used
+    // to live in the two insurance blocks below were dead code — silently dead, with
+    // no error to trip over, which is how it survived several audits. The employers'
+    // own members are seeded much further down (§ "employer members"), and the
+    // fan-out now lives there, next to the rows it actually writes.
 
     // ── insurance_policies (only for subscribers with cover > 0) ───────────
+    // Every subscriber in this population is self-funded (funded_by='self'): they
+    // hold individual cover bought at signup, not employer group cover.
     console.log('• insurance_policies…');
     const insureds = subscribers.filter((s) => s.insurance?.cover > 0);
     await bulkInsert(
@@ -727,13 +727,12 @@ async function main() {
       ],
       [
         insureds.map((s) => s.id),
-        // Employer-funded life uses the employer's configured cover; the member pays 0.
-        insureds.map((s) => employerCoverFor(s, 'life') ?? s.insurance.cover),
-        insureds.map((s) => (employerCoverFor(s, 'life') != null ? 0 : (s.insurance.premiumMonthly ?? 0))),
+        insureds.map((s) => s.insurance.cover),
+        insureds.map((s) => s.insurance.premiumMonthly ?? 0),
         insureds.map((s) => s.insurance.policyStart ?? null),
         insureds.map((s) => s.insurance.renewalDate ?? null),
         insureds.map((s) => s.insurance.status ?? 'active'),
-        insureds.map((s) => (employerCoverFor(s, 'life') != null ? 'employer' : 'self')),
+        insureds.map(() => 'self'),
       ],
       'subscriber_id'
     );
@@ -773,16 +772,9 @@ async function main() {
       sipStatus.push('active');
       sipFundedBy.push(fundedBy);
     };
-    // Employer-funded health/funeral FIRST so a sponsored member's product is
-    // employer-funded (premium 0) and the self-slice below can't override it.
-    subscribers.forEach((s) => {
-      for (const p of employerProductsFor(s)) {
-        if (p.product === 'health' || p.product === 'funeral') {
-          pushProduct(s.id, p.product, { cover: p.cover, premium: 0, fundedBy: 'employer' });
-        }
-      }
-    });
     // Self-funded add-ons for a deterministic slice + all of agent a-001's members.
+    // (No employer-funded rows here — see the NOTE above the insurance_policies
+    // block: nobody in this population has an employer.)
     insureds.forEach((s, i) => {
       const isA001 = s.parentId === 'a-001';
       if (isA001 || i % 3 === 0) pushProduct(s.id, 'health');
@@ -1575,8 +1567,30 @@ async function main() {
       'subscriber_id'
     );
 
-    const insuredMembers = MEMBERS.filter((m) => (m.insuranceCover ?? 0) > 0);
-    if (insuredMembers.length) {
+    // ── employer group insurance fan-out (migration 0067) ────────────────────
+    // Group cover is all-or-nothing COMPANY-WIDE — every member of an employer gets
+    // every product that employer has enabled, and there is no per-member choice. So
+    // the covered set and the cover amounts are read off the employer's CONFIG (the
+    // same authority the contribution run prices its insurance leg from), never off a
+    // per-member field that could drift from it.
+    //
+    // Split across two tables, mirroring update_employer_profile exactly (0064
+    // restored insurance_policies to one row per subscriber):
+    //   LIFE            → insurance_policies
+    //   HEALTH, FUNERAL → subscriber_insurance_products
+    // BOTH must be written, because the run charges Σ(premium over enabled products)
+    // — 40,000/member for emp-001 (Life 15M → 30,000 + Health 5M → 10,000). Seeding
+    // only the life row (the pre-0092 behaviour) implied 30,000, leaving 10,000 of
+    // every run's insurance leg unexplainable by any seeded policy row.
+    const employerProductMap = new Map();
+    for (const emp of [EMPLOYER, ...EXTRA_EMPLOYERS]) {
+      employerProductMap.set(emp.id, groupInsuranceProducts(emp.defaultContributionConfig));
+    }
+    const groupProductsFor = (m) => employerProductMap.get(m.employerId) ?? [];
+    const groupProductFor = (m, product) => groupProductsFor(m).find((p) => p.product === product) ?? null;
+
+    const lifeMembers = MEMBERS.filter((m) => groupProductFor(m, 'life') != null);
+    if (lifeMembers.length) {
       await bulkInsert(
         client,
         'insurance_policies',
@@ -1589,18 +1603,80 @@ async function main() {
           { name: 'funded_by', type: 'text' },
         ],
         [
-          insuredMembers.map((m) => m.id),
-          insuredMembers.map((m) => m.insuranceCover ?? 0),
+          lifeMembers.map((m) => m.id),
+          lifeMembers.map((m) => groupProductFor(m, 'life').cover),
           // Employer group cover — the member pays nothing (premium 0, funded_by
           // 'employer'). The employer settles it monthly via the contribution run's
           // insurance leg (type='insurance_premium', source='employer') — the ONLY
           // legitimate monthly premium; a member never self-pays monthly.
-          insuredMembers.map(() => 0),
-          insuredMembers.map((m) => m.insuranceStatus ?? 'inactive'),
-          insuredMembers.map((m) => toDateStr(m.insuranceRenewalDate)),
-          insuredMembers.map(() => 'employer'),
+          lifeMembers.map(() => 0),
+          lifeMembers.map((m) => m.insuranceStatus ?? 'inactive'),
+          lifeMembers.map((m) => toDateStr(m.insuranceRenewalDate)),
+          lifeMembers.map(() => 'employer'),
         ],
         'subscriber_id'
+      );
+    }
+
+    // HEALTH / FUNERAL — one row per (member, product). Same premium-0 /
+    // funded_by='employer' convention as the life row above.
+    const sipMemberIds = [];
+    const sipMemberProduct = [];
+    const sipMemberCover = [];
+    const sipMemberStatus = [];
+    const sipMemberRenewal = [];
+    for (const m of [...MEMBERS, ...EXTRA_MEMBERS]) {
+      for (const p of groupProductsFor(m)) {
+        if (p.product === 'life') continue; // lives in insurance_policies
+        sipMemberIds.push(m.id);
+        sipMemberProduct.push(p.product);
+        sipMemberCover.push(p.cover);
+        sipMemberStatus.push(m.insuranceStatus ?? 'active');
+        sipMemberRenewal.push(toDateStr(m.insuranceRenewalDate));
+      }
+    }
+    if (sipMemberIds.length) {
+      console.log(`• employer group insurance products (${sipMemberIds.length} rows)…`);
+      await bulkInsert(
+        client,
+        'subscriber_insurance_products',
+        [
+          { name: 'subscriber_id', type: 'text' },
+          { name: 'product', type: 'text' },
+          { name: 'cover', type: 'numeric' },
+          { name: 'premium_monthly', type: 'numeric' },
+          { name: 'status', type: 'text' },
+          { name: 'renewal_date', type: 'date' },
+          { name: 'funded_by', type: 'text' },
+        ],
+        [
+          sipMemberIds,
+          sipMemberProduct,
+          sipMemberCover,
+          sipMemberIds.map(() => 0),
+          sipMemberStatus,
+          sipMemberRenewal,
+          sipMemberIds.map(() => 'employer'),
+        ],
+        'subscriber_id, product'
+      );
+    }
+
+    // Reconciliation guard: the premium implied by the seeded policy rows must equal
+    // the premium the seeded runs actually charged per member. A mismatch means the
+    // employer config and the seeded insurance rows have drifted — the exact bug the
+    // fan-out above exists to prevent — so say so loudly rather than shipping a
+    // ledger whose insurance leg cannot be reconstructed.
+    const seededPremiumPerMember = (employerProductMap.get(EMPLOYER.id) ?? [])
+      .reduce((sum, p) => sum + p.premiumMonthly, 0);
+    const runPremiumPerMember = CONTRIBUTION_RUNS.length && CONTRIBUTION_RUNS[0].insuranceTotal
+      ? Math.round(CONTRIBUTION_RUNS[0].insuranceTotal
+        / MEMBERS.filter((m) => m.status === 'active' && !m.recentHire).length)
+      : 0;
+    if (seededPremiumPerMember !== runPremiumPerMember) {
+      console.warn(
+        `  ⚠ insurance premium mismatch for ${EMPLOYER.id}: policy rows imply `
+        + `${seededPremiumPerMember}/member but the seeded runs charge ${runPremiumPerMember}/member`
       );
     }
 

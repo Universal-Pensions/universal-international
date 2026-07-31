@@ -1297,3 +1297,38 @@
     text-align: center;
   }
 }
+
+/* ── Drill CTA (detail → scoped child list) ──────────────────────────────────
+   "View subscribers" on AgentDetail / BranchDetail — opens the subscriber list
+   scoped to that parent (/dashboard/{agents,branches}/:id/subscribers). Sized as
+   a full-width secondary action under the KPI row, distinct from the inline
+   .commissionLink text link. */
+.drillCta {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  margin-bottom: var(--space-3);
+  padding: 0.7rem 1rem;
+  background: var(--color-white);
+  border: 1px solid var(--color-lavender);
+  border-radius: var(--radius-md);
+  font-family: var(--font-display);
+  font-size: var(--text-sm);
+  font-weight: 700;
+  color: var(--color-indigo);
+  cursor: pointer;
+  touch-action: manipulation;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.drillCta:hover {
+  border-color: var(--color-indigo-soft);
+  background: color-mix(in srgb, var(--color-indigo) 4%, transparent);
+}
+
+.drillCta:focus-visible {
+  outline: 2px solid var(--color-indigo);
+  outline-offset: 2px;
+}

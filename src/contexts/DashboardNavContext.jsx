@@ -10,6 +10,9 @@ import { useIsDesktop } from '../hooks/useIsDesktop';
  * @property {'country'|'region'|'district'|'branch'|'agent'} level - Current drill-down level
  * @property {Record<string, string>} selectedIds - Map of level to selected entity ID
  * @property {string} section - Current section ('map' or 'reports')
+ * @property {'subscriber'|undefined} childList - Scoped child list to render, from
+ *   a /dashboard/{agents,branches}/:id/subscribers URL
+ * @property {string|null} childListParentId - The :id that childList is scoped to
  * @property {string|null} reportId - Auto-navigate report ID from URL
  * @property {(targetLevel: string, id: string) => void} drillDown - Navigate deeper
  * @property {(fromLevel: string) => void} drillUp - Navigate one level up
@@ -34,9 +37,18 @@ function parsePath(pathname) {
     const reportId = path.split('/')[1] || null;
     return { level: 'country', entityId: null, section: 'reports', reportId };
   }
-  const [segment, entityId] = path.split('/');
+  const [segment, entityId, subSegment] = path.split('/');
   const level = SEGMENT_TO_LEVEL[segment];
-  if (level && entityId) return { level, entityId, section: 'map' };
+  if (level && entityId) {
+    // Drill-down destination: /dashboard/agents/:id/subscribers and
+    // /dashboard/branches/:id/subscribers open the subscriber list SCOPED to that
+    // parent. `level`/`entityId` still describe the parent (so the map + rail keep
+    // their context); `childList` tells the shell which scoped panel to render.
+    if (subSegment === 'subscribers' && (level === 'agent' || level === 'branch')) {
+      return { level, entityId, section: 'map', childList: 'subscriber' };
+    }
+    return { level, entityId, section: 'map' };
+  }
   return { level: 'country', entityId: null, section: 'map' };
 }
 
@@ -80,7 +92,7 @@ export function DashboardNavProvider({ children }) {
   const usesReportsPanel = role === 'distributor' || (role === 'branch' && !isDesktop);
 
   // Derive drill-down state from URL
-  const { level, entityId, section, reportId } = useMemo(() => parsePath(location.pathname), [location.pathname]);
+  const { level, entityId, section, reportId, childList } = useMemo(() => parsePath(location.pathname), [location.pathname]);
   const selectedIds = useMemo(() => buildSelectedIds(level, entityId), [level, entityId]);
 
   // Map drill-down → slide-in panel handoff
@@ -194,6 +206,7 @@ export function DashboardNavProvider({ children }) {
 
   const value = useMemo(() => ({
     level, selectedIds, section, reportId,
+    childList, childListParentId: childList ? entityId : null,
     drillDown, drillUp, goToLevel, reset,
     drillTargetBranchId, setDrillTargetBranchId,
     drillTargetAgentId, setDrillTargetAgentId,
@@ -201,7 +214,7 @@ export function DashboardNavProvider({ children }) {
     closeDrillPanel,
     onPanelActionRef,
   }), [
-    level, selectedIds, section, reportId,
+    level, selectedIds, section, reportId, childList, entityId,
     drillDown, drillUp, goToLevel, reset,
     drillTargetBranchId, drillTargetAgentId,
     closeDrillPanel,

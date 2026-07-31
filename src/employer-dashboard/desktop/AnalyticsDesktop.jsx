@@ -33,6 +33,7 @@ import {
 } from '../reports/deriveEmployeeAnalytics';
 import { PALETTE, STATUS_COLORS, axisTick, chartTooltip } from '../reports/chartConfig';
 import { groupInsuranceOn } from '../../utils/groupInsurance';
+import { deriveContributionLegs } from '../../utils/contributionModel';
 import { deriveEmployerMetrics } from '../overview/employerCopilotContext';
 import { PageHead, MetricRow, Tile, Card, SectionHead, Btn } from './ui';
 import {
@@ -179,20 +180,14 @@ export default function AnalyticsDesktop() {
     return { label: runMonthLabel(r.runAt), total: cumAcc };
   });
 
-  // f. Funding by role — monthly contribution per role (top roles). The employee
-  // leg + employer match on the average compensation in each role band; falls back
-  // to the headline employee% when a role has no occupancy. Reuses the derive
-  // engine's occupation ranking, enriched with avg-compensation per role.
-  const empPct = Number(cfg?.employeePct ?? 0);
-  const matchPct = Number(cfg?.employerMatchPct ?? 0);
-  // Fixed-amount employer-only plans fund a FLAT amount per member (no % of
-  // compensation), so a comp×rate calc yields 0 for every role (empty bars).
-  // Handle it explicitly; otherwise use the effective % of compensation.
-  const isFixedBasis = cfg?.mode === 'employer-only' && cfg?.employerBasis === 'fixed';
-  const fixedAmount = Number(cfg?.employerAmount) || 0;
-  const totalRate = cfg?.mode === 'employer-only'
-    ? (Number(cfg?.employerPct) || 0)
-    : empPct + (empPct * matchPct) / 100;
+  // f. Funding by role — the monthly contribution one staff member in each role
+  // attracts (top roles), carried as the TWO INDEPENDENT LEGS and stacked.
+  // Both legs come from deriveContributionLegs against the role's AVERAGE
+  // compensation, so every combination is represented exactly: a leg may be a %
+  // of pay or a flat UGX amount, and the two need not share a basis. (The old
+  // single blended `totalRate` could not express a mixed-basis config at all — a
+  // flat staff leg beside a percent employer leg silently dropped one of them.)
+  // Reuses the derive engine's occupation ranking, enriched with avg comp per role.
   const roleComp = new Map(); // role -> { sum, count }
   for (const e of activeRoster) {
     const role = e.occupation ? String(e.occupation) : '—';
@@ -203,11 +198,16 @@ export default function AnalyticsDesktop() {
   }
   const fundingByRole = [...roleComp.entries()]
     .filter(([role]) => role !== '—')
-    .map(([role, { sum, count }]) => ({
-      label: role.length > 16 ? `${role.slice(0, 15)}…` : role,
-      value: isFixedBasis ? fixedAmount : Math.round((sum / count) * (totalRate / 100)),
-    }))
-    .sort((x, y) => y.value - x.value)
+    .map(([role, { sum, count }]) => {
+      const { employeeLeg, employerLeg } = deriveContributionLegs(cfg, sum / count);
+      return {
+        label: role.length > 16 ? `${role.slice(0, 15)}…` : role,
+        employee: employeeLeg,
+        employer: employerLeg,
+        total: employeeLeg + employerLeg,
+      };
+    })
+    .sort((x, y) => y.total - x.total)
     .slice(0, 6);
 
     return {
@@ -267,6 +267,9 @@ export default function AnalyticsDesktop() {
   });
 
   const hasComp = compDist.some((d) => d.value > 0);
+  // With a 0/0 config every role bar would be zero-length — say so instead of
+  // drawing an axis with nothing on it.
+  const hasRoleFunding = fundingByRole.some((r) => r.total > 0);
 
   return (
     <div className={ui.stack}>
@@ -359,7 +362,7 @@ export default function AnalyticsDesktop() {
         <Card>
           <div className={styles.chartHead}>
             <h3 className={styles.chartTitle}>Contributions over time</h3>
-            <p className={styles.chartSub}>Total funded per month — what your staff save plus your match.</p>
+            <p className={styles.chartSub}>Total funded per month — what your staff put in plus what you add.</p>
           </div>
           <div className={styles.chartBody} role="img" aria-label={`Contributions over ${overTime.length} months`}>
             {overTime.length > 0 ? (
@@ -385,10 +388,10 @@ export default function AnalyticsDesktop() {
         {/* b. Employee vs employer split */}
         <Card>
           <div className={styles.chartHead}>
-            <h3 className={styles.chartTitle}>Employee vs employer split</h3>
-            <p className={styles.chartSub}>Every month, what staff save versus the match you add on top.</p>
+            <h3 className={styles.chartTitle}>Staff vs company split</h3>
+            <p className={styles.chartSub}>Every month, what your staff put in versus what you add.</p>
           </div>
-          <div className={styles.chartBody} role="img" aria-label="Employee and employer contribution legs per month">
+          <div className={styles.chartBody} role="img" aria-label="What staff put in and what the company adds, per month">
             {splitSeries.length > 0 ? (
               <ResponsiveContainer width="100%" height={CHART_HEIGHT}>
                 <BarChart data={splitSeries} margin={{ top: 8, right: 12, left: -8, bottom: 4 }}>
@@ -397,8 +400,8 @@ export default function AnalyticsDesktop() {
                   <YAxis tick={axisTick} tickLine={false} axisLine={false} tickFormatter={formatUGXShort} width={48} />
                   <Tooltip cursor={{ fill: PALETTE.lavender, opacity: 0.4 }} content={(p) => chartTooltip({ ...p, valueFormatter: (v) => formatUGX(v) })} />
                   <Legend verticalAlign="bottom" iconType="circle" wrapperStyle={LEGEND_STYLE} />
-                  <Bar dataKey="employee" stackId="leg" name="Employee leg (staff save)" fill={PALETTE.indigo} radius={[0, 0, 0, 0]} isAnimationActive={!reduceMotion} />
-                  <Bar dataKey="employer" stackId="leg" name="Employer leg (your match)" fill={PALETTE.positive} radius={[4, 4, 0, 0]} isAnimationActive={!reduceMotion} />
+                  <Bar dataKey="employee" stackId="leg" name="Put in by staff" fill={PALETTE.indigo} radius={[0, 0, 0, 0]} isAnimationActive={!reduceMotion} />
+                  <Bar dataKey="employer" stackId="leg" name="Added by you" fill={PALETTE.positive} radius={[4, 4, 0, 0]} isAnimationActive={!reduceMotion} />
                 </BarChart>
               </ResponsiveContainer>
             ) : <p className={styles.chartEmpty}>No contribution runs yet.</p>}
@@ -480,20 +483,28 @@ export default function AnalyticsDesktop() {
         <Card>
           <div className={styles.chartHead}>
             <h3 className={styles.chartTitle}>Funding by role</h3>
-            <p className={styles.chartSub}>Monthly contribution per staff member — employee leg plus your match.</p>
+            <p className={styles.chartSub}>What one staff member in each role gets a month — what they put in, plus what you add.</p>
           </div>
-          <div className={styles.chartBody} role="img" aria-label="Monthly contribution by role">
-            {fundingByRole.length > 0 ? (
+          <div className={styles.chartBody} role="img" aria-label="Monthly contribution by role, split into what staff put in and what you add">
+            {hasRoleFunding ? (
               <ResponsiveContainer width="100%" height={CHART_HEIGHT}>
                 <BarChart data={fundingByRole} layout="vertical" margin={{ top: 4, right: 16, left: 8, bottom: 4 }}>
                   <CartesianGrid stroke={PALETTE.gridLine} horizontal={false} />
                   <XAxis type="number" tick={axisTick} tickLine={false} axisLine={false} tickFormatter={formatUGXShort} />
                   <YAxis type="category" dataKey="label" tick={axisTick} tickLine={false} axisLine={false} width={104} />
                   <Tooltip cursor={{ fill: PALETTE.lavender, opacity: 0.4 }} content={(p) => chartTooltip({ ...p, valueFormatter: (v) => `${formatUGX(v)} / mo` })} />
-                  <Bar dataKey="value" name="Monthly contribution" fill={PALETTE.indigoSoft} radius={[0, 6, 6, 0]} isAnimationActive={!reduceMotion} />
+                  <Legend verticalAlign="bottom" iconType="circle" wrapperStyle={LEGEND_STYLE} />
+                  {/* Stacked so each leg keeps its own length — the two legs are
+                      independent and may use different bases (% of pay vs flat UGX). */}
+                  <Bar dataKey="employee" stackId="leg" name="Put in by staff" fill={PALETTE.indigo} isAnimationActive={!reduceMotion} />
+                  <Bar dataKey="employer" stackId="leg" name="Added by you" fill={PALETTE.positive} radius={[0, 6, 6, 0]} isAnimationActive={!reduceMotion} />
                 </BarChart>
               </ResponsiveContainer>
-            ) : <p className={styles.chartEmpty}>No role data yet.</p>}
+            ) : (
+              <p className={styles.chartEmpty}>
+                {fundingByRole.length === 0 ? 'No role data yet.' : 'No contributions set up yet.'}
+              </p>
+            )}
           </div>
         </Card>
       </div>

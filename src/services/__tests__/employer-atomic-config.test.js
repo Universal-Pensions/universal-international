@@ -31,11 +31,22 @@ vi.mock('../supabaseClient', () => ({
 
 beforeEach(() => supabaseMock.__reset());
 
+// The four config fixtures below deep-equal whatever object they are handed, so
+// they would stay GREEN forever on a dead vocabulary. They carry the UNIFIED
+// two-leg shape (migration 0092): all six canonical keys always written, each leg
+// an independent share of compensation or a flat UGX amount, `mode` /
+// `employerMatchPct` deleted. That is exactly what the Settings save now sends, so
+// these tests pin the real p_patch payload rather than a shape nothing writes.
+
 // The mapped row update_employer_profile returns (mapEmployer reads snake_case).
 const EMPLOYER_ROW = {
   id: 'emp-001',
   name: 'Nile Breweries Ltd',
-  default_contribution_config: { mode: 'employer-only', employerAmount: 50000, insuranceEnabled: true, groupCoverAmount: 5000000 },
+  default_contribution_config: {
+    employeeBasis: 'percent', employeePct: 0, employeeAmount: 0,
+    employerBasis: 'fixed', employerPct: 0, employerAmount: 50000,
+    insuranceEnabled: true, groupCoverAmount: 5000000,
+  },
 };
 
 describe('atomic employer config save — updateEmployerProfile insurance fold', () => {
@@ -45,9 +56,15 @@ describe('atomic employer config save — updateEmployerProfile insurance fold',
   it('fires update_employer_profile EXACTLY ONCE with the insurance fields and never calls apply_group_insurance (enabled)', async () => {
     supabaseMock.__queueRpc('update_employer_profile', { data: EMPLOYER_ROW, error: null });
 
-    // This is the exact object saveConfig passes to updateProfile.mutate(...).
+    // This is the exact object saveConfig passes to updateProfile.mutate(...) —
+    // a company that funds the whole pension itself at a flat UGX 50,000/member
+    // (staff leg zero), plus group cover.
     const defaultContributionConfig = {
-      mode: 'employer-only',
+      employeeBasis: 'percent',
+      employeePct: 0,
+      employeeAmount: 0,
+      employerBasis: 'fixed',
+      employerPct: 0,
       employerAmount: 50000,
       insuranceEnabled: true,
       groupCoverAmount: 5000000,
@@ -81,7 +98,11 @@ describe('atomic employer config save — updateEmployerProfile insurance fold',
     supabaseMock.__queueRpc('update_employer_profile', { data: EMPLOYER_ROW, error: null });
 
     await svc.updateEmployerProfile({
-      defaultContributionConfig: { mode: 'employer-only', employerAmount: 50000, insuranceEnabled: false, groupCoverAmount: null },
+      defaultContributionConfig: {
+        employeeBasis: 'percent', employeePct: 0, employeeAmount: 0,
+        employerBasis: 'fixed', employerPct: 0, employerAmount: 50000,
+        insuranceEnabled: false, groupCoverAmount: null,
+      },
       insuranceEnabled: false,
       groupCover: null,
     });
@@ -114,7 +135,13 @@ describe('atomic employer config save — updateEmployerProfile insurance fold',
     supabaseMock.__queueRpc('update_employer_profile', { data: EMPLOYER_ROW, error: null });
 
     await svc.updateEmployerProfile({
-      defaultContributionConfig: { mode: 'co-contribution', employeePct: 10, employerMatchPct: 50, insuranceEnabled: true, groupCoverAmount: 3000000 },
+      // Both legs funded: staff 10% of pay, company 5% of pay. (Money-identical to
+      // the legacy "10% + 50% match" this replaces — the match basis is deleted.)
+      defaultContributionConfig: {
+        employeeBasis: 'percent', employeePct: 10, employeeAmount: 0,
+        employerBasis: 'percent', employerPct: 5, employerAmount: 0,
+        insuranceEnabled: true, groupCoverAmount: 3000000,
+      },
       insuranceEnabled: true,
       groupCover: '3000000',
     });

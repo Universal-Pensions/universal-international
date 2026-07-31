@@ -152,6 +152,22 @@ export default function AgentDetailDesktop() {
         <Tile accent="indigoSoft" icon={coinsIcon(18)} label="Daily collections" value={formatUGXShort(m.dailyContributions || 0)} sub={`${formatNumber(m.newSubscribersToday || 0)} new today`} />
       </MetricRow>
 
+      {/* Drill deeper: this agent's own subscribers. The Subscribers tile above
+          shows the COUNT; this opens the list behind it, scoped server-side to
+          the agent. Mirrors the distributor shell's AgentDetail CTA so both
+          shells expose the same affordance. */}
+      <Link
+        to={`/dashboard/agents/${agent.id}/subscribers`}
+        className={styles.drillCta}
+        data-testid="agent-view-subscribers"
+        aria-label={`View subscribers for ${agent.name}`}
+      >
+        View subscribers
+        <svg aria-hidden="true" viewBox="0 0 12 12" fill="none" width="10" height="10">
+          <path d="M4.5 2.5l3.5 3.5-3.5 3.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      </Link>
+
       <div className={styles.grid2}>
         {/* Commissions */}
         <Card>

@@ -1,16 +1,19 @@
 /**
  * FundingPanel — the "How your staff's pension is funded" card body (desktop).
  *
- * A solid PIE chart of the staff-vs-employer split in soft tints (soft indigo =
- * staff, soft green = employer), with the legend in its own boxes beside it and
- * the match note as a callout. The pie spins + scales in on mount; hovering a
- * wedge dims the others and lifts the matching legend box. Honours
- * prefers-reduced-motion. Driven by the company `funding` model (fundingModel).
+ * A solid PIE chart of the staff-vs-you split in soft tints (soft indigo =
+ * staff, soft green = you), with the legend in its own boxes beside it and the
+ * money summary as a callout. The pie spins + scales in on mount; hovering a
+ * wedge dims the others and lifts the corresponding legend box. Honours
+ * prefers-reduced-motion. Driven by the company `funding` model (fundingModel in
+ * OverviewDesktop), which hands us the two legs as REAL MONEY summed over the
+ * active roster — see the note on buildSegments below.
  */
 
 import { useState } from 'react';
 import { motion, useReducedMotion } from 'framer-motion';
 import { EASE_OUT_EXPO } from '../../utils/motion';
+import { formatUGX } from '../../utils/currency';
 import { sparkIcon } from './icons';
 import styles from './FundingPanel.module.css';
 
@@ -38,16 +41,35 @@ function wedgePath(f0, f1) {
   return `M${CX},${CX} L${x0.toFixed(2)},${y0.toFixed(2)} A${R},${R} 0 ${large} 1 ${x1.toFixed(2)},${y1.toFixed(2)} Z`;
 }
 
+/* Wedges from the two legs' MONEY, never from their rates. The staff leg and the
+   employer leg are independent shares of compensation, so the only honest split
+   between them is the money each actually funds this period — and with mixed
+   bases (a flat UGX leg beside a % of pay leg) a rate ratio does not exist at
+   all. A leg funding nothing is dropped rather than drawn as a 0% wedge, and the
+   second share is the complement of the first so the legend always adds to 100. */
 function buildSegments(funding) {
-  const ruleByTone = {};
-  funding.rules.forEach((r) => { ruleByTone[r.tone] = r; });
-  if (funding.mode === 'co-contribution') {
-    return [
-      { key: 'own', label: 'Staff contributions', pct: funding.ownPct, color: C_STAFF, ink: INK_STAFF, rule: ruleByTone.own },
-      { key: 'emp', label: 'Your top-up', pct: funding.empPct, color: C_EMP, ink: INK_EMP, rule: ruleByTone.emp },
-    ];
-  }
-  return [{ key: 'emp', label: 'Employer-funded', pct: 100, color: C_EMP, ink: INK_EMP, rule: ruleByTone.emp }];
+  const total = funding.staff.money + funding.you.money;
+  const staffPct = Math.round((funding.staff.money / total) * 100);
+  return [
+    {
+      key: 'own',
+      label: 'Put in by staff',
+      money: funding.staff.money,
+      pct: staffPct,
+      color: C_STAFF,
+      ink: INK_STAFF,
+      rule: funding.staff.rule,
+    },
+    {
+      key: 'emp',
+      label: 'Added by you',
+      money: funding.you.money,
+      pct: 100 - staffPct,
+      color: C_EMP,
+      ink: INK_EMP,
+      rule: funding.you.rule,
+    },
+  ].filter((s) => s.money > 0);
 }
 
 function Pie({ segments, activeKey, onHover, label }) {
@@ -88,8 +110,20 @@ function Pie({ segments, activeKey, onHover, label }) {
 export default function FundingPanel({ funding }) {
   const reduce = useReducedMotion();
   const [hoverKey, setHoverKey] = useState(null);
+
+  // Nothing funded (0/0 config, no active staff, or percent legs against a roster
+  // with no pay on file) → the note alone. A pie of two zeroes would be a lie.
+  if (!funding.funded) {
+    return (
+      <div className={styles.foot}>
+        <span className={styles.footIc}>{sparkIcon(18)}</span>
+        <p>{funding.foot}</p>
+      </div>
+    );
+  }
+
   const segments = buildSegments(funding);
-  const pieLabel = `Funding split — ${segments.map((s) => `${s.label} ${s.pct}%`).join(', ')}`;
+  const pieLabel = `Funding split — ${segments.map((s) => `${s.label} ${formatUGX(s.money, { compact: false })}, ${s.pct}%`).join('; ')}`;
 
   return (
     <>
@@ -120,6 +154,10 @@ export default function FundingPanel({ funding }) {
                   <b>{seg.rule.strong}</b>&nbsp;{seg.rule.rest}
                 </p>
               )}
+              {/* The money behind the share — this is what the wedge is sized on. */}
+              <p className={styles.legRule}>
+                <b>{formatUGX(seg.money, { compact: false })}</b>&nbsp;a month across your active staff
+              </p>
             </div>
           ))}
         </div>

@@ -40,6 +40,7 @@ import { disableAnimations } from '../../fixtures/motion';
 import { cleanupSubscriberByPhone, supabaseAdmin } from '../../fixtures/db';
 import { walkSignupToFirstContribution } from '../../helpers/signup';
 import { selectors } from '../../helpers/selectors';
+import { PHONE_PREFIX } from '../../helpers/signup-constants';
 
 test.setTimeout(120_000);
 
@@ -50,12 +51,18 @@ test.describe('subscriber → sign in with password', () => {
   test.beforeEach(async ({ page }, testInfo) => {
     await disableAnimations(page);
 
-    // Per-test unique phone — same pattern as the signup-to-contribute spec
-    // (carrier prefix `7` + 7 trailing Date.now() digits + 1-digit workerIndex),
-    // so the two specs can run on different workers without colliding on the
-    // partial unique index over `subscribers.phone WHERE NOT is_demo_signup`.
+    // Per-test unique phone: a VALID carrier prefix + 6 trailing Date.now()
+    // digits + 1-digit workerIndex (9 digits total), so two specs on different
+    // workers can't collide on the partial unique index over
+    // `subscribers.phone WHERE NOT is_demo_signup`.
+    //
+    // The prefix MUST come from PHONE_PREFIX. The old generator was
+    // `7 + Date.now().slice(-7)`, which left the SECOND digit up to the clock —
+    // so it minted 73x/79x numbers that `isValidUGPhone` rejects (valid prefixes
+    // are 70/71/74/75/76/77/78, utils/phone.js). That made this test pass or fail
+    // purely on what time it ran at.
     const workerSuffix = String(testInfo.workerIndex % 10);
-    uniquePhoneDigits = `7${String(Date.now()).slice(-7)}${workerSuffix}`;
+    uniquePhoneDigits = `${PHONE_PREFIX}${String(Date.now()).slice(-6)}${workerSuffix}`;
     uniquePhone = `+256${uniquePhoneDigits}`;
 
     // Defensive: tear down any leftover state from a previous crashed run.
@@ -85,7 +92,12 @@ test.describe('subscriber → sign in with password', () => {
     //    "Sign out" button (src/subscriber-dashboard/pages/SettingsPage.jsx:194).
     //    Navigate there and click it; the logout handler navigates back to '/'.
     await page.goto('/dashboard/settings');
-    await expect(page.getByRole('heading', { level: 1, name: /^settings$/i })).toBeVisible();
+    // The page's <h1> is "Profile" (SettingsDesktop.jsx) — the route is
+    // /dashboard/settings but the heading was renamed. Match either so this holds
+    // whichever way the copy lands.
+    await expect(
+      page.getByRole('heading', { level: 1, name: /^(profile|settings)$/i }),
+    ).toBeVisible({ timeout: 15_000 });
     await page.getByRole('button', { name: /sign out/i }).click();
 
     // Logout drops us back at the landing page.
@@ -97,10 +109,11 @@ test.describe('subscriber → sign in with password', () => {
     await page.getByRole('button', { name: /^sign in$/i }).first().click();
 
     // 4. Role select → Subscriber.
-    await expect(page.getByRole('dialog')).toBeVisible();
-    // Role cards combine label + desc into the accessible name
-    // ("Subscriber Individual saver" — RoleSelect.jsx), so match by prefix.
-    await page.getByRole('button', { name: /^subscriber\b/i }).click();
+    await expect(selectors.signInModal.surface(page).first()).toBeVisible();
+    // Optional: the subscriber landing card is single-audience so it renders no
+    // role picker at all; only a multi-role card (or the legacy SignInModal
+    // RoleSelect) does. See selectors.signInModal.pickRole.
+    await selectors.signInModal.pickRole(page, /^subscriber\b/i);
 
     // 5. PhoneEntry — enter the 9-digit local form (the +256 prefix is a
     //    sibling badge); toggle the Password chip; submit. The Password chip
@@ -126,7 +139,7 @@ test.describe('subscriber → sign in with password', () => {
 
     // 7. Dashboard renders post-login. Wait for the modal to close + the
     //    home route to mount the same PulseCard anchor.
-    await expect(page.getByRole('dialog')).toHaveCount(0, { timeout: 10_000 });
+    await expect(selectors.signInModal.surface(page)).toHaveCount(0, { timeout: 10_000 });
     await expect(page).toHaveURL(/\/dashboard/);
     await expect(page.getByText(/total balance/i).first()).toBeVisible({ timeout: 20_000 });
   });
@@ -153,10 +166,11 @@ test.describe('subscriber → sign in with password', () => {
 
     // Open the modal → Subscriber → enter the seeded phone → toggle Password.
     await page.getByRole('button', { name: /^sign in$/i }).first().click();
-    await expect(page.getByRole('dialog')).toBeVisible();
-    // Role cards combine label + desc into the accessible name
-    // ("Subscriber Individual saver" — RoleSelect.jsx), so match by prefix.
-    await page.getByRole('button', { name: /^subscriber\b/i }).click();
+    await expect(selectors.signInModal.surface(page).first()).toBeVisible();
+    // Optional: the subscriber landing card is single-audience so it renders no
+    // role picker at all; only a multi-role card (or the legacy SignInModal
+    // RoleSelect) does. See selectors.signInModal.pickRole.
+    await selectors.signInModal.pickRole(page, /^subscriber\b/i);
 
     await page.locator('input[name="phone"]').fill(seededLocalDigits);
     await page.getByRole('radio', { name: /^password$/i }).click();

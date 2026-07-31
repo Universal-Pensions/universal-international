@@ -15,6 +15,7 @@
 // MOCK_NOW for demo stability.
 
 import { MOCK_NOW } from './mockData';
+import { deriveContributionLegs } from '../utils/contributionModel';
 
 const DAY_MS = 86400000;
 const UNIT_PRICE = 1000;
@@ -28,22 +29,44 @@ function dobForAge(age) {
   return `${MOCK_NOW.getFullYear() - age}-06-15`;
 }
 
+// ONE company-wide contribution setup, shared by every geo employer — declared
+// once here so the `employers` row's config and the member balances derived below
+// can never drift apart (they did: the rows said "50% match" while the balances
+// were computed from a capped 50% of the employee leg).
+//
+// UNIFIED TWO-LEG MODEL (migration 0092): staff put in 10% of pay, the company adds
+// 5% of pay. Both legs are INDEPENDENT shares of compensation — the employer leg is
+// never a function of the employee leg — and there is NO cap and NO minimum. These
+// values are money-identical to the config they replace (10% + a 50% match of that
+// leg == 5% of pay) with zero rounding divergence across all 37 members, so a
+// reseed leaves every geo balance untouched.
+const GEO_CONTRIBUTION_CONFIG = Object.freeze({
+  employeeBasis: 'percent', employeePct: 10, employeeAmount: 0,
+  employerBasis: 'percent', employerPct: 5, employerAmount: 0,
+  insuranceEnabled: false,
+});
+
 // Each company's staff are real subscribers tagged with employer_id (agent_id
-// NULL). Historical balance = own (monthly × months) + a flat 50% employer match,
-// split 80/20 retirement/emergency. CONTRIBUTION MODEL v2 (migration 0062): each
-// member also carries `compensation` (monthly UGX) — the new run driver — mirroring
-// the migration backfill (greatest(monthly × 10, 500000)).
+// NULL). Historical balance = (employee leg + employer leg) × monthsActive, both
+// legs derived from `compensation` by the shared `deriveContributionLegs`, split
+// 80/20 retirement/emergency. `p.monthly` is the AUTHORED monthly saving these
+// members were originally written with; compensation = monthly × 10 keeps that
+// number as the employee leg under a 10%-of-pay setup (mirroring the migration
+// 0062 backfill). The old greatest(…, 500000) floor is gone with the caps — the
+// lowest authored monthly is 55,000 → 550,000 compensation, so it never bound.
 function makeMember(employer, p, idx) {
   const monthly = p.monthly ?? 0;
   const months = p.monthsActive ?? 12;
-  const own = round(monthly * months);
-  const match = round(Math.min(monthly * 0.5, 200000) * months);
-  const net = own + match;
+  const compensation = round(monthly * 10);
+  const { employeeLeg, employerLeg } = deriveContributionLegs(GEO_CONTRIBUTION_CONFIG, compensation);
+  const own = round(employeeLeg * months);
+  const company = round(employerLeg * months);
+  const net = own + company;
   const retirement = round(net * 0.8);
   const seq = String(idx + 1).padStart(2, '0');
   return {
     id: `${employer.id}-e${seq}`,
-    compensation: Math.max(round(monthly * 10), 500000),
+    compensation,
     name: p.name,
     email: null,
     phone: p.phone,
@@ -160,7 +183,8 @@ export const EXTRA_EMPLOYERS = Object.freeze(EMPLOYER_DEFS.map((e) => Object.fre
   districtId: e.districtId,
   regionId: e.regionId,
   payrollCadence: 'monthly',
-  defaultContributionConfig: { mode: 'co-contribution', employeePct: 10, employerMatchPct: 50, insuranceEnabled: false },
+  // The SAME object the balances above were derived from — see GEO_CONTRIBUTION_CONFIG.
+  defaultContributionConfig: GEO_CONTRIBUTION_CONFIG,
 })));
 
 // Flat list of all extra members (tagged subscribers) across every employer.

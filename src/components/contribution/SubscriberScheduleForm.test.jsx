@@ -3,7 +3,7 @@
 // as locked status rows, and the funding payload the page reads to persist +
 // fund newly-added cover (fund_insurance_products).
 
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import SubscriberScheduleForm from './SubscriberScheduleForm';
@@ -80,5 +80,69 @@ describe('<SubscriberScheduleForm />', () => {
     renderForm({ heldPolicies: HELD_LIFE });
     const save = screen.getByRole('button', { name: 'No changes to save' });
     expect(save).toBeDisabled();
+  });
+
+  // ── showInsurance={false} — the AGENT schedule-edit surface ──────────────
+  // Ported from the retired ContributionSettingsForm, whose two showInsurance
+  // cases encoded a backend invariant: an agent cannot authorise a premium for
+  // someone else (fund_insurance_products requires app_role='subscriber'), so the
+  // insurance section must be absent AND absent from the save payload.
+  describe('showInsurance={false} (agent schedule-edit)', () => {
+    it('hides the insurance tab, its switches and the purchased-cover panel', () => {
+      renderForm({ heldPolicies: [], showInsurance: false });
+      // No tablist at all — a lone tab would be pointless, and a tabpanel without
+      // one is invalid ARIA.
+      expect(screen.queryAllByRole('tab')).toHaveLength(0);
+      expect(screen.queryAllByRole('switch')).toHaveLength(0);
+      // The "Your cover" panel's empty state points at the Insurance tab, so it
+      // must go too or it names a destination that doesn't exist.
+      expect(screen.queryByText('Your cover')).toBeNull();
+      expect(screen.queryByText(/Insurance tab/)).toBeNull();
+      // The contribution controls are still all there.
+      expect(screen.getByRole('radiogroup', { name: /Frequency/i })).toBeInTheDocument();
+    });
+
+    it('omits EVERY insurance key from the save payload', async () => {
+      const user = userEvent.setup();
+      let saved = null;
+      // Pass held cover to prove it can't leak through either.
+      renderForm({
+        heldPolicies: HELD_LIFE,
+        showInsurance: false,
+        onSave: (p) => { saved = p; },
+      });
+      // Dirty the form via a contribution-only field so Save enables.
+      await user.click(screen.getByRole('radio', { name: /Weekly/i }));
+      await user.click(screen.getByRole('button', { name: 'Save changes' }));
+      expect(saved).not.toBeNull();
+      // Sending insuranceTypes — even empty — makes the service derive
+      // include_insurance AND set insurance_choice_made, silently stripping the
+      // subscriber's own flag. It must not be sent at all.
+      for (const key of [
+        'includeInsurance',
+        'insuranceTypes',
+        'insuranceFundingMode',
+        'insuranceSavingsPct',
+        'addedProducts',
+      ]) {
+        expect(saved).not.toHaveProperty(key);
+      }
+      // The contribution side still persists, step-up included.
+      expect(saved.frequency).toBe('weekly');
+      expect(saved.amount).toBe(SCHED.amount);
+      expect(saved).toHaveProperty('contributionIndexationPct');
+    });
+
+    it('renders the cancel button only when onCancel is supplied', async () => {
+      const user = userEvent.setup();
+      const { unmount } = renderForm({ heldPolicies: [], showInsurance: false });
+      expect(screen.queryByRole('button', { name: 'Cancel' })).toBeNull();
+      unmount();
+
+      const onCancel = vi.fn();
+      renderForm({ heldPolicies: [], showInsurance: false, onCancel, cancelLabel: 'Back' });
+      await user.click(screen.getByRole('button', { name: 'Back' }));
+      expect(onCancel).toHaveBeenCalledTimes(1);
+    });
   });
 });

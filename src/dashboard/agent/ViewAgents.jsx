@@ -1,4 +1,5 @@
 import { useState, useMemo, useRef, useEffect, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useOutsideClick } from '../../hooks/useOutsideClick';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useVirtualizer } from '@tanstack/react-virtual';
@@ -46,7 +47,7 @@ const SORT_OPTIONS = [
 /* ═══════════════════════════════════════════════════════════════════════════ */
 /*  Agent Detail                                                              */
 /* ═══════════════════════════════════════════════════════════════════════════ */
-function AgentDetail({ agent, branchesMap, districtsMap, regionsMap, onViewCommissions }) {
+function AgentDetail({ agent, branchesMap, districtsMap, regionsMap, onViewCommissions, onViewSubscribers }) {
   const m = agent.metrics;
   const level = perfLevel(agent.performance);
   const { data: commissionData } = useEntityCommissionSummary('agent', agent.id);
@@ -83,6 +84,24 @@ function AgentDetail({ agent, branchesMap, districtsMap, regionsMap, onViewCommi
         <KpiCard icon={Icons.contributions} label="Contributions" value={formatUGX(m.totalContributions)} />
         <KpiCard icon={Icons.aum} label="AUM" value={formatUGX(m.aum)} />
       </div>
+
+      {/* Drill deeper: this agent's own subscribers. The KPI above shows the
+          COUNT; this opens the list behind it, scoped server-side to the agent
+          (/dashboard/agents/:id/subscribers). */}
+      {onViewSubscribers && (
+        <button
+          type="button"
+          className={styles.drillCta}
+          data-testid="agent-view-subscribers"
+          aria-label={`View subscribers for ${agent.name}`}
+          onClick={onViewSubscribers}
+        >
+          View subscribers
+          <svg aria-hidden="true" viewBox="0 0 12 12" fill="none" width="10" height="10">
+            <path d="M4.5 2.5l3.5 3.5-3.5 3.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        </button>
+      )}
 
       <div className={styles.section}>
         <div className={styles.sectionTitle}>Branch Assignment</div>
@@ -190,6 +209,7 @@ function AgentDetail({ agent, branchesMap, districtsMap, regionsMap, onViewCommi
 /*  ViewAgents — main panel                                                   */
 /* ═══════════════════════════════════════════════════════════════════════════ */
 export default function ViewAgents({ splitMode = false, fullPage = false, showCommissions = true }) {
+  const navigate = useNavigate();
   const { viewAgentsOpen, setViewAgentsOpen, setCommissionsOpen, drillTargetAgentId, closeDrillPanel } = useDashboard();
   const { branchId } = useBranchScope();
 
@@ -629,7 +649,17 @@ export default function ViewAgents({ splitMode = false, fullPage = false, showCo
 
                 {view === 'detail' && selectedAgent && (
                   <motion.div key="va-detail" initial={{ opacity: 0, x: 24 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -24 }} transition={{ duration: 0.25, ease: EASE_OUT_EXPO }}>
-                    <AgentDetail agent={selectedAgent} branchesMap={BRANCHES_MAP} districtsMap={DISTRICTS_MAP} regionsMap={REGIONS_MAP} onViewCommissions={showCommissions ? () => { setViewAgentsOpen(false); setCommissionsOpen(true); } : undefined} />
+                    <AgentDetail
+                      agent={selectedAgent}
+                      branchesMap={BRANCHES_MAP}
+                      districtsMap={DISTRICTS_MAP}
+                      regionsMap={REGIONS_MAP}
+                      onViewCommissions={showCommissions ? () => { setViewAgentsOpen(false); setCommissionsOpen(true); } : undefined}
+                      // Routed, not state-based: the scoped list is a real
+                      // destination with a shareable URL, and DashboardShell
+                      // renders it off `childList` from the path.
+                      onViewSubscribers={() => navigate(`/dashboard/agents/${selectedAgent.id}/subscribers`)}
+                    />
                   </motion.div>
                 )}
               </AnimatePresence>

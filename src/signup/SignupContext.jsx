@@ -154,9 +154,19 @@ const INITIAL_STATE = {
   contributionSchedule: null,
 
   // Set when the flow is entered via an employer invite (/invite/:token). Drives
-  // the employer-tagged completion + the split-only (employer-only) variant.
-  // { token, employerId, employerName, collectSchedule } | null. Persisted
-  // (non-ephemeral) so it survives the consent→/signup/contribution remount.
+  // the employer-tagged completion and how deep the contribution step collects.
+  // { token, employerId, employerName, collectSchedule } | null.
+  //
+  // `collectSchedule` is a KYC-DEPTH flag, NOT a funding flag (constant TRUE
+  // since migration 0092): true collects the fuller record — insurance products,
+  // the insurance policy and both nominee sets — while false collects pension
+  // nominees only. Neither branch asks the invitee for a contribution amount,
+  // because the employer's config sets both amounts (what comes out of the
+  // member's pay and what the company adds) for every run; the schedule row is
+  // written at 0 and the signup deposit is skipped either way.
+  //
+  // Persisted (non-ephemeral) so it survives the consent→/signup/contribution
+  // remount.
   employerInvite: null,
 
   failureReason: null,

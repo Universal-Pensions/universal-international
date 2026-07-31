@@ -270,7 +270,7 @@ test.describe('subscriber dashboard → write-failure surfaces', () => {
     // more than one mutation path.
     //
     // Post-0029/redesign write path: SchedulePage delegates to
-    // `<ContributionSettingsForm onSave={handleSave}>` (SchedulePage.jsx) and
+    // `<SubscriberScheduleForm onSave={handleSave}>` (SchedulePage.jsx) and
     // `updateContributionSchedule` (services/subscriber.js:735-778) issues a
     // PATCH on `contribution_schedules` (a `.update().eq(subscriber_id)`),
     // NOT the `set_contribution_schedule` RPC. We intercept that PATCH and
@@ -283,8 +283,8 @@ test.describe('subscriber dashboard → write-failure surfaces', () => {
       page.getByRole('heading', { level: 1, name: /(set a schedule|tune your schedule)/i }),
     ).toBeVisible();
 
-    // Hydration barrier: ContributionSettingsForm only mounts once `sub`
-    // resolves (`{sub && <ContributionSettingsForm …>}`), and the Save CTA
+    // Hydration barrier: SubscriberScheduleForm only mounts once `sub`
+    // resolves (`{sub && <SubscriberScheduleForm …>}`), and the Save CTA
     // stays disabled until the form is dirty + valid. The frequency radios
     // render synchronously once the form mounts, so wait for the Frequency
     // radiogroup before interacting.

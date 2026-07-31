@@ -132,7 +132,11 @@ describe('useEmployer hooks — queries', () => {
 
 describe('useEmployer hooks — mutations + invalidation', () => {
   it('useCreateInvite invalidates the pending-invites list on success', async () => {
-    employer.createEmployerInvite.mockResolvedValue({ token: 'inv-1', collectSchedule: false });
+    // collectSchedule is a KYC-DEPTH flag and is a constant TRUE since 0092 (how
+    // complete a record an invite collects, never who pays). The hook only cares
+    // about the invalidation, but the fixture should still be a value the service
+    // can actually return.
+    employer.createEmployerInvite.mockResolvedValue({ token: 'inv-1', collectSchedule: true });
     const { queryClient, Wrapper } = makeWrapper();
     const invalidateSpy = vi.spyOn(queryClient, 'invalidateQueries');
     const { result } = renderHook(() => useCreateInvite('emp-001'), { wrapper: Wrapper });

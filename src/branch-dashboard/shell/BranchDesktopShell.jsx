@@ -16,6 +16,7 @@ const OverviewDesktop = lazy(() => import('../desktop/OverviewDesktop'));
 const AttentionAgentsDesktop = lazy(() => import('../desktop/AttentionAgentsDesktop'));
 const AgentsDesktop = lazy(() => import('../desktop/AgentsDesktop'));
 const AgentDetailDesktop = lazy(() => import('../desktop/AgentDetailDesktop'));
+const BranchAgentSubscribers = lazy(() => import('../desktop/BranchAgentSubscribers'));
 const CommissionsDesktop = lazy(() => import('../desktop/CommissionsDesktop'));
 const AnalyticsDesktop = lazy(() => import('../desktop/AnalyticsDesktop'));
 const SupportDesktop = lazy(() => import('../desktop/SupportDesktop'));
@@ -150,6 +151,11 @@ export default function BranchDesktopShell() {
         <Route path="attention/:type" element={<Suspense fallback={<PageFallback />}><AttentionAgentsDesktop /></Suspense>} />
         <Route path="agents" element={<Suspense fallback={<PageFallback />}><AgentsDesktop /></Suspense>} />
         <Route path="agents/:agentId" element={<Suspense fallback={<PageFallback />}><AgentDetailDesktop /></Suspense>} />
+        {/* Agent-scoped subscriber list — the drill destination from
+            AgentDetailDesktop's "View subscribers" CTA. Reuses the distributor
+            ViewSubscribers panel in fullPage mode, scoped to the agent so a
+            branch admin sees only that agent's members. */}
+        <Route path="agents/:agentId/subscribers" element={<Suspense fallback={<PageFallback />}><BranchAgentSubscribers /></Suspense>} />
         <Route path="commissions" element={<Suspense fallback={<PageFallback />}><CommissionsDesktop /></Suspense>} />
         <Route path="analytics" element={<Suspense fallback={<PageFallback />}><AnalyticsDesktop /></Suspense>} />
         <Route path="reports" element={<Navigate to="/dashboard/analytics" replace />} />

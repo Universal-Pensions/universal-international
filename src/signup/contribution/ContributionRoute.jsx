@@ -174,7 +174,13 @@ export default function ContributionRoute() {
       initial={signup.contributionSchedule}
       dob={signup.dob}
       phone={signup.phone}
-      // Employer-only invites collect ONLY the split (no schedule/payment).
+      // KYC DEPTH, not funding. Self-signup (no invite) always collects the full
+      // schedule; an employer invite carries the flag through from the invite RPC
+      // (constant TRUE since migration 0092), which decides how complete a record
+      // to collect — NOT who pays. An invited member never states an amount:
+      // their employer's config sets both amounts, and
+      // `create_subscriber_from_employer_invite` writes the schedule at 0 and
+      // skips the signup deposit on either branch.
       collectSchedule={signup.employerInvite ? signup.employerInvite.collectSchedule : true}
       onClose={handleCancel}
       onConfirm={handleConfirm}

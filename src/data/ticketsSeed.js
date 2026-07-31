@@ -573,7 +573,13 @@ export function seedTickets() {
         },
         {
           sender: SENDER_ROLE.SYSTEM,
-          body: 'Thanks for reaching out. The increase reflects three staff who moved onto co-contribution this month, which adds the employee half on top of the employer share. We can send a per-employee breakdown if that would help.',
+          // Rendered verbatim in the ticket thread for BOTH the employer and the
+          // admin, so the explanation has to be true under the unified model:
+          // both amounts are a share of PAY, so the only same-headcount reason a
+          // run grows is that pay grew. The 10% / 5% figures match the seeded
+          // employer config in `employerSeed.js`, and 15% of UGX 400,000 is the
+          // UGX 60,000 quoted — keep the arithmetic consistent if either moves.
+          body: 'Thanks for reaching out. Your headcount is the same, but three staff had pay rises in May that added UGX 400,000 to your monthly payroll. Both amounts follow pay — staff put in 10% of pay and your company adds 5% of pay — so the run went up by UGX 60,000. We can send a per-employee breakdown if that would help.',
           daysAgo: 4,
           hours: 2,
         },

@@ -8,6 +8,7 @@
 // must return a plain string.
 
 import { vi, describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { contributionFundingLabel } from '../../utils/contributionModel';
 
 beforeEach(() => {
   window.localStorage.clear();
@@ -251,12 +252,21 @@ describe('getEmployerChatResponse — local, truthful employer copilot', () => {
     mod = await import('../chat');
   });
 
+  // The employer copilot never derives contribution wording itself — it only
+  // interpolates ctx.fundingLabel, which EmployerHealthScore fills from
+  // contributionFundingLabel(config). So build the fixture from the real helper
+  // rather than pasting a string: a change to the label's wording then shows up
+  // here as a genuine copy change, not as a stale literal that keeps passing.
+  const TWO_LEG_CONFIG = {
+    employeeBasis: 'percent', employeePct: 10, employeeAmount: 0,
+    employerBasis: 'percent', employerPct: 5, employerAmount: 0,
+  };
+  const FUNDING_LABEL = contributionFundingLabel(TWO_LEG_CONFIG);
+
   const CTX = {
     headcount: 16, active: 15, inactive: 1, participationPct: 94,
     pendingKyc: 2, pendingNames: ['Achint Rao', 'Bea Okello'],
-    // v2 (migration 0062): companyFundingLabel() now describes the two-leg model
-    // as "<employeePct>% of pay + <employerMatchPct>% employer match".
-    fundingLabel: 'Co-contribution — 10% of pay + 50% employer match',
+    fundingLabel: FUNDING_LABEL,
     coverLabel: 'UGX 15,000,000', totalContributions: 8000000, lastRunLabel: 'May 2026',
   };
 
@@ -282,9 +292,52 @@ describe('getEmployerChatResponse — local, truthful employer copilot', () => {
     expect(reply.toLowerCase()).toContain('private');
   });
 
-  it('answers the funding split from the company model', async () => {
+  it('answers the funding question with the two concrete payroll figures', async () => {
     const reply = await mod.getEmployerChatResponse('what is our funding split?', CTX);
-    expect(reply).toContain('Co-contribution');
+    expect(reply).toContain(FUNDING_LABEL);
+    expect(reply).toContain('Staff put in 10% of pay');
+    expect(reply).toContain('You add 5% of pay');
+    // The deleted vocabulary must not come back — the whole point of the unified
+    // model is that the answer names the two amounts, not a funding "mode", and
+    // that the company's share is never a percentage of the staff share.
+    expect(reply).not.toMatch(/co-contribution/i);
+    expect(reply).not.toMatch(/employer-only/i);
+    expect(reply).not.toMatch(/match/i);
+  });
+
+  it('still routes a "match" question to the funding answer', async () => {
+    // `match` is kept as a ROUTING keyword (employers still ask in those words)
+    // even though no match basis exists — only the answer changed.
+    const reply = await mod.getEmployerChatResponse('do you match what staff put in?', CTX);
+    expect(reply).toContain(FUNDING_LABEL);
+  });
+
+  it('answers participation, not funding, when a question says "contributing"', async () => {
+    // Pinning the real routing PRECEDENCE in mockEmployerChatResponse: the
+    // contribut/participat arm sits ABOVE the funding arm, so any wording carrying
+    // "contribut" lands on participation even when it also says "match". The most
+    // natural phrasing of the funding question ("do you match staff
+    // contributions?") therefore never reaches the funding arm — see the note in
+    // the handover, this is source-side routing order, not a test concern.
+    const reply = await mod.getEmployerChatResponse('do you match staff contributions?', CTX);
+    expect(reply).toContain('94%');
+    expect(reply).not.toContain(FUNDING_LABEL);
+  });
+
+  it('reads as "nothing set up" for an employer with a 0/0 config', async () => {
+    // 0/0 is a legal, saveable config (a new employer provisioned with `{}`), so the
+    // copilot must have a truthful answer for it rather than inventing figures.
+    const zeroLabel = contributionFundingLabel({});
+    expect(zeroLabel).toBe('No contributions set up yet');
+    const reply = await mod.getEmployerChatResponse('what is our funding split?', { ...CTX, fundingLabel: zeroLabel });
+    expect(reply).toContain('No contributions set up yet');
+  });
+
+  it('defaults an unloaded ctx to the same "nothing set up" wording', async () => {
+    // No second vocabulary for "unknown": an unloaded ctx must not read differently
+    // from an employer who genuinely has nothing configured.
+    const reply = await mod.getEmployerChatResponse('what is our funding split?', {});
+    expect(reply).toContain('No contributions set up yet');
   });
 
   it('answers group insurance as company-wide cover', async () => {

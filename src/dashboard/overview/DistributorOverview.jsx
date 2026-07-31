@@ -92,11 +92,23 @@ function scoreQuality(s) {
 
 function Tile({ tone, icon, label, value, sub, subTone, onClick }) {
   const Tag = onClick ? 'button' : 'div';
+  // Stable test hooks. The tile's accessible name is the whole card
+  // ("Subscribers 4,601 3,605 active · 78%"), so a name regex can't isolate the
+  // count and digit-stripping the label would concatenate value + sub into
+  // nonsense. These give the KPI contract an explicit handle that survives copy
+  // and ordering changes — see distributor-renders-data.spec.ts.
+  const slug = String(label).toLowerCase().replace(/[^a-z0-9]+/g, '-');
   return (
-    <Tag className={styles.tile} data-tone={tone} data-clickable={onClick ? 'true' : undefined} onClick={onClick}>
+    <Tag
+      className={styles.tile}
+      data-tone={tone}
+      data-clickable={onClick ? 'true' : undefined}
+      data-testid={`kpi-${slug}`}
+      onClick={onClick}
+    >
       <span className={styles.tileIcon}>{icon}</span>
       <span className={styles.tileLabel}>{label}</span>
-      <span className={styles.tileValue}>{value}</span>
+      <span className={styles.tileValue} data-testid={`kpi-${slug}-value`}>{value}</span>
       {sub != null && <span className={styles.tileSub} data-tone={subTone}>{sub}</span>}
     </Tag>
   );

@@ -266,6 +266,54 @@ function listColumns(level) {
   return LEVEL_LIST_COLUMNS[level] ?? '*';
 }
 
+// ─── Parent scoping for list reads ──────────────────────────────────────────
+// `getAllAtLevel(level)` returns EVERY row the caller's RLS allows. The
+// drill-down UX needs the same list narrowed to one parent — "the subscribers
+// belonging to agent a-001" — so a distributor drilling into an agent doesn't
+// see the whole network. Two shapes are supported per level so callers can pass
+// whichever id they hold:
+//
+//   getAllAtLevel('subscriber', { agentId })     → subscribers.agent_id  = :id
+//   getAllAtLevel('subscriber', { districtId })  → subscribers.district_id = :id
+//   getAllAtLevel('agent',      { branchId })    → agents.branch_id      = :id
+//   getAllAtLevel('branch',     { districtId })  → branches.district_id  = :id
+//
+// A branch-scoped SUBSCRIBER list is deliberately absent: `subscribers` has no
+// branch_id column (the edge is subscribers.agent_id → agents.branch_id), so it
+// can't be expressed as a single `.eq()`. Callers that need it resolve the
+// branch's agents first — see `getSubscribersForBranch`.
+const SCOPE_COLUMNS = {
+  subscriber: { agentId: 'agent_id', districtId: 'district_id' },
+  agent: { branchId: 'branch_id' },
+  branch: { districtId: 'district_id', distributorId: 'distributor_id' },
+};
+
+/** Map a `{agentId}`-style scope onto `{column, value}` for the given level. */
+function resolveScopeFilter(level, scope) {
+  if (!scope) return null;
+  const columns = SCOPE_COLUMNS[level];
+  if (!columns) return null;
+  for (const [key, column] of Object.entries(columns)) {
+    const value = scope[key];
+    if (value) return { column, value };
+  }
+  return null;
+}
+
+/**
+ * Mock-branch equivalent of the PostgREST `.eq()` above. The mock entities carry
+ * camelCase fields (`agentId`), not the snake_case column names, so this filters
+ * on the scope KEY rather than the resolved column.
+ */
+function filterByScope(list, level, scope) {
+  if (!scope || !SCOPE_COLUMNS[level]) return list;
+  for (const key of Object.keys(SCOPE_COLUMNS[level])) {
+    const value = scope[key];
+    if (value) return (list ?? []).filter((e) => e?.[key] === value);
+  }
+  return list;
+}
+
 // ─── In-memory sync cache for getEntitySync ─────────────────────────────────
 // `getEntitySync` is called by `DashboardNavContext.buildSelectedIds` during
 // URL routing to walk the parent chain. Supabase calls are async, so we keep
@@ -395,9 +443,9 @@ export async function getChildren(parentLevel, parentId) {
  *   The narrowed `listColumns(level)` projection (vs the old `*`) further
  *   shrinks each subscriber/agent row to the columns the mapper reads.
  */
-export async function getAllAtLevel(level) {
+export async function getAllAtLevel(level, scope = null) {
   if (!IS_SUPABASE_ENABLED) {
-    return getAllEntities(level);
+    return filterByScope(getAllEntities(level), level, scope);
   }
   const table = LEVEL_TABLES[level];
   const mapper = LEVEL_MAPPERS[level];
@@ -406,6 +454,12 @@ export async function getAllAtLevel(level) {
   const PAGE_SIZE = 1000;
   const SAFETY_CAP_ROWS = 100_000; // 100k-row ceiling to bound a runaway fan-out
   const columns = listColumns(level);
+  // Parent scoping — pushed DOWN to PostgREST rather than filtered client-side,
+  // so a scoped list costs one small query instead of paging the whole level and
+  // discarding most of it. It also makes the `count: 'exact'` probe below report
+  // the SCOPED total, which is what the "Showing N of M" header must show.
+  const scopeFilter = resolveScopeFilter(level, scope);
+  const applyScope = (q) => (scopeFilter ? q.eq(scopeFilter.column, scopeFilter.value) : q);
 
   const collect = (rows) => {
     const out = [];
@@ -418,10 +472,9 @@ export async function getAllAtLevel(level) {
   };
 
   // Page 0 — always serial (it tells us whether a fan-out is even needed).
-  const { data: firstData, error: firstError } = await supabase
-    .from(table)
-    .select(columns)
-    .range(0, PAGE_SIZE - 1);
+  const { data: firstData, error: firstError } = await applyScope(
+    supabase.from(table).select(columns),
+  ).range(0, PAGE_SIZE - 1);
   if (firstError) throw firstError;
   const firstRows = firstData ?? [];
   const mapped = collect(firstRows);
@@ -434,9 +487,9 @@ export async function getAllAtLevel(level) {
   // fetch pages 1..N concurrently. `count: 'exact'` (not 'estimated') so we
   // never drop the tail — this list MUST be complete for the aggregating
   // callers (ViewSubscribers totals, KYC roll-ups, report CSV exports).
-  const { count, error: countError } = await supabase
-    .from(table)
-    .select(columns, { count: 'exact', head: true });
+  const { count, error: countError } = await applyScope(
+    supabase.from(table).select(columns, { count: 'exact', head: true }),
+  );
   if (countError) throw countError;
 
   const total = Math.min(count ?? firstRows.length, SAFETY_CAP_ROWS);
@@ -446,9 +499,7 @@ export async function getAllAtLevel(level) {
   for (let from = PAGE_SIZE; from < total; from += PAGE_SIZE) {
     const to = Math.min(from + PAGE_SIZE - 1, total - 1);
     pageRequests.push(
-      supabase
-        .from(table)
-        .select(columns)
+      applyScope(supabase.from(table).select(columns))
         .range(from, to)
         .then(({ data, error }) => {
           if (error) throw error;
@@ -624,6 +675,59 @@ const MOCK_SORT_FNS = {
   registration:  (a, b) => String(b.registeredDate ?? '').localeCompare(String(a.registeredDate ?? '')),
   name:          (a, b) => String(a.name ?? '').localeCompare(String(b.name ?? '')),
 };
+
+/**
+ * @description Every subscriber under a BRANCH.
+ *
+ *   `subscribers` carries no `branch_id` — the ownership edge is
+ *   `subscribers.agent_id → agents.branch_id` — so a branch-scoped list can't be
+ *   one `.eq()`. Resolve the branch's agents first, then fetch their subscribers
+ *   with a single `in(agent_id, …)`.
+ *
+ *   An agentless branch short-circuits to `[]` rather than issuing `in(…, [])`,
+ *   which PostgREST would answer with every row — the exact "scoped list leaks
+ *   the whole network" bug the drill-down specs guard against.
+ *
+ * @param {string} branchId
+ * @returns {Promise<Array>} subscribers, mapped like `getAllAtLevel('subscriber')`
+ */
+export async function getSubscribersForBranch(branchId) {
+  if (!branchId) return [];
+
+  const agents = await getAllAtLevel('agent', { branchId });
+  const agentIds = (agents ?? []).map((a) => a.id).filter(Boolean);
+  if (agentIds.length === 0) return [];
+
+  if (!IS_SUPABASE_ENABLED) {
+    const all = getAllEntities('subscriber') ?? [];
+    const owned = new Set(agentIds);
+    return all.filter((s) => owned.has(s?.agentId));
+  }
+
+  // One page per 1000 agent ids would be pathological; branches hold single
+  // digits of agents in the seed, so a single `in()` is fine. Page the RESULT
+  // the same way getAllAtLevel does, since a large branch can exceed 1000 subs.
+  const PAGE_SIZE = 1000;
+  const columns = listColumns('subscriber');
+  const mapper = LEVEL_MAPPERS.subscriber;
+  const out = [];
+  for (let from = 0; ; from += PAGE_SIZE) {
+    const { data, error } = await supabase
+      .from(LEVEL_TABLES.subscriber)
+      .select(columns)
+      .in('agent_id', agentIds)
+      .range(from, from + PAGE_SIZE - 1);
+    if (error) throw error;
+    const rows = data ?? [];
+    for (const row of rows) {
+      const entity = mapper(row);
+      out.push(entity);
+      cacheEntity('subscriber', entity);
+    }
+    if (rows.length < PAGE_SIZE) break;
+  }
+  return out;
+}
 
 /**
  * @description Returns all entities at a level as a Map<id, entity> for

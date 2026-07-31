@@ -36,8 +36,17 @@ test.use({ storageState: storageStatePathFor('admin') });
 
 // The "Distributor Network" group launcher. Its flyout is closed by default, so
 // Distributors / Branches / Agents are NOT in the DOM until it is opened.
+// Flyout children compose label + description + count into ONE accessible name
+// ("Distributors Network operators across the platform 2"), so an EXACT-match
+// regex like /^distributors$/ matches nothing. Anchor at the start and let the
+// rest of the name follow.
 function networkGroupButton(page: Page) {
   return page.getByRole('button', { name: /^distributor network$/i }).first();
+}
+
+/** A child inside the Distributor Network flyout, matched by its leading label. */
+function networkChild(page: Page, label: RegExp) {
+  return page.getByRole('button', { name: label }).first();
 }
 
 // Open the Distributor Network flyout and wait for a child (Distributors) to be
@@ -49,7 +58,7 @@ async function openNetworkFlyout(page: Page) {
   await launcher.click();
   await expect(launcher).toHaveAttribute('aria-expanded', 'true');
   // The flyout's Distributors child is the stable anchor that proves it opened.
-  await expect(page.getByRole('button', { name: /^distributors$/i }).first()).toBeVisible();
+  await expect(networkChild(page, /^distributors\b/i)).toBeVisible();
 }
 
 test.describe('admin dashboard smoke', () => {
@@ -89,7 +98,7 @@ test.describe('admin dashboard smoke', () => {
     // The group launcher's flyout is closed by default — its children only mount
     // once it is opened. Open it, then click the Distributors child.
     await openNetworkFlyout(page);
-    await page.getByRole('button', { name: /^distributors$/i }).first().click();
+    await networkChild(page, /^distributors\b/i).click();
     // ViewDistributors renders <h2>Distributors</h2>.
     await expect(
       page.getByRole('heading', { name: /^distributors$/i, level: 2 }),
@@ -110,7 +119,7 @@ test.describe('admin dashboard smoke', () => {
     // view is view-only (no "Create New Branch" — that is RLS-gated to the
     // distributor role).
     await openNetworkFlyout(page);
-    await page.getByRole('button', { name: /^branches$/i }).first().click();
+    await networkChild(page, /^branches\b/i).click();
     await expect(
       page.getByRole('heading', { name: /existing branches/i, level: 2 }),
     ).toBeVisible();
@@ -118,7 +127,7 @@ test.describe('admin dashboard smoke', () => {
 
   test('View agents panel opens (reused distributor panel, via the network flyout)', async ({ page }) => {
     await openNetworkFlyout(page);
-    await page.getByRole('button', { name: /^agents$/i }).first().click();
+    await networkChild(page, /^agents\b/i).click();
     await expect(
       page.getByRole('heading', { name: /existing agents/i, level: 2 }),
     ).toBeVisible();

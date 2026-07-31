@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { EASE_OUT_EXPO } from '../../utils/motion';
 import { formatUGX } from '../../utils/currency';
 import { txDisplayAmount } from '../../utils/finance';
+import { isRunPosted } from '../../utils/periodSettlement';
 
 import { formatDate } from '../../utils/date';
 import { useCurrentSubscriber, useSubscriberTransactions } from '../../hooks/useSubscriber';
@@ -24,11 +25,34 @@ const FILTERS = [
   { id: 'outgoing', label: 'Outgoing', test: (t) => txDisplayAmount(t) < 0 },
 ];
 
-// Map a transaction onto a human label for the row. Inflows (contributions /
-// claim payouts) read as "Received"; outflows (withdrawals / premiums) as "Sent".
+// Map a transaction onto a human label for the row.
+//
+// Money that came from an employer is NAMED, because by sign alone the employer
+// leg, the member's payroll deduction and a top-up the member chose to pay were
+// three identical "Received" rows:
+//   • source 'employer'  → the company's own money on top of the member's pay.
+//   • run-posted 'own'   → the member's money, but deducted from their pay and
+//                          remitted by the employer's run (see isRunPosted) —
+//                          they made no payment, so "Received" overstated it.
+//   • 'insurance_premium' → the employer's group-cover premium. It shows as an
+//                          outflow (utils/finance TX_OUTFLOW_TYPES), so without a
+//                          label it read as the member spending their own money.
+// Everything else keeps the plain sign wording: inflows "Received", outflows "Sent".
 function rowLabel(tx) {
-  if (txDisplayAmount(tx) > 0) return 'Received';
-  return 'Sent';
+  if (tx.type === 'contribution') {
+    if (tx.source === 'employer') return 'Employer top-up';
+    if (isRunPosted(tx)) return 'From your pay';
+  }
+  if (tx.type === 'insurance_premium' && tx.source === 'employer') return 'Cover paid by your employer';
+  return txDisplayAmount(tx) > 0 ? 'Received' : 'Sent';
+}
+
+// The payment method to show under the label. A run-posted row carries the
+// EMPLOYER's remittance channel ('Bank transfer', 'MTN Mobile Money'), which in a
+// member's own feed reads as a payment they made from their own account. Hide it
+// — the label already says where the money came from — and keep the reference.
+function rowMethod(tx) {
+  return isRunPosted(tx) ? null : tx.method;
 }
 
 function txYear(tx) {
@@ -180,6 +204,7 @@ export default function ActivityPage() {
               {visible.map((tx, i) => {
                 const signed = txDisplayAmount(tx);
                 const incoming = signed > 0;
+                const method = rowMethod(tx);
                 return (
                   <li key={tx.id} className={styles.row} data-zebra={i % 2 === 1 || undefined}>
                     <div className={styles.main}>
@@ -187,8 +212,8 @@ export default function ActivityPage() {
                         {rowLabel(tx)}
                       </span>
                       <span className={styles.meta}>
-                        {tx.method}
-                        {tx.method && tx.reference && (
+                        {method}
+                        {method && tx.reference && (
                           <span className={styles.dot} aria-hidden="true">·</span>
                         )}
                         {tx.reference}

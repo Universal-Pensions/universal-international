@@ -37,12 +37,55 @@ export function useSubscriberTransactions(id, filters) {
   });
 }
 
-/** Total / own / employer contribution breakdown (for employer-tagged members). */
+/**
+ * Total / own / employer contribution split (for employer-tagged members), bucketed
+ * by each row's ledger `source`. Careful: the "own" bucket holds the member's side
+ * of the pot, which under the two-leg employer model includes the payroll-deducted
+ * employee leg — it is not "money the member chose to send". Use
+ * `useSubscriberTransactions` + each row's `contributionRunId` when a surface has to
+ * say WHO made a payment.
+ */
 export function useContributionBreakdown(id) {
   return useQuery({
     queryKey: ['contributionBreakdown', id],
     queryFn: () => subscriberService.getContributionBreakdown(id),
     enabled: !!id,
+  });
+}
+
+/**
+ * Who funds this member's pension — the employer's name, the six unified
+ * contribution keys (employee/employer basis + pct + amount) and the member's own
+ * compensation, via the 0092 `get_my_employer_funding` RPC. `undefined` while
+ * loading, `null` for a self-funded saver: null is the NORMAL case, not an error,
+ * and callers hide the funding surface entirely rather than rendering zeros (0/0 is
+ * a legal employer config).
+ *
+ * Feed the six keys to `memberFundingSummary` / `formatLegRateForMember` /
+ * `deriveContributionLegs` in utils/contributionModel so every funding surface — the
+ * dashboard block, the Policies badge, the activity feed — words it identically.
+ *
+ * This is also the ONLY way a subscriber-side surface can learn its employer's NAME:
+ * RLS gives the member no SELECT on `employers`, so `useCurrentSubscriber()` carries
+ * `employerId` but never `employerName`.
+ *
+ * Namespaced key fixed by the service contract. Like every other read here it
+ * inherits the app-wide 5-min staleTime (main.jsx). No subscriber mutation
+ * invalidates it — the config only ever changes from the employer side.
+ *
+ * @param {string} [id] the subscriber id, purely to KEY the cache (and to resolve
+ *   the member offline) — the live RPC derives the member from the verified JWT
+ *   claim and ignores any argument. Omit it and the session's own `subscriberId`
+ *   claim is used, so `useMyEmployerFunding()` works from a page that hasn't got
+ *   the subscriber record to hand instead of sitting permanently disabled.
+ */
+export function useMyEmployerFunding(id) {
+  const { user } = useAuth();
+  const subscriberId = id ?? user?.subscriberId;
+  return useQuery({
+    queryKey: ['subscriber', 'employerFunding', subscriberId],
+    queryFn: () => subscriberService.getMyEmployerFunding(subscriberId),
+    enabled: !!subscriberId,
   });
 }
 

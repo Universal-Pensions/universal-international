@@ -1,3 +1,4 @@
+import { useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { useEmployerScope } from '../../contexts/EmployerScopeContext';
@@ -11,6 +12,12 @@ import {
 } from '../../hooks/useEmployer';
 import { formatUGX, formatNumber } from '../../utils/currency';
 import { groupInsuranceProducts, groupInsurancePremiumPerMember } from '../../utils/groupInsurance';
+import {
+  normalizeContributionConfig,
+  deriveContributionLegs,
+  isLegZero,
+  formatLegRate,
+} from '../../utils/contributionModel';
 import { PageHead, Hero, MetricRow, Tile, Card, SectionHead, StatusBadge } from './ui';
 import { coinsIcon, walletIcon, buildingIcon, pendingIcon, shieldIcon } from './icons';
 import FundingPanel from './FundingPanel';
@@ -18,45 +25,68 @@ import NeedsAttention from './NeedsAttention';
 import ui from './ui.module.css';
 import styles from './OverviewDesktop.module.css';
 
-/* Funding split derived from the company contribution config. Co-contribution
-   splits employee vs employer leg by the match ratio (100 : matchPct);
-   employer-only is a single employer-funded leg. Mirrors the run math in
-   ContributionRuns / the mockup's "How your staff's pension is funded" card. */
-function fundingModel(cfg) {
-  if (!cfg) return null;
-  if (cfg.mode === 'employer-only') {
-    const pct = Number(cfg.employerPct) || 0;
-    const amount = Number(cfg.employerAmount) || 0;
-    const basis = cfg.employerBasis === 'fixed' ? 'fixed' : 'percent';
-    return {
-      mode: 'employer-only',
-      tag: 'Employer-only',
-      ownPct: 0,
-      empPct: 100,
-      rules: [
-        basis === 'fixed'
-          ? { tone: 'emp', strong: `UGX ${formatNumber(amount)}`, rest: 'per member each run, funded entirely by you' }
-          : { tone: 'emp', strong: `You fund ${pct}%`, rest: 'of each member’s pay; staff contribute nothing' },
-      ],
-      foot: basis === 'fixed'
-        ? `Every active staff member is funded with a flat UGX ${formatNumber(amount)} each run — staff contribute nothing.`
-        : `You fund ${pct}% of each member’s monthly pay toward their retirement — staff contribute nothing.`,
-    };
+/* Funding split for the "How your staff's pension is funded" card, derived from
+   REAL MONEY rather than a ratio between the two rates.
+
+   Why money: the two legs are INDEPENDENT shares of each member's compensation
+   (the staff leg is never the base for the employer leg), so there is no
+   compensation-free ratio between them — and when the legs use different bases
+   (one flat UGX, one % of pay) a ratio cannot exist at all without a
+   compensation base. The old `100 / (100 + matchPct)` split was a pure artifact
+   of the deleted employer-leg-as-%-of-staff-leg basis and is gone.
+
+   So we sum `deriveContributionLegs` across the ACTIVE roster — exactly what a
+   run would post this period, and rounding-identical to it — and split on those
+   two totals. `funded: false` (both totals zero) makes the card render a plain
+   "nothing is funded yet" note instead of a meaningless 0/0 pie: that happens
+   when the config is 0/0, when there are no active staff, or when percent legs
+   meet a roster with no monthly pay on file. */
+function fundingModel(cfg, activeRoster) {
+  const c = normalizeContributionConfig(cfg);
+  const staffZero = isLegZero(c.employeeBasis, c.employeePct, c.employeeAmount);
+  const youZero = isLegZero(c.employerBasis, c.employerPct, c.employerAmount);
+  const staffRate = formatLegRate(c.employeeBasis, c.employeePct, c.employeeAmount);
+  const youRate = formatLegRate(c.employerBasis, c.employerPct, c.employerAmount);
+
+  let staffMoney = 0;
+  let youMoney = 0;
+  for (const emp of activeRoster) {
+    const { employeeLeg, employerLeg } = deriveContributionLegs(cfg, emp.compensation);
+    staffMoney += employeeLeg;
+    youMoney += employerLeg;
   }
-  // co-contribution
-  const employeePct = Number(cfg.employeePct) || 0;
-  const matchPct = Number(cfg.employerMatchPct) || 0;
-  const ownPct = Math.round((100 / (100 + matchPct)) * 100);
+  const total = staffMoney + youMoney;
+  const money = (n) => formatUGX(n, { compact: false });
+
+  let foot;
+  if (staffZero && youZero) {
+    foot = 'No contributions are set up yet. In Settings, set what your staff put in and what you add — either one can be nothing.';
+  } else if (total === 0) {
+    foot = activeRoster.length === 0
+      ? 'Nothing is funded yet — you have no active staff. Onboard staff and every run will fund them.'
+      : 'Nothing is funded yet — your active staff have no monthly pay on file, so a share of pay works out to nothing. Add their pay on the staff page.';
+  } else if (staffZero) {
+    foot = `You pay the whole pension — ${money(youMoney)} a month across your active staff, at no cost to them.`;
+  } else if (youZero) {
+    foot = `Your staff put in ${money(staffMoney)} a month from their own pay. You add nothing on top.`;
+  } else {
+    foot = `Each month your staff put in ${money(staffMoney)} and you add ${money(youMoney)} — ${money(total)} in all toward their pensions.`;
+  }
+
   return {
-    mode: 'co-contribution',
-    tag: 'Co-contribution',
-    ownPct,
-    empPct: 100 - ownPct,
-    rules: [
-      { tone: 'own', strong: `Staff save ${employeePct}%`, rest: 'of their monthly pay' },
-      { tone: 'emp', strong: `You add ${matchPct}%`, rest: 'on top of what they save' },
-    ],
-    foot: `Your match turns every UGX 100 a staff member saves into UGX ${100 + matchPct} toward their retirement.`,
+    // Short chip beside the card title — the two concrete figures live in the
+    // legend and the note, so the tag only says WHO funds.
+    tag: staffZero && youZero ? 'Not set up' : staffZero ? 'You only' : youZero ? 'Staff only' : 'Staff + you',
+    funded: total > 0,
+    staff: {
+      money: staffMoney,
+      rule: staffZero ? null : { strong: `Staff put in ${staffRate}`, rest: 'each month, taken from their pay' },
+    },
+    you: {
+      money: youMoney,
+      rule: youZero ? null : { strong: `You add ${youRate}`, rest: 'each month, from company money' },
+    },
+    foot,
   };
 }
 
@@ -72,8 +102,12 @@ export default function OverviewDesktop() {
   const { data: runs = [] } = useContributionRuns(employerId);
   const { data: pendingInvites = [] } = usePendingInvites(employerId);
 
+  // The active roster is the money base for the funding split below (a run funds
+  // active staff only), so derive it once and reuse it for the headline count.
+  const activeRoster = useMemo(() => employees.filter((e) => e.status === 'active'), [employees]);
+
   const headcount = metrics.headcount || employees.length || 0;
-  const active = metrics.active || employees.filter((e) => e.status === 'active').length || 0;
+  const active = metrics.active || activeRoster.length || 0;
   // "Total contributions" is PENSION (employee + employer). Insurance premiums
   // are a separate leg in the run and are excluded here — the metrics RPC counts
   // type='contribution' only, so the fallback sums the two pension legs (NOT
@@ -95,7 +129,9 @@ export default function OverviewDesktop() {
     || new Date(latest.runAt).getFullYear() !== new Date().getFullYear();
 
   const cfg = employer?.defaultContributionConfig;
-  const funding = fundingModel(cfg);
+  // Loops the active roster — memoize so the pie doesn't re-sum on every unrelated
+  // re-render (panel opens, toasts).
+  const funding = useMemo(() => fundingModel(cfg, activeRoster), [cfg, activeRoster]);
   // Multi-product group insurance (Life / Health / Funeral), employer-funded.
   const insProducts = groupInsuranceProducts(cfg);
   const insuranceOn = insProducts.length > 0;
@@ -107,12 +143,16 @@ export default function OverviewDesktop() {
   const companyName = employer?.name || 'Your company';
   const contactName = employer?.contactName || user?.name || 'there';
 
-  const employeeRateLabel = cfg?.mode === 'co-contribution' && cfg?.employeePct
-    ? `Saved by staff · ${cfg.employeePct}% of pay`
-    : 'Saved by staff';
-  const employerRateLabel = cfg?.mode === 'co-contribution' && cfg?.employerMatchPct
-    ? `Your ${cfg.employerMatchPct}% match · added on top`
-    : 'Funded by you · added on top';
+  // Per-leg tile captions. Each leg states its OWN rate ("10% of pay" /
+  // "UGX 50,000") — there is no combined mode to branch on, and a leg set to zero
+  // says so plainly instead of hiding behind a generic caption.
+  const legs = normalizeContributionConfig(cfg);
+  const employeeRateLabel = isLegZero(legs.employeeBasis, legs.employeePct, legs.employeeAmount)
+    ? 'Saved by staff · nothing set yet'
+    : `Saved by staff · ${formatLegRate(legs.employeeBasis, legs.employeePct, legs.employeeAmount)}`;
+  const employerRateLabel = isLegZero(legs.employerBasis, legs.employerPct, legs.employerAmount)
+    ? 'Funded by you · nothing set yet'
+    : `Funded by you · ${formatLegRate(legs.employerBasis, legs.employerPct, legs.employerAmount)}`;
 
   return (
     <div className={ui.stack}>
@@ -159,14 +199,14 @@ export default function OverviewDesktop() {
         />
       </MetricRow>
 
-      {/* Funding split (pie) + Needs attention — two-column row */}
+      {/* Funding split (pie) + Needs attention — two-column row. The card always
+          renders: with nothing funded it shows the plain "what to do next" note
+          FundingPanel falls back to, which is more useful than hiding the card. */}
       <div className={styles.splitRow}>
-        {funding && (
-          <Card>
-            <SectionHead icon={coinsIcon(18)} title="How your staff’s pension is funded" tag={funding.tag} />
-            <FundingPanel funding={funding} />
-          </Card>
-        )}
+        <Card>
+          <SectionHead icon={coinsIcon(18)} title="How your staff’s pension is funded" tag={funding.tag} />
+          <FundingPanel funding={funding} />
+        </Card>
 
         {/* Needs attention — desktop status tiles (extracted) */}
         <Card>

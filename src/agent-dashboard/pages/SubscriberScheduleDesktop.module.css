@@ -2,7 +2,7 @@
    subscriber contribution-schedule sub-page. This module is only ever rendered
    inside the useIsDesktop() fork, so it carries no mobile fallback. The body is
    a single width-capped, centred column wrapping the shared
-   ContributionSettingsForm (which owns its own scroll body + sticky footer). */
+   SubscriberScheduleForm (which owns its own scroll body + sticky footer). */
 
 .page {
   display: flex;
@@ -17,7 +17,7 @@
 .frame {
   width: 100%;
   /* Wide enough for the form's 2-column "split" layout (a container query in
-     ContributionSettingsForm activates at ~860px of body width); the form
+     SubscriberScheduleForm activates at ~860px of body width); the form
      centres + caps its own columns, so this just gives them room. */
   max-width: 960px;
   margin: 0 auto;

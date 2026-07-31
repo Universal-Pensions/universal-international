@@ -1,16 +1,26 @@
-// Employer service tests — UNIFIED MODEL (0043–0045) + CONTRIBUTION MODEL v2
-// (migration 0062). The employer's staff are tagged subscribers; funding is a
-// single company-wide config (Issue 2) applied by submit_employer_contribution_run
-// (own + employer-source transactions).
+// Employer service tests — UNIFIED MODEL (0043–0045) + UNIFIED CONTRIBUTION
+// MODEL (migration 0092). The employer's staff are tagged subscribers; funding is
+// a single company-wide config (Issue 2) applied by
+// submit_employer_contribution_run (own + employer-source transactions).
 //
-// v2 TWO-LEG run math (per ACTIVE member, derived from `compensation`):
-//   co-contribution: employeeLeg = round(comp × employeePct/100)
-//                    employerLeg = round(employeeLeg × employerMatchPct/100)  (NO cap)
-//   employer-only:   employeeLeg = 0; percent → round(comp × employerPct/100),
-//                    fixed → round(employerAmount)
+// TWO-LEG run math (per ACTIVE member, derived from `compensation`). Both legs are
+// INDEPENDENT shares of compensation and either may be zero:
+//   employeeLeg = percent ? round(comp × employeePct/100) : round(employeeAmount)
+//   employerLeg = percent ? round(comp × employerPct/100) : round(employerAmount)
+// The employer leg is NEVER a function of the employee leg (that was the deleted
+// `employerMatchPct` basis), and there is no cap and no minimum.
+//
+// ⚠️ These tests must NEVER re-implement that math. It lives in exactly one place —
+// `deriveContributionLegs` in src/utils/contributionModel.js, mirrored in PL/pgSQL
+// by 0092 — and a hand-copied mirror here is worse than useless: at the seeded
+// 10%/5% rates the OLD formula (10% + a 50% match of that leg) yields byte-identical
+// shillings, so a local copy would go on passing while the service regressed.
+// Hence: derive from the shared helper, and pin the resulting absolute totals below
+// so a seed drift is loud rather than silently self-healing.
+//
 // Each leg > 0 posts a transaction (employee leg source:'own', employer leg
-// source:'employer'). grandTotal = employerTotal + employeeTotal; linesCreated
-// counts DISTINCT funded members. NO commission side-effects.
+// source:'employer'). grandTotal = employerTotal + employeeTotal + insuranceTotal
+// (0066); linesCreated counts DISTINCT funded members. NO commission side-effects.
 //
 // Two branches, mirroring subscriber.test.js:
 //   * real (Supabase) branch — asserts the RPC/select call SHAPE.
@@ -21,6 +31,7 @@ import { vi, describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { makeSupabaseMock } from '../../test/supabaseMock';
 import { EMPLOYER, MEMBERS } from '../../data/employerSeed';
 import { groupInsurancePremiumPerMember } from '../../utils/groupInsurance';
+import { deriveContributionLegs, isLegZero, normalizeContributionConfig } from '../../utils/contributionModel';
 
 const supabaseMock = makeSupabaseMock();
 
@@ -40,24 +51,16 @@ const CFG = EMPLOYER.defaultContributionConfig;
 const ACTIVE = MEMBERS.filter((m) => m.status === 'active');
 
 /**
- * Expected two-leg contribution for one member under the company config (v2),
- * mirroring submit_employer_contribution_run / the employer-service mock EXACTLY.
+ * Expected two-leg contribution for one member under the company config.
+ *
+ * A pure delegation to the SHARED helper — the same function the employer-service
+ * mock, the seed, the run-wizard preview and (mirrored in SQL) the live RPC all
+ * call. Deriving here instead of restating the formula means this suite genuinely
+ * tests the service against the model rather than against a second copy of it.
  * Derived from the member's `compensation`, NOT a self-set saving amount.
  */
 function expectedLegs(m) {
-  const comp = Number(m.compensation ?? 0);
-  const mode = CFG.mode ?? 'employer-only';
-  let employeeLeg = 0;
-  let employerLeg = 0;
-  if (mode === 'co-contribution') {
-    employeeLeg = round(comp * Number(CFG.employeePct ?? 0) / 100);
-    employerLeg = round(employeeLeg * Number(CFG.employerMatchPct ?? 0) / 100);
-  } else {
-    employeeLeg = 0;
-    if (CFG.employerBasis === 'percent') employerLeg = round(comp * Number(CFG.employerPct ?? 0) / 100);
-    else employerLeg = round(Number(CFG.employerAmount ?? 0));
-  }
-  return { employeeLeg, employerLeg };
+  return deriveContributionLegs(CFG, Number(m.compensation ?? 0));
 }
 const EXPECTED_EMPLOYER_TOTAL = ACTIVE.reduce((s, m) => s + expectedLegs(m).employerLeg, 0);
 const EXPECTED_EMPLOYEE_TOTAL = ACTIVE.reduce((s, m) => s + expectedLegs(m).employeeLeg, 0);
@@ -72,6 +75,47 @@ const EXPECTED_FUNDED = ACTIVE.filter((m) => {
   return employeeLeg > 0 || employerLeg > 0 || EXPECTED_INSURANCE_LEG > 0;
 }).length;
 const EXPECTED_INSURANCE_TOTAL = EXPECTED_FUNDED * EXPECTED_INSURANCE_LEG;
+
+// =============================================================================
+// The seed contract these expectations rest on.
+//
+// Every EXPECTED_* above is DERIVED from the seed at import time, which makes the
+// run assertions self-healing — and that is a hazard, not a feature: a seed edit
+// that halved the company's funding would move both sides of every `toBe` and the
+// suite would stay green. So pin the absolute shillings once, here. If this block
+// fails, the SEED changed and the reseeded live ledger + the docs need to move with
+// it; if only the run assertions below fail, the SERVICE regressed.
+// =============================================================================
+describe('employer seed contribution contract', () => {
+  it('emp-001 is on the unified two-leg config (no mode, no match basis)', () => {
+    const c = normalizeContributionConfig(CFG);
+    expect(c).toMatchObject({
+      employeeBasis: 'percent', employeePct: 10, employeeAmount: 0,
+      employerBasis: 'percent', employerPct: 5, employerAmount: 0,
+    });
+    // The deleted keys must not linger in the seed — nothing reads them for
+    // funding any more, and a stale `mode` re-routes normalizeContributionConfig
+    // down its legacy branch.
+    expect(CFG).not.toHaveProperty('mode');
+    expect(CFG).not.toHaveProperty('employerMatchPct');
+    expect(CFG).not.toHaveProperty('matchPct');
+    // Both legs fund real money, so the run assertions below exercise both paths.
+    expect(isLegZero(c.employeeBasis, c.employeePct, c.employeeAmount)).toBe(false);
+    expect(isLegZero(c.employerBasis, c.employerPct, c.employerAmount)).toBe(false);
+  });
+
+  it('the 19-member active run population totals the seeded shillings exactly', () => {
+    expect(EXPECTED_FUNDED).toBe(19);
+    expect(EXPECTED_EMPLOYEE_TOTAL).toBe(1_972_000);
+    expect(EXPECTED_EMPLOYER_TOTAL).toBe(986_000);
+    // The employer leg is HALF the employee leg here only because 5% is half of
+    // 10% — a coincidence of the rates, never a derivation. See the header note.
+    expect(EXPECTED_INSURANCE_LEG).toBe(40_000);
+    expect(EXPECTED_INSURANCE_TOTAL).toBe(760_000);
+    expect(EXPECTED_EMPLOYEE_TOTAL + EXPECTED_EMPLOYER_TOTAL + EXPECTED_INSURANCE_TOTAL)
+      .toBe(3_718_000);
+  });
+});
 
 // =============================================================================
 // Real (Supabase) branch — call shape
@@ -493,8 +537,9 @@ describe('employer service — mock-fallback branch (IS_SUPABASE_ENABLED=false)'
     // Insurance is a distinct, employer-funded third leg; grand = all three.
     expect(result.insuranceTotal).toBe(EXPECTED_INSURANCE_TOTAL);
     expect(result.grandTotal).toBe(EXPECTED_EMPLOYER_TOTAL + EXPECTED_EMPLOYEE_TOTAL + EXPECTED_INSURANCE_TOTAL);
-    // The seeded company config is co-contribution, so BOTH legs are non-zero.
-    expect(CFG.mode).toBe('co-contribution');
+    // The seeded company config funds BOTH legs (10% of pay from staff, 5% of pay
+    // from the company — see the seed contract block above), so a run that posted
+    // only one leg would still match one of the totals. Assert both are real money.
     expect(result.employeeTotal).toBeGreaterThan(0);
     expect(result.employerTotal).toBeGreaterThan(0);
     expect(result.insuranceTotal).toBeGreaterThan(0);
@@ -508,7 +553,7 @@ describe('employer service — mock-fallback branch (IS_SUPABASE_ENABLED=false)'
     const { run, lines } = await svc.getContributionRun(result.runId);
     expect(run.id).toBe(result.runId);
 
-    // A funded co-contribution member gets three lines: own + employer + insurance.
+    // A member funded on both legs gets three lines: own + employer + insurance.
     const sample = ACTIVE.find((m) => {
       const { employeeLeg, employerLeg } = expectedLegs(m);
       return employeeLeg > 0 && employerLeg > 0;
@@ -556,14 +601,17 @@ describe('employer service — mock-fallback branch (IS_SUPABASE_ENABLED=false)'
     expect(b.linesCreated).toBe(a.linesCreated);
   });
 
-  it('getEmployerMetrics reports the single company mode + own/employer totals', async () => {
+  it('getEmployerMetrics reports the roster counts + own/employer totals', async () => {
     const m = await svc.getEmployerMetrics();
     expect(m.headcount).toBe(MEMBERS.length);
     expect(m.active).toBe(ACTIVE.length);
     expect(m.suspended).toBe(MEMBERS.length - ACTIVE.length);
-    expect(m.modeSplit).toEqual({ coContribution: MEMBERS.length, employerOnly: 0 });
     expect(m.employerContributions).toBeGreaterThan(0);
     expect(m.ownContributions).toBeGreaterThan(0);
+    // `modeSplit` (a per-member co-contribution/employer-only headcount) is DELETED
+    // from both the RPC (0092) and this mock: funding is one company-wide two-leg
+    // config, so there is no per-member funding shape left to split members by.
+    expect(m).not.toHaveProperty('modeSplit');
   });
 });
 
@@ -577,23 +625,31 @@ describe('employer service — invites (real Supabase branch)', () => {
     subSvc = await import('../subscriber');
   });
 
+  // `collectSchedule` is a KYC-DEPTH flag, never a funding one: true = collect the
+  // full record (insurance products + policy + both nominee sets). 0092 makes
+  // create_employer_invite write it as a CONSTANT TRUE, because how complete a
+  // record an invite collects has nothing to do with who pays — the employer's
+  // company-wide config sets both legs, so no invitee ever states an amount.
+  // These stay call-SHAPE tests (the value is whatever the RPC/row carries), but
+  // the fixtures use true so the suite stops enshrining a value the RPC can no
+  // longer return.
   it('createEmployerInvite passes p_prefill and returns { token, collectSchedule }', async () => {
-    supabaseMock.__queueRpc('create_employer_invite', { data: { token: 'inv-1', collectSchedule: false }, error: null });
+    supabaseMock.__queueRpc('create_employer_invite', { data: { token: 'inv-1', collectSchedule: true }, error: null });
     const res = await svc.createEmployerInvite({ fullName: 'Jane Akello', phone: '700100099' });
-    expect(res).toEqual({ token: 'inv-1', collectSchedule: false });
+    expect(res).toEqual({ token: 'inv-1', collectSchedule: true });
     expect(supabaseMock.__getRpcCalls('create_employer_invite').at(-1).args.p_prefill.fullName).toBe('Jane Akello');
   });
 
   it('listPendingInvites filters employer_invites by employer + pending and maps', async () => {
     supabaseMock.__queueFrom('employer_invites', {
-      data: [{ token: 'inv-1', employer_id: 'emp-001', prefill: { fullName: 'Jane' }, collect_schedule: false, status: 'pending' }],
+      data: [{ token: 'inv-1', employer_id: 'emp-001', prefill: { fullName: 'Jane' }, collect_schedule: true, status: 'pending' }],
       error: null,
     });
     const rows = await svc.listPendingInvites('emp-001');
     const call = supabaseMock.__getFromCalls('employer_invites').at(-1);
     expect(call.chain.eq).toHaveBeenCalledWith('employer_id', 'emp-001');
     expect(call.chain.eq).toHaveBeenCalledWith('status', 'pending');
-    expect(rows[0]).toMatchObject({ token: 'inv-1', collectSchedule: false, prefill: { fullName: 'Jane' } });
+    expect(rows[0]).toMatchObject({ token: 'inv-1', collectSchedule: true, prefill: { fullName: 'Jane' } });
   });
 
   it('getEmployerInvite passes p_token', async () => {

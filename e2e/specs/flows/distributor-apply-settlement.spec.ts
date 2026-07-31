@@ -40,6 +40,7 @@ import {
   seedDueCommissionForFixture,
   type CommissionFixtureHandle,
 } from '../../fixtures/db';
+import { selectors } from '../../helpers/selectors';
 
 const AGENT_ID = PERSONA_FOR.agent.entityId; // 'a-001'
 
@@ -132,7 +133,10 @@ test.describe('distributor → apply settlement (UI → RPC → DB → notificat
     await page.goto('/dashboard');
     await expect(page.getByRole('button', { name: /^overview$/i })).toBeVisible();
     await page.getByRole('button', { name: /^commissions$/i }).click();
-    const panel = page.getByRole('dialog', { name: /^commissions$/i });
+    // Mode-agnostic: the panel is a dialog as a slide-in and a region as a routed
+    // full page (see selectors.panel). Asserting the bare `dialog` role broke here
+    // when the two-mode redesign landed.
+    const panel = selectors.panel.commissions(page);
     await expect(panel).toBeVisible();
 
     // ── Upload a full-payment settlement ───────────────────────────────────
@@ -157,7 +161,10 @@ test.describe('distributor → apply settlement (UI → RPC → DB → notificat
     expect(rpcResponse.status(), 'apply_settlement RPC must succeed').toBe(200);
 
     // Success toast appears.
-    await expect(page.getByText(/settled \d+ agent/i)).toBeVisible({ timeout: 10_000 });
+    await expect(
+      page.getByRole('status').filter({ hasText: /settled \d+ agent/i }),
+      'the success toast appears (the confirm modal shows the same phrase, so scope to the toast)',
+    ).toBeVisible({ timeout: 10_000 });
 
     // ── DB assertions ──────────────────────────────────────────────────────
     // 1. Every previously-due line for the agent is now `paid` with a stamp.
@@ -241,7 +248,7 @@ test.describe('distributor → apply settlement (UI → RPC → DB → notificat
     await disableAnimations(distPage);
     await distPage.goto('/dashboard');
     await distPage.getByRole('button', { name: /^commissions$/i }).click();
-    await expect(distPage.getByRole('dialog', { name: /^commissions$/i })).toBeVisible();
+    await expect(selectors.panel.commissions(distPage)).toBeVisible();
     await distPage.setInputFiles('input[type="file"]', {
       name: 'settlement.csv',
       mimeType: 'text/csv',
@@ -250,7 +257,10 @@ test.describe('distributor → apply settlement (UI → RPC → DB → notificat
     const modal = distPage.getByRole('dialog').filter({ hasText: /confirm settlement/i });
     await expect(modal).toBeVisible({ timeout: 15_000 });
     await modal.getByRole('button', { name: /confirm settlement/i }).click();
-    await expect(distPage.getByText(/settled \d+ agent/i)).toBeVisible({ timeout: 10_000 });
+    await expect(
+      distPage.getByRole('status').filter({ hasText: /settled \d+ agent/i }),
+      'the success toast appears (the confirm modal shows the same phrase, so scope to the toast)',
+    ).toBeVisible({ timeout: 10_000 });
     await distributorContext.close();
 
     // Record the created batch id for cleanup.
@@ -322,7 +332,7 @@ test.describe('distributor → apply settlement (UI → RPC → DB → notificat
 
       await page.goto('/dashboard');
       await page.getByRole('button', { name: /^commissions$/i }).click();
-      await expect(page.getByRole('dialog', { name: /^commissions$/i })).toBeVisible();
+      await expect(selectors.panel.commissions(page)).toBeVisible();
       await page.setInputFiles('input[type="file"]', {
         name: 'settlement.csv',
         mimeType: 'text/csv',
@@ -331,7 +341,10 @@ test.describe('distributor → apply settlement (UI → RPC → DB → notificat
       const modal = page.getByRole('dialog').filter({ hasText: /confirm settlement/i });
       await expect(modal).toBeVisible({ timeout: 15_000 });
       await modal.getByRole('button', { name: /confirm settlement/i }).click();
-      await expect(page.getByText(/settled \d+ agent/i)).toBeVisible({ timeout: 10_000 });
+      await expect(
+      page.getByRole('status').filter({ hasText: /settled \d+ agent/i }),
+      'the success toast appears (the confirm modal shows the same phrase, so scope to the toast)',
+    ).toBeVisible({ timeout: 10_000 });
 
       const dueAfter = await readDueSlice(AGENT_ID);
       // FIFO settles exactly `expectedSettled` of the (equal-amount) lines; the
@@ -367,7 +380,7 @@ test.describe('distributor → apply settlement (UI → RPC → DB → notificat
 
       await page.goto('/dashboard');
       await page.getByRole('button', { name: /^commissions$/i }).click();
-      await expect(page.getByRole('dialog', { name: /^commissions$/i })).toBeVisible();
+      await expect(selectors.panel.commissions(page)).toBeVisible();
       await page.setInputFiles('input[type="file"]', {
         name: 'settlement.csv',
         mimeType: 'text/csv',
@@ -376,7 +389,10 @@ test.describe('distributor → apply settlement (UI → RPC → DB → notificat
       const modal = page.getByRole('dialog').filter({ hasText: /confirm settlement/i });
       await expect(modal).toBeVisible({ timeout: 15_000 });
       await modal.getByRole('button', { name: /confirm settlement/i }).click();
-      await expect(page.getByText(/settled \d+ agent/i)).toBeVisible({ timeout: 10_000 });
+      await expect(
+      page.getByRole('status').filter({ hasText: /settled \d+ agent/i }),
+      'the success toast appears (the confirm modal shows the same phrase, so scope to the toast)',
+    ).toBeVisible({ timeout: 10_000 });
 
       const { data: paidRows } = await supabaseAdmin
         .from('commissions')

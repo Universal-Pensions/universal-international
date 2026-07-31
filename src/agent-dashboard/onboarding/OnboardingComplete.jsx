@@ -81,10 +81,27 @@ export default function OnboardingComplete({ subscriberName, awareness, schedule
   const scheduleSummary = formatSchedule(schedule);
   const memberId = formatMemberId(signup.phone);
 
+  // Don't claim enrolment before the RPC returns. The card mounts the moment the
+  // agent pays, and `persist` runs on mount — so a fixed "is enrolled" headline
+  // asserted success while the write was still in flight (and stayed up if it
+  // failed, contradicting the "Not saved" row right below it).
+  const saved = status === 'success';
+  const title = saved
+    ? `${firstName} is enrolled`
+    : status === 'error'
+      ? `Couldn’t save ${firstName}’s record`
+      : `Saving ${firstName}’s record…`;
+  const lead = saved
+    ? 'The subscriber’s record is created and KYC has been submitted. They’ll receive a welcome SMS with their member ID and next steps shortly.'
+    : status === 'error'
+      ? 'The payment and KYC details were captured — only the final save failed. Retry below; nothing is lost and no duplicate can be created.'
+      : 'Payment captured. Writing the subscriber record and submitting KYC…';
+
   return (
     <div className={styles.wrap}>
       <motion.div
         className={styles.successIcon}
+        data-status={status}
         initial={{ scale: 0.6, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
         transition={{ duration: 0.5, ease: EASE_OUT_EXPO }}
@@ -99,15 +116,18 @@ export default function OnboardingComplete({ subscriberName, awareness, schedule
             transition={{ duration: 0.6, ease: EASE_OUT_EXPO }}
             fill="none"
           />
-          <motion.path
-            d="M16 29l8 8 16-18"
-            stroke="currentColor" strokeWidth="3"
-            strokeLinecap="round" strokeLinejoin="round"
-            fill="none"
-            initial={{ pathLength: 0 }}
-            animate={{ pathLength: 1 }}
-            transition={{ duration: 0.4, delay: 0.5, ease: EASE_OUT_EXPO }}
-          />
+          {/* The tick is a success claim — only drawn once the record is written. */}
+          {saved && (
+            <motion.path
+              d="M16 29l8 8 16-18"
+              stroke="currentColor" strokeWidth="3"
+              strokeLinecap="round" strokeLinejoin="round"
+              fill="none"
+              initial={{ pathLength: 0 }}
+              animate={{ pathLength: 1 }}
+              transition={{ duration: 0.4, ease: EASE_OUT_EXPO }}
+            />
+          )}
         </svg>
       </motion.div>
 
@@ -116,8 +136,9 @@ export default function OnboardingComplete({ subscriberName, awareness, schedule
         initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4, delay: 0.5, ease: EASE_OUT_EXPO }}
+        aria-live="polite"
       >
-        {firstName} is enrolled
+        {title}
       </motion.h3>
 
       <motion.p
@@ -126,7 +147,7 @@ export default function OnboardingComplete({ subscriberName, awareness, schedule
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4, delay: 0.6, ease: EASE_OUT_EXPO }}
       >
-        The subscriber&apos;s record is created and KYC has been submitted. They&apos;ll receive a welcome SMS with their member ID and next steps shortly.
+        {lead}
       </motion.p>
 
       {/* Member card issued to the new subscriber (shown once the record is saved). */}

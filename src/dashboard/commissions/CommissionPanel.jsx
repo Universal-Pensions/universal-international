@@ -102,6 +102,19 @@ export default function CommissionPanel({ splitMode = false, fullPage = false })
   const { branchId } = useBranchScope();
   const { addToast } = useToast();
 
+  // "Is this panel on screen?" — TWO independent ways it can be, since the
+  // distributor two-mode redesign: the slide-in (driven by `commissionsOpen`)
+  // and the routed full-page view (`fullPage`, where `commissionsOpen` stays
+  // false because nothing opened a slide-in).
+  //
+  // Anything meaning "the panel is visible" must gate on THIS, not on
+  // `commissionsOpen` alone — mixing them up silently disabled the settlement
+  // confirm modal and the drill-down focus move on the entire full-page route.
+  // Only genuinely slide-in-specific behaviour (Escape-to-close, reset-on-close)
+  // may key off `commissionsOpen`, because a routed page neither closes nor
+  // unmounts that way.
+  const panelActive = commissionsOpen || fullPage;
+
   const isBranch = !!branchId;
   const isDistributor = !branchId;
 
@@ -187,9 +200,12 @@ export default function CommissionPanel({ splitMode = false, fullPage = false })
     return `mailto:${SUPPORT_EMAIL}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(bodyLines.join('\n'))}`;
   }, [isBranch, branchId, scopedDuesByAgent, summary]);
 
-  // Reset state when panel closes
+  // Reset state when the SLIDE-IN closes. Deliberately keyed off
+  // `commissionsOpen` and not `panelActive`: a routed full-page view never
+  // "closes", so this must not fire there — it would blow away the view, the
+  // pending upload and the search 400ms after mount.
   useEffect(() => {
-    if (commissionsOpen) return;
+    if (commissionsOpen || fullPage) return;
     const t = setTimeout(() => {
       setView('home');
       setStatusFocus(null);
@@ -202,7 +218,7 @@ export default function CommissionPanel({ splitMode = false, fullPage = false })
       setSettlementResult(null);
     }, 400);
     return () => clearTimeout(t);
-  }, [commissionsOpen]);
+  }, [commissionsOpen, fullPage]);
 
   // Escape closes the panel. The shared <Modal> primitive stops propagation
   // when a child modal is open, so this handler never fires while the confirm
@@ -223,7 +239,7 @@ export default function CommissionPanel({ splitMode = false, fullPage = false })
   // first pass is skipped (panel-open render) and the ref is re-armed each time
   // the panel closes so a reopen doesn't yank focus on its first view.
   useEffect(() => {
-    if (!commissionsOpen) {
+    if (!panelActive) {
       didMountView.current = false;
       return undefined;
     }
@@ -235,7 +251,7 @@ export default function CommissionPanel({ splitMode = false, fullPage = false })
       viewRef.current?.focus({ preventScroll: true });
     });
     return () => cancelAnimationFrame(frame);
-  }, [view, commissionsOpen]);
+  }, [view, panelActive]);
 
   // Debounce the agent-search input (the filter memo runs a lowercase pass over
   // the full agent list on every keystroke). 200ms matches the OverlayPanel.
@@ -502,7 +518,7 @@ export default function CommissionPanel({ splitMode = false, fullPage = false })
 
   return (
     <AnimatePresence>
-      {(commissionsOpen || fullPage) && (
+      {panelActive && (
         <>
           {!splitMode && !fullPage && (
             <motion.div
@@ -522,7 +538,12 @@ export default function CommissionPanel({ splitMode = false, fullPage = false })
             initial={fullPage ? false : { x: '100%' }}
             animate={fullPage ? { opacity: 1 } : { x: 0, transition: { duration: 0.55, ease: EASE_OUT_EXPO } }}
             exit={fullPage ? { opacity: 0 } : { x: '100%', transition: { duration: 0.55, ease: EASE_OUT_EXPO } }}
-            role={fullPage ? undefined : 'dialog'}
+            /* Slide-in → dialog; routed full page → a labelled region. It must NOT
+               stay roleless in full-page mode: the aria-label below is then
+               attached to a plain generic, so the panel's name is dropped from the
+               a11y tree entirely (and nothing can address it). `region` is the
+               correct role for a titled top-level section of a page. */
+            role={fullPage ? 'region' : 'dialog'}
             aria-modal={fullPage ? undefined : 'true'}
             aria-label="Commissions"
           >
@@ -976,8 +997,11 @@ export default function CommissionPanel({ splitMode = false, fullPage = false })
 
       {/* Settlement confirm modal — portals to <body> via the shared <Modal>
        * primitive (focus trap, scroll-lock, ESC + backdrop). The
-       * `commissionsOpen` gate unmounts it when the parent panel closes. */}
-      {commissionsOpen && confirmSummary && (
+       * gate unmounts it when the parent panel goes away. Must be `panelActive`:
+       * gating on `commissionsOpen` alone meant the confirm step never mounted on
+       * the routed full-page Commissions view, so an upload there could never be
+       * applied — the settlement flow was simply dead on that route. */}
+      {panelActive && confirmSummary && (
         <Modal
           open={Boolean(pendingUpload)}
           onClose={() => {

@@ -24,6 +24,7 @@ import { supabase } from './supabaseClient';
 import { IS_SUPABASE_ENABLED } from './api';
 import { normalizeFrequency } from '../utils/finance';
 import { groupInsurancePremiumPerMember } from '../utils/groupInsurance';
+import { deriveContributionLegs } from '../utils/contributionModel';
 import { currentTime } from '../data/mockData';
 import {
   EMPLOYER,
@@ -69,9 +70,10 @@ export function mapEmployer(row) {
 
 /**
  * Map a tagged `subscribers` row (+ embedded balances / schedule / insurance /
- * nominees) to the employer-dashboard "member" shape. The funding MODE is NOT
- * carried per-member (Issue 2 — it is the company-wide employer default); only
- * the member's own monthly saving + schedule split are per-member.
+ * nominees) to the employer-dashboard "member" shape. Funding is NOT carried
+ * per-member: both contribution legs come from the company-wide employer config
+ * applied to the member's `compensation` (there is no per-employee override).
+ * Only the member's own monthly saving + schedule split are per-member.
  */
 export function mapMember(row) {
   if (!row) return null;
@@ -215,24 +217,25 @@ function mockRuns() {
 }
 
 /**
- * Mock employer run — TWO-LEG contribution model (migration 0062). For each
- * ACTIVE member it derives the legs from the member's `compensation` and the
- * company-wide config, mirroring `submit_employer_contribution_run` EXACTLY:
- *   co-contribution: employeeLeg = round(comp * employeePct/100)
- *                    employerLeg = round(employeeLeg * employerMatchPct/100)
- *   employer-only:   employeeLeg = 0
- *                    percent → employerLeg = round(comp * employerPct/100)
- *                    fixed   → employerLeg = round(employerAmount)
+ * Mock employer run — the offline (`VITE_USE_SUPABASE=false`) twin of
+ * `submit_employer_contribution_run` (migration 0092). For each ACTIVE member it
+ * derives the two INDEPENDENT legs from the member's `compensation` and the
+ * company-wide config via the shared `deriveContributionLegs`, which the RPC
+ * mirrors in PL/pgSQL:
+ *   employeeLeg = percent ? round(comp × employeePct/100) : round(employeeAmount)
+ *   employerLeg = percent ? round(comp × employerPct/100) : round(employerAmount)
+ * The employer leg is a share of COMPENSATION and is never a function of the
+ * employee leg; either leg may be 0. The derivation is NOT re-implemented here —
+ * a local copy is exactly how the mock, the seed and the RPC drifted apart before.
  * Each leg > 0 posts a transaction (employee leg source:'own', employer leg
  * source:'employer'), split by the member's retirementPct (default 80) rounding
- * ONCE. A member with BOTH legs 0 is skipped (`zero_contribution`).
- * `linesCreated` counts DISTINCT funded members; `grandTotal` = employerTotal +
- * employeeTotal.
+ * ONCE. A member with both legs 0 AND no insurance premium is skipped
+ * (`zero_contribution`). `linesCreated` counts DISTINCT funded members;
+ * `grandTotal` = employerTotal + employeeTotal + insuranceTotal.
  */
 function _mockSubmitEmployerRun(employerId, { periodLabel, method, nonce } = {}) {
   if (nonce && _mockNonceResults.has(nonce)) return _mockNonceResults.get(nonce);
   const cfg = { ...EMPLOYER.defaultContributionConfig, ...(_mockEmployerOverride?.defaultContributionConfig ?? {}) };
-  const mode = cfg.mode ?? 'employer-only';
   // Total employer-funded group insurance premium per covered member = Σ products
   // (parity with submit_employer_contribution_run / group_insurance_premium_per_member, 0067).
   const insuranceLeg = groupInsurancePremiumPerMember(cfg);
@@ -247,19 +250,7 @@ function _mockSubmitEmployerRun(employerId, { periodLabel, method, nonce } = {})
   for (const m of mockMembers()) {
     if (m.status !== 'active') { continue; } // excluded — parity with SQL `WHERE is_active`; not reported in skipped[]
     const comp = Number(m.compensation ?? 0);
-    let employeeLeg = 0;
-    let employerLeg = 0;
-    if (mode === 'co-contribution') {
-      employeeLeg = round(comp * Number(cfg.employeePct ?? 0) / 100);
-      employerLeg = round(employeeLeg * Number(cfg.employerMatchPct ?? 0) / 100);
-    } else {
-      employeeLeg = 0;
-      if (cfg.employerBasis === 'percent') {
-        employerLeg = round(comp * Number(cfg.employerPct ?? 0) / 100);
-      } else {
-        employerLeg = round(Number(cfg.employerAmount ?? 0));
-      }
-    }
+    const { employeeLeg, employerLeg } = deriveContributionLegs(cfg, comp);
     // Funded when ANY leg is positive — insurance is all-or-nothing, so an active
     // member with zero pension still gets the premium leg (parity with the RPC).
     if (employeeLeg <= 0 && employerLeg <= 0 && insuranceLeg <= 0) {
@@ -285,7 +276,12 @@ function _mockSubmitEmployerRun(employerId, { periodLabel, method, nonce } = {})
         source: 'own',
         amount: employeeLeg,
         date: currentTime().toISOString(),
-        method: method ?? null,
+        // 'Payroll deduction', never the employer's chosen `method` — this leg is
+        // deducted from the member's pay and remitted, so labelling it 'MTN Mobile
+        // Money' makes the member's own activity feed read as if they paid it.
+        // Parity with 0092's RPC + employerSeed.js. The employer + insurance legs
+        // below keep `method`: those really are the employer's transfer.
+        method: 'Payroll deduction',
         retirementAmount: retirement,
         emergencyAmount: emergency,
         contributionRunId: runId,
@@ -540,8 +536,9 @@ export async function getEmployerMetrics() {
     const ownContributions = members.reduce((s, m) => s + (m.ownContributions || 0), 0);
     const employerContributions = members.reduce((s, m) => s + (m.employerContributions || 0), 0);
     const insuredCount = members.filter((m) => m.insuranceStatus === 'active').length;
-    const cfg = { ...EMPLOYER.defaultContributionConfig, ...(_mockEmployerOverride?.defaultContributionConfig ?? {}) };
-    const isCo = cfg.mode === 'co-contribution';
+    // No funding-shape field is returned: with one unified two-leg model there is
+    // nothing to split the roster by, and every member is funded from the SAME
+    // company config. `get_employer_metrics` (0092) drops the old `modeSplit` too.
     return {
       headcount, active, suspended, totalBalance,
       totalContributions: ownContributions + employerContributions,
@@ -549,9 +546,6 @@ export async function getEmployerMetrics() {
       insuredCount,
       employerYtd: employerContributions,
       employeeYtd: ownContributions,
-      modeSplit: isCo
-        ? { coContribution: headcount, employerOnly: 0 }
-        : { coContribution: 0, employerOnly: headcount },
     };
   }
   const { data, error } = await supabase.rpc('get_employer_metrics');
@@ -888,14 +882,25 @@ function mapInvite(row) {
 }
 
 /**
- * Create an employer invite. The server reads the company config to set
- * `collectSchedule` (true = co-contribution). Returns { token, collectSchedule }.
+ * Create an employer invite. Returns { token, collectSchedule }.
+ *
+ * `collectSchedule` is a SIGNUP-DEPTH flag, NOT a funding flag. It decides which
+ * screen the invited MEMBER gets: true = the full wizard (frequency + amount +
+ * insurance + "Pay {total}"), false = the compact split-only completion. Neither
+ * branch lets the member choose a saving amount that survives — both force
+ * schedule amount 0 and skip the signup deposit, because the employer's
+ * contribution run is what funds them. So no field in the company config can
+ * legitimately derive it, and since 0092 `create_employer_invite` hardcodes it
+ * FALSE: a sponsored member has no amount to pick (the employer sets both legs)
+ * and must not be offered insurance their employer already funds — 0068 rejects
+ * that re-buy server-side. This mock mirrors the RPC.
  * @param {{ fullName, phone, email?, nin?, gender? }} prefill
  */
 export async function createEmployerInvite(prefill) {
   if (!IS_SUPABASE_ENABLED) {
     const token = `inv-mock-${_mockInvites.length + 1}`;
-    const collectSchedule = (EMPLOYER.defaultContributionConfig?.mode === 'co-contribution');
+    // Constant — parity with the RPC. Never derive this from the config.
+    const collectSchedule = false;
     _mockInvites.push({
       token, employer_id: EMPLOYER.id, prefill, collect_schedule: collectSchedule,
       status: 'pending', created_at: currentTime().toISOString(),

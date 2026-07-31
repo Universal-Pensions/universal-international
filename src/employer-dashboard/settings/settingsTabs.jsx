@@ -26,11 +26,14 @@ import {
 } from '../../hooks/useEmployer';
 import { changePassword, AuthError } from '../../services/auth';
 import { formatUGX, formatNumber } from '../../utils/currency';
+import {
+  normalizeContributionConfig,
+  deriveContributionLegs,
+  isLegZero,
+} from '../../utils/contributionModel';
 import { groupInsuranceProducts, groupInsurancePremiumPerMember } from '../../utils/groupInsurance';
 import GroupInsuranceFieldset from './GroupInsuranceFieldset';
 import styles from './EmployerSettings.module.css';
-
-const round = (n) => Math.round(n);
 
 const SECTOR_OPTIONS = [
   'Agriculture',
@@ -72,15 +75,24 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 export function SettingsBody({ tab, settingsOpen, employer, employerId, addToast, render }) {
   const updateProfile = useUpdateEmployerProfile(employerId);
 
-  // Contribution-model v2 seed (migration 0062): compensation-driven, two-leg
-  // math. Prefer the NEW keys and fall back to the legacy shape so an
-  // un-migrated config still populates sensibly:
-  //   • employerBasis — fixed | percent. Inferred from a legacy `employerAmount`
-  //     (=> fixed) when not explicitly set.
-  //   • employerMatchPct — co-contribution employer match; legacy `matchPct`.
-  // The old `maxContribution` cap is GONE in v2. `insuranceEnabled` /
-  // `groupCoverAmount` ride along on this single draft so the Pension and
-  // Insurance tabs edit the SAME state.
+  // Unified contribution seed (migration 0092). ONE model: two INDEPENDENT
+  // legs — what staff put in, and what the company adds — each expressed either
+  // as a % of that member's monthly compensation or as a flat UGX amount per
+  // member per month. There is no funding mode any more, and the company leg is
+  // never a function of the staff leg.
+  //
+  // `normalizeContributionConfig` is the whole seed: it reads the six canonical
+  // keys when they are there, converts a legacy mode-switched config
+  // money-identically (10% staff + a 50% employer match becomes employerPct 5),
+  // and turns an empty `{}` — how `create_employer` and `approve_access_request`
+  // provision a brand-new employer — into 0/0, a legal "nothing funded yet"
+  // state the employer can save as-is. Basis is read from the EXPLICIT stored
+  // key only; inferring it from the presence of an amount is what used to flip a
+  // percent employer to fixed on reload.
+  //
+  // `insuranceEnabled` / `groupCoverAmount` / `groupInsuranceProducts` ride
+  // along on this single draft so the Pension and Insurance tabs edit the SAME
+  // state and commit through the one atomic saveConfig.
   const initial = useMemo(() => {
     const cfg = employer?.defaultContributionConfig ?? {};
     // Per-product group insurance draft (Life / Health / Funeral). Back-compat:
@@ -96,16 +108,18 @@ export function SettingsBody({ tab, settingsOpen, employer, employerId, addToast
       }
       return { enabled: false, cover: '' };
     };
+    // The six canonical pension keys, straight off the shared model. Numbers
+    // here; the inputs write back strings as the employer types (both shapes are
+    // read through Number()/deriveContributionLegs, so the mix is harmless and
+    // matches how every other numeric field on these tabs behaves).
+    const legs = normalizeContributionConfig(cfg);
     return {
-      mode: cfg.mode ?? 'co-contribution',
-      // Employer-only: fixed UGX amount OR a % of compensation.
-      employerBasis: cfg.employerBasis ?? (cfg.employerAmount != null ? 'fixed' : 'percent'),
-      employerAmount: cfg.employerAmount ?? 50000,
-      employerPct: cfg.employerPct ?? 10,
-      // Co-contribution: employee % of compensation + employer match % of the
-      // employee leg (no cap in v2).
-      employeePct: cfg.employeePct ?? 10,
-      employerMatchPct: cfg.employerMatchPct ?? cfg.matchPct ?? 50,
+      employeeBasis: legs.employeeBasis,
+      employeePct: legs.employeePct,
+      employeeAmount: legs.employeeAmount,
+      employerBasis: legs.employerBasis,
+      employerPct: legs.employerPct,
+      employerAmount: legs.employerAmount,
       groupInsuranceProducts: {
         life: prodDraft('life'),
         health: prodDraft('health'),
@@ -138,8 +152,6 @@ export function SettingsBody({ tab, settingsOpen, employer, employerId, addToast
     e.preventDefault();
     if (updateProfile.isPending) return;
 
-    const isCo = draft.mode === 'co-contribution';
-
     // Per-product group insurance (Life / Health / Funeral), employer-funded and
     // all-or-nothing per product. Validate each enabled product has a cover.
     const gipDraft = draft.groupInsuranceProducts || {};
@@ -162,62 +174,73 @@ export function SettingsBody({ tab, settingsOpen, employer, employerId, addToast
       ? groupInsuranceProducts.life.cover
       : null;
 
-    // Build the mode-specific config per the contribution-model v2 DB CONTRACT
-    // (migration 0062). The insurance fields ride along on both modes so the
-    // company-wide setting is persisted either way. No `maxContribution` cap.
-    let defaultContributionConfig;
-    if (isCo) {
-      const employeePct = Number(draft.employeePct);
-      const employerMatchPct = Number(draft.employerMatchPct);
-      if (!(employeePct >= 0 && employeePct <= 100)) {
-        setErr('Employee contribution % must be between 0 and 100.');
-        return;
+    // === The two pension legs — validated INDEPENDENTLY ======================
+    // Unified model (migration 0092): each leg is EITHER a % of the member's own
+    // monthly compensation OR a flat UGX amount per member per month, and the
+    // company leg is never derived from the staff leg. So each leg is checked on
+    // its own terms — only the figure that its basis actually uses. No cap, no
+    // minimum; 0 is valid on either side (see the 0/0 note below).
+    //
+    // A blank input reads as 0 rather than an error. That keeps this seam safe
+    // for the Insurance tab, which submits the SAME saveConfig with the SAME
+    // shared draft and the SAME single `err` line: an employer editing only
+    // insurance must never be blocked by the pension slice.
+    const readLeg = (basisRaw, pctRaw, amountRaw, pctMsg, amountMsg) => {
+      const basis = basisRaw === 'fixed' ? 'fixed' : 'percent';
+      const pct = pctRaw === '' || pctRaw == null ? 0 : Number(pctRaw);
+      const amount = amountRaw === '' || amountRaw == null ? 0 : Number(amountRaw);
+      if (basis === 'percent' && !(Number.isFinite(pct) && pct >= 0 && pct <= 100)) {
+        return { error: pctMsg };
       }
-      if (!(employerMatchPct >= 0 && employerMatchPct <= 100)) {
-        setErr('Employer match % must be between 0 and 100.');
-        return;
+      if (basis === 'fixed' && !(Number.isFinite(amount) && amount >= 0)) {
+        return { error: amountMsg };
       }
-      defaultContributionConfig = {
-        mode: 'co-contribution',
-        employeePct,
-        employerMatchPct,
-        insuranceEnabled,
-        groupCoverAmount: cover,
-        groupInsuranceProducts,
+      // Both figures are persisted for both bases on purpose: the unused one is
+      // whatever the employer last typed under the other basis, so switching
+      // basis back and forth never loses their number.
+      return {
+        basis,
+        pct: Number.isFinite(pct) ? pct : 0,
+        amount: Number.isFinite(amount) ? amount : 0,
       };
-    } else {
-      const employerBasis = draft.employerBasis === 'percent' ? 'percent' : 'fixed';
-      if (employerBasis === 'percent') {
-        const employerPct = Number(draft.employerPct);
-        if (!(employerPct >= 0 && employerPct <= 100)) {
-          setErr('Employer contribution % must be between 0 and 100.');
-          return;
-        }
-        defaultContributionConfig = {
-          mode: 'employer-only',
-          employerBasis: 'percent',
-          employerPct,
-          insuranceEnabled,
-          groupCoverAmount: cover,
-          groupInsuranceProducts,
-        };
-      } else {
-        const employerAmount = Number(draft.employerAmount);
-        if (!(employerAmount >= 0) || !Number.isFinite(employerAmount)) {
-          setErr('Amount per member must be 0 or more.');
-          return;
-        }
-        defaultContributionConfig = {
-          mode: 'employer-only',
-          employerBasis: 'fixed',
-          employerAmount,
-          insuranceEnabled,
-          groupCoverAmount: cover,
-          groupInsuranceProducts,
-        };
-      }
-    }
+    };
+
+    const staffLeg = readLeg(
+      draft.employeeBasis, draft.employeePct, draft.employeeAmount,
+      'The share of pay staff put in must be a number from 0 to 100.',
+      'The amount staff put in each month must be 0 or more.',
+    );
+    if (staffLeg.error) { setErr(staffLeg.error); return; }
+
+    const companyLeg = readLeg(
+      draft.employerBasis, draft.employerPct, draft.employerAmount,
+      'The share of pay you add must be a number from 0 to 100.',
+      'The amount you add each month must be 0 or more.',
+    );
+    if (companyLeg.error) { setErr(companyLeg.error); return; }
+
+    // ALL SIX pension keys are always written — one flat shape, no `mode` and no
+    // `employerMatchPct`, per the migration 0092 DB contract. The three
+    // group-insurance keys ride along unchanged so the company-wide cover is
+    // persisted by the same save.
+    const defaultContributionConfig = {
+      employeeBasis: staffLeg.basis,
+      employeePct: staffLeg.pct,
+      employeeAmount: staffLeg.amount,
+      employerBasis: companyLeg.basis,
+      employerPct: companyLeg.pct,
+      employerAmount: companyLeg.amount,
+      insuranceEnabled,
+      groupCoverAmount: cover,
+      groupInsuranceProducts,
+    };
     setErr('');
+
+    // 0/0 is a LEGAL configuration — it simply funds no pension — so it saves.
+    // The employer is told, not stopped: a warning toast after the save, plus the
+    // standing note in the tab's preview. Never a block, never a confirm dialog.
+    const fundsNothing = isLegZero(staffLeg.basis, staffLeg.pct, staffLeg.amount)
+      && isLegZero(companyLeg.basis, companyLeg.pct, companyLeg.amount);
 
     // ONE atomic call: the config patch + the roster-wide group cover commit in
     // the same `update_employer_profile` transaction. `insuranceEnabled` +
@@ -227,12 +250,20 @@ export function SettingsBody({ tab, settingsOpen, employer, employerId, addToast
     updateProfile.mutate(
       { defaultContributionConfig, insuranceEnabled, groupCover: cover },
       {
-        onSuccess: () => addToast(
-          'success',
-          insuranceEnabled
-            ? 'Settings saved — group cover applied to all staff.'
-            : 'Settings saved — group cover removed for all staff.',
-        ),
+        onSuccess: () => {
+          addToast(
+            'success',
+            insuranceEnabled
+              ? 'Settings saved — group cover applied to all staff.'
+              : 'Settings saved — group cover removed for all staff.',
+          );
+          if (fundsNothing) {
+            addToast(
+              'warning',
+              'Saved, but nothing is going into pensions yet — both amounts are zero.',
+            );
+          }
+        },
         onError: (e2) => addToast('error', e2?.message || 'Could not save settings.'),
       },
     );
@@ -507,9 +538,15 @@ export function ProfileTab({ employer, employerId, addToast }) {
 }
 
 // =============================================================================
-// Tab 2 — Pension contribution (the company-wide funding template a run starts
-// from). The draft + saveConfig seam are owned by SettingsBody; this tab is
-// presentational over the funding-mode slice. Group insurance lives on its own
+// Tab 2 — Pension contribution (the company-wide template every run starts
+// from). ONE unified model, no funding modes: TWO always-visible legs — what
+// staff put in, and what the company adds — each independently either a flat UGX
+// amount per member per month or a share of that member's own monthly pay.
+// Either leg may be 0 (0/0 saves and simply funds nothing). Company-wide only:
+// there is no per-member override anywhere in the product.
+//
+// The draft + the atomic saveConfig seam are owned by SettingsBody; this tab is
+// presentational over the two-leg slice. Group insurance lives on its own
 // Insurance tab (Tab 3), not here.
 // =============================================================================
 
@@ -521,185 +558,195 @@ export function PensionContributionTab({
   saving,
   saveConfig,
 }) {
-  const isCo = draft.mode === 'co-contribution';
-  const isPercent = draft.employerBasis === 'percent';
+  // Which figure each leg is expressed in. Percent is the default for an
+  // unset/absent basis, matching normalizeContributionConfig.
+  const staffPercent = draft.employeeBasis !== 'fixed';
+  const companyPercent = draft.employerBasis !== 'fixed';
 
-  // Illustrative preview — display-only; runs re-derive per member from each
-  // member's own compensation. Walks the contribution-model v2 two-leg math
-  // (migration 0062) off an EXAMPLE monthly compensation.
-  //  • co-contribution: employeeLeg = comp*employeePct/100;
-  //                     employerLeg = employeeLeg*employerMatchPct/100.
-  //  • employer-only/percent: employerLeg = comp*employerPct/100 (no employee leg).
-  //  • employer-only/fixed:   employerLeg = employerAmount (no employee leg).
+  // One setter for every field on this tab. `err` is SHARED with the Insurance
+  // tab (both render the same single line), so clear it on any edit here.
+  const setField = (field, value) => {
+    setDraft((d) => ({ ...d, [field]: value }));
+    if (err) setErr('');
+  };
+
+  // Illustrative preview — display-only; a real run re-derives both legs for
+  // each member from THAT member's own compensation. It calls the shared
+  // deriveContributionLegs so this preview can never disagree with the run
+  // wizard, the seed, or `submit_employer_contribution_run` in SQL.
   const EXAMPLE_COMP = 1000000;
   const preview = useMemo(() => {
-    if (isCo) {
-      const employeeLeg = round(EXAMPLE_COMP * (Number(draft.employeePct) || 0) / 100);
-      const employerLeg = round(employeeLeg * (Number(draft.employerMatchPct) || 0) / 100);
-      return { employeeLeg, employerLeg, total: employeeLeg + employerLeg };
-    }
-    const employerLeg = isPercent
-      ? round(EXAMPLE_COMP * (Number(draft.employerPct) || 0) / 100)
-      : round(Number(draft.employerAmount) || 0);
-    return { employeeLeg: 0, employerLeg, total: employerLeg };
-  }, [
-    isCo,
-    isPercent,
-    draft.employeePct,
-    draft.employerMatchPct,
-    draft.employerPct,
-    draft.employerAmount,
-  ]);
+    const { employeeLeg, employerLeg } = deriveContributionLegs(draft, EXAMPLE_COMP);
+    return { employeeLeg, employerLeg, total: employeeLeg + employerLeg };
+  }, [draft]);
+
+  // 0/0 is legal and saveable — flagged here (and again in a post-save toast) so
+  // the employer knows nothing is funded, but never blocked.
+  const fundsNothing = isLegZero(draft.employeeBasis, draft.employeePct, draft.employeeAmount)
+    && isLegZero(draft.employerBasis, draft.employerPct, draft.employerAmount);
 
   return (
     <form className={styles.form} onSubmit={saveConfig} noValidate>
       <p className={styles.intro}>
-        This is the single company-wide funding model — it applies to{' '}
-        <strong>all</strong> members. Every contribution run uses these settings
-        for everyone; it cannot be changed per member.
+        Two things go into each person&apos;s pension every month: what{' '}
+        <strong>staff</strong> put in from their own pay, and what{' '}
+        <strong>you</strong> add on top. Set them both here. These figures apply
+        to <strong>every</strong> member the same way and cannot be changed for
+        one person. Leave a side at 0 if only one side is paying.
       </p>
 
+      {/* Leg 1 — the staff side. Deducted from the member's pay and remitted on
+          their behalf. Its own radio `name` so it cannot share a group with the
+          company block below (one shared name would clear the other choice). */}
       <fieldset className={styles.fieldset}>
-        <legend className={styles.legend}>Funding mode</legend>
+        <legend className={styles.legend}>What staff contribute</legend>
         <div className={styles.radioRow}>
           <label className={styles.radio}>
             <input
               type="radio"
-              name="emp-default-mode"
-              checked={draft.mode === 'employer-only'}
-              onChange={() => { setDraft((d) => ({ ...d, mode: 'employer-only' })); if (err) setErr(''); }}
+              name="emp-employee-basis"
+              checked={!staffPercent}
+              onChange={() => setField('employeeBasis', 'fixed')}
             />
-            Employer-only
+            A flat amount each month
           </label>
           <label className={styles.radio}>
             <input
               type="radio"
-              name="emp-default-mode"
-              checked={draft.mode === 'co-contribution'}
-              onChange={() => { setDraft((d) => ({ ...d, mode: 'co-contribution' })); if (err) setErr(''); }}
+              name="emp-employee-basis"
+              checked={staffPercent}
+              onChange={() => setField('employeeBasis', 'percent')}
             />
-            Co-contribution
+            A share of their pay
           </label>
         </div>
-      </fieldset>
 
-      {isCo ? (
-        <div className={styles.fieldRow}>
+        {staffPercent ? (
           <div className={styles.field}>
-            <label className={styles.label} htmlFor="emp-default-employee-pct">Employee contribution (% of compensation)</label>
+            <label className={styles.label} htmlFor="emp-employee-pct">
+              Share of each person&apos;s pay (%)
+            </label>
             <input
-              id="emp-default-employee-pct"
+              id="emp-employee-pct"
               className={styles.input}
               type="number"
               min="0"
               max="100"
               step="0.5"
               value={draft.employeePct}
-              onChange={(e) => {
-                setDraft((d) => ({ ...d, employeePct: e.target.value }));
-                if (err) setErr('');
-              }}
+              onChange={(e) => setField('employeePct', e.target.value)}
             />
             <span className={styles.hint}>
-              Each member contributes this % of their monthly compensation.
+              Comes off each person&apos;s pay every month. At 10%, someone paid
+              UGX 1,000,000 a month puts in UGX 100,000.
             </span>
           </div>
+        ) : (
           <div className={styles.field}>
-            <label className={styles.label} htmlFor="emp-default-match">Employer match (% of the employee contribution)</label>
+            <label className={styles.label} htmlFor="emp-employee-amount">
+              Amount from each person, per month (UGX)
+            </label>
             <input
-              id="emp-default-match"
+              id="emp-employee-amount"
+              className={styles.input}
+              type="number"
+              min="0"
+              step="1000"
+              value={draft.employeeAmount}
+              onChange={(e) => setField('employeeAmount', e.target.value)}
+            />
+            <span className={styles.hint}>
+              The same amount comes off every person&apos;s pay each month,
+              whatever they earn.
+            </span>
+          </div>
+        )}
+      </fieldset>
+
+      {/* Leg 2 — the company side. Your own money, and a share of the member's
+          PAY — never a share of what the member put in. */}
+      <fieldset className={styles.fieldset}>
+        <legend className={styles.legend}>What you contribute</legend>
+        <div className={styles.radioRow}>
+          <label className={styles.radio}>
+            <input
+              type="radio"
+              name="emp-employer-basis"
+              checked={!companyPercent}
+              onChange={() => setField('employerBasis', 'fixed')}
+            />
+            A flat amount each month
+          </label>
+          <label className={styles.radio}>
+            <input
+              type="radio"
+              name="emp-employer-basis"
+              checked={companyPercent}
+              onChange={() => setField('employerBasis', 'percent')}
+            />
+            A share of their pay
+          </label>
+        </div>
+
+        {companyPercent ? (
+          <div className={styles.field}>
+            <label className={styles.label} htmlFor="emp-employer-pct">
+              Share of each person&apos;s pay you add (%)
+            </label>
+            <input
+              id="emp-employer-pct"
               className={styles.input}
               type="number"
               min="0"
               max="100"
               step="0.5"
-              value={draft.employerMatchPct}
-              onChange={(e) => {
-                setDraft((d) => ({ ...d, employerMatchPct: e.target.value }));
-                if (err) setErr('');
-              }}
+              value={draft.employerPct}
+              onChange={(e) => setField('employerPct', e.target.value)}
             />
             <span className={styles.hint}>
-              You match this % of each member&apos;s own contribution.
+              Your company&apos;s money, on top of what staff put in. At 5%, you
+              add UGX 50,000 for every UGX 1,000,000 of monthly pay.
             </span>
           </div>
-        </div>
-      ) : (
-        <>
-          <fieldset className={styles.fieldset}>
-            <legend className={styles.legend}>Employer contribution basis</legend>
-            <div className={styles.radioRow}>
-              <label className={styles.radio}>
-                <input
-                  type="radio"
-                  name="emp-default-basis"
-                  checked={!isPercent}
-                  onChange={() => { setDraft((d) => ({ ...d, employerBasis: 'fixed' })); if (err) setErr(''); }}
-                />
-                Fixed amount
-              </label>
-              <label className={styles.radio}>
-                <input
-                  type="radio"
-                  name="emp-default-basis"
-                  checked={isPercent}
-                  onChange={() => { setDraft((d) => ({ ...d, employerBasis: 'percent' })); if (err) setErr(''); }}
-                />
-                % of compensation
-              </label>
-            </div>
-          </fieldset>
+        ) : (
+          <div className={styles.field}>
+            <label className={styles.label} htmlFor="emp-employer-amount">
+              Amount you add per person, per month (UGX)
+            </label>
+            <input
+              id="emp-employer-amount"
+              className={styles.input}
+              type="number"
+              min="0"
+              step="1000"
+              value={draft.employerAmount}
+              onChange={(e) => setField('employerAmount', e.target.value)}
+            />
+            <span className={styles.hint}>
+              You add this same amount for every person each month, whatever
+              they earn.
+            </span>
+          </div>
+        )}
+      </fieldset>
 
-          {isPercent ? (
-            <div className={styles.field}>
-              <label className={styles.label} htmlFor="emp-default-er-pct">Employer contribution (% of compensation)</label>
-              <input
-                id="emp-default-er-pct"
-                className={styles.input}
-                type="number"
-                min="0"
-                max="100"
-                step="0.5"
-                value={draft.employerPct}
-                onChange={(e) => {
-                  setDraft((d) => ({ ...d, employerPct: e.target.value }));
-                  if (err) setErr('');
-                }}
-              />
-              <span className={styles.hint}>The employer contributes this % of each member&apos;s monthly compensation.</span>
-            </div>
-          ) : (
-            <div className={styles.field}>
-              <label className={styles.label} htmlFor="emp-default-er">Amount per member / month (UGX)</label>
-              <input
-                id="emp-default-er"
-                className={styles.input}
-                type="number"
-                min="0"
-                step="1000"
-                value={draft.employerAmount}
-                onChange={(e) => {
-                  setDraft((d) => ({ ...d, employerAmount: e.target.value }));
-                  if (err) setErr('');
-                }}
-              />
-              <span className={styles.hint}>The employer contributes this fixed amount to each member every month.</span>
-            </div>
-          )}
-        </>
-      )}
-
+      {/* Live preview of BOTH legs, always all three lines — either leg can now
+          be non-zero on its own, so nothing here is gated. */}
       <div className={styles.preview} aria-live="polite">
         <span className={styles.previewLabel}>
-          On example monthly compensation of {formatUGX(EXAMPLE_COMP, { compact: false })}
+          For someone paid {formatUGX(EXAMPLE_COMP, { compact: false })} a month
         </span>
         <div className={styles.previewRow}>
-          {isCo && (
-            <span>Employee contributes: <strong>{formatUGX(preview.employeeLeg, { compact: false })}</strong></span>
-          )}
-          <span>Employer contributes: <strong>{formatUGX(preview.employerLeg, { compact: false })}</strong></span>
-          <span>Total: <strong>{formatUGX(preview.total, { compact: false })}</strong></span>
+          <span>Staff put in: <strong>{formatUGX(preview.employeeLeg, { compact: false })}</strong></span>
+          <span>You add: <strong>{formatUGX(preview.employerLeg, { compact: false })}</strong></span>
+          <span>Total into their pension: <strong>{formatUGX(preview.total, { compact: false })}</strong></span>
         </div>
+        {fundsNothing && (
+          <span className={styles.hint}>
+            Nothing is going into pensions with these figures. You can still save
+            and set the amounts later.
+          </span>
+        )}
       </div>
 
       {err && <p className={styles.error} role="alert">{err}</p>}

@@ -23,7 +23,7 @@ export const INSURANCE_COVER = 1_000_000;
  * form (selection list, premium maths, and live summary) picks it up
  * automatically — no component edits needed. `id` is the stable key carried in
  * the schedule's `insuranceTypes` selection; `icon` maps to an inline glyph in
- * ContributionSettingsForm. Premiums/cover are demo values in UGX.
+ * each consuming form. Premiums/cover are demo values in UGX.
  *
  * `life` deliberately mirrors INSURANCE_PREMIUM_MONTHLY / INSURANCE_COVER so the
  * legacy single-product path (signup, agent onboard) stays consistent.
@@ -81,8 +81,9 @@ export function annualPremium(product) {
  * well below the green goal line (cap 60 < line 80) so the user is never shown
  * as "covered". Uses the UN-ceiled month count so the pile travels smoothly on
  * edit, while the copy keeps showing the honest ceil'd month count. Shared by
- * both tin renders (signup ContributionSettings + agent ContributionSettingsForm)
- * so they cannot drift numerically.
+ * both tin renders (the onboarding ContributionSettings, shared by self-signup and
+ * agent onboarding, and the SubscriberScheduleForm editor) so they cannot drift
+ * numerically.
  */
 export const TIN_LINE_PCT = 80; // green "cover starts" goal line — never reached
 export const TIN_FILL_FLOOR = 30; // slowest readable pile (%)

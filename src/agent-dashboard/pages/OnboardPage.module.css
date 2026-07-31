@@ -5,6 +5,19 @@
   padding-bottom: var(--space-12);
 }
 
+/* Schedule stage: the embedded ContributionSettings pins its Pay CTA with
+   `position: sticky; bottom: var(--cs-footer-bottom, 0)`. Sticky offsets are
+   measured against the scrollport's edge and ignore the padding-bottom
+   AgentShell.viewport reserves for the fixed BottomTabBar (64px) and the raised
+   Onboard FAB (22px above it) — so at 0 the Pay button would sit underneath both.
+   Lift it clear. Desktop needs no offset (no bottom bar), hence the mobile-only
+   media query rather than a blanket value. */
+@media (max-width: 1023px) {
+  .page[data-stage='schedule'] {
+    --cs-footer-bottom: calc(64px + 22px + var(--space-2) + env(safe-area-inset-bottom));
+  }
+}
+
 @media (min-width: 1024px) {
   /* Desktop onboarding is NOT a phone column patched wide — each stage opens to
      the width its content actually needs. The KYC stage (default here) is the
@@ -12,8 +25,11 @@
      the `onboardcanvas` named container (see OnboardKycFlow.module.css); this
      cap just has to be wide enough for the widest step (Review / Beneficiaries
      at 980px). Awareness uses a master/detail layout; Done is a compact
-     confirmation; Schedule hosts the 2-column ContributionSettingsForm (which
-     switches to split at 860px — see ContributionSettingsForm.module.css). */
+     confirmation; Schedule hosts the shared signup ContributionSettings, whose
+     two-column form (input panel + 340px summary aside) needs >1100px of
+     container width — see the @container query in ContributionSettings.module.css.
+     Its parent .shell (OnboardDesktop.module.css) has to allow at least as much,
+     or this cap is unreachable. */
   .page {
     /* width:100% is REQUIRED: .page sits in a flex-column parent (.shell) with
        `margin: 0 auto`, and auto cross-axis margins make a flex item shrink-wrap
@@ -32,7 +48,19 @@
   }
 
   .page[data-stage='schedule'] {
-    max-width: 960px;
+    max-width: 1180px;
+    /* The embedded summary aside is `position: sticky` and, at this width, its
+       right edge reaches under AgentDesktopShell's absolutely-positioned .topBar
+       (the Ask-AI + notification controls, `top: var(--space-5)`, z-index 30).
+       Start the aside below them so its header isn't occluded once scrolled. */
+    --cs-aside-top: calc(var(--space-5) + 48px);
+  }
+
+  /* The 4-stage rail is a .page child, so it would stretch to the full 1180px on
+     this stage alone and read sparse next to the other stages. Hold it at the
+     common width. */
+  .page[data-stage='schedule'] .stepper {
+    max-width: 1000px;
   }
 
   .page[data-stage='done'] {

@@ -225,7 +225,7 @@ Each entity references its parent via `parentId`. Metrics roll up from subscribe
 - **Active status** in mock: 60-95% probability per subscriber. UNCLEAR — confirm: what defines "active" in production? (contributing in last N months?)
 - **Products** are multi-hold — subscriber can hold 1-3 products simultaneously.
 - **"Amount invested" / investment growth is a UI-only derivation — NOT a stored cost basis.** The subscriber Home "Amount invested" KPI (and the invested-vs-grown story on the PulseCard / HomeDesktop) is computed at render time by `deriveInvestmentGrowth(subscriber)` in `src/utils/finance.js`. The demo has no real fund NAV — every contribution buys units at the fixed 1,000 UGX price, so `total_balance` equals total contributed and raw growth is always zero. `deriveInvestmentGrowth` instead discounts the current balance back over the member's tenure at the app's assumed `MONTHLY_RATE` (so `invested = balance / (1+rate)^tenure`, `growth = balance − invested`). It is **deterministic per subscriber** (tenure from `registeredDate` + a stable per-`id` jitter, no `Math.random`), so figures stay stable across renders and agree between mobile and desktop. There is no `invested` / cost-basis column anywhere in the schema.
-- **Employer members (contribution model v2, `0062`).** When `employerId` is set, the member's pension is funded by the employer's two-leg contribution run computed from `compensation` — NOT a self-set saving amount (so `contributionSchedule.amount = 0`, `monthlyContribution` is vestigial). A co-contribution run posts an **`own`** employee leg (`source='own'`) **and** an **`employer`** leg (`source='employer'`) to `transactions`, both with `agent_id` NULL (no commission) and `contribution_run_id` set; an employer-only run posts only the `employer` leg. The employer sets/edits `compensation` via `update_employer_member_compensation` (RPC, 0062).
+- **Employer members (unified two-leg contribution model, `0062` → `0092`).** When `employerId` is set, the member's pension is funded by the employer's two-leg contribution run computed from `compensation` — NOT a self-set saving amount (so `contributionSchedule.amount = 0`, `monthlyContribution` is vestigial). The two legs are **independent**: each is either a percentage of the member's monthly compensation or a flat UGX amount, and the employer leg is a share of **PAY** — never a share of the employee leg. A run posts ONE `transactions` row **per non-zero leg** — the employee leg as `source='own'`, the employer leg as `source='employer'` — both with `agent_id` NULL (no commission) and `contribution_run_id` set. So a member receives two rows, one row, or (on a 0/0 config) none, in which case they are skipped with `zero_contribution`. ⚠️ Because the employer deducts and remits the employee leg out of payroll, **`source='own'` alone does NOT mean the member paid it themselves** — an `own` row carrying a `contribution_run_id` is a payroll deduction, which is why every member-facing surface splits on that id (`isRunPosted`, `src/utils/periodSettlement.js`) and not on `source`. The employer sets/edits `compensation` via `update_employer_member_compensation` (RPC, `0062`); the member reads their own funding rates via `get_my_employer_funding` (RPC, `0092`) — the only path a subscriber JWT has to the employer's config or name. Shape + math: [Contribution Config shape](#contribution-config-shape).
 - **Insurance (multi-product).** A subscriber's **life** cover is one row in `insurance_policies` (`subscriber_id` PK); **health/funeral** are rows in `subscriber_insurance_products` (`(subscriber_id, product)` PK, `0064`). Each carries `cover / premium_monthly / policy_start / renewal_date / status / funded_by`. `status` ∈ `active | inactive | building` (`'building'` = a save-to-cover policy still accruing its premium, `0072`); `funded_by` ∈ `self | employer` (`0067`, default `self`). Cover is created/funded post-signup by **`fund_insurance_products`** (`0073`, subscriber-paid) or by the signup chain at onboarding when selected (`0065`); the legacy monthly `pay_insurance_premium` writer was **retired (EXECUTE-revoked) by `0074`**. Employer-sponsored members' policies are fanned out `funded_by='employer'` (premium 0) by `update_employer_profile` (`0067`), and such a member can't re-buy / be charged for a product their employer already funds. The subscriber UI derives a `policies` list via `derivePolicies` (`src/utils/policies.js`), computing active/expired from `renewal_date`. **Agent visibility:** agents read these (life embed + `sip_select_agent` RLS on the products table, `0065`) and see **which** active policies a subscriber holds (product + status) but **never the cover amount or premium**. Agent Home insured-counts (`isInsured`, `src/agent-dashboard/home/agentHomeSummary.js`) now treat a subscriber as **insured if they hold ANY active policy — life, health OR funeral** (no longer life-only), matching the product+status chips on the detail page.
 - **Insurance funding — annual self-pay: pay-now vs save-to-cover (`0072`/`0073`).** A `funded_by='self'` member pays for insurance ONLY as a single **ANNUAL** premium (`Σ premium_monthly × 12`), never a monthly out-of-pocket stream (monthly premiums are legitimate only when the EMPLOYER funds them — `type='insurance_premium'`, `0066`). Two routes, chosen at onboarding or via `fund_insurance_products`: **`pay_now`** activates the policies immediately and charges the annual premium as one `type='premium'`, `source='own'` transactions row; **`save_to_cover`** creates the policies `status='building'`, charges nothing up front, and lets each own-money contribution's **emergency slice** accrue toward the premium — when the accrual reaches the target **AND** the emergency bucket actually holds it, the contribution trigger **sweeps** it (a NEGATIVE `type='premium_sweep'` row) and flips the building policies to `active`. The accrual state lives on `contribution_schedules` (six columns added by `0072`): `insurance_funding_mode` (`pay_now | save_to_cover`), `insurance_premium_target` (combined annual premium of the building self policies), `insurance_premium_accrued` (progress toward it), `insurance_savings_pct` (% of each emergency slice that builds cover; the rest stays liquid/withdrawable), plus the independent yearly step-up `contribution_indexation_pct` (0..15) and its `last_indexed_at` anniversary marker. The four money columns move only via the DEFINER trigger / `fund_insurance_products` (client `UPDATE` is REVOKE'd, `0072` §1f / `0075`); `contribution_indexation_pct` stays user-editable. `premium` / `premium_sweep` rows never fire the balance trigger, so insurance funding leaves pension balances + AUM untouched. See `BACKEND.md §10`.
 
@@ -245,7 +245,7 @@ Each entity references its parent via `parentId`. Metrics roll up from subscribe
 | contactName / contactPhone / contactEmail | string | Stored | Primary HR/admin contact |
 | district | string | Stored | Operating district — **free text**, NOT an FK. The admin Platform Overview employer geo rollup (`get_employer_geo_rollup`, 0058) places the employer on the map by resolving `district = districts.name` (case-insensitive) → `region_id`; unmatched text buckets under `'unmapped'`. |
 | payrollCadence | string | Stored | `"monthly"` \| `"weekly"` \| … |
-| defaultContributionConfig | object (JSONB) | Stored | The single company-wide funding template a run applies to every member. **CONTRIBUTION MODEL v2 (migration 0062):** co-contribution = `{ mode:'co-contribution', employeePct, employerMatchPct }` (NO `maxContribution`); employer-only = `{ mode:'employer-only', employerBasis:'fixed', employerAmount }` or `{ …, employerBasis:'percent', employerPct }`; plus company-wide group-insurance fields `insuranceEnabled` (boolean) + `groupCoverAmount` that ride along on **both** modes — see [Contribution Config shape](#contribution-config-shape) |
+| defaultContributionConfig | object (JSONB) | Stored | The single company-wide funding template a run applies to every member — **company-wide only; there is no per-member override.** **UNIFIED TWO-LEG MODEL (migration `0092`):** all six pension keys are ALWAYS written — `{ employeeBasis:'percent'\|'fixed', employeePct, employeeAmount, employerBasis:'percent'\|'fixed', employerPct, employerAmount }` — plus the company-wide group-insurance keys `insuranceEnabled` / `groupCoverAmount` / `groupInsuranceProducts`, which ride along untouched. `mode`, `employerMatchPct` and `matchPct` are **DELETED**; a legacy row keeps them physically but nothing reads them (converted money-preservingly at read time). Either leg may be `0`, and `0/0` is legal. See [Contribution Config shape](#contribution-config-shape) |
 | createdAt / updatedAt | timestamptz | Stored | Row timestamps (`updated_at` maintained inline by the `0035` RPCs — no shared trigger) |
 
 ### Relationships
@@ -254,7 +254,7 @@ Each entity references its parent via `parentId`. Metrics roll up from subscribe
 ### Business Rules
 - **One login employer + geo-spread extras.** The employer ROLE seeds exactly one login-able employer (`emp-001`, Kampala). Demo login phone `EMPLOYER_DEMO_PHONE` (`+256700000031`) resolves to it via `demo_personas`; any other phone on the `employer` role falls back to `emp-001`. Migration `0058`'s feature adds ~6 **login-less** extra employers (`emp-002…007`) spread across regions/districts (`src/data/employerGeoSeed.js` → seeded as `employers` rows + tagged subscribers + balances) so the admin Employers scope + district Employers tab are demonstrable on the map. These have no employer-role dashboard and no contribution-run history (admin geo view reads only headcount + balances).
 - **No employer health score.** Unlike a Branch, the Employer has **no derived health/scheme-health score**. The funder-redesign removed the scheme-health gauge / participation composite from the Overview hero (an employer is a funder, not a sales line); there is no `score` field and no formula. The hero now leads with total contributions + funder tiles + a monthly **standing** gauge — the employer's peer **rank** shown in the Branch score-gauge language (still a rank, NOT a re-introduced health composite); the old recent-runs bar-trend was removed — see `FRONTEND.md §9.5`.
-- **Group life insurance.** Group insurance is now a company-wide TRUE/FALSE config (`insuranceEnabled` in `defaultContributionConfig`), set via **Settings → Default config** and **independent of the funding mode** (previously it was only available in `employer-only` mode). Saving syncs the roster through the `apply_group_insurance` RPC (`0039`) on **every save**: when cover `> 0` it activates **flat group life cover for the whole roster** — every owned employee's `insuranceCover` is set to the flat amount, `insuranceStatus` derives from it (`>0 → active`, `0 → inactive`), and `insurancePremiumMonthly` is zeroed (employer-included); a `0` cover clears it (switches group cover off). The per-employee insurance editor still applies individual overrides afterwards. `0039` is **applied to the live Singapore DB** (cutover 2026-06-05).
+- **Group life insurance.** Group insurance is now a company-wide TRUE/FALSE config (`insuranceEnabled` in `defaultContributionConfig`), set via **Settings → Default config** and **independent of the two contribution legs** (an employer can fund cover while funding no pension at all, and vice versa; cover was once gated on the retired `employer-only` funding mode). Saving syncs the roster through the `apply_group_insurance` RPC (`0039`) on **every save**: when cover `> 0` it activates **flat group life cover for the whole roster** — every owned employee's `insuranceCover` is set to the flat amount, `insuranceStatus` derives from it (`>0 → active`, `0 → inactive`), and `insurancePremiumMonthly` is zeroed (employer-included); a `0` cover clears it (switches group cover off). The per-employee insurance editor still applies individual overrides afterwards. `0039` is **applied to the live Singapore DB** (cutover 2026-06-05).
   - **Vestigial per-member insurance fields.** Under the v2 **company-wide, all-or-nothing** insurance model, the per-member `mapMember.insuranceCover` / `insuranceStatus` fields (mapped in `src/services/employer.js`) are **vestigial** — cover is driven by the company-wide `insuranceEnabled` / `groupCoverAmount` config, not set per member, so these fields just reflect the group roll-out (every covered member shows the same flat cover) rather than carrying independent per-member state.
 - **Pending KYC surfacing.** The Overview hero surfaces each member's `kycStatus` (already a `subscribers` column) as a **"Pending KYC"** count + a nudge panel (`PendingKyc`); pending = `kycStatus` in (`pending`, `incomplete`). A few demo staff (Mary Auma, Diana Nabirye, Juliet Akello) are seeded `pending`.
 - **RLS.** `employer_self_select USING (app_role='employer' AND id = auth.jwt() ->> 'employerId')`. Profile updates via `update_employer_profile` (own row only). See `BACKEND.md §8`/§10.1.
@@ -273,7 +273,7 @@ Each entity references its parent via `parentId`. Metrics roll up from subscribe
 | token | string | Stored | **PK.** `inv-<uuid>` — the opaque invite link token |
 | employerId | string | Stored | FK → `employers(id) ON DELETE CASCADE` (the inviting employer); snake `employer_id`. **Indexed** |
 | prefill | object (JSONB) | Stored | `{ name, phone, email, nin, gender }` — the identity the employer pre-entered; the invitee confirms/extends it during KYC |
-| collectSchedule | boolean | Stored | snake `collect_schedule`. `true` = the employer's mode is `co-contribution` → the invitee also sets a schedule + first payment; `false` = `employer-only` → KYC + retirement/emergency split only, starts at 0 |
+| collectSchedule | boolean | Stored | snake `collect_schedule`. **A SIGNUP-DEPTH flag, NOT a funding flag — and a constant `FALSE` since `0092`** (`create_employer_invite` always writes `FALSE`; `0092` adds a `COMMENT ON COLUMN` saying so, replacing `0047`'s misleading `-- true = co-contribution flow` note). `false` = the invitee gets the compact `SplitOnlyView`: pension nominees plus the retirement/emergency split, **no amount, no first deposit, no insurance purchase**; `true` = the full wizard, which collects insurance products + policy + both nominee sets. **Neither branch ever asks the invitee for a contribution amount that survives** — the employer's config sets both legs, so both write `contribution_schedules.amount = 0` and skip the signup deposit. The name reads like a funding flag only because it once meant "the employer's mode is co-contribution". **Why `FALSE` is the right constant:** the signup UI branches on this value, so `TRUE` would ask a sponsored member to choose a saving amount and pay a deposit the server then discards, and would offer them insurance that `0068` rejects as a re-buy of employer-funded cover. See `FRONTEND.md §11.2` |
 | status | string | Stored | `'pending'` \| `'completed'` \| `'expired'` (CHECK-constrained); default `'pending'` |
 | subscriberId | string \| null | Stored | FK → `subscribers(id) ON DELETE SET NULL`; set to the created subscriber once KYC completes. **No covering index on this FK at table-create** — added by `0053` (sole `unindexed_foreign_keys` advisor hit) |
 | createdAt | timestamptz | Stored | Row creation |
@@ -293,6 +293,8 @@ Each entity references its parent via `parentId`. Metrics roll up from subscribe
 ## Employee
 
 > **HISTORICAL (pre-`0045`).** The employer's standalone staff roster (`employees`, migration `0034`) — **dropped by `0045`** when the roster was unified into `subscribers` (see the model-change banner under **Employer**). Retained here for provenance only. **NOT a subscriber** — pension balances lived on THIS row (not `subscriber_balances`), and the per-employee contribution ledger was `contribution_run_lines` (not `transactions`). There was intentionally no contribution trigger on this table; `submit_contribution_run` wrote balances inline.
+>
+> ⚠️ **The `mode` / `matchPct` / `employerMatchPct` vocabulary that appears in this section and in **Contribution Run Line** below is ALSO retired** (migration `0092`). No live config carries `mode`, no live code computes an employer leg as a share of the employee leg, and there is no per-employee config override any more — funding is company-wide only. The live contract is the unified two-leg config in [Contribution Config shape](#contribution-config-shape).
 
 ### Fields
 | Field | Type | Storage | Description |
@@ -305,10 +307,10 @@ Each entity references its parent via `parentId`. Metrics roll up from subscribe
 | nin | string | Stored | National ID number |
 | jobTitle | string | Stored | Role/title |
 | salary | number | Stored | Monthly gross (UGX) — the basis for legacy/employer-only percentage run math |
-| monthlyContribution | number | Stored | The employee's OWN monthly saving (UGX) — the base the **co-contribution employer match** is computed against. Added by migration `0037` (snake_case `monthly_contribution`; **applied to the live Singapore DB** at the 2026-06-05 cutover) |
+| monthlyContribution | number | Stored | The employee's OWN monthly saving (UGX) — the base the retired `0038` **employer match** was computed against (that basis is gone; see the banner). Added by migration `0037` (snake_case `monthly_contribution`; **applied to the live Singapore DB** at the 2026-06-05 cutover) |
 | status | string | Stored | `"active"` \| `"suspended"`. Suspended employees are **skipped** by `submit_contribution_run` |
 | joinedDate | date | Stored | Date the employee joined |
-| contributionConfig | object (JSONB) | Stored | Per-employee funding mode. Shape `{ mode, matchPct, maxContribution }` (co-contribution) or `{ mode, employerPct, groupCoverAmount }` (employer-only) — see below |
+| contributionConfig | object (JSONB) | Stored | Per-employee funding mode. Shape `{ mode, matchPct, maxContribution }` (co-contribution) or `{ mode, employerPct, groupCoverAmount }` (employer-only). **The per-employee override died with this column** — under the live model there is exactly ONE company-wide config on `employers.default_contribution_config` |
 | contributionSchedule | object (JSONB) | Stored | Retirement/emergency split `{ retirementPct, emergencyPct }` (r+e = 100; default 80/20). Mirrors `contribution_schedules` for subscribers |
 | retirementBalance | number | Stored | Pension (long-term) balance — bumped inline by each run |
 | emergencyBalance | number | Stored | Emergency (short-term) balance — bumped inline by each run |
@@ -328,7 +330,7 @@ Each entity references its parent via `parentId`. Metrics roll up from subscribe
 
 ### Enums
 - status: `active` | `suspended`
-- contributionConfig.mode: `co-contribution` | `employer-only`
+- contributionConfig.mode: `co-contribution` | `employer-only` — **RETIRED, no live config carries `mode` (see the banner above)**
 - insuranceStatus: `active` | `inactive`
 
 ### Business Rules
@@ -338,39 +340,53 @@ Each entity references its parent via `parentId`. Metrics roll up from subscribe
 
 #### Contribution Config shape
 
-> **CONTRIBUTION MODEL v2 (migration 0062 — LIVE).** The live model is the **compensation-driven, two-leg** model below. The earlier funder-redesign (`0038`) match-of-self-saving shape (`matchPct`/`maxContribution`) is migrated away — `0062`'s demo reshape rewrites every `default_contribution_config` to the new keys (carrying any old `matchPct` into `employerMatchPct`).
+> **UNIFIED TWO-LEG MODEL (migration `0092`) — the contract of record.** ONE model, **no modes**. The employer sets **two independent legs**, and each leg is either a percentage of the member's monthly `compensation` or a flat UGX amount per member per month. The employer leg is a share of **PAY** and is **never** a function of the employee leg. `mode`, `employerMatchPct` and `matchPct` are **DELETED** — both the `0062` `co-contribution`/`employer-only` shapes and the earlier `0038` `matchPct`/`maxContribution` match-of-self-saving shape are retired. The words "co-contribution", "employer-only" and the funding sense of "match" are deliberately absent from the config, the code and every user-facing string.
+>
+> **Why the change:** under `0062` the employer leg was `round(employeeLeg × employerMatchPct/100)`. An employer who said "staff put in 10% and we add 5%" stored `employerMatchPct = 5`, and every run funded `comp × 10% × 5%` = **0.5% of pay — a tenth of what they meant.**
 
-The single company-wide `default_contribution_config` JSONB has these `mode` / `employerBasis` variants:
+The single company-wide `default_contribution_config` JSONB (**there is no per-employee override**) ALWAYS carries all six pension keys, including the ones a given basis leaves unused — a basis is authoritative and is never inferred from a non-zero amount:
 
 ```jsonc
-// co-contribution: the employee leg is a % of the member's compensation, and the
-// employer leg is a % MATCH of that employee leg (NO cap)
 {
-  "mode": "co-contribution",
-  "employeePct": 10,          // employee leg = round(compensation * employeePct/100)
-  "employerMatchPct": 50      // employer leg = round(employeeLeg * employerMatchPct/100)
-}
+  // ── leg 1: what STAFF put in (deducted from pay and remitted by the employer) ──
+  "employeeBasis": "percent",   // 'percent' | 'fixed'
+  "employeePct": 10,            // 0-100, of the member's monthly compensation
+  "employeeAmount": 0,          // flat UGX per member per month
 
-// employer-only, fixed: a flat UGX employer amount per member
-{ "mode": "employer-only", "employerBasis": "fixed",   "employerAmount": 50000 }
+  // ── leg 2: what the COMPANY adds (its own money) ──
+  "employerBasis": "percent",   // 'percent' | 'fixed'
+  "employerPct": 5,             // 0-100, of COMPENSATION — never of the employee leg
+  "employerAmount": 0,
 
-// employer-only, percent: a % of the member's compensation
-{ "mode": "employer-only", "employerBasis": "percent", "employerPct": 10 }
-
-// group insurance is a company-wide TRUE/FALSE config carried on
-// default_contribution_config alongside the mode fields above (BOTH modes —
-// independent of the funding mode; see Business Rules)
-{
-  "insuranceEnabled": true,   // company-wide group life on/off
-  "groupCoverAmount": 5000000 // flat group life cover (UGX) applied roster-wide via apply_group_insurance
+  // ── group insurance rides along COMPLETELY UNCHANGED (independent of the legs) ──
+  "insuranceEnabled": true,      // company-wide group cover on/off
+  "groupCoverAmount": 15000000,  // flat group LIFE cover (UGX); the life product mirrors it
+  "groupInsuranceProducts": {    // multi-product (0067) — all-or-nothing per product
+    "life":    { "enabled": true,  "cover": 15000000 },
+    "health":  { "enabled": true,  "cover": 5000000  },
+    "funeral": { "enabled": false, "cover": 0        }
+  }
 }
 ```
 
-**Two-leg run math (`submit_employer_contribution_run`, `0062`)** — re-derived server-side per ACTIVE member from `compensation` (`comp`) + the member's `retirement_pct` (`retPct`, default 80):
-- **co-contribution:** `employeeLeg = round(comp * employeePct/100)`; `employerLeg = round(employeeLeg * employerMatchPct/100)`.
-- **employer-only:** `employeeLeg = 0`; `employerBasis='percent' → employerLeg = round(comp * employerPct/100)`, else `employerLeg = round(employerAmount)`.
+**The rules, all deliberate:**
+- **Either leg may be `0`, and `0/0` is a legal, saveable config** — it simply funds no pension. Settings saves it successfully with a **non-blocking warning**; it is never hard-blocked, and no confirm dialog gates it.
+- **No cap and no minimum.** The `0038` `maxContribution` cap is gone and was not re-introduced.
+- **Company-wide only.** One config per employer, applied to every member; the per-member override died with `employees.contribution_config` (`0045`).
+- A brand-new employer is provisioned with `'{}'` (`create_employer`, `approve_access_request`), which normalises to 0/0 and reads as "No contributions set up yet". The Settings form no longer invents a starting rate — the employer must type both figures.
+- Legacy rows convert **at read time, money-preservingly**: `{ mode:'co-contribution', employeePct:10, employerMatchPct:50 }` reads as `employerBasis:'percent', employerPct:5` (10% of pay with a 50% match of that leg **is** 5% of pay). **No data backfill was written**, so pre-`0092` rows still physically carry `mode`/`employerMatchPct` — nothing reads them for funding.
+- `create_employer` validates the shape (basis must be `percent`\|`fixed`; a percentage must be a JSON **number** in 0-100; `'{}'` stays legal). `update_employer_profile` does **not** validate — the employer's own save path is trusted, so the frontend form is the guard there.
 
-For each leg `> 0` the run posts ONE `transactions` row: the **employee leg as `source:'own'`** and the **employer leg as `source:'employer'`**, both `agent_id` NULL (no commission) and `contribution_run_id` set. Each leg is split by `retPct`, rounding ONCE: `retirement = round(leg * retPct/100)`, `emergency = leg − retirement`. A member is skipped only when BOTH legs are 0. So a **co-contribution run posts up to two transactions per member** (an `own` employee leg + an `employer` leg); an employer-only run posts only the `employer` leg. The header carries `employer_total` (Σ employer legs), `employee_total` (Σ employee legs), and `grand_total = employer_total + employee_total`. Applied + verified on the live Singapore DB.
+**Two-leg run math** — `submit_employer_contribution_run` (`0092`, superseding the `0062`/`0066`/`0067` bodies) re-derives every figure server-side per ACTIVE member from `compensation` (`comp`) + the member's `retirement_pct` (`retPct`, default 80):
+
+```
+employeeLeg = employeeBasis === 'percent' ? round(comp * employeePct/100) : round(employeeAmount)
+employerLeg = employerBasis === 'percent' ? round(comp * employerPct/100) : round(employerAmount)
+```
+
+⚠️ **This math has THREE implementations that must move together in one commit:** `deriveContributionLegs` in **`src/utils/contributionModel.js`** (the single source of truth — every preview, offline mock, seed and test derives from it), plus its PL/pgSQL twins `public._normalize_contribution_config(jsonb)` and the leg block inside `submit_employer_contribution_run`. Rounding is exactly ONE `round()` per leg.
+
+For each leg `> 0` the run posts ONE `transactions` row: the **employee leg as `source:'own'`** and the **employer leg as `source:'employer'`**, both `agent_id` NULL (no commission) and `contribution_run_id` set. Each leg is split by `retPct`, rounding ONCE: `retirement = round(leg * retPct/100)`, `emergency = leg − retirement`. A member is skipped (`zero_contribution`) only when BOTH pension legs **and** the group-insurance leg are 0. So a run posts **up to two pension transactions per member** — two when both legs fund, one when only one does, none on a 0/0 config. The header carries `employer_total` (Σ employer legs), `employee_total` (Σ employee legs), `insurance_total` (Σ group premiums, `0066`) and `grand_total = employer_total + employee_total + insurance_total`. ⚠️ **`0092` is written but NOT yet applied to the live Singapore DB** — apply it out of band (see the file header).
 
 #### Contribution Schedule shape
 
@@ -417,7 +433,7 @@ For each leg `> 0` the run posts ONE `transactions` row: the **employee leg as `
 | runId | string | Stored | FK → `contribution_runs(id) ON DELETE CASCADE` |
 | employeeId | string | Stored | FK → `employees(id) ON DELETE CASCADE` |
 | employerAmount | number | Stored | Employer half (UGX) |
-| employeeAmount | number | Stored | Employee half (UGX; `0` in employer-only mode) |
+| employeeAmount | number | Stored | Employee half (UGX; `0` when the employer funded the whole contribution) |
 | retirementAmount | number | Stored | Retirement split of the gross |
 | emergencyAmount | number | Stored | Emergency split (`gross − retirement`) |
 | method | string | Stored | `"Bank transfer"` \| `"MTN Mobile Money"` \| … |

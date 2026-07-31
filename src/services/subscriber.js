@@ -26,7 +26,14 @@ import { IS_SUPABASE_ENABLED } from './api';
 import { normalizeFrequency } from '../utils/finance';
 import { derivePolicies } from '../utils/policies';
 import { paidThisMonth } from '../utils/periodSettlement';
+import { normalizeContributionConfig } from '../utils/contributionModel';
 import { SUBSCRIBERS, AGENTS, BRANCHES, currentTime } from '../data/mockData';
+// Employer-sponsored members and the company-wide funding config live in the
+// employer seed, so the offline branch of `getMyEmployerFunding` has to read it —
+// mockData's generated subscribers are all self-funded savers with no employer tag
+// and no `compensation`. Service files are the only layer allowed to import
+// `src/data/*` (CLAUDE.md §4.1).
+import { EMPLOYER, MEMBERS } from '../data/employerSeed';
 
 // =============================================================================
 // Legacy mock fallback (used when IS_SUPABASE_ENABLED === false)
@@ -205,7 +212,16 @@ function mapSubscriberRow(row) {
     occupation: row.occupation,
     parentId: row.agent_id,             // legacy field name kept for callers
     agentId: row.agent_id,
-    employerId: row.employer_id ?? null, // set when an employer onboarded them (0043)
+    // Set when an employer onboarded them (0043). The employer's NAME is
+    // deliberately NOT here: RLS gives a subscriber JWT no SELECT on `employers`
+    // (only employer_self_select 0036 + employers_select_admin 0049 exist), so a
+    // PostgREST embed of `employers(name)` on this read would come back null on
+    // every call, and widening RLS would hand every member the whole employer row
+    // (contact name/phone/email, registration no). Consumers that need the name —
+    // e.g. the Policies page's "Paid by {employerName}" badge, which is why that
+    // badge sat on its "your employer" fallback — read
+    // `useMyEmployerFunding().employerName`, backed by the narrow 0092 RPC.
+    employerId: row.employer_id ?? null,
     districtId: row.district_id,
     kycStatus: row.kyc_status,
     isActive: row.is_active,
@@ -302,7 +318,10 @@ function mapTransactionRow(row) {
     subscriberId: row.subscriber_id,
     agentId: row.agent_id,
     type: row.type,
-    source: row.source ?? 'own',        // 'own' | 'employer' (0043)
+    // Which SIDE of the ledger the money sits on (0043): 'own' = the member's own
+    // pot contribution, 'employer' = the company's own top-up money. 'own' is NOT
+    // evidence the member chose to pay — see contributionRunId below.
+    source: row.source ?? 'own',
     amount,
     date: row.date,
     status: row.status,
@@ -311,6 +330,16 @@ function mapTransactionRow(row) {
     bucket: row.bucket,
     splitRetirement: row.split_retirement,
     splitEmergency: row.split_emergency,
+    // The employer contribution run that posted this row (0043), null for anything
+    // the member did themselves. THE disambiguator for source='own': a run posts
+    // the EMPLOYEE leg as source='own' using the EMPLOYER's payment method, and
+    // under the unified model (0092) the company sets that leg with no member
+    // involvement at all. So 'own' alone cannot tell a payroll deduction apart from
+    // a top-up the member actually made, and labelling a run-posted row "You've
+    // contributed" / "via Bank transfer" / Source "Own" states something false.
+    // Any row carrying a run id came out of the member's PAY — word it
+    // "From your pay". Only the source='employer' leg is an "Employer top-up".
+    contributionRunId: row.contribution_run_id ?? null,
   };
 }
 
@@ -450,11 +479,13 @@ export async function getSubscriberTransactions(id, { type, range, status } = {}
   // Narrowed from select('*') to exactly the columns mapTransactionRow reads
   // (the sole consumer of these rows). This is the highest-volume subscriber
   // list path, so trimming the over-fetch matters; keep this column set in sync
-  // with mapTransactionRow if a new mapped field is added.
+  // with mapTransactionRow if a new mapped field is added. `contribution_run_id`
+  // is what lets every subscriber surface tell a payroll-deducted employee leg
+  // apart from a top-up the member actually made (see mapTransactionRow).
   let q = supabase
     .from('transactions')
     .select(
-      'id, subscriber_id, agent_id, type, source, amount, date, status, method, txn_ref, bucket, split_retirement, split_emergency',
+      'id, subscriber_id, agent_id, type, source, amount, date, status, method, txn_ref, bucket, split_retirement, split_emergency, contribution_run_id',
     )
     .eq('subscriber_id', id)
     .order('date', { ascending: false });
@@ -483,10 +514,21 @@ export async function getContributionPaidThisMonth(id) {
 }
 
 /**
- * Total / own / employer contribution breakdown for a subscriber (0043). "own"
- * = the subscriber's own contributions; "employer" = contributions posted by
- * their employer (source='employer'). Drives the employer-benefits view on the
- * subscriber dashboard.
+ * Total / own / employer contribution split for a subscriber (0043), bucketed by
+ * the ledger's `source`. Drives the employer-funding view on the subscriber
+ * dashboard.
+ *
+ * "own" = the member's SIDE of the pot — NOT necessarily money they chose to send.
+ * An employer contribution run posts the EMPLOYEE leg with source='own', and under
+ * the unified model (0092) the company sets that leg with no member involvement,
+ * so this bucket mixes self-paid top-ups with payroll deductions. Any surface that
+ * has to say WHO made a payment must split on each row's `contributionRunId`
+ * instead (see mapTransactionRow), not on `source`. "employer" = the company's own
+ * leg (source='employer') — that one is unambiguously the employer's money.
+ *
+ * Source-based and therefore funding-model-agnostic: it reads what was actually
+ * posted, so collapsing the old contribution modes into the two-leg model needed
+ * no change here.
  * @param {string} id
  * @returns {Promise<{ own:number, employer:number, total:number }>}
  */
@@ -517,6 +559,69 @@ export async function getContributionBreakdown(id) {
     else own += Number(t.amount || 0);
   }
   return { own, employer, total: own + employer };
+}
+
+/**
+ * Who funds the caller's pension: the employer's name, the SIX canonical
+ * contribution keys, and the member's own monthly compensation. `null` when the
+ * member is not employer-sponsored — the overwhelming majority (the
+ * agent→subscriber tree self-funds), and a normal state, not an error: callers
+ * hide the funding surface rather than rendering zeros.
+ *
+ * WHY AN RPC AND NOT A JOIN. The only SELECT policies on `employers` are
+ * `employer_self_select` (0036) and `employers_select_admin` (0049), so a
+ * subscriber JWT cannot read its own employer row — not the config, not even the
+ * name. Widening RLS would expose the WHOLE row (contact name/phone/email,
+ * registration no) to every member of every employer, so 0092 adds the narrow
+ * SECURITY DEFINER `get_my_employer_funding()` that returns only the funding
+ * facts. It resolves the member from the VERIFIED `subscriberId` claim (never an
+ * argument) and normalises the stored config with the same
+ * `_normalize_contribution_config` the run RPC uses, so what the member is told
+ * and what the run actually posts can never disagree.
+ *
+ * The six keys arrive ALREADY normalised (a basis + a pct + an amount per leg), so
+ * callers hand them straight to `deriveContributionLegs` / `memberFundingSummary`
+ * / `formatLegRateForMember` in utils/contributionModel and every surface words it
+ * identically. Either leg may legitimately be 0, and 0/0 is a legal employer
+ * config — that is the case `memberFundingSummary` signals by returning null.
+ *
+ * @param {string} [subscriberId] MOCK BRANCH ONLY, exactly like the `phone` arg on
+ *   `getCurrentSubscriber` — the live RPC takes no argument and trusts the JWT, so
+ *   passing an id can never widen what a caller sees.
+ * @returns {Promise<null | {employerName:string,
+ *   employeeBasis:'percent'|'fixed', employeePct:number, employeeAmount:number,
+ *   employerBasis:'percent'|'fixed', employerPct:number, employerAmount:number,
+ *   compensation:number}>}
+ */
+export async function getMyEmployerFunding(subscriberId) {
+  if (!IS_SUPABASE_ENABLED) {
+    // Employer-tagged members exist ONLY in the employer seed; mockData's generated
+    // subscribers carry neither an employerId nor a `compensation` for a percent leg
+    // to bite on, so they correctly resolve to null (self-funded saver). With no id —
+    // the live signature takes none — fall back to whoever getCurrentSubscriber
+    // resolves so both call styles behave the same offline.
+    const member = subscriberId
+      ? (MEMBERS.find((m) => m.id === subscriberId) ?? SUBSCRIBERS[subscriberId] ?? null)
+      : await getCurrentSubscriber();
+    if (!member?.employerId) return null;
+    // Normalised for the same reason the RPC normalises: the seed config is already
+    // unified, but no caller should ever have to care which shape was stored.
+    // Known offline gap: the employer service's per-session `compensationOverride`
+    // is private to that module, so a pay change made employer-side in the same demo
+    // session is not reflected here — the frozen seed compensation is used.
+    return {
+      employerName: EMPLOYER.name,
+      ...normalizeContributionConfig(EMPLOYER.defaultContributionConfig),
+      compensation: Number(member.compensation ?? 0),
+    };
+  }
+
+  // No argument: the RPC reads the subscriberId claim. Not-sponsored (and an
+  // employer row deleted out from under the tag) come back as jsonb `null`, which
+  // supabase-js hands us as JS null — `?? null` only guards the undefined case.
+  const { data, error } = await supabase.rpc('get_my_employer_funding');
+  if (error) throw error;
+  return data ?? null;
 }
 
 export async function getSubscriberClaims(id) {
@@ -664,6 +769,11 @@ export async function makeAdHocContribution(
       status: 'settled',
       method,
       reference: `CT-${Math.floor(Math.random() * 900000) + 100000}`,
+      // Member-initiated, so never a payroll-run leg. Stated explicitly (rather
+      // than left undefined) so the offline rows carry the same field set as
+      // mapTransactionRow's — surfaces that word a row by `contributionRunId` must
+      // behave identically in demo mode.
+      contributionRunId: null,
     };
     m.extraTransactions.unshift(tx);
     m.balanceDelta.retirement += retAmt;
@@ -739,6 +849,7 @@ export async function requestWithdrawal(
       method,
       reference: ref,
       bucket,
+      contributionRunId: null,   // member-initiated — never a payroll-run leg
     });
     if (bucket === 'retirement') {
       m.balanceDelta.retirement -= amount;
@@ -1050,6 +1161,7 @@ export async function fundInsuranceProducts(
           status: 'settled',
           method,
           reference: `PR-${Math.floor(Math.random() * 900000) + 100000}`,
+          contributionRunId: null,   // member-initiated — never a payroll-run leg
         });
       }
     } else {
@@ -1131,6 +1243,7 @@ export async function renewPolicy(id, { type, method = 'MTN Mobile Money' } = {}
     status: 'settled',
     method,
     reference,
+    contributionRunId: null,   // member-initiated — never a payroll-run leg
   };
 
   if (!IS_SUPABASE_ENABLED) {
@@ -1271,9 +1384,12 @@ export async function getEmployerInvite(token) {
 
 /**
  * Complete an employer invite after KYC — creates a subscriber tagged to the
- * employer (agent_id NULL ⇒ no commission). For employer-only invites the
- * payload's contributionSchedule carries only the split (no amount); for
- * co-contribution it carries the full schedule + a first contribution is made.
+ * employer (agent_id NULL ⇒ no commission). The payload's contributionSchedule
+ * carries only the retirement/emergency split, never an amount: since 0092 the
+ * employer's two-leg config sets BOTH what comes out of the member's pay and what
+ * the company adds, so the member has no amount to choose. The RPC writes
+ * `contribution_schedules.amount = 0` and makes NO first contribution — the
+ * employer's next contribution run is what funds them.
  * @returns {Promise<{ subscriberId: string }>}
  */
 export async function createFromEmployerInvite(payload, token, nonce) {

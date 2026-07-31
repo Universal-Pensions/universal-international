@@ -55,41 +55,46 @@ test.describe('distributor → renders live data (UI + DB)', () => {
     console.log(`[perf] distributor chrome visible in ${chromeMs}ms (SLA target 3000ms)`);
     expect(chromeMs).toBeLessThan(5_000);
 
-    // OverlayPanel renders four count tiles (Subscribers / Agents / Branches
-    // / Coverage). We assert subscribers > 0 — proves `useDistributorMetrics`
-    // returned a non-empty aggregate. The exact format is `formatNumber(...)`
-    // so we accept any non-zero numeric prefix (1 234, 30,003, etc.).
-    const subscribersTile = page
-      .getByRole('button', { name: /subscribers/i })
-      .filter({ hasText: /^[\d,\s.]+\s*Subscribers$/i });
+    // The overview renders KPI count tiles (Subscribers / Agents / Branches / …).
+    // We assert subscribers > 0 — proves `useDistributorMetrics` returned a
+    // non-empty aggregate.
+    //
+    // Addressed by `data-testid` (DistributorOverview.Tile), NOT by accessible
+    // name: a tile's name is the whole card — "Subscribers 4,601 3,605 active ·
+    // 78%" — so the old value-then-label regex (`/^[\d,\s.]+\s*Subscribers$/`)
+    // matched nothing once the tile grew a label-first order and a sub-line.
+    const subscribersTile = page.getByTestId('kpi-subscribers');
     await expect(subscribersTile.first()).toBeVisible({ timeout: 20_000 });
+    // The tile mounts instantly showing formatNumber(0) and fills in when the
+    // rollup query resolves, so waiting on VISIBILITY alone reads "0". Wait for a
+    // non-zero digit — that is the actual "metrics arrived" signal.
+    await expect(page.getByTestId('kpi-subscribers-value').first())
+      .toHaveText(/[1-9]/, { timeout: 20_000 });
 
-    // Same for agents + branches.
-    const agentsTile = page
-      .getByRole('button', { name: /agents/i })
-      .filter({ hasText: /^[\d,\s.]+\s*Agents$/i });
-    const branchesTile = page
-      .getByRole('button', { name: /branches/i })
-      .filter({ hasText: /^[\d,\s.]+\s*Branches$/i });
+    // Same for agents. NOTE: there is no Branches KPI tile — the overview's tile
+    // set is Subscribers / Agents / Contributions / Funds under management (the
+    // branch count lives in the hero subtitle and the "Top branches" table). This
+    // spec used to assert a Branches tile that no longer exists; asserting the two
+    // count tiles that DO exist covers the same intent (a non-empty aggregate came
+    // back from `useDistributorMetrics`).
+    const agentsTile = page.getByTestId('kpi-agents');
     await expect(agentsTile.first()).toBeVisible({ timeout: 20_000 });
-    await expect(branchesTile.first()).toBeVisible({ timeout: 20_000 });
+    await expect(page.getByTestId('kpi-agents-value').first())
+      .toHaveText(/[1-9]/, { timeout: 20_000 });
 
-    // Read the count text and parse — must be > 0 for each.
-    const subscribersText = await subscribersTile.first().innerText();
-    const agentsText = await agentsTile.first().innerText();
-    const branchesText = await branchesTile.first().innerText();
+    // Read each tile's VALUE span and parse — must be > 0 for each.
+    const subscribersText = await page.getByTestId('kpi-subscribers-value').first().innerText();
+    const agentsText = await page.getByTestId('kpi-agents-value').first().innerText();
 
     const parseN = (s: string) => Number(s.replace(/[^\d]/g, '')) || 0;
     const subs = parseN(subscribersText);
     const agents = parseN(agentsText);
-    const branches = parseN(branchesText);
 
     expect(subs, `subscribers tile parsed from ${JSON.stringify(subscribersText)}`).toBeGreaterThan(0);
     expect(agents, `agents tile parsed from ${JSON.stringify(agentsText)}`).toBeGreaterThan(0);
-    expect(branches, `branches tile parsed from ${JSON.stringify(branchesText)}`).toBeGreaterThan(0);
 
     // eslint-disable-next-line no-console
-    console.log(`[metrics] subscribers=${subs} agents=${agents} branches=${branches}`);
+    console.log(`[metrics] subscribers=${subs} agents=${agents}`);
   });
 
   test('subscriber count agrees between the rollup tile and the Subscribers list', async ({ page }) => {
@@ -112,23 +117,28 @@ test.describe('distributor → renders live data (UI + DB)', () => {
     await page.goto('/dashboard');
     await expect(selectors.dashboardShell.overviewTab(page)).toBeVisible();
 
-    // Locate the Subscribers tile in OverlayPanel: it's a <button> with
-    // a label "Subscribers" and the formatted count just before it.
-    const subscribersTile = page
-      .getByRole('button')
-      .filter({ hasText: /^[\d,\s.]+\s*Subscribers$/i })
-      .first();
+    // Locate the Subscribers KPI tile and read ONLY its value span. Stripping
+    // non-digits from the whole tile would splice the value together with the
+    // "3,605 active · 78%" sub-line into a meaningless number (4601360578), so
+    // the count has to come from the value element itself.
+    const subscribersTile = page.getByTestId('kpi-subscribers').first();
     await expect(subscribersTile).toBeVisible({ timeout: 20_000 });
+    // Wait for the rollup to land (tile starts at 0 — see the note above).
+    await expect(page.getByTestId('kpi-subscribers-value').first())
+      .toHaveText(/[1-9]/, { timeout: 20_000 });
 
-    const tileText = await subscribersTile.innerText();
+    const tileText = await page.getByTestId('kpi-subscribers-value').first().innerText();
     const rollupTotal = Number(tileText.replace(/[^\d]/g, '')) || 0;
     expect(rollupTotal, `rollup tile parsed from ${JSON.stringify(tileText)}`).toBeGreaterThan(0);
     // eslint-disable-next-line no-console
     console.log(`[count] rollup Subscribers tile = ${rollupTotal}`);
 
     // ViewSubscribers panel must open without breakage.
-    await selectors.dashboardShell.subscribersTab(page).click();
-    await selectors.viewListPanel.viewExistingSubscribers(page).click();
+    await selectors.openDistributorList(
+      page,
+      selectors.dashboardShell.subscribersTab(page),
+      selectors.viewListPanel.viewExistingSubscribers(page),
+    );
     await expect(page.getByRole('heading', { name: /subscribers/i, level: 2 })).toBeVisible();
 
     const showing = page.getByText(/Showing\s+[\d,\s.]+\s+of\s+[\d,\s.]+\s+subscribers/i).first();
@@ -194,8 +204,11 @@ test.describe('distributor → renders live data (UI + DB)', () => {
     // We assert the URL-driven mechanism by visiting the agents subscriber
     // sub-route which is the closest the URL gets to subscriber detail.
     await page.goto('/dashboard');
-    await selectors.dashboardShell.subscribersTab(page).click();
-    await selectors.viewListPanel.viewExistingSubscribers(page).click();
+    await selectors.openDistributorList(
+      page,
+      selectors.dashboardShell.subscribersTab(page),
+      selectors.viewListPanel.viewExistingSubscribers(page),
+    );
     await expect(page.getByRole('heading', { name: /subscribers/i, level: 2 })).toBeVisible();
   });
 });

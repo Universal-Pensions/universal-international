@@ -3,7 +3,7 @@ import { useOutsideClick } from '../../hooks/useOutsideClick';
 import { useDebouncedValue } from '../../hooks/useDebouncedValue';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useVirtualizer } from '@tanstack/react-virtual';
-import { useAllEntities } from '../../hooks/useEntity';
+import { useAllEntities, useSubscribersForBranch } from '../../hooks/useEntity';
 import { useSubscriberTransactions } from '../../hooks/useSubscriber';
 import { EASE_OUT_EXPO } from '../../utils/motion';
 
@@ -225,10 +225,40 @@ function SubscriberDetail({ subscriber, agentsMap, branchesMap }) {
 /* ═══════════════════════════════════════════════════════════════════════════ */
 /*  ViewSubscribers — main panel                                              */
 /* ═══════════════════════════════════════════════════════════════════════════ */
-export default function ViewSubscribers({ fullPage = false }) {
+/**
+ * @param {boolean} fullPage  routed full-page mode (vs slide-in)
+ * @param {{agentId?: string, branchId?: string}} scope
+ *   Narrows the list to ONE parent — the drill-down destination behind
+ *   /dashboard/agents/:id/subscribers and /dashboard/branches/:id/subscribers.
+ *   Unscoped (the default) the panel behaves exactly as before: every subscriber
+ *   the caller's RLS allows.
+ *
+ *   Scoping is pushed to the SERVER (see entities.getAllAtLevel /
+ *   getSubscribersForBranch), not applied to a fetched-then-filtered global list
+ *   — so the "Showing N of M" total below is the scoped total, and a distributor
+ *   drilling into one agent never ships the other ~4,600 rows to the client.
+ */
+export default function ViewSubscribers({ fullPage = false, scope = null }) {
   const { viewSubscribersOpen, setViewSubscribersOpen } = useDashboard();
 
-  const { data: allSubscribersRaw = [], isLoading: subsLoading } = useAllEntities('subscriber');
+  const scopedAgentId = scope?.agentId ?? null;
+  const scopedBranchId = scope?.branchId ?? null;
+
+  // Agent scope is a single `.eq(agent_id)`; branch scope is a two-hop read
+  // (branch → agents → subscribers) because `subscribers` has no branch_id.
+  // Exactly one of these is ever enabled — the other's `enabled:false` keeps it
+  // from firing.
+  const agentScoped = useAllEntities(
+    scopedAgentId ? 'subscriber' : null,
+    scopedAgentId ? { agentId: scopedAgentId } : null,
+  );
+  const branchScoped = useSubscribersForBranch(scopedBranchId);
+  const unscoped = useAllEntities(scopedAgentId || scopedBranchId ? null : 'subscriber');
+
+  const subsQuery = scopedAgentId ? agentScoped : scopedBranchId ? branchScoped : unscoped;
+  const allSubscribersRaw = subsQuery.data ?? [];
+  const subsLoading = subsQuery.isLoading;
+
   const { data: allAgentsRaw = [] } = useAllEntities('agent');
   const { data: allBranchesRaw = [] } = useAllEntities('branch');
 

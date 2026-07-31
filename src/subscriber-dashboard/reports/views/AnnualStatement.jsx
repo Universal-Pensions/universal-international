@@ -1,6 +1,7 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useCurrentSubscriber } from '../../../hooks/useSubscriber';
 import { formatUGX } from '../../../utils/currency';
+import { isRunPosted } from '../../../utils/periodSettlement';
 
 import { downloadCSV } from '../../../utils/csv';
 import ErrorCard from '../../../components/feedback/ErrorCard';
@@ -41,9 +42,21 @@ export default function AnnualStatement() {
   );
 
   const totals = useMemo(() => {
-    let contributions = 0, premiums = 0, withdrawals = 0, claimsInflow = 0;
+    // Contributions are attributed three ways, because one merged figure hid who
+    // actually funded the year for an employer-sponsored member:
+    //   selfPaid    — contributions the member paid themselves.
+    //   fromPay     — the employee leg of an employer contribution run: the
+    //                 member's own money, but deducted from their pay and remitted
+    //                 by the employer (utils/periodSettlement isRunPosted).
+    //   fromEmployer— the employer leg, the company's own money.
+    let selfPaid = 0, fromPay = 0, fromEmployer = 0;
+    let premiums = 0, withdrawals = 0, claimsInflow = 0;
     yearTx.forEach((t) => {
-      if (t.type === 'contribution') contributions += t.amount;
+      if (t.type === 'contribution') {
+        if (t.source === 'employer') fromEmployer += t.amount;
+        else if (isRunPosted(t)) fromPay += t.amount;
+        else selfPaid += t.amount;
+      }
       // Self-paid annual premium ('premium') and save-to-cover sweeps
       // ('premium_sweep', stored negative) are both the member's own premiums;
       // Math.abs so a negative sweep magnitude ADDS to the total, not subtracts.
@@ -53,8 +66,12 @@ export default function AnnualStatement() {
       else if (t.type === 'withdrawal') withdrawals += Math.abs(t.amount);
       else if (t.type === 'claim') claimsInflow += t.amount;
     });
+    const contributions = selfPaid + fromPay + fromEmployer;
     return {
       contributions,
+      selfPaid,
+      fromPay,
+      fromEmployer,
       premiums,
       withdrawals,
       claimsInflow,
@@ -62,10 +79,23 @@ export default function AnnualStatement() {
     };
   }, [yearTx]);
 
+  // Only an employer-sponsored member needs the split spelled out; a member who
+  // funds their own pension keeps the single "Total saved" line.
+  const hasEmployerFunding = totals.fromPay > 0 || totals.fromEmployer > 0;
+
   function handleExport() {
     const headers = ['Item', 'Amount (UGX)'];
     const rows = [
       [`Contributions ${year}`, totals.contributions],
+      // The split lines only appear once employer money is in the year, so a
+      // self-funded member's statement is unchanged.
+      ...(hasEmployerFunding
+        ? [
+            [`— paid by you ${year}`, totals.selfPaid],
+            [`— deducted from your pay ${year}`, totals.fromPay],
+            [`— paid by your employer ${year}`, totals.fromEmployer],
+          ]
+        : []),
       [`Insurance premiums ${year}`, totals.premiums],
       [`Withdrawals ${year}`, totals.withdrawals],
       [`Claim payouts ${year}`, totals.claimsInflow],
@@ -139,6 +169,14 @@ export default function AnnualStatement() {
             <div className={frameStyles.kpi}>
               <span className={frameStyles.kpiLabel}>Contributions</span>
               <span className={frameStyles.kpiValue}>{formatUGX(totals.contributions)}</span>
+              {/* The headline figure includes the employer's own money, so say how
+                  much of it is theirs — the member should not read the whole total
+                  as savings they funded (it is a TAX statement). */}
+              {totals.fromEmployer > 0 && (
+                <span className={frameStyles.kpiSub}>
+                  incl. {formatUGX(totals.fromEmployer)} from your employer
+                </span>
+              )}
             </div>
             <div className={frameStyles.kpi}>
               <span className={frameStyles.kpiLabel}>Premiums</span>
@@ -161,6 +199,27 @@ export default function AnnualStatement() {
                 <span>Total saved ({totals.contributions ? 'gross' : 'none'})</span>
                 <strong>{formatUGX(totals.contributions, { compact: false })}</strong>
               </li>
+              {/* Who funded that total. Shown only when an employer put money in,
+                  and only for the legs that are non-zero — the unified model lets
+                  either leg be 0, and a line reading "UGX 0" would just be noise. */}
+              {hasEmployerFunding && totals.selfPaid > 0 && (
+                <li className={frameStyles.summaryRow}>
+                  <span>Of that, paid by you</span>
+                  <strong>{formatUGX(totals.selfPaid, { compact: false })}</strong>
+                </li>
+              )}
+              {hasEmployerFunding && totals.fromPay > 0 && (
+                <li className={frameStyles.summaryRow}>
+                  <span>Of that, taken from your pay</span>
+                  <strong>{formatUGX(totals.fromPay, { compact: false })}</strong>
+                </li>
+              )}
+              {hasEmployerFunding && totals.fromEmployer > 0 && (
+                <li className={frameStyles.summaryRow}>
+                  <span>Of that, added by your employer</span>
+                  <strong>{formatUGX(totals.fromEmployer, { compact: false })}</strong>
+                </li>
+              )}
               <li className={frameStyles.summaryRow}>
                 <span>Insurance premiums paid</span>
                 <strong>{formatUGX(totals.premiums, { compact: false })}</strong>

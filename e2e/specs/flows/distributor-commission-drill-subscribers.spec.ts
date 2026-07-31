@@ -99,7 +99,7 @@ test.describe('distributor → commission drill → agent → subscribers (real 
     const commissionsBtn = page.getByRole('button', { name: /^commissions$/i });
     await expect(commissionsBtn).toBeVisible();
     await commissionsBtn.click();
-    const panel = page.getByRole('dialog', { name: /^commissions$/i });
+    const panel = selectors.panel.commissions(page);
     await expect(panel).toBeVisible();
 
     // Home → agent list (the "Total" summary tile → all commissions, grouped by

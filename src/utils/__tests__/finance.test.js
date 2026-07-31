@@ -267,21 +267,45 @@ describe('finance utils', () => {
       expect(invested).toBeGreaterThan(1050000);
     });
 
-    it('preserves the member real own:employer ratio (1/3 employer here)', () => {
-      const { own, employer } = deriveEmployerSplit(sub, { own: 700000, employer: 350000 });
-      expect(employer / (own + employer)).toBeCloseTo(1 / 3, 5);
+    // The ratio comes ENTIRELY from the member's own posted history — it is never
+    // read off, or defaulted from, the employer's contribution config. Under the
+    // unified two-leg model there is no such thing as a canonical split: an
+    // employer may fund 100%, staff may fund 100%, the two legs may use different
+    // bases (a % of pay beside a flat UGX amount), and 0/0 is legal. The old
+    // hardcoded "1/3 employer" fallback was an artifact of one seeded employer
+    // (10% of pay + a 50% match of that leg), and it invented a share for members
+    // whose history could not support one.
+    it('preserves the member real own:employer ratio, whatever it is', () => {
+      // 350k of 1.05M posted by the employer → a one-third employer share for THIS
+      // member's feed. Re-derived from the fixture, not a model constant.
+      const feed = { own: 700000, employer: 350000 };
+      const expectedShare = feed.employer / (feed.own + feed.employer);
+      const { own, employer, unknown } = deriveEmployerSplit(sub, feed);
+      expect(employer / (own + employer)).toBeCloseTo(expectedShare, 5);
+      expect(unknown).toBe(false);
     });
 
-    it('falls back to a 1/3 employer share when no contribution rows exist', () => {
+    it('preserves an employer-funded-only ratio (no share is "normal" any more)', () => {
+      // A member whose whole pension is paid by their employer — legal under the
+      // unified model, and something the deleted 1/3 fallback could never express.
+      const { own, employer, total, unknown } = deriveEmployerSplit(sub, { own: 0, employer: 900000 });
+      expect(own).toBe(0);
+      expect(employer).toBe(total);
+      expect(total).toBeGreaterThan(0);
+      expect(unknown).toBe(false);
+    });
+
+    it('reports an UNKNOWN split (not an invented share) when no contribution rows exist', () => {
+      // Callers must hide the funding surface rather than draw a made-up wedge.
       const noFeed = deriveEmployerSplit(sub, undefined);
       const zeroFeed = deriveEmployerSplit(sub, { own: 0, employer: 0 });
-      expect(noFeed.employer / noFeed.total).toBeCloseTo(1 / 3, 5);
-      expect(zeroFeed.employer / zeroFeed.total).toBeCloseTo(1 / 3, 5);
+      expect(noFeed).toEqual({ own: 0, employer: 0, total: 0, unknown: true });
+      expect(zeroFeed).toEqual({ own: 0, employer: 0, total: 0, unknown: true });
     });
 
     it('returns all-zero for a member with no balance', () => {
       expect(deriveEmployerSplit({ netBalance: 0 }, { own: 0, employer: 0 }))
-        .toEqual({ own: 0, employer: 0, total: 0 });
+        .toEqual({ own: 0, employer: 0, total: 0, unknown: true });
     });
   });
 });

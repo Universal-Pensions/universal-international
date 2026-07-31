@@ -44,6 +44,7 @@ type RunRow = {
   status: string;
   employer_total: number;
   employee_total: number;
+  insurance_total: number;
   grand_total: number;
 };
 
@@ -87,14 +88,22 @@ test.describe('employer → contribution run (UI → RPC → DB)', () => {
     await expect(page.getByText(/welcome back/i)).toBeVisible({ timeout: 20_000 });
 
     // ── Open Contribution Runs → New run wizard ───────────────────────────────
-    await page.getByRole('button', { name: /^contribution runs$/i }).first().click();
-    await expect(page.getByRole('dialog', { name: /contribution runs/i })).toBeVisible();
-    await page.getByRole('button', { name: /new contribution run/i }).first().click();
+    // The employer dashboard became a ROUTED shell (2026-06-24): nav items are
+    // <Link>s to /dashboard/runs etc., and Runs is a page — not a button opening a
+    // role="dialog" panel. Navigate by link, then assert the page's own CTA.
+    await page.getByRole('link', { name: /^contribution runs$/i }).first().click();
+    await expect(page).toHaveURL(/\/dashboard\/runs/, { timeout: 15_000 });
+    const newRunCta = page.getByRole('button', { name: /new contribution run/i }).first();
+    await expect(newRunCta).toBeVisible({ timeout: 20_000 });
+    await newRunCta.click();
 
-    // The wizard header swaps the panel title to "New contribution run".
+    // The wizard view has NO heading of its own — the routed page keeps its single
+    // <h1> "Contribution Runs" across history/detail/wizard (RunsDesktop swaps the
+    // body only). Assert on an affordance unique to the wizard instead.
     await expect(
-      page.getByRole('heading', { name: /new contribution run/i, level: 2 }),
-    ).toBeVisible();
+      page.getByRole('button', { name: /back to history/i }),
+      'the new-run wizard is open',
+    ).toBeVisible({ timeout: 15_000 });
 
     // ── Step 1: period + method ───────────────────────────────────────────────
     await page.locator('#run-period').fill(periodLabel);
@@ -140,20 +149,32 @@ test.describe('employer → contribution run (UI → RPC → DB)', () => {
     expect(row, `inserted run row should exist for period ${periodLabel}`).not.toBeNull();
     expect(row!.status, 'a recorded run is completed').toBe('completed');
 
-    // ── v2 two-leg assertion (migration 0062) ─────────────────────────────────
-    // The demo employer (emp-001) is on the co-contribution model, so a run posts
-    // BOTH an employee leg (source='own') and an employer leg (source='employer').
-    // The header therefore carries a positive employee_total, and the grand_total
-    // is the exact sum of the two legs.
+    // ── Two-leg assertion (UNIFIED MODEL, migration 0092) ─────────────────────
+    // The demo employer's config funds BOTH legs — staff put in 10% of pay and the
+    // company adds 5% of pay (src/data/employerSeed.js). The two legs are
+    // INDEPENDENT shares of each member's compensation, so a run posts an employee
+    // leg (source='own') AND an employer leg (source='employer'), and the header
+    // carries a positive total for each. Neither figure is derived from the other.
     const employerTotal = Number(row!.employer_total);
     const employeeTotal = Number(row!.employee_total);
     const grandTotal = Number(row!.grand_total);
-    expect(employeeTotal, 'co-contribution run records a positive employee leg').toBeGreaterThan(0);
-    expect(employerTotal, 'co-contribution run records a positive employer leg').toBeGreaterThan(0);
-    expect(grandTotal, 'grand_total = employer_total + employee_total').toBe(employerTotal + employeeTotal);
+    expect(employeeTotal, 'the staff leg (10% of pay) posts real money').toBeGreaterThan(0);
+    expect(employerTotal, 'the company leg (5% of pay) posts real money').toBeGreaterThan(0);
+
+    // grand_total is a THREE-leg sum. Migration 0066 folded the employer-funded
+    // group-insurance premium into it, and emp-001 has insurance ON (Life 15M +
+    // Health 5M = UGX 40,000/member/month across ~19 active members ≈ 760,000).
+    // Asserting grand === employer + employee was therefore failing on the live DB
+    // for the insurance amount — a release blocker, not a model change.
+    const insuranceTotal = Number(row!.insurance_total);
+    expect(insuranceTotal, 'emp-001 has group insurance on, so the premium leg is funded').toBeGreaterThan(0);
+    expect(
+      grandTotal,
+      'grand_total = employer_total + employee_total + insurance_total (0066)',
+    ).toBe(employerTotal + employeeTotal + insuranceTotal);
     // eslint-disable-next-line no-console
     console.log(
-      `[db] contribution_runs row inserted: id=${row!.id} period=${row!.period_label} status=${row!.status} employer=${employerTotal} employee=${employeeTotal} grand=${grandTotal}`,
+      `[db] contribution_runs row inserted: id=${row!.id} period=${row!.period_label} status=${row!.status} employer=${employerTotal} employee=${employeeTotal} insurance=${insuranceTotal} grand=${grandTotal}`,
     );
   });
 });

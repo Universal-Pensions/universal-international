@@ -381,8 +381,21 @@ export async function getPendingDuesByBranch() {
  */
 export async function applySettlementUpload({ rows, nonce } = {}) {
   if (!IS_SUPABASE_ENABLED) return _legacy_mock_applySettlementUpload(rows, nonce);
+  // 'Payment Date' is an optional fill-me column (see SETTLEMENT_TEMPLATE_COLUMNS
+  // — only Agent ID + Amount Paid are required), and `coerceDate` represents
+  // "blank" as ''. Sent as-is that reaches the RPC as `""` and Postgres throws
+  // `invalid input syntax for type date: ""` on the `::date` cast — BEFORE the
+  // RPC's own `COALESCE(..., current_date)` can default it. So a distributor who
+  // left the date blank had the whole settlement rejected with a raw driver error.
+  // Send null and let the RPC apply its intended default. The mock branch already
+  // did the equivalent (`row.paymentDate || today`); this brings the live branch
+  // in line so both behave the same.
+  const p_rows = (rows ?? []).map((row) => ({
+    ...row,
+    paymentDate: row?.paymentDate ? row.paymentDate : null,
+  }));
   const { data, error } = await supabase.rpc('apply_settlement', {
-    p_rows: rows,
+    p_rows,
     p_nonce: nonce ?? null,
   });
   if (error) throw _rpcError(error, 'apply_settlement');

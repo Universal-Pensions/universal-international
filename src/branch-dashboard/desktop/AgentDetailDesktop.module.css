@@ -101,3 +101,35 @@
 
 .notFound { padding: var(--space-6); text-align: center; color: var(--color-gray); }
 .empty { padding: var(--space-4); font-size: var(--text-sm); color: var(--color-gray); }
+
+/* ── Drill CTA (agent detail → agent-scoped subscriber list) ─────────────────
+   Mirrors the distributor shell's AgentDetail affordance so both shells offer
+   the same path to /dashboard/agents/:id/subscribers. */
+.drillCta {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  margin-bottom: var(--space-4);
+  padding: 0.7rem 1rem;
+  background: var(--color-white);
+  border: 1px solid var(--color-lavender);
+  border-radius: var(--radius-md);
+  font-family: var(--font-display);
+  font-size: var(--text-sm);
+  font-weight: 700;
+  color: var(--color-indigo);
+  text-decoration: none;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.drillCta:hover {
+  border-color: var(--color-indigo-soft);
+  background: color-mix(in srgb, var(--color-indigo) 4%, transparent);
+}
+
+.drillCta:focus-visible {
+  outline: 2px solid var(--color-indigo);
+  outline-offset: 2px;
+}

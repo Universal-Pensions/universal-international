@@ -2,6 +2,8 @@ import { useState, useMemo } from 'react';
 import { useCurrentSubscriber } from '../../../hooks/useSubscriber';
 import { formatUGX } from '../../../utils/currency';
 import { txDisplayAmount } from '../../../utils/finance';
+import { isRunPosted } from '../../../utils/periodSettlement';
+import { paidByLabel } from '../deriveSubscriberAnalytics';
 
 import { formatDate } from '../../../utils/date';
 import { downloadCSV } from '../../../utils/csv';
@@ -28,8 +30,35 @@ const TYPE_LABELS = {
 };
 
 // The filter narrows rows by exact `type` value, so every real type gets an
-// option (otherwise those rows are unreachable through the dropdown).
+// option (otherwise those rows are unreachable through the dropdown). The
+// contribution badge splits three ways below (see `rowTypeLabel`) while the
+// filter option stays the single `contribution` type, which still selects all
+// three variants.
 const TYPE_OPTIONS = Object.entries(TYPE_LABELS).map(([value, label]) => ({ value, label }));
+
+/**
+ * The type badge, with contributions attributed to whoever actually paid. One
+ * flat "Contribution" for every row hid the two-leg story completely:
+ *   • source 'employer' → the employer leg, the company's own money.
+ *   • run-posted 'own'  → the member's money, but deducted from their pay and
+ *                         remitted by the employer's contribution run
+ *                         (utils/periodSettlement isRunPosted) — the member made
+ *                         no payment, so an unqualified "Contribution" next to a
+ *                         "+" amount and the employer's payment method read as a
+ *                         top-up they chose to make.
+ *   • anything else     → a contribution the member paid themselves.
+ */
+function rowTypeLabel(row) {
+  if (row.type === 'contribution') {
+    if (row.source === 'employer') return 'Employer top-up';
+    if (isRunPosted(row)) return 'From your pay';
+    // Self-paid — keep the bare word so the badge still matches the "Contribution"
+    // option in the Type filter that selects it.
+    return TYPE_LABELS.contribution;
+  }
+  return TYPE_LABELS[row.type]
+    || `${row.type.charAt(0).toUpperCase()}${row.type.slice(1).replace(/_/g, ' ')}`;
+}
 
 const STATUS_OPTIONS = [
   { value: 'settled', label: 'Settled' },
@@ -89,10 +118,11 @@ export default function AllTransactions() {
       key: 'type',
       label: 'Type',
       sortable: true,
+      // data-type stays the raw type so the badge keeps its per-type colour in
+      // ReportFrame.module.css; only the wording is attributed.
       render: (row) => (
         <span className={frameStyles.typeBadge} data-type={row.type}>
-          {TYPE_LABELS[row.type]
-            || `${row.type.charAt(0).toUpperCase()}${row.type.slice(1).replace(/_/g, ' ')}`}
+          {rowTypeLabel(row)}
         </span>
       ),
     },
@@ -137,10 +167,16 @@ export default function AllTransactions() {
   ];
 
   function handleExport() {
-    const headers = ['Date', 'Type', 'Amount (UGX)', 'Method', 'Reference', 'Status'];
+    // "Paid by" carries the same attribution as the on-screen badge, so a member
+    // who downloads the report can still tell their own payments from the pay
+    // deductions and top-ups their employer remitted. It shares `paidByLabel` with
+    // the analytics export so both downloads word it identically. The Type column
+    // keeps the raw machine value (it is what the filter matches on).
+    const headers = ['Date', 'Type', 'Paid by', 'Amount (UGX)', 'Method', 'Reference', 'Status'];
     const rows = filtered.map((t) => [
       t.date,
       t.type,
+      paidByLabel(t),
       t.amount,
       t.method || '',
       t.reference || '',

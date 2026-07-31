@@ -5,7 +5,12 @@ import { formatUGX } from '../../utils/currency';
 import { formatDate } from '../../utils/date';
 import { formatMemberId } from '../../utils/memberId';
 import { buildingProgress } from '../../utils/policies';
-import { useCurrentSubscriber, useSubscriberNominees, useRenewPolicy } from '../../hooks/useSubscriber';
+import {
+  useCurrentSubscriber,
+  useSubscriberNominees,
+  useRenewPolicy,
+  useMyEmployerFunding,
+} from '../../hooks/useSubscriber';
 import { useToast } from '../../contexts/ToastContext';
 import { openPolicyCertificate } from '../../signup/contribution/insurancePolicyCertificate';
 import { useIsDesktop } from '../../hooks/useIsDesktop';
@@ -137,6 +142,17 @@ export default function PoliciesPage() {
   const { data: nominees } = useSubscriberNominees(sub?.id);
   const { addToast } = useToast();
   const renew = useRenewPolicy(sub?.id);
+  // The employer's NAME for the "Paid by …" badge on employer-funded cover. The
+  // subscriber mapper only ever sets `employerId` (a subscriber JWT cannot read the
+  // employers table at all — there is no employer-facing SELECT policy for it), so
+  // the old `sub.employerName` was permanently undefined and every badge fell back
+  // to "your employer". The narrow get_my_employer_funding RPC is the only path
+  // that can resolve it. Everything ELSE on this page is insurance-side (policy
+  // `fundedBy`) and is untouched by the contribution model.
+  // (`sub?.id` is honoured by the mock branch only — the live RPC trusts the JWT —
+  // so the badge names the employer of the member whose policies are on screen.)
+  const { data: funding } = useMyEmployerFunding(sub?.id);
+  const employerName = funding?.employerName || null;
 
   const policies = sub?.policies || [];
   const active = policies.filter((p) => p.status === 'active');
@@ -268,7 +284,7 @@ export default function PoliciesPage() {
           <h2 id="policies-active" className={styles.sectionTitle}>Active</h2>
           <div className={styles.cards}>
             {active.map((p) => (
-              <PolicyCard key={p.id} policy={p} onRenew={openRenew} onCertificate={handleCertificate} employerName={sub?.employerName} />
+              <PolicyCard key={p.id} policy={p} onRenew={openRenew} onCertificate={handleCertificate} employerName={employerName} />
             ))}
           </div>
         </section>
@@ -293,7 +309,7 @@ export default function PoliciesPage() {
           )}
           <div className={styles.cards}>
             {building.map((p) => (
-              <PolicyCard key={p.id} policy={p} onRenew={openRenew} onCertificate={handleCertificate} employerName={sub?.employerName} />
+              <PolicyCard key={p.id} policy={p} onRenew={openRenew} onCertificate={handleCertificate} employerName={employerName} />
             ))}
           </div>
         </section>
@@ -304,7 +320,7 @@ export default function PoliciesPage() {
           <h2 id="policies-expired" className={styles.sectionTitle}>Expired</h2>
           <div className={styles.cards}>
             {expired.map((p) => (
-              <PolicyCard key={p.id} policy={p} onRenew={openRenew} onCertificate={handleCertificate} employerName={sub?.employerName} />
+              <PolicyCard key={p.id} policy={p} onRenew={openRenew} onCertificate={handleCertificate} employerName={employerName} />
             ))}
           </div>
         </section>

@@ -120,8 +120,26 @@ describe('export builders', () => {
     const { rows, columns } = buildTransactionsExport(FEED);
     expect(columns.map((c) => c.key)).toEqual(['date', 'type', 'source', 'amount', 'method', 'reference', 'status']);
     expect(rows).toHaveLength(5);
-    expect(rows[0]).toMatchObject({ date: '2026-01-10', type: 'Contribution', source: 'Own', amount: 100000, status: 'Settled' });
-    expect(rows[4]).toMatchObject({ type: 'Withdrawal', amount: -20000, status: 'Processing' });
+    // The `source` column is now a MEMBER-VOICE "Paid by" label, not the raw
+    // titleCased source. It used to print "Own" for a contribution the employer
+    // deducted from the member's pay and remitted — money the member never chose
+    // to send. `paidByLabel` splits the three cases instead.
+    expect(columns.find((c) => c.key === 'source').label).toBe('Paid by');
+    expect(rows[0]).toMatchObject({ date: '2026-01-10', type: 'Contribution', source: 'You paid', amount: 100000, status: 'Settled' });
+    expect(rows[1]).toMatchObject({ type: 'Contribution', source: 'From your employer' });
+    expect(rows[4]).toMatchObject({ type: 'Withdrawal', amount: -20000, status: 'Processing', source: 'Paid to you' });
+  });
+
+  it('labels an employer-remitted payroll deduction "From your pay", not "You paid"', () => {
+    // A contribution run posts the EMPLOYEE leg with source='own' and the
+    // EMPLOYER's payment method, so `source` alone cannot tell a payroll deduction
+    // from a self-paid top-up. The run id is the discriminator (isRunPosted).
+    const { rows } = buildTransactionsExport([
+      { id: 'r1', type: 'contribution', source: 'own', amount: 140000, date: '2026-04-01', contributionRunId: 'run-1', status: 'settled' },
+      { id: 'r2', type: 'contribution', source: 'employer', amount: 70000, date: '2026-04-01', contributionRunId: 'run-1', status: 'settled' },
+    ]);
+    expect(rows[0].source).toBe('From your pay');
+    expect(rows[1].source).toBe('From your employer');
   });
 
   it('keys every transaction row by each column.key so the Excel export is non-empty (xlsx contract)', () => {

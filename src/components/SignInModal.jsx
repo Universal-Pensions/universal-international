@@ -330,6 +330,7 @@ export default function SignInModal() {
             role="dialog"
             aria-modal="true"
             aria-labelledby="signin-modal-title"
+            data-testid="signin-surface"
           >
             {/* Stable, screen-reader-only heading so the dialog has a single
                 announced name regardless of which step is active. */}

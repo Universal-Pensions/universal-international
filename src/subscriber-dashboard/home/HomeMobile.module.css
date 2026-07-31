@@ -164,11 +164,16 @@
   padding: 9px 16px;
 }
 
-/* funding grid */
+/* funding grid — one cell per non-zero contribution leg (the leg taken from the
+   member's pay, and the employer's own money on top). Either leg may be zero, so
+   .fundGridSolo drops to a single full-width column instead of leaving a gap. */
 .fundGrid {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 18px;
+}
+.fundGridSolo {
+  grid-template-columns: 1fr;
 }
 .fundCell {
   position: relative;
@@ -213,6 +218,13 @@
   font-size: 11px;
   color: var(--color-gray);
   margin-top: 2px;
+}
+/* Plain-language summary of the whole funding setup, below the leg cells. */
+.fundNote {
+  margin: 15px 0 0;
+  font-size: 12.5px;
+  line-height: 1.45;
+  color: var(--color-slate);
 }
 
 /* savings & cover list */

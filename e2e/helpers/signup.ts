@@ -18,6 +18,7 @@
 // row stamped by verify-otp).
 
 import { expect, type Page } from '@playwright/test';
+import { walkContributionAndPay } from './contribution';
 import {
   BENEFICIARY_NAME,
   BENEFICIARY_PHONE,
@@ -103,14 +104,17 @@ export async function walkSignupToFirstContribution(
   await page.getByRole('button', { name: /^continue$/i }).click();
 
   // ── Step 3 · nira (silent + verified beat) ───────────────────────────────
-  await expect(
-    page.getByRole('heading', { name: /verifying your identity with nira/i }),
-  ).toBeVisible({ timeout: 10_000 });
+  // Silent, auto-advancing step: it moves on by itself after its mocked latency
+  // plus a confirmation beat. We deliberately DON'T assert on its loader — with no
+  // interaction to gate on, any assertion races that auto-advance (it went red
+  // intermittently for exactly this reason). Landing on the NEXT step is the proof
+  // this one passed; a failure routes to a terminal screen instead, which fails
+  // that assertion loudly.
 
   // ── Step 4 · otp ─────────────────────────────────────────────────────────
   await expect(
     page.getByRole('heading', { name: /enter the code we sent you/i }),
-  ).toBeVisible({ timeout: 15_000 });
+  ).toBeVisible({ timeout: 25_000 });
 
   for (let i = 0; i < SIGNUP_OTP_CODE.length; i++) {
     await page
@@ -122,17 +126,26 @@ export async function walkSignupToFirstContribution(
   await expect(
     page.getByRole('heading', { name: /take a quick selfie/i }),
   ).toBeVisible({ timeout: 15_000 });
-  await page.getByRole('button', { name: /take selfie/i }).click();
+  // "Take selfie" is gated on `canCapture` (the getUserMedia stream being live), so
+  // wait for it to enable rather than clicking into a disabled control. NOTE: this
+  // step is intermittently flaky under the fake camera device even so — the capture
+  // can land with an empty frame and faceMatch then leaves you on this screen.
+  const takeSelfie = page.getByRole('button', { name: /take selfie/i });
+  await expect(takeSelfie).toBeEnabled({ timeout: 15_000 });
+  await takeSelfie.click();
 
   // ── Step 6 · aml (silent + cleared beat) ─────────────────────────────────
-  await expect(
-    page.getByRole('heading', { name: /running a quick compliance check/i }),
-  ).toBeVisible({ timeout: 15_000 });
+  // Silent, auto-advancing step: it moves on by itself after its mocked latency
+  // plus a confirmation beat. We deliberately DON'T assert on its loader — with no
+  // interaction to gate on, any assertion races that auto-advance (it went red
+  // intermittently for exactly this reason). Landing on the NEXT step is the proof
+  // this one passed; a failure routes to a terminal screen instead, which fails
+  // that assertion loudly.
 
   // ── Step 7 · beneficiaries ───────────────────────────────────────────────
   await expect(
     page.getByRole('heading', { name: /who inherits your savings\?/i }),
-  ).toBeVisible({ timeout: 15_000 });
+  ).toBeVisible({ timeout: 25_000 });
 
   await page.getByRole('textbox', { name: /full name/i }).fill(BENEFICIARY_NAME);
   await page.getByPlaceholder('7XX XXX XXX').fill(BENEFICIARY_PHONE);
@@ -149,39 +162,31 @@ export async function walkSignupToFirstContribution(
     page.getByRole('heading', { name: /one last thing before payment/i }),
   ).toBeVisible({ timeout: 15_000 });
 
-  await page.getByRole('checkbox').check();
-  await page.getByRole('button', { name: /i consent.*continue/i }).click();
+  // The native checkbox is deliberately visually hidden (ConsentStep.jsx: "the whole
+  // box is the clickable label"), so `.check()` fights Playwright's
+  // visible-and-stable gate. Click the label — the actual user target — and assert
+  // the state via the CTA enabling.
+  await page
+    .locator('label')
+    .filter({ hasText: /I consent to Universal Pensions processing/i })
+    .click();
+
+  const consentContinue = page.getByRole('button', { name: /i consent.*continue/i });
+  await expect(consentContinue, 'consent CTA enables once the box is ticked').toBeEnabled();
+  await consentContinue.click();
   // Consent navigates directly to /signup/contribution — no intermediate
   // ActivatedStep heading (that renders post-payment now).
 
   // ── Contribution onboarding (Plan & pay) ─────────────────────────────────
-  // Payment is now MERGED into the contribution page (no "Pay now" swap): the
-  // method picker lives in the summary and the single "Pay UGX…" CTA submits.
-  await expect(
-    page.getByRole('heading', { name: /set up your contributions/i }),
-  ).toBeVisible({ timeout: 15_000 });
-
-  await page
-    .getByRole('button', { name: new RegExp(`^${QUICK_CONTRIBUTION_LABEL}$`) })
-    .click();
-
-  // Mobile Money is selected by default; fill the phone so the Pay CTA enables.
-  await page.getByPlaceholder('700 000 000').fill('700123456');
-
-  const payBtn = page.getByRole('button', { name: /^pay (ugx|\d)/i });
-  await expect(payBtn).toBeEnabled();
-
-  const rpcPromise = page.waitForResponse(
-    (r) =>
-      r.url().includes('/rest/v1/rpc/create_subscriber_from_signup') &&
-      r.request().method() === 'POST',
-    { timeout: 30_000 },
-  );
-
-  await payBtn.click();
-
-  const rpcResponse = await rpcPromise;
-  expect(rpcResponse.status(), 'create_subscriber_from_signup RPC must succeed').toBe(200);
+  // Delegated to the shared helper so this and the agent-onboarding spec drive
+  // the same wizard through the same steps — see helpers/contribution.ts. It is a
+  // TWO-page flow (savings → cover → payment); the earlier inline version here
+  // assumed one page with the MoMo field always visible, which stopped matching
+  // when the wizard was redesigned.
+  await walkContributionAndPay(page, 'create_subscriber_from_signup', {
+    audience: 'self',
+    presetLabel: QUICK_CONTRIBUTION_LABEL,
+  });
 
   // ── Activated → /dashboard ────────────────────────────────────────────────
   // ContributionRoute flips to phase='activated' after the RPC + verify-otp

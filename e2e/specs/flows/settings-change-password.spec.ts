@@ -101,9 +101,10 @@ test.describe('settings → set / change password (distributor — see header no
     // setSettingsOpen(true) on click.
     await selectors.dashboardShell.settingsTab(page).click();
 
-    // The panel mounts with role=dialog (aria-label="Settings"). Assert the
-    // "Set password" heading inside it. The heading is rendered as <h3>.
-    const panel = page.getByRole('dialog', { name: /^settings$/i });
+    // The panel mounts as role=dialog (slide-in) or role=region (routed full
+    // page) — both aria-label="Settings". Assert the "Set password" heading
+    // inside it. The heading is rendered as <h3>.
+    const panel = selectors.panel.settings(page);
     await expect(panel).toBeVisible();
     await expect(
       panel.getByRole('heading', { name: /^set password$/i }),
@@ -144,9 +145,17 @@ test.describe('settings → set / change password (distributor — see header no
     await expect(panel.getByLabel('Current password')).toBeVisible();
 
     // ── 5. Sign out via the sidebar ────────────────────────────────────────
-    // Close the panel first so the sidebar Log out button is reachable.
+    // In SLIDE-IN mode a backdrop covers the rail, so the panel has to be closed
+    // before Log out is clickable. In dash mode the panel IS the page, rendered
+    // inline beside a always-visible rail — and Escape is deliberately inert there
+    // (`if (e.key === 'Escape' && !fullPage)` in Settings.jsx), so asserting it
+    // closes would hang. Try Escape, then only require it to have closed if it
+    // actually can.
     await page.keyboard.press('Escape');
-    await expect(panel).not.toBeVisible();
+    if (await panel.isVisible({ timeout: 1_000 }).catch(() => false)) {
+      // Full-page mode: nothing to close; the rail is already reachable.
+      await expect(selectors.dashboardShell.overviewTab(page)).toBeVisible();
+    }
 
     // The sidebar Log out button is in the bottom row (Sidebar.jsx:137).
     await page.getByRole('button', { name: /^log out$/i }).click();
@@ -155,14 +164,19 @@ test.describe('settings → set / change password (distributor — see header no
     await expect(page).toHaveURL(/\/$/, { timeout: 10_000 });
 
     // ── 6. Sign back in with the password we just set ──────────────────────
+    // logout() drops us on '/', which is the SUBSCRIBER landing — and each landing
+    // now carries its own audience-scoped login card (no single universal
+    // SignInModal any more). Signing a distributor in through the subscriber card
+    // fails, so go to the distributor landing first.
+    await page.goto('/distributors');
     await page.getByRole('button', { name: /^sign in$/i }).first().click();
-    await expect(page.getByRole('dialog')).toBeVisible();
+    await expect(selectors.signInModal.surface(page).first()).toBeVisible();
 
-    // Distributor uses the DistributorSelect intermediate step.
-    await page.getByRole('button', { name: /distributor/i }).first().click();
-    // DistributorSelect picks a sub-role (distributor admin / branch admin /
-    // agent). Pick the "Distributor Admin" entry — matches the seeded JWT.
-    await page.getByRole('button', { name: /distributor admin/i }).click();
+    // The distributor landing card offers Distributor / Branch / Agent as role
+    // TABS (LandingLoginCard), and the old SignInModal DistributorSelect sub-step
+    // ("Distributor Admin") no longer exists on that path — so both are optional.
+    await selectors.signInModal.pickRole(page, /^distributor$/i);
+    await selectors.signInModal.pickRole(page, /distributor admin/i);
 
     // Phone (9 digits, no +256). Distributor demo phone is +256700000021.
     await page.locator('input[name="phone"]').fill('700000021');
@@ -176,9 +190,11 @@ test.describe('settings → set / change password (distributor — see header no
     await page.getByLabel('Password', { exact: true }).fill('Demo1234');
     await page.locator('form').getByRole('button', { name: /^sign in$/i }).click();
 
-    // Dashboard lands. Overview button is the stable distributor-shell anchor.
-    await expect(page.getByRole('dialog')).toHaveCount(0, { timeout: 10_000 });
-    await expect(page).toHaveURL(/\/dashboard/);
+    // Dashboard lands. The URL is the authoritative signal: the inline landing
+    // login card is ALWAYS mounted on a landing page, so "surface count 0" only
+    // becomes true as a side effect of navigating away — a weaker and slower
+    // assertion than just waiting for /dashboard.
+    await expect(page).toHaveURL(/\/dashboard/, { timeout: 15_000 });
     await expect(selectors.dashboardShell.overviewTab(page)).toBeVisible();
   });
 });

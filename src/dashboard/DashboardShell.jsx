@@ -246,6 +246,8 @@ function DashboardContent({ mode, mapMounted }) {
     drillTargetBranchId,
     drillTargetAgentId,
     level,
+    childList,
+    childListParentId,
   } = useDashboard();
 
   // Dashboard mode is a DESKTOP concept — mobile never mounts the map and keeps
@@ -256,7 +258,12 @@ function DashboardContent({ mode, mapMounted }) {
   // sidebar's `active` highlight, so the two never disagree. In dash mode the
   // sidebar enforces single-open, so at most one flag is true; the precedence
   // just makes the fallback deterministic.
+  //
+  // A /dashboard/{agents,branches}/:id/subscribers URL wins outright: it is an
+  // explicit routed destination, so it must not be overridden by whichever panel
+  // flag happens to be set from the click that navigated here.
   const selectedPage =
+    childList === 'subscriber' ? 'subscribers' :
     viewTicketsOpen ? 'tickets' :
     viewReportsOpen ? 'reports' :
     commissionsOpen ? 'commissions' :
@@ -294,7 +301,19 @@ function DashboardContent({ mode, mapMounted }) {
                 internal detail view that clearing the drill flag alone won't reset. */}
             {selectedPage === 'branches' && <ViewBranches key={`vb-${drillTargetBranchId || 'list'}`} fullPage />}
             {selectedPage === 'agents' && <ViewAgents key={`va-${drillTargetAgentId || 'list'}`} fullPage />}
-            {selectedPage === 'subscribers' && <ViewSubscribers fullPage />}
+            {selectedPage === 'subscribers' && (
+              <ViewSubscribers
+                // Remount when the scope changes so the panel's internal
+                // list/detail view resets to the list for a new parent.
+                key={`vs-${childListParentId || 'all'}`}
+                fullPage
+                scope={childListParentId
+                  ? (level === 'agent'
+                      ? { agentId: childListParentId }
+                      : { branchId: childListParentId })
+                  : null}
+              />
+            )}
             {selectedPage === 'commissions' && <CommissionPanel fullPage />}
             {selectedPage === 'reports' && <ViewReports fullPage />}
             {selectedPage === 'settings' && <Settings fullPage />}

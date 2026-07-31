@@ -10,7 +10,7 @@ import {
 } from '../../hooks/useEmployer';
 import { formatUGX, formatNumber } from '../../utils/currency';
 import { formatDate } from '../../utils/date';
-import { companyFundingLabel } from '../employees/fundingLabel';
+import { contributionFundingLabel } from '../../utils/contributionModel';
 import { deriveEmployerMetrics } from '../overview/employerCopilotContext';
 import { groupInsuranceProducts } from '../../utils/groupInsurance';
 import ErrorCard from '../../components/feedback/ErrorCard';
@@ -152,7 +152,9 @@ export default function OverviewMobile() {
             <span className={s.calloutIc}>
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" aria-hidden="true"><path d="M12 2l3 6 6 1-4.5 4.5L18 20l-6-3-6 3 1.5-6.5L3 9l6-1z" /></svg>
             </span>
-            <div><b>Company funding model</b><p>{companyFundingLabel(cfg)}</p></div>
+            {/* Who funds what, as the two concrete figures — either leg can be
+                nothing, and 0/0 reads "No contributions set up yet". */}
+            <div><b>Company funding</b><p>{contributionFundingLabel(cfg)}</p></div>
           </div>
         )}
       </div>

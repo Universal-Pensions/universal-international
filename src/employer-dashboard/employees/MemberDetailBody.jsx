@@ -18,33 +18,11 @@ import { useToast } from '../../contexts/ToastContext';
 import { formatUGX } from '../../utils/currency';
 import { formatDate } from '../../utils/date';
 import { groupInsuranceProducts } from '../../utils/groupInsurance';
+import { deriveContributionLegs, contributionFundingLabel } from '../../utils/contributionModel';
 import SkeletonRow from '../../components/SkeletonRow';
 import ErrorCard from '../../components/feedback/ErrorCard';
 import EmptyState from '../../components/EmptyState';
-import { companyFundingLabel } from './fundingLabel';
 import styles from './MemberDetailBody.module.css';
-
-const round = (n) => Math.round(Number(n) || 0);
-
-// Per-member two-leg run math (DB contract, migration 0062). Returns the monthly
-// employee + employer legs derived from the company-wide config and this
-// member's compensation — mirrors `_mockSubmitEmployerRun` so the preview the
-// employer sees here matches what a run will actually post.
-function deriveLegs(config, compensation) {
-  const cfg = config ?? {};
-  const comp = Number(compensation) || 0;
-  if (cfg.mode === 'co-contribution') {
-    const employeeLeg = round((comp * Number(cfg.employeePct ?? 0)) / 100);
-    const employerLeg = round((employeeLeg * Number(cfg.employerMatchPct ?? 0)) / 100);
-    return { employeeLeg, employerLeg };
-  }
-  // employer-only
-  const employerLeg =
-    cfg.employerBasis === 'percent'
-      ? round((comp * Number(cfg.employerPct ?? 0)) / 100)
-      : round(Number(cfg.employerAmount ?? 0));
-  return { employeeLeg: 0, employerLeg };
-}
 
 export default function MemberDetailBody({ employeeId }) {
   const { employerId } = useEmployerScope();
@@ -81,11 +59,17 @@ export default function MemberDetailBody({ employeeId }) {
   if (isError) return <ErrorCard title="We couldn't load this member" message={error} onRetry={refetch} />;
   if (!employee) return <EmptyState kind="no-data" title="Member not found" body="This record may have been removed." />;
 
-  // Compensation drives the run (0062); members no longer self-set a saving
-  // amount (`monthlyContribution` is vestigial). Show the derived monthly legs
-  // so the employer sees what a run will post for this member.
+  // Compensation drives the run; members never self-set a saving amount
+  // (`monthlyContribution` is vestigial). The two monthly legs come from
+  // `deriveContributionLegs` — THE canonical math that migration 0092's run RPC
+  // mirrors — so what the employer reads here is what a run will actually post
+  // for this member. Both legs are shares of COMPENSATION and independent of
+  // each other; either may be zero.
   const compensation = Number(employee.compensation) || 0;
-  const { employeeLeg, employerLeg } = deriveLegs(employer?.defaultContributionConfig, compensation);
+  const { employeeLeg, employerLeg } = deriveContributionLegs(
+    employer?.defaultContributionConfig,
+    compensation,
+  );
 
   function startEdit() {
     setDraft(String(compensation));
@@ -183,9 +167,11 @@ export default function MemberDetailBody({ employeeId }) {
               )}
             </dd>
           </div>
-          <Def label="Employee contribution / mo" value={formatUGX(employeeLeg, { compact: false })} />
-          <Def label="Employer contribution / mo" value={formatUGX(employerLeg, { compact: false })} />
-          <Def label="Company funding" value={companyFundingLabel(employer?.defaultContributionConfig)} />
+          {/* The two legs in the same words the funding line uses: what the member
+              puts in from their own pay, and what the company adds on top. */}
+          <Def label="They put in / mo" value={formatUGX(employeeLeg, { compact: false })} />
+          <Def label="You add / mo" value={formatUGX(employerLeg, { compact: false })} />
+          <Def label="Company funding" value={contributionFundingLabel(employer?.defaultContributionConfig)} />
           <Def
             label="Retirement / Emergency"
             value={`${Number(employee.contributionSchedule?.retirementPct ?? 80)}% / ${Number(employee.contributionSchedule?.emergencyPct ?? 20)}%`}

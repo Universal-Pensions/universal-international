@@ -9,8 +9,12 @@
 //      onboard RPC cross-checks payload.calling_agent_id against the JWT
 //      claim agentId, so this also covers that guard implicitly.
 //   2. Multi-stage agent panel: awareness → 8-step KYC → schedule → done.
-//      Reuses the same KYC step components as /signup, so the selectors
-//      mirror the subscriber-signup-to-contribute spec one-for-one.
+//      Reuses the same KYC step components AND the same contribution wizard as
+//      /signup — but NOT the same copy: OnboardFlow wraps the tree in
+//      OnboardAudienceProvider value="agent", so every shared step renders its
+//      third-person variant ("Scan the subscriber's ID", not "…your Ndaga
+//      Muntu"). Selectors here must use the AGENT strings; assuming they mirror
+//      subscriber-signup-to-contribute one-for-one is what let this spec rot.
 //   3. RPC verification via page.waitForResponse on the rest/v1/rpc/* URL.
 //      The OnboardingComplete component auto-fires the RPC on mount, so we
 //      register the listener *before* navigating into /dashboard/onboard.
@@ -24,6 +28,7 @@
 //   otp-send    ~600ms, otp-verify ~700ms + 450ms auto-submit debounce
 //   face-match  ~2200ms + 1100ms ok beat + ~700ms capturing beat
 //   aml         ~1700ms + 1100ms cleared beat
+//   pay CTA     1.2s simulated payment delay (handlePay setTimeout)
 //   RPC         under 1s on a warm pool
 // ≈ 16-22s typical; test.setTimeout(60_000) gives plenty of headroom.
 //
@@ -38,6 +43,7 @@
 //     -> OnboardingComplete is the agent-only ending.
 
 import { test, expect } from '@playwright/test';
+import { clickPay, fillContributionPlan } from '../../helpers/contribution';
 import { storageStatePathFor, PERSONA_FOR } from '../../fixtures/auth';
 import { disableAnimations } from '../../fixtures/motion';
 import { cleanupSubscriberByPhone, getRow, rowExists } from '../../fixtures/db';
@@ -47,6 +53,21 @@ test.use({ storageState: storageStatePathFor('agent') });
 test.setTimeout(90_000);
 
 const AGENT_ID = PERSONA_FOR.agent.entityId; // 'a-001'
+
+type TransactionRow = {
+  id: string;
+  subscriber_id: string;
+  type: string;
+  method: string | null;
+  amount: number | string;
+};
+
+type ScheduleRow = {
+  subscriber_id: string;
+  insurance_funding_mode: string | null;
+  insurance_savings_pct: number | null;
+  contribution_indexation_pct: number | null;
+};
 
 type SubscriberRow = {
   id: string;
@@ -105,21 +126,39 @@ test.describe('agent → onboard new subscriber (UI + RPC + DB)', () => {
     ).toBeVisible();
 
     // ── Stage 1 · awareness ────────────────────────────────────────────
-    // 5 quiz cards (q1-q5); each has a Yes/No radio pair. Mark every one
-    // "Yes" so Continue enables (requires all 5 answered).
+    // 5 talking points; each records a Yes/No judgment, and Continue only
+    // enables once all 5 are answered. AwarenessCheck renders TWO layouts:
+    //   desktop (>=1024px) — a master/detail list, so exactly ONE Yes radio is
+    //     in the DOM at a time (the selected question's). Select each row first.
+    //   mobile             — an accordion with all 5 Yes/No pairs mounted.
+    // Handle both rather than assuming a count; this spec runs at 1440x900 on
+    // the desktop projects, which is the master/detail branch.
     const yesButtons = page.getByRole('radio', { name: /^yes$/i });
-    await expect(yesButtons).toHaveCount(5);
-    for (let i = 0; i < 5; i++) {
-      await yesButtons.nth(i).click();
+    await expect(yesButtons.first()).toBeVisible({ timeout: 15_000 });
+
+    if ((await yesButtons.count()) >= 5) {
+      for (let i = 0; i < 5; i++) await yesButtons.nth(i).click();
+    } else {
+      // Master/detail: pick each question in the left rail, then mark it Yes.
+      const rows = page.getByRole('button', { name: /^\d\s/ });
+      const rowCount = await rows.count();
+      expect(rowCount, 'awareness master list should offer 5 questions').toBe(5);
+      for (let i = 0; i < rowCount; i++) {
+        await rows.nth(i).click();
+        await yesButtons.first().click();
+      }
     }
-    await page.getByRole('button', { name: /continue to kyc/i }).click();
+
+    const continueToKyc = page.getByRole('button', { name: /continue to kyc/i });
+    await expect(continueToKyc, 'Continue enables once all 5 are answered').toBeEnabled();
+    await continueToKyc.click();
 
     // ── KYC step 1 · id-upload ─────────────────────────────────────────
     // Upload front + back. id-quality always passes for files ≥ 20 KiB
     // (services/kyc.js:53 floor); we pass a 32 KiB buffer. id-ocr accepts
     // any truthy front/back tokens and returns a fixed sample subscriber.
     await expect(
-      page.getByRole('heading', { name: /scan both sides of your ndaga muntu/i }),
+      page.getByRole('heading', { name: /scan the subscriber's id/i }),
     ).toBeVisible({ timeout: 10_000 });
 
     const sampleImage = {
@@ -143,7 +182,7 @@ test.describe('agent → onboard new subscriber (UI + RPC + DB)', () => {
     // mock supplies fullName/nin/cardNumber/dob/gender, so we don't have
     // to type those.
     await expect(
-      page.getByRole('heading', { name: /check your details/i }),
+      page.getByRole('heading', { name: /check the subscriber's details/i }),
     ).toBeVisible({ timeout: 30_000 });
 
     // Phone — bare 9 digits (the +256 prefix is rendered as a sibling badge).
@@ -159,22 +198,31 @@ test.describe('agent → onboard new subscriber (UI + RPC + DB)', () => {
     // Occupation — a plain <select>.
     await page.locator('#occupation').selectOption('trader');
 
-    await page.getByRole('button', { name: /^continue$/i }).click();
+    // Password — ReviewStep collects the member's sign-in credential on BOTH
+    // paths (the agent sets it on their behalf; the copy reads "Create their
+    // password"). It's required, so Continue stays disabled without it; the
+    // signup helper does the same at helpers/signup.ts.
+    await page.locator('#password').fill('Demo1234');
+    await page.locator('#confirm-password').fill('Demo1234');
 
-    // ── KYC step 3 · nira (silent + verified beat) ─────────────────────
-    // Auto-advances after ~2400ms verify + ~1100ms confirmation beat.
-    // Nothing to click; we just need the loader to be visible to confirm
-    // we landed on the right step before the auto-advance moves on.
-    await expect(
-      page.getByRole('heading', { name: /verifying your identity with nira/i }),
-    ).toBeVisible({ timeout: 15_000 });
+    const reviewContinue = page.getByRole('button', { name: /^continue$/i });
+    await expect(reviewContinue).toBeEnabled({ timeout: 10_000 });
+    await reviewContinue.click();
+
+    // ── KYC step 3 · nira (silent, auto-advances) ──────────────────────
+    // ~2400ms verify + ~1100ms confirmation beat, then it moves on by itself.
+    // We deliberately DON'T assert on its loader: it's a transient screen with
+    // no interaction, so any assertion on it is a race against its own
+    // auto-advance. Landing on step 4 below is proof step 3 passed (a NIRA
+    // failure routes to the AgentFallback terminal instead, which would fail
+    // that assertion loudly).
 
     // ── KYC step 4 · otp ───────────────────────────────────────────────
     // 4-digit OTP. The route accepts any 4-digit code except '0000'; we
     // use '1234'. Entering the 4th digit triggers auto-submit after 450ms.
     await expect(
-      page.getByRole('heading', { name: /enter the code we sent you/i }),
-    ).toBeVisible({ timeout: 15_000 });
+      page.getByRole('heading', { name: /verify the phone number/i }),
+    ).toBeVisible({ timeout: 25_000 });
 
     const otpCode = '1234';
     for (let i = 0; i < otpCode.length; i++) {
@@ -188,24 +236,28 @@ test.describe('agent → onboard new subscriber (UI + RPC + DB)', () => {
     // (LivenessStep.jsx:42) and calls faceMatch. Mock returns 'ok'; the
     // auto-advance fires ~1100ms after the "All good" status.
     await expect(
-      page.getByRole('heading', { name: /take a quick selfie/i }),
+      page.getByRole('heading', { name: /take the subscriber's selfie/i }),
     ).toBeVisible({ timeout: 15_000 });
-    await page.getByRole('button', { name: /take selfie/i }).click();
+    // "Take selfie" is gated on `canCapture` (the getUserMedia stream being live), so
+    // wait for it to enable rather than clicking into a disabled control. NOTE: this
+    // step is intermittently flaky under the fake camera device even so — the capture
+    // can land with an empty frame and faceMatch then leaves you on this screen.
+    const takeSelfie = page.getByRole('button', { name: /take selfie/i });
+    await expect(takeSelfie).toBeEnabled({ timeout: 15_000 });
+    await takeSelfie.click();
 
-    // ── KYC step 6 · aml (silent + cleared beat) ───────────────────────
-    // Auto-advance after the "Background check passed" beat (~1700ms +
-    // 1100ms). No interaction needed.
-    await expect(
-      page.getByRole('heading', { name: /running a quick compliance check/i }),
-    ).toBeVisible({ timeout: 15_000 });
+    // ── KYC step 6 · aml (silent, auto-advances) ───────────────────────
+    // ~1700ms screen + ~1100ms cleared beat, then it advances itself. Same
+    // reasoning as step 3 — no assertion on the transient loader; reaching
+    // step 7 is the proof (an AML flag routes to the pending-review terminal).
 
     // ── KYC step 7 · beneficiaries ─────────────────────────────────────
     // Lazy-seeded with a single row at share=100; fill name/phone/relationship
     // to satisfy validList(). insuranceSameAsPension defaults to true so we
     // don't have to manage a separate insurance section.
     await expect(
-      page.getByRole('heading', { name: /who inherits your savings\?/i }),
-    ).toBeVisible({ timeout: 15_000 });
+      page.getByRole('heading', { name: /nominate beneficiaries/i }),
+    ).toBeVisible({ timeout: 25_000 });
 
     await page.getByRole('textbox', { name: /full name/i }).fill('Test Nominee');
     // BeneficiaryRow phone input has a generated id (random row id), so we
@@ -224,31 +276,33 @@ test.describe('agent → onboard new subscriber (UI + RPC + DB)', () => {
     await expect(
       page.getByRole('heading', { name: /consent & data use/i }),
     ).toBeVisible({ timeout: 15_000 });
-    await page.getByRole('checkbox').check();
-    await page.getByRole('button', { name: /i consent — continue/i }).click();
-
-    // ── Stage 3 · contribution schedule ────────────────────────────────
-    // ContributionSettingsForm — monthly is the default frequency. Fill
-    // amount (above the MIN_CONTRIBUTION floor, 500 UGX), keep the 80/20
-    // retirement split, then Save & continue.
-    await expect(
-      page.getByRole('heading', { name: /how often\?/i }),
-    ).toBeVisible({ timeout: 15_000 });
-
+    // The native checkbox is deliberately visually hidden (ConsentStep.jsx: "the
+    // whole box is the clickable label"), so `.check()` fights Playwright's
+    // visible-and-stable gate inside the agent shell's scroll container. Click the
+    // label — the actual user target — and assert the state via the CTA enabling.
     await page
-      .getByRole('textbox', { name: /contribution amount/i })
-      .fill('50000');
+      .locator('label')
+      .filter({ hasText: /I consent to Universal Pensions processing/i })
+      .click();
 
-    // Section 04 · multi-product insurance — select all three so we can assert
-    // both the life row (insurance_policies) and the health/funeral rows
-    // (subscriber_insurance_products) persist via the 0065 chain.
-    await page.getByRole('switch', { name: /life insurance/i }).click();
-    await page.getByRole('switch', { name: /health insurance/i }).click();
-    await page.getByRole('switch', { name: /funeral insurance/i }).click();
+    const consentContinue = page.getByRole('button', { name: /i consent — continue/i });
+    await expect(consentContinue, 'consent CTA enables once the box is ticked').toBeEnabled();
+    await consentContinue.click();
 
-    const saveContinue = page.getByRole('button', { name: /save & continue/i });
-    await expect(saveContinue).toBeEnabled();
-    await saveContinue.click();
+    // ── Stage 3 · plan & pay ───────────────────────────────────────────
+    // This stage now renders the SAME ContributionSettings wizard the subscriber
+    // sees at /signup/contribution (in `embedded` mode, with agent-voice copy) —
+    // see helpers/contribution.ts for the two-page + payment sequence. Life is
+    // selected by default; add health + funeral so the 0065 chain's split is
+    // exercised: life → insurance_policies, health/funeral →
+    // subscriber_insurance_products. Route A ("Pay now") makes 0072 post the
+    // extra type='premium' transaction asserted below.
+    await fillContributionPlan(page, {
+      audience: 'agent',
+      amount: '50000',
+      toggleProducts: ['health', 'funeral'],
+    });
+    await clickPay(page);
 
     // ── Stage 4 · OnboardingComplete (RPC auto-fires on mount) ─────────
     // The success screen fires the RPC immediately on mount; wait for the
@@ -262,6 +316,8 @@ test.describe('agent → onboard new subscriber (UI + RPC + DB)', () => {
     // Once the RPC resolves, status flips to 'success' and the "Saved" pill
     // renders alongside the "Onboard another / Close" actions.
     await expect(page.getByText(/^saved$/i)).toBeVisible({ timeout: 10_000 });
+    // The headline only claims enrolment once the RPC has returned (it reads
+    // "Saving …'s record…" while the write is in flight).
     await expect(
       page.getByRole('heading', { name: /is enrolled$/i }),
     ).toBeVisible();
@@ -304,6 +360,40 @@ test.describe('agent → onboard new subscriber (UI + RPC + DB)', () => {
       await rowExists('subscriber_insurance_products', { subscriber_id: sub!.id, product: 'funeral' }),
       `funeral subscriber_insurance_products row should be created for ${sub!.id}`,
     ).toBe(true);
+
+    // The payment step is what makes these two rows possible. Before the parity
+    // change the agent form emitted no `paymentMethod` at all (buildPayload read
+    // a field nothing set), and there was no pay-now route — so 0072's
+    // _insert_subscriber_chain had nothing to stamp. Assert both legs now land.
+    const contribTxn = await getRow<TransactionRow>('transactions', {
+      subscriber_id: sub!.id,
+      type: 'contribution',
+    });
+    expect(contribTxn, `first contribution transaction for ${sub!.id}`).not.toBeNull();
+    // The UI emits the method ID ('momo' | 'gateway'); the RPC COALESCEs it into
+    // transactions.method verbatim. Self-signup behaves identically.
+    expect(contribTxn!.method).toBe('momo');
+
+    // Route A charges one year of every selected product up front, as a separate
+    // type='premium' row (excluded from balance maths).
+    const premiumTxn = await getRow<TransactionRow>('transactions', {
+      subscriber_id: sub!.id,
+      type: 'premium',
+    });
+    expect(
+      premiumTxn,
+      `pay-now premium transaction for ${sub!.id} (life + health + funeral, one year)`,
+    ).not.toBeNull();
+    expect(Number(premiumTxn!.amount)).toBeGreaterThan(0);
+
+    // The save-to-cover / step-up columns the old form never emitted.
+    const sched = await getRow<ScheduleRow>('contribution_schedules', {
+      subscriber_id: sub!.id,
+    });
+    expect(sched, `contribution_schedules row for ${sub!.id}`).not.toBeNull();
+    expect(sched!.insurance_funding_mode).toBe('pay_now');
+    expect(sched!.insurance_savings_pct).not.toBeNull();
+    expect(sched!.contribution_indexation_pct).not.toBeNull();
 
     // eslint-disable-next-line no-console
     console.log(

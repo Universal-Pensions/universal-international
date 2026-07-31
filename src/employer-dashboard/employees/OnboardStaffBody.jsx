@@ -17,7 +17,7 @@ import { useEmployer, useCreateInvite, useBulkCreateInvites } from '../../hooks/
 import { useToast } from '../../contexts/ToastContext';
 import { downloadSheet, parseSheet } from '../../utils/xlsx';
 import { parseUGPhoneLocal } from '../../utils/phone';
-import { companyFundingLabel } from './fundingLabel';
+import { contributionFundingLabel, memberFundingSummary } from '../../utils/contributionModel';
 import styles from './OnboardStaffPanel.module.css';
 
 const PHONE_RE = /^(\+?256)?[0-9]{9}$/;
@@ -89,7 +89,7 @@ export default function OnboardStaffBody({ onClose }) {
 
   // Single
   const [form, setForm] = useState(EMPTY);
-  const [result, setResult] = useState(null); // { link, collectSchedule, name }
+  const [result, setResult] = useState(null); // { link, name }
   const [copied, setCopied] = useState(false);
 
   // Bulk
@@ -130,9 +130,13 @@ export default function OnboardStaffBody({ onClose }) {
     const e = validate();
     if (e) { setErr(e); return; }
     try {
-      const { token, collectSchedule } = await createInvite.mutateAsync(toPrefill(form));
+      // `collectSchedule` also comes back from the invite RPC but is deliberately
+      // ignored: the member never sets their own amounts under the company
+      // two-leg setup (the server forces their schedule amount to 0), so the
+      // success copy below states the two figures instead.
+      const { token } = await createInvite.mutateAsync(toPrefill(form));
       const link = `${window.location.origin}/invite/${token}`;
-      setResult({ link, collectSchedule, name: form.fullName.trim() });
+      setResult({ link, name: form.fullName.trim() });
     } catch (e2) {
       setErr(e2?.message || 'Could not create the invite.');
     }
@@ -211,13 +215,21 @@ export default function OnboardStaffBody({ onClose }) {
 
   // ── Render ──────────────────────────────────────────────────────────────────
   if (result) {
+    // What the MEMBER will see once they are active. They do not choose any
+    // amounts — the company funding setup drives both legs — so this states the
+    // two concrete figures in their words. null means 0/0: nothing is funded yet.
+    const memberSummary = memberFundingSummary(employer?.defaultContributionConfig, employer?.name);
     return (
       <div className={styles.body}>
         <p className={styles.note}>
           <strong>{result.name}</strong> has been invited and shows as <strong>pending</strong> in
-          your roster. Share this link — they’ll complete identity verification (KYC)
-          {result.collectSchedule ? ' and set up their own contribution schedule' : ''}, and their
+          your roster. Share this link — they’ll complete identity verification (KYC), and their
           account activates tagged to your company.
+        </p>
+        <p className={styles.note}>
+          {memberSummary
+            ? <>They don’t pick any amounts. Their pension page will show: <strong>{memberSummary}</strong>.</>
+            : <>Nothing is being funded yet — set what your staff put in and what you add on the Settings page, and it applies to them too.</>}
         </p>
         <div className={styles.linkBox}>
           <span className={styles.linkText}>{result.link}</span>
@@ -308,7 +320,7 @@ export default function OnboardStaffBody({ onClose }) {
       {mode === 'single' ? (
         <>
           <p className={styles.note}>
-            <strong>Company funding:</strong> {companyFundingLabel(employer?.defaultContributionConfig)}.
+            <strong>Company funding:</strong> {contributionFundingLabel(employer?.defaultContributionConfig)}.
           </p>
           <Field label="Full name">
             <input className={styles.input} value={form.fullName} onChange={(e) => set('fullName', e.target.value)} placeholder="e.g. Jane Akello" aria-label="Full name" />

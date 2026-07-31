@@ -13,7 +13,8 @@ import {
 import { EASE_OUT_EXPO } from '../../utils/motion';
 import { formatNumber, formatUGXShort, formatUGX } from '../../utils/currency';
 import { formatDate } from '../../utils/date';
-import { useCurrentSubscriber, useMakeContribution } from '../../hooks/useSubscriber';
+import { useCurrentSubscriber, useMakeContribution, useMyEmployerFunding } from '../../hooks/useSubscriber';
+import { memberFundingSummary } from '../../utils/contributionModel';
 import { useToast } from '../../contexts/ToastContext';
 import { useIsDesktop } from '../../hooks/useIsDesktop';
 import {
@@ -36,7 +37,7 @@ const METHODS = [
   { id: 'airtel', label: 'Airtel Money', full: 'Airtel Money',     helper: '+256 70 100 0001' },
 ];
 
-// Matches the schedule form's default (ContributionSettingsForm) and the
+// Matches the schedule form's default (SubscriberScheduleForm) and the
 // server-side schedule default (retirement_pct ?? 80), so a subscriber with no
 // saved schedule sees the same 80/20 split everywhere.
 const DEFAULT_RETIREMENT_PCT = 80;
@@ -69,6 +70,20 @@ export default function SavePage() {
   const emergencyPct = 100 - retirementPct;
   const prefillAmount = location.state?.prefillAmount;
 
+  // Employer-sponsored members. Both contribution legs are company-wide employer
+  // settings (migration 0092) that the monthly contribution run remits — the
+  // member never pays them, here or anywhere. So this page is purely their EXTRA
+  // saving, which the copy has to say out loud (it previously said nothing, and
+  // the member simply landed on a bare "Top up" form).
+  //
+  // `memberFundingSummary` returning null is the app-wide "hide the funding
+  // surface" signal — it covers the legal-but-unfunded 0/0 employer config, whose
+  // members genuinely do fund their own pension and must see the normal page.
+  const { data: funding } = useMyEmployerFunding();
+  const employerFunded = Boolean(funding)
+    && memberFundingSummary(funding, funding.employerName) !== null;
+  const employerName = funding?.employerName || 'your employer';
+
   // Scheduled-payment mode — reached only via TopUpWidget's "Pay" button, which
   // sets state.scheduled. The amount is LOCKED to the configured schedule amount:
   // no presets, no input, the user can only pay what they set. Requires an actual
@@ -80,8 +95,15 @@ export default function SavePage() {
   // card whose "Pay" button is disabled with no way to edit — a dead end. Such
   // (or missing) schedules fall through to the editable view, which pre-fills the
   // amount (via prefillAmount) and shows the standard raise-to-minimum flow.
+  // Never offer "pay the scheduled amount" to an employer-funded member. Their
+  // pension money is deducted from their pay and remitted by the employer's run;
+  // billing the same figure again through mobile money would take it twice. This
+  // holds even if a schedule row carries an amount (they can also be nudged in
+  // here with `state.scheduled` from the home widgets) — the guard is on the
+  // funding read, not on the row's value.
   const scheduledAmount = Number(existing?.amount);
-  const lockableSchedule = Number.isFinite(scheduledAmount) && scheduledAmount >= MIN_CONTRIBUTION;
+  const lockableSchedule = !employerFunded
+    && Number.isFinite(scheduledAmount) && scheduledAmount >= MIN_CONTRIBUTION;
   const lockedMode = location.state?.scheduled === true && lockableSchedule;
   const cadenceLabel = FREQUENCY_LABEL[normalizeFrequency(existing?.frequency)];
 
@@ -217,9 +239,11 @@ export default function SavePage() {
               <p className={flow.eyebrow}>Make a contribution</p>
               <h1 className={flow.title}>Save</h1>
               <p className={flow.subtitle}>
-                {lockableSchedule
-                  ? 'Pay your scheduled contribution, or top up extra whenever you like.'
-                  : 'Top up your savings whenever you like.'}
+                {employerFunded
+                  ? `Your pension money from ${employerName} arrives on its own every month. This page is for extra saving on top.`
+                  : lockableSchedule
+                    ? 'Pay your scheduled contribution, or top up extra whenever you like.'
+                    : 'Top up your savings whenever you like.'}
               </p>
             </div>
           </header>
@@ -276,7 +300,12 @@ export default function SavePage() {
                   </>
                 ) : (
                   <>
-                    <span className={flow.fieldLabel}>{lockableSchedule ? 'How much extra?' : 'How much?'}</span>
+                    {/* "extra" applies to an employer-funded member too — their
+                        payroll pension is already arriving, so anything typed here
+                        is on top of it. */}
+                    <span className={flow.fieldLabel}>
+                      {lockableSchedule || employerFunded ? 'How much extra?' : 'How much?'}
+                    </span>
                     <label className={flow.amountField} data-error={belowMin || undefined}>
                       <span className={flow.amountPrefix} aria-hidden="true">UGX</span>
                       <input
@@ -310,7 +339,9 @@ export default function SavePage() {
                       </p>
                     )}
                     <p className={flow.note}>
-                      {lockableSchedule ? (
+                      {employerFunded ? (
+                        <>Extra saving of your own, on top of what {employerName} already sends.</>
+                      ) : lockableSchedule ? (
                         <>A one-off top-up — your {cadenceLabel.toLowerCase()} schedule stays <b>{formatUGX(scheduledAmount, { compact: false })}</b>.</>
                       ) : (
                         'A one-off top-up to your savings.'
@@ -402,6 +433,8 @@ export default function SavePage() {
                       )
                     ) : lockableSchedule ? (
                       <>One-off — this doesn&apos;t change your {cadenceLabel.toLowerCase()} schedule.</>
+                    ) : employerFunded ? (
+                      <>Extra saving of your own. What {employerName} sends each month is separate.</>
                     ) : (
                       'A one-off top-up to your savings.'
                     )}
@@ -441,6 +474,16 @@ export default function SavePage() {
       ) : (
         <>
       <div className={styles.body}>
+        {/* Employer-funded members: say plainly that their workplace pension money
+            arrives on its own, so this page reads as EXTRA saving rather than a bill
+            they have to settle. Placed above the amount hero because it changes how
+            the whole page should be read. Self-pay members never see it. */}
+        {employerFunded && (
+          <p className={styles.employerLede}>
+            Your pension money from <b>{employerName}</b> arrives on its own every month.
+            This page is for extra saving on top.
+          </p>
+        )}
         {/* Amount-first hero (flat card) — the app bar provides the "Save" title
             + back, so no dome here. Locked = the fixed scheduled amount; editable
             = big centred input + presets. The retirement/emergency split is not

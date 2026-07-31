@@ -55,7 +55,8 @@ import {
   rowExists,
   supabaseAdmin,
 } from '../../fixtures/db';
-import { PHONE_PREFIX } from '../../helpers/signup-constants';
+import { PHONE_PREFIX, QUICK_CONTRIBUTION_LABEL } from '../../helpers/signup-constants';
+import { walkContributionAndPay } from '../../helpers/contribution';
 
 test.setTimeout(120_000);
 
@@ -189,9 +190,12 @@ test.describe('subscriber → signup wizard → first contribution (UI + DB)', (
     // ── Step 3 · nira (silent + verified beat) ───────────────────────────
     // Auto-advances after ~2400ms verify + ~1100ms confirmation beat.
     // The "verified" beat shows "Identity verified" before goNext() fires.
-    await expect(
-      page.getByRole('heading', { name: /verifying your identity with nira/i }),
-    ).toBeVisible({ timeout: 10_000 });
+    // Silent, auto-advancing step: it moves on by itself after its mocked latency
+    // plus a confirmation beat. We deliberately DON'T assert on its loader — with no
+    // interaction to gate on, any assertion races that auto-advance (it went red
+    // intermittently for exactly this reason). Landing on the NEXT step is the proof
+    // this one passed; a failure routes to a terminal screen instead, which fails
+    // that assertion loudly.
 
     // ── Step 4 · otp ─────────────────────────────────────────────────────
     // 4-digit OTP. The route accepts any 4-digit code except '0000'; we
@@ -199,7 +203,7 @@ test.describe('subscriber → signup wizard → first contribution (UI + DB)', (
     // entering the 4th digit auto-submits after ~450ms.
     await expect(
       page.getByRole('heading', { name: /enter the code we sent you/i }),
-    ).toBeVisible({ timeout: 15_000 });
+    ).toBeVisible({ timeout: 25_000 });
 
     const otpCode = '1234';
     for (let i = 0; i < otpCode.length; i++) {
@@ -215,13 +219,22 @@ test.describe('subscriber → signup wizard → first contribution (UI + DB)', (
     await expect(
       page.getByRole('heading', { name: /take a quick selfie/i }),
     ).toBeVisible({ timeout: 15_000 });
-    await page.getByRole('button', { name: /take selfie/i }).click();
+    // "Take selfie" is gated on `canCapture` (the getUserMedia stream being live), so
+    // wait for it to enable rather than clicking into a disabled control. NOTE: this
+    // step is intermittently flaky under the fake camera device even so — the capture
+    // can land with an empty frame and faceMatch then leaves you on this screen.
+    const takeSelfie = page.getByRole('button', { name: /take selfie/i });
+    await expect(takeSelfie).toBeEnabled({ timeout: 15_000 });
+    await takeSelfie.click();
 
     // ── Step 6 · aml (silent + cleared beat) ─────────────────────────────
     // Auto-advance after the "Background check passed" beat.
-    await expect(
-      page.getByRole('heading', { name: /running a quick compliance check/i }),
-    ).toBeVisible({ timeout: 15_000 });
+    // Silent, auto-advancing step: it moves on by itself after its mocked latency
+    // plus a confirmation beat. We deliberately DON'T assert on its loader — with no
+    // interaction to gate on, any assertion races that auto-advance (it went red
+    // intermittently for exactly this reason). Landing on the NEXT step is the proof
+    // this one passed; a failure routes to a terminal screen instead, which fails
+    // that assertion loudly.
 
     // ── Step 7 · beneficiaries ───────────────────────────────────────────
     // The form lazy-seeds a single row with share=100; we only need to
@@ -230,7 +243,7 @@ test.describe('subscriber → signup wizard → first contribution (UI + DB)', (
     // don't need to touch insurance beneficiaries.
     await expect(
       page.getByRole('heading', { name: /who inherits your savings\?/i }),
-    ).toBeVisible({ timeout: 15_000 });
+    ).toBeVisible({ timeout: 25_000 });
 
     await page.getByRole('textbox', { name: /full name/i }).fill('Test Nominee');
     // The first beneficiary's phone input has no static id (id is
@@ -257,8 +270,18 @@ test.describe('subscriber → signup wizard → first contribution (UI + DB)', (
     ).toBeVisible({ timeout: 15_000 });
 
     // The consent checkbox is the only checkbox on the page.
-    await page.getByRole('checkbox').check();
-    await page.getByRole('button', { name: /i consent.*continue/i }).click();
+    // The native checkbox is deliberately visually hidden (ConsentStep.jsx: "the whole
+    // box is the clickable label"), so `.check()` fights Playwright's
+    // visible-and-stable gate. Click the label — the actual user target — and assert
+    // the state via the CTA enabling.
+    await page
+      .locator('label')
+      .filter({ hasText: /I consent to Universal Pensions processing/i })
+      .click();
+
+    const consentContinue = page.getByRole('button', { name: /i consent.*continue/i });
+    await expect(consentContinue, 'consent CTA enables once the box is ticked').toBeEnabled();
+    await consentContinue.click();
 
     // ── Step 9 · done (activated) ────────────────────────────────────────
     // PRE-PHASE-6 DRIFT: commit 9e585b7 moved activation post-payment, so
@@ -270,45 +293,21 @@ test.describe('subscriber → signup wizard → first contribution (UI + DB)', (
     // goes straight to /signup/contribution.
 
     // ── Contribution onboarding (Plan & pay) ────────────────────────────
-    // Pick monthly (already the default), enter 10,000 UGX (above the
-    // MIN_CONTRIBUTION floor), keep the default 80/20 split. Payment is now
-    // MERGED into this page (no separate "Pay now" step): the Mobile Money
-    // picker is inline in the summary and a single "Pay UGX…" CTA submits.
-    await expect(
-      page.getByRole('heading', { name: /set up your contributions/i }),
-    ).toBeVisible({ timeout: 15_000 });
-
-    // Use a preset for amount entry — '10,000 UGX' is the first preset chip.
-    await page.getByRole('button', { name: /^UGX 10,000$/ }).click();
-
-    // Section 04 · multi-product insurance — Life is on by default; add Health +
-    // Funeral so the insurancePolicy + insuranceProducts[] split is exercised
-    // end-to-end (asserted in the DB block below).
-    await page.getByRole('switch', { name: /health insurance/i }).click();
-    await page.getByRole('switch', { name: /funeral insurance/i }).click();
-
-    // Mobile Money is the default selected method; fill the inline phone so the
-    // Pay CTA enables. The label is dynamic ("Pay UGX 10,000") — match by prefix.
-    await page.getByPlaceholder('700 000 000').fill('700123456');
-
-    const payBtn = page.getByRole('button', { name: /^pay (ugx|\d)/i });
-    await expect(payBtn).toBeEnabled();
-
-    // The atomic write fires after the 1.2s simulated payment delay. Wait
-    // for the RPC response — that's the authoritative signal that the
-    // SECURITY DEFINER function completed (and, by implication, the
-    // trigger-chain created subscriber_balances + the first commission).
-    const rpcPromise = page.waitForResponse(
-      (r) =>
-        r.url().includes('/rest/v1/rpc/create_subscriber_from_signup') &&
-        r.request().method() === 'POST',
-      { timeout: 30_000 },
-    );
-
-    await payBtn.click();
-
-    const rpcResponse = await rpcPromise;
-    expect(rpcResponse.status(), 'create_subscriber_from_signup RPC must succeed').toBe(200);
+    // Two-page wizard (savings → cover → payment), driven by the shared helper
+    // so this and the agent-onboarding spec exercise the same component the same
+    // way — see helpers/contribution.ts. Monthly + the 80/20 split are defaults;
+    // we pick the first monthly preset for the amount. Life is selected by default, so
+    // we ADD health + funeral to exercise the insurancePolicy +
+    // insuranceProducts[] split (asserted in the DB block below). The atomic
+    // write fires after a 1.2s simulated payment delay; the helper registers the
+    // RPC listener before clicking Pay and asserts the 200 — the authoritative
+    // signal that the SECURITY DEFINER function completed (and, by implication,
+    // that the trigger chain created subscriber_balances + the first commission).
+    await walkContributionAndPay(page, 'create_subscriber_from_signup', {
+      audience: 'self',
+      presetLabel: QUICK_CONTRIBUTION_LABEL,
+      toggleProducts: ['health', 'funeral'],
+    });
 
     // ── DB verification ──────────────────────────────────────────────────
     // The RPC stores the canonical phone (+256...) directly into

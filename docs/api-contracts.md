@@ -190,18 +190,22 @@ Both signup RPCs gained an optional trailing `p_nonce text` parameter in `0042_s
 
 See `supabase/migrations/0002_rpc_functions.sql`, `0024_upsert_nominees.sql`, `0029_commission_simplify.sql` (slimmed commission reads), `0031_notifications.sql` (`apply_settlement`, `mark_notifications_read`), `0041_commission_aggregate_rpcs.sql`, and `0042_signup_writeflow_hardening.sql` for the canonical PL/pgSQL.
 
-### 3.4 Employer RPCs (`0035` + `apply_group_insurance` from `0039`)
+### 3.4 Employer RPCs (`0035` + `apply_group_insurance` from `0039`, + the unified-model rows from `0044`/`0092`)
 
-All `SECURITY DEFINER`, gated on `app_role = 'employer'`, scoped to the `employerId` JWT claim. Called from `src/services/employer.js`. See `BACKEND.md §10.1` for full semantics.
+All `SECURITY DEFINER`, gated on `app_role = 'employer'`, scoped to the `employerId` JWT claim (the one exception is `get_my_employer_funding`, which is gated on `app_role = 'subscriber'`). Called from `src/services/employer.js` (and `subscriber.js` for the funding read). See `BACKEND.md §10.1` for full semantics.
+
+> ⚠️ The first three rows are the **pre-`0045`** employee-era surface, dropped with the standalone `employees` table and kept here for provenance. Their `mode` / `matchPct` / per-employee-config vocabulary is retired.
 
 | RPC | Args | Effect |
 | --- | --- | --- |
-| `submit_contribution_run` | `p_rows jsonb, p_period_label text, p_method text, p_nonce text` | The core write. Re-derives every amount server-side (client amounts are advisory), splits the gross by each employee's schedule, writes `contribution_run_lines`, bumps `employees` balances inline (UGX 1,000/unit), nonce-idempotent. The `co-contribution` branch uses the `0038` match model (employer matches `matchPct`% of the employee's `monthly_contribution`, capped). **Never writes `transactions`/`subscriber_balances`/`commissions`.** |
-| `update_employee_contribution_config` | `p_employee_id text, p_config jsonb` | Ownership-checked replace of one employee's `contribution_config`. |
-| `update_employee_insurance` | `p_employee_id text, p_cover numeric, p_premium numeric` | Ownership-checked per-employee insurance cover + premium. |
-| `update_employer_profile` | `p_patch jsonb` | Patches the caller's own `employers` row (profile/config keys only). |
-| `get_employer_metrics` | _(none)_ | STABLE hero/overview aggregates scoped to the caller's employer. |
-| `apply_group_insurance` *(0039)* | `p_cover numeric` | Roster-wide flat group life cover on every owned employee (premium zeroed, status derived from cover). Returns `{ updated, cover }`. |
+| `submit_contribution_run` *(pre-`0045`, dropped)* | `p_rows jsonb, p_period_label text, p_method text, p_nonce text` | The old employee-roster write. Re-derived every amount server-side (client amounts advisory), split the gross by each employee's schedule, wrote `contribution_run_lines`, bumped `employees` balances inline (UGX 1,000/unit), nonce-idempotent. **Never wrote `transactions`/`subscriber_balances`/`commissions`.** Superseded by `submit_employer_contribution_run` below; the `0038` "employer matches `matchPct`% of the employee's own saving, capped" model it carried is gone entirely. |
+| `update_employee_contribution_config` *(pre-`0045`, dropped)* | `p_employee_id text, p_config jsonb` | Replaced ONE employee's `contribution_config`. ⚠️ **There is no per-employee funding override any more** — the column died with `0045` and the live model is a SINGLE company-wide `employers.default_contribution_config` applied to every member, patched via `update_employer_profile`. Do not re-introduce a per-member config. |
+| `update_employee_insurance` *(pre-`0045`, dropped)* | `p_employee_id text, p_cover numeric, p_premium numeric` | Ownership-checked per-employee insurance cover + premium. Group cover is now company-wide and applied inside `update_employer_profile` (`0056`/`0067`). |
+| `update_employer_profile` | `p_patch jsonb` | Patches the caller's own `employers` row (profile/config keys only) and, in the same transaction, applies group insurance (`0056`). The employer Settings save sends all six unified pension keys + the three insurance keys in ONE call. ⚠️ It performs **no shape validation** on `default_contribution_config` (unlike `create_employer`, which `0092` hardened) — the frontend form is the guard on this path. |
+| `get_employer_metrics` | _(none)_ | STABLE hero/overview aggregates scoped to the caller's employer. ⚠️ `0092` **dropped the `modeSplit` key** (the unified model has no modes). |
+| `apply_group_insurance` *(0039)* | `p_cover numeric` | Roster-wide flat group life cover on every owned employee (premium zeroed, status derived from cover). Returns `{ updated, cover }`. Folded into `update_employer_profile` by `0056`. |
+| `submit_employer_contribution_run` *(`0044` → `0092`)* | `p_period_label text, p_method text, p_nonce text` | **The live employer write.** No client amounts at all. Per ACTIVE tagged member it derives **two INDEPENDENT legs** from the member's `compensation` + the company-wide config: each leg is `round(comp × pct/100)` on a `percent` basis or `round(amount)` on a `fixed` basis, and the employer leg is **never** a function of the employee leg. Each non-zero leg posts one `transactions` row (employee leg `source='own'`, employer leg `source='employer'`, both `agent_id` NULL ⇒ no commission), split by the member's `retirement_pct`; the `0066` group-insurance leg posts alongside. A 0/0 config is a legal no-op (members skipped `zero_contribution`, `runId` null). Nonce-idempotent. Returns `{ runId, linesCreated, employerTotal, employeeTotal, insuranceTotal, grandTotal, skipped[] }`. |
+| `get_my_employer_funding` *(`0092`, NEW)* | _(none)_ | **Subscriber-gated** (`app_role='subscriber'`; RAISEs for any other role) — derives the member from the verified `subscriberId` claim, never an argument. Returns `{ employerName, employeeBasis, employeePct, employeeAmount, employerBasis, employerPct, employerAmount, compensation }`, already normalised, or jsonb **`null`** when the member is not employer-sponsored (a normal "hide the funding surface" state, not an error). Exists because no RLS policy on `public.employers` admits a subscriber JWT, and widening one would expose the whole contact/registration row. |
 
 ---
 
@@ -233,11 +237,11 @@ Supabase realtime is **off for all `public.*` tables**. `0025_drop_realtime_publ
 | Surface | Count | Where defined |
 | --- | --- | --- |
 | API routes | 14 | `api/**/*.ts` (excl. `_lib/`, `*.test.ts`) |
-| Migrations | 0001–0078 | `supabase/migrations/*.sql` (all applied to the Singapore DB, cutover 2026-06-05; range extended past 0042 as the platform matured — see `docs/migrations-runbook.md`. NB: the read RPC `get_top_entities` (0077/0078) backs the distributor/admin bounded top-N landing) |
+| Migrations | 0001–0092 | `supabase/migrations/*.sql` (range extended past 0042 as the platform matured — see `docs/migrations-runbook.md`. NB: the read RPC `get_top_entities` (0077/0078) backs the distributor/admin bounded top-N landing). **Applied state:** `0001`–`0091` are live on the Singapore DB (the tracked `supabase_migrations` ledger stops at `0084`; `0085`–`0091` were applied directly against the project). ⚠️ **`0092_unified_contribution_config` is written but NOT yet applied** — apply it out of band, never via `supabase db push` |
 | RPCs (read) | 10 | `0002`, `0020_entity_metrics_rollup_v3.sql`, slimmed commission reads in `0029`, + 3 commission aggregates in `0041` |
 | RPCs (settlement / notification) | 2 | `0031_notifications.sql` (`apply_settlement`, `mark_notifications_read`) — replaced the 14 commission state-machine RPCs dropped in `0029` |
 | RPCs (other write) | 3 | `0002_rpc_functions.sql`, `0024_upsert_nominees.sql` |
-| RPCs (employer) | 6 | `0035_employer_rpcs.sql` (5) + `apply_group_insurance` (`0039`) |
+| RPCs (employer) | 6 pre-`0045` + 3 live | `0035_employer_rpcs.sql` (5) + `apply_group_insurance` (`0039`) — 3 of those 6 died with `0045`; the live surface is `submit_employer_contribution_run` (`0044`, rewritten `0092`), `update_employer_profile`, `get_employer_metrics`, plus the subscriber-side `get_my_employer_funding` (`0092`) and the internal `_normalize_contribution_config` helper (`0092`) |
 | Tables | 28 | core + settlement stack + 5 employer tables + idempotency ledgers (incl. `subscriber_signup_uploads`, `0042`) |
 | Tables with realtime | 0 | publication empty post-`0025`; `settlement_batches` / `notifications` not published |
 

@@ -5,7 +5,7 @@ import { useAgentSubscribers, useUpdateSubscriberSchedule } from '../../hooks/us
 import { useToast } from '../../contexts/ToastContext';
 import ErrorCard from '../../components/feedback/ErrorCard';
 import PageHeader from '../../components/PageHeader';
-import ContributionSettingsForm from '../../components/contribution/ContributionSettingsForm';
+import SubscriberScheduleForm from '../../components/contribution/SubscriberScheduleForm';
 import SkeletonRow from '../../components/SkeletonRow';
 import EditScheduleConsent from './subscriber/EditScheduleConsent';
 import styles from './SubscriberScheduleDesktop.module.css';
@@ -18,9 +18,17 @@ import styles from './SubscriberScheduleDesktop.module.css';
  *
  * It is a SUB-page (a routed detail destination), so it uses the default
  * PageHeader variant (back chevron + h1). The body is a width-capped, centred
- * wrapper around the SAME ContributionSettingsForm the mobile page renders, with
+ * wrapper around the SAME SubscriberScheduleForm the mobile page renders, with
  * the SAME useUpdateSubscriberSchedule(subscriberId, agentId) mutation and the
  * SAME save / toast / back behaviour. React Query dedupes the shared data hooks.
+ *
+ * That form is the subscriber's own schedule editor, shared here so the agent
+ * sees what the member sees for the same task — with `showInsurance={false}`,
+ * because an agent cannot authorise a premium on someone else's behalf
+ * (fund_insurance_products requires app_role='subscriber'). Agent ONBOARDING is a
+ * different task and uses the signup wizard instead; see OnboardScheduleStep.
+ * The frame caps at 960px, comfortably past the form's 860px container threshold,
+ * so the two-column split layout still fires.
  */
 export default function SubscriberScheduleDesktop() {
   const { id } = useParams();
@@ -129,15 +137,18 @@ export default function SubscriberScheduleDesktop() {
         fallback={`/dashboard/subscribers/${id}`}
       />
       <div className={styles.frame}>
-        <ContributionSettingsForm
+        <SubscriberScheduleForm
           initial={existing}
           age={subscriber.age}
+          // Redacted for agents — see the note on the mobile page. Unused while
+          // insurance is hidden.
+          heldPolicies={[]}
+          showInsurance={false}
           layout="split"
           onSave={handleSave}
           onCancel={handleCancel}
           submitting={submitting}
           submitLabel={isNew ? 'Set up schedule' : undefined}
-          showInsurance={false}
         />
       </div>
     </div>

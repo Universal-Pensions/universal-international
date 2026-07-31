@@ -87,6 +87,27 @@ export const selectors = {
   },
 
   /**
+   * Open a distributor list page from the sidebar, tolerant of BOTH sidebar modes.
+   *
+   * The two-mode redesign split the rail's behaviour (Sidebar.jsx `handleNav`):
+   *   • dash mode (default) — a rail click jumps STRAIGHT to the full page and
+   *     returns; no flyout is rendered at all.
+   *   • map mode — the rail click opens a flyout whose "View Existing X" /
+   *     "Create New X" items do the navigating.
+   *
+   * Specs written before the split do `tab.click()` then unconditionally click the
+   * flyout item, which hangs for 10s in dash mode. Click the flyout item only when
+   * it actually appears.
+   */
+  openDistributorList: async (page: Page, tab: Locator, flyoutItem: Locator): Promise<void> => {
+    await tab.click();
+    // Short probe: in dash mode this never appears and we're already on the page.
+    if (await flyoutItem.isVisible({ timeout: 1_500 }).catch(() => false)) {
+      await flyoutItem.click();
+    }
+  },
+
+  /**
    * AgentDetail "View subscribers" CTA — the contract assertion the drill
    * flow specs share (agent / branch / distributor all expect the same CTA).
    * See e2e/specs/flows/{agent,branch,distributor}-*-drill-to-subscriber.spec.ts
@@ -109,5 +130,70 @@ export const selectors = {
   signInModal: {
     continueButton: (page: Page): Locator =>
       page.getByRole('button', { name: /^continue$/i }),
+
+    /**
+     * The sign-in surface, whichever form it takes.
+     *
+     * The landing redesign moved desktop sign-in OUT of `SignInModal` and into an
+     * inline `LandingLoginCard` — the nav "Sign in" button now just scrolls to it.
+     * THREE shapes are live: that card standalone (`#login`, distributor/employer/
+     * admin landings), the same card `embedded` inside a tab panel (subscriber
+     * landing), and `SignInModal` (role="dialog", mobile shell). They share no role
+     * or id, so all three carry `data-testid="signin-surface"` and this resolves by
+     * that rather than by shape.
+     *
+     * NOTE ON SEMANTICS: the inline card is always mounted on a landing page, so
+     * "visible" means "we are on a sign-in surface", not "a dialog just opened".
+     * The load-bearing assertion after a successful sign-in is the URL change —
+     * `toHaveCount(0)` here only confirms we navigated away from the landing page.
+     */
+    surface: (page: Page): Locator => page.getByTestId('signin-surface'),
+
+    /**
+     * Pick an account type on the sign-in surface, if that surface even offers one.
+     *
+     * `LandingLoginCard` renders role affordances only when handed MULTIPLE roles
+     * (`roles={['distributor','branch','agent']}` — and as `role="tab"`, not
+     * buttons). Given a single `audience` (the subscriber landing) there is nothing
+     * to pick: the card is already scoped. The old `SignInModal` had a RoleSelect
+     * step with buttons, which is where these specs' `getByRole('button')` came
+     * from.
+     *
+     * Resolves tab-or-button and no-ops when absent, so one call works across all
+     * three surfaces. Returns whether it clicked, for specs that care.
+     */
+    pickRole: async (page: Page, name: RegExp): Promise<boolean> => {
+      const candidate = page
+        .getByRole('tab', { name })
+        .or(page.getByRole('button', { name }))
+        .first();
+      if (await candidate.isVisible({ timeout: 1_500 }).catch(() => false)) {
+        await candidate.click();
+        return true;
+      }
+      return false;
+    },
+  },
+
+  /**
+   * Dashboard panels (Commissions, Settings) resolved MODE-AGNOSTICALLY.
+   *
+   * Since the distributor two-mode redesign these render two ways from the same
+   * component: a slide-in (`role="dialog"`) and a routed full-page view
+   * (`role="region"` — see CommissionPanel.jsx / Settings.jsx). Both keep the
+   * same `aria-label`, so matching on the NAME across both roles works whichever
+   * mode a given shell/route happens to use.
+   *
+   * Hard-coding `getByRole('dialog')` is what silently broke ~13 flow tests when
+   * the redesign landed: the specs weren't wrong about the panel opening, only
+   * about how it's exposed. Prefer this over either bare role.
+   */
+  panel: {
+    byName: (page: Page, name: RegExp | string): Locator =>
+      page.getByRole('dialog', { name }).or(page.getByRole('region', { name })),
+    commissions: (page: Page): Locator =>
+      selectors.panel.byName(page, /^commissions$/i),
+    settings: (page: Page): Locator =>
+      selectors.panel.byName(page, /^settings$/i),
   },
 } as const;

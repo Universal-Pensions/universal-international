@@ -36,11 +36,14 @@ import styles from './SubscriberScheduleForm.module.css';
  * subscriber's active + building cover — plus a plan snapshot and a "you pay
  * when you save" preview.
  *
- * Deliberately a DEDICATED component (not the shared ContributionSettingsForm):
- * the agent onboarding + agent schedule-edit forks keep using that shared form
- * byte-for-byte, so this money-critical subscriber surface can evolve in
- * isolation. It reuses the same design tokens + save-to-cover primitives
- * (tinFillState, annualPremium, policies helpers) so it can't drift numerically.
+ * Originally forked as a DEDICATED component so this money-critical subscriber
+ * surface could evolve while the agent forks stayed frozen on the older shared
+ * `ContributionSettingsForm`. That fork is now retired: this component backs the
+ * subscriber's own SchedulePage AND both agent schedule-edit pages (the agent
+ * ones pass `showInsurance={false}`). Agent ONBOARDING is a different task and
+ * uses the signup wizard, `src/signup/contribution/ContributionSettings.jsx`.
+ * It reuses the same design tokens + save-to-cover primitives (tinFillState,
+ * annualPremium, policies helpers) so it can't drift numerically.
  *
  * Owns its state. Calls `onSave(payload)` — the page persists the schedule and
  * funds any newly-chosen cover (via fund_insurance_products) + settles the period.
@@ -53,7 +56,22 @@ import styles from './SubscriberScheduleForm.module.css';
  *   submitting?: boolean,
  *   submitLabel?: string,
  *   layout?: 'split',                      // desktop: inputs left / sticky summary right
+ *   showInsurance?: boolean,               // default true — see below
+ *   onCancel?: () => void,                 // renders a secondary footer button when given
+ *   cancelLabel?: string,
  * }} props
+ *
+ * `showInsurance` (default true): render the Insurance tab + the purchased-cover
+ * panel, and emit the insurance selection on save. The AGENT schedule-edit pages
+ * pass `false` — an agent cannot authorise a premium for someone else
+ * (`fund_insurance_products` requires `app_role='subscriber'`), so insurance is
+ * the subscriber's own decision. When false the tab, its panel and the cover box
+ * are all hidden AND the save payload omits every insurance key, so the
+ * subscriber's existing insurance flag is left untouched.
+ *
+ * `onCancel`: the subscriber's own page has nowhere to cancel to (the schedule IS
+ * the page), but the agent pages navigate back to a subscriber detail route — so
+ * the secondary button only renders when a handler is supplied.
  */
 export default function SubscriberScheduleForm({
   initial,
@@ -63,9 +81,15 @@ export default function SubscriberScheduleForm({
   submitting = false,
   submitLabel,
   layout,
+  showInsurance = true,
+  onCancel,
+  cancelLabel = 'Cancel',
 }) {
   const isNew = !initial;
   const [tab, setTab] = useState('contribution');
+  // With insurance hidden there is no tablist to move `tab`, but deriving the
+  // rendered value makes that provable rather than incidental.
+  const activeTab = showInsurance ? tab : 'contribution';
   const [frequency, setFrequency] = useState(normalizeFrequency(initial?.frequency));
   const [amountStr, setAmountStr] = useState(initial?.amount ? String(initial.amount) : '');
   const [retirementPct, setRetirementPct] = useState(Math.max(60, initial?.retirementPct ?? 80));
@@ -162,7 +186,9 @@ export default function SubscriberScheduleForm({
   const payPreview = (isPayNow && hasNewCover) ? addedAnnualTotal : 0;
 
   // ── Dirty check ─────────────────────────────────────────────────────────────
-  const savingsChanged = !isPayNow && building.length > 0
+  // Guarded on showInsurance: with the section hidden the slider isn't rendered,
+  // so it must never be able to flip the form dirty from off-screen state.
+  const savingsChanged = showInsurance && !isPayNow && building.length > 0
     && savingsPct !== clampPct(initial?.insuranceSavingsPct, 50);
   const dirty = isNew || (
     frequency !== normalizeFrequency(initial.frequency)
@@ -188,25 +214,36 @@ export default function SubscriberScheduleForm({
   function handleSave() {
     setTouched(true);
     if (!canSave || submitting) return;
+    const base = {
+      frequency,
+      amount,
+      retirementPct,
+      emergencyPct,
+      contributionIndexationPct: indexationPct,
+      ...(initial?.nextDueDate ? { nextDueDate: initial.nextDueDate } : {}),
+    };
+    // Insurance hidden → emit NOTHING insurance-shaped. Critical: the service's
+    // updateContributionSchedule derives include_insurance AND sets
+    // insurance_choice_made from `insuranceTypes`, so sending even an empty array
+    // here would silently strip the subscriber's own insurance flag.
+    if (!showInsurance) {
+      onSave(base);
+      return;
+    }
     // insuranceTypes = everything held + newly added (drives include_insurance).
     const insuranceTypes = [
       ...INSURANCE_PRODUCTS.filter((p) => heldTypes.has(p.id) || addedTypes.has(p.id)).map((p) => p.id),
     ];
     onSave({
-      frequency,
-      amount,
-      retirementPct,
-      emergencyPct,
+      ...base,
       includeInsurance: insuranceTypes.length > 0,
       insuranceTypes,
-      contributionIndexationPct: indexationPct,
       // Route + split for the NEW cover (the page reads these to fund it).
       insuranceFundingMode: isPayNow ? 'pay_now' : 'save_to_cover',
       insuranceSavingsPct: savingsPct,
       addedProducts: addedProducts.map((p) => ({
         product: p.id, cover: p.cover, premiumMonthly: p.premiumMonthly,
       })),
-      ...(initial?.nextDueDate ? { nextDueDate: initial.nextDueDate } : {}),
     });
   }
 
@@ -222,6 +259,7 @@ export default function SubscriberScheduleForm({
           transition={{ duration: 0.32, ease: EASE_OUT_EXPO }}
         >
           {/* ── Tabs ─────────────────────────────────────────────────── */}
+          {showInsurance && (
           <div className={styles.tabbar} role="tablist" aria-label="Schedule sections">
             <button
               type="button"
@@ -254,15 +292,24 @@ export default function SubscriberScheduleForm({
               </span>
             </button>
           </div>
+          )}
 
-          {/* ── Left column: the active tab's inputs ─────────────────── */}
+          {/* ── Left column: the active tab's inputs ─────────────────────
+              With insurance hidden there is exactly one section and no tablist,
+              so the tabpanel role + aria-labelledby are dropped: a tabpanel
+              without a tablist is invalid ARIA, and the label would point at an
+              id that is no longer rendered. */}
           <div
             className={styles.inputsCol}
-            role="tabpanel"
-            id="sched-tabpanel"
-            aria-labelledby={tab === 'contribution' ? 'sched-tab-contribution' : 'sched-tab-insurance'}
+            role={showInsurance ? 'tabpanel' : undefined}
+            id={showInsurance ? 'sched-tabpanel' : undefined}
+            aria-labelledby={
+              showInsurance
+                ? (tab === 'contribution' ? 'sched-tab-contribution' : 'sched-tab-insurance')
+                : undefined
+            }
           >
-            {tab === 'contribution' ? (
+            {activeTab === 'contribution' ? (
               <>
                 {/* 01 Frequency */}
                 <section className={styles.section}>
@@ -633,7 +680,10 @@ export default function SubscriberScheduleForm({
           {/* ── Right column: the live summary ───────────────────────── */}
           <div className={styles.summaryCol}>
             <section className={styles.summary}>
-              {/* Your cover — what's purchased (active + building) */}
+              {/* Your cover — what's purchased (active + building). Hidden with the
+                  Insurance tab: its empty state points the reader AT that tab
+                  ("Add family cover on the Insurance tab"), which would not exist. */}
+              {showInsurance && (
               <div className={styles.coverBox}>
                 <div className={styles.coverHd}>Your cover</div>
                 {active.length === 0 && building.length === 0 ? (
@@ -671,6 +721,7 @@ export default function SubscriberScheduleForm({
                   </div>
                 )}
               </div>
+              )}
 
               {/* Your plan — contribution snapshot + projections */}
               <div className={styles.planBox}>
@@ -714,6 +765,16 @@ export default function SubscriberScheduleForm({
       </div>
 
       <footer className={styles.footer}>
+        {onCancel && (
+          <button
+            type="button"
+            className={styles.secondaryBtn}
+            disabled={submitting}
+            onClick={onCancel}
+          >
+            {cancelLabel}
+          </button>
+        )}
         <button
           type="button"
           className={styles.primaryBtn}

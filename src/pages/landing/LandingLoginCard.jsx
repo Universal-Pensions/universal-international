@@ -113,6 +113,11 @@ export default function LandingLoginCard({
     </>
   );
 
-  if (embedded) return <div className={styles.loginEmbedded}>{body}</div>;
-  return <div className={styles.loginCard} id="login">{body}</div>;
+  // `data-testid` marks the sign-in surface for E2E. There are three live shapes
+  // — this card standalone (distributor/employer/admin landings), this card
+  // `embedded` in a tab panel (subscriber landing), and SignInModal (mobile
+  // shell) — so specs need one anchor that spans all of them rather than a
+  // per-shape selector. See selectors.signInModal.surface.
+  if (embedded) return <div className={styles.loginEmbedded} data-testid="signin-surface">{body}</div>;
+  return <div className={styles.loginCard} id="login" data-testid="signin-surface">{body}</div>;
 }

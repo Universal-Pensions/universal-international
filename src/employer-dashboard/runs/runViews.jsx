@@ -21,14 +21,13 @@ import {
 } from '../../hooks/useEmployer';
 import { formatUGX, formatNumber } from '../../utils/currency';
 import { groupInsurancePremiumPerMember } from '../../utils/groupInsurance';
+import { deriveContributionLegs, contributionFundingLabel } from '../../utils/contributionModel';
 import { formatDate } from '../../utils/date';
 import SkeletonRow from '../../components/SkeletonRow';
 import EmptyState from '../../components/EmptyState';
 import ErrorCard from '../../components/feedback/ErrorCard';
-import { companyFundingLabel } from '../employees/fundingLabel';
 import styles from './ContributionRuns.module.css';
 
-export const round = (n) => Math.round(n);
 export const mintNonce = () =>
   typeof crypto !== 'undefined' && crypto.randomUUID
     ? crypto.randomUUID()
@@ -40,35 +39,27 @@ export const WIZARD_STEPS = [
 ];
 
 /**
- * Client mirror of the server's per-member TWO-LEG contribution — DISPLAY ONLY.
- * Reads the COMPANY config (Issue 2) + the member's `compensation` (the v2
- * driver field), mirroring `_mockSubmitEmployerRun` / `submit_employer_*`:
- *   co-contribution: employeeLeg = round(comp * employeePct/100)
- *                    employerLeg = round(employeeLeg * employerMatchPct/100)
- *   employer-only:   employeeLeg = 0
- *                    percent → employerLeg = round(comp * employerPct/100)
- *                    fixed   → employerLeg = round(employerAmount)
+ * Client mirror of the server's per-member run legs — DISPLAY ONLY, and the
+ * shared preview seam for BOTH wizard steps (the step-1 estimate panel and the
+ * confirm summary read the same numbers).
+ *
+ * The two PENSION legs are delegated to `deriveContributionLegs` — THE canonical
+ * two-leg math (`utils/contributionModel.js`), which reads the COMPANY config
+ * (Issue 2) against the member's `compensation`. Delegating instead of
+ * re-deriving here is what keeps this preview rounding-identical to the run the
+ * server commits: migration 0092's `submit_employer_contribution_run` (and
+ * `_mockSubmitEmployerRun` on the offline path) mirror that same function, one
+ * Math.round per leg. Never inline the arithmetic back into this file: a local
+ * copy silently drifts from the ledger the moment the model moves, and the
+ * employer then confirms a total the run does not post.
+ *
  * Plus the company-wide INSURANCE leg (employer-funded group insurance premium,
  * summed across ALL enabled products — Life / Health / Funeral — the same for
  * every covered member). Returns all three legs so the wizard can surface
  * employee / employer / insurance / grand.
  */
 export function previewMemberLegs(member, cfg) {
-  const mode = cfg?.mode ?? 'employer-only';
-  const comp = Number(member?.compensation ?? 0);
-  let employeeLeg = 0;
-  let employerLeg = 0;
-  if (mode === 'co-contribution') {
-    employeeLeg = round(comp * Number(cfg?.employeePct ?? 0) / 100);
-    employerLeg = round(employeeLeg * Number(cfg?.employerMatchPct ?? 0) / 100);
-  } else {
-    employeeLeg = 0;
-    if (cfg?.employerBasis === 'percent') {
-      employerLeg = round(comp * Number(cfg?.employerPct ?? 0) / 100);
-    } else {
-      employerLeg = round(Number(cfg?.employerAmount ?? 0));
-    }
-  }
+  const { employeeLeg, employerLeg } = deriveContributionLegs(cfg, member?.compensation);
   // Σ enabled products (Life / Health / Funeral), NOT the legacy life-only field,
   // so the preview equals what the run actually posts (services/employer.js
   // insuranceLeg / the 0067 RPC — group_insurance_premium_per_member).
@@ -400,7 +391,7 @@ export function NewRunWizard({ employerId, addToast, onDone, onCancel }) {
       {stepIndex === 0 && (
         <div className={styles.stepBody}>
           <p className={styles.intro}>
-            <strong>Company funding:</strong> {companyFundingLabel(config)}
+            <strong>Company funding:</strong> {contributionFundingLabel(config)}
           </p>
           <div className={styles.field}>
             <label htmlFor="run-period" className={styles.fieldLabel}>Period label</label>

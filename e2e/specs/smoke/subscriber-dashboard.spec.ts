@@ -60,7 +60,11 @@ test.describe('subscriber dashboard smoke', () => {
   test('Withdraw savings loads (/dashboard/withdraw/savings)', async ({ page }) => {
     await page.goto('/dashboard/withdraw/savings');
     await expect(selectors.errorBoundary.fallback(page)).toHaveCount(0);
-    await expect(page.getByRole('heading', { level: 1, name: /^withdraw$/i })).toBeVisible();
+    // The page <h1> is "Withdraw savings" (WithdrawPage.jsx); /^withdraw$/ was an
+    // exact match against the older, shorter title.
+    await expect(
+      page.getByRole('heading', { level: 1, name: /^withdraw savings$/i }),
+    ).toBeVisible();
   });
 
   test('Claim loads (/dashboard/withdraw/claim)', async ({ page }) => {
@@ -95,7 +99,11 @@ test.describe('subscriber dashboard smoke', () => {
   test('Reports loads (/dashboard/reports)', async ({ page }) => {
     await page.goto('/dashboard/reports');
     await expect(selectors.errorBoundary.fallback(page)).toHaveCount(0);
-    await expect(page.getByRole('heading', { level: 1, name: /^reports$/i })).toBeVisible();
+    // The /dashboard/reports hub is titled "Analytics" now (the downloadable
+    // reports are one section within it); the route kept its old name.
+    await expect(
+      page.getByRole('heading', { level: 1, name: /^analytics$/i }),
+    ).toBeVisible();
   });
 
   test('All Transactions report loads (/dashboard/reports/all-transactions)', async ({ page }) => {

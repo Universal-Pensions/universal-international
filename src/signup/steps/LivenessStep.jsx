@@ -26,6 +26,38 @@ function pickFacingMode(role) {
   return role === 'agent' ? 'environment' : 'user';
 }
 
+/** Longest we'll wait for the first decoded frame before letting the user try anyway. */
+const VIDEO_READY_TIMEOUT_MS = 4000;
+
+/**
+ * Resolve once `<video>` reports real dimensions — i.e. once it can actually be
+ * drawn onto a canvas. `loadedmetadata` is the event that populates
+ * videoWidth/videoHeight; attaching a MediaStream to srcObject does not.
+ *
+ * Resolves (rather than rejects) on timeout: a device that never fires the event
+ * shouldn't strand the user on "Starting camera…" forever. captureFrame() still
+ * guards on dimensions, so the worst case degrades to the old behaviour instead
+ * of a dead end.
+ */
+function waitForVideoDimensions(video) {
+  if (video.videoWidth > 0 && video.videoHeight > 0) return Promise.resolve();
+  return new Promise((resolve) => {
+    let done = false;
+    const finish = () => {
+      if (done) return;
+      done = true;
+      clearTimeout(timer);
+      video.removeEventListener('loadedmetadata', finish);
+      video.removeEventListener('loadeddata', finish);
+      resolve();
+    };
+    const timer = setTimeout(finish, VIDEO_READY_TIMEOUT_MS);
+    video.addEventListener('loadedmetadata', finish);
+    // Belt-and-braces: some engines populate dimensions on loadeddata instead.
+    video.addEventListener('loadeddata', finish);
+  });
+}
+
 export default function LivenessStep({ onNext, onAgentFallback }) {
   const signup = useSignup();
   const isAgent = useOnboardAudience() === 'agent';
@@ -62,7 +94,19 @@ export default function LivenessStep({ onNext, onAgentFallback }) {
       streamRef.current = stream;
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
+        // Assigning srcObject does NOT mean the element can be drawn from yet:
+        // there is a window where the stream is attached but videoWidth /
+        // videoHeight are still 0. Reporting ready there enables "Take selfie"
+        // and hides the silhouette while captureFrame() would still throw
+        // 'Camera not ready' — the user taps, gets "Couldn't capture the frame",
+        // and is bounced back to idle for no reason. Wait for real dimensions.
+        await waitForVideoDimensions(videoRef.current);
       }
+      // The await above yields, so cleanup or a Retake-triggered restart may have
+      // stopped/replaced this stream meanwhile. Only the still-current stream gets
+      // to announce readiness — otherwise we'd advertise a camera that's been torn
+      // down.
+      if (streamRef.current !== stream) return;
       setCameraReady(true);
     } catch (err) {
       const message =

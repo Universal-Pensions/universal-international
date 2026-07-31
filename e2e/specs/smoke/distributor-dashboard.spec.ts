@@ -53,7 +53,15 @@ test.describe('distributor dashboard smoke', () => {
   });
 
   test('Create branch panel opens', async ({ page }) => {
-    // Branches is a flyout — open it, then click the Create New Branch item.
+    // Branches is a flyout — but ONLY in map mode. In the default dash mode the
+    // rail jumps straight to the branch LIST and offers no Create entry at all
+    // (Sidebar.jsx `handleNav`), so enable Map view first: today that is the only
+    // route to the create form.
+    const mapViewToggle = page.getByRole('switch', { name: /map view/i });
+    await expect(mapViewToggle).toBeVisible();
+    if ((await mapViewToggle.getAttribute('aria-checked')) !== 'true') {
+      await mapViewToggle.click();
+    }
     await selectors.dashboardShell.branchesTab(page).click();
     await page.getByRole('button', { name: /create new branch/i }).click();
     // CreateBranch renders <h2>Create New Branch</h2>.
@@ -63,8 +71,11 @@ test.describe('distributor dashboard smoke', () => {
   });
 
   test('View branches panel opens', async ({ page }) => {
-    await selectors.dashboardShell.branchesTab(page).click();
-    await page.getByRole('button', { name: /view existing branches/i }).click();
+    await selectors.openDistributorList(
+      page,
+      selectors.dashboardShell.branchesTab(page),
+      page.getByRole('button', { name: /view existing branches/i }),
+    );
     // ViewBranches renders <h2>Existing Branches</h2> on list view.
     await expect(
       page.getByRole('heading', { name: /existing branches/i, level: 2 }),
@@ -72,8 +83,11 @@ test.describe('distributor dashboard smoke', () => {
   });
 
   test('View agents panel opens', async ({ page }) => {
-    await selectors.dashboardShell.agentsTab(page).click();
-    await page.getByRole('button', { name: /view existing agents/i }).click();
+    await selectors.openDistributorList(
+      page,
+      selectors.dashboardShell.agentsTab(page),
+      page.getByRole('button', { name: /view existing agents/i }),
+    );
     // ViewAgents renders <h2>Existing Agents</h2> on list view.
     await expect(
       page.getByRole('heading', { name: /existing agents/i, level: 2 }),
@@ -81,8 +95,11 @@ test.describe('distributor dashboard smoke', () => {
   });
 
   test('View subscribers panel opens', async ({ page }) => {
-    await selectors.dashboardShell.subscribersTab(page).click();
-    await selectors.viewListPanel.viewExistingSubscribers(page).click();
+    await selectors.openDistributorList(
+      page,
+      selectors.dashboardShell.subscribersTab(page),
+      selectors.viewListPanel.viewExistingSubscribers(page),
+    );
     // ViewSubscribers renders <h2>Subscribers <count></h2> — the inline count
     // span is part of the accessible name, so we use a substring match.
     await expect(
@@ -106,11 +123,11 @@ test.describe('distributor dashboard smoke', () => {
   test('Commission panel opens', async ({ page }) => {
     // Commissions opens directly.
     await selectors.dashboardShell.commissionsTab(page).click();
-    // CommissionPanel renders its title in a <div> rather than a heading, but
-    // the motion.div wrapper carries role="dialog" aria-label="Commission Settlement".
-    await expect(
-      page.getByRole('dialog', { name: /commission settlement/i }),
-    ).toBeVisible();
+    // CommissionPanel renders its title in a <div> rather than a heading; the
+    // wrapper carries aria-label="Commissions" and is role="dialog" as a slide-in
+    // or role="region" as a routed full page — selectors.panel spans both.
+    // (/commission settlement/ only ever matched the inner subtitle, never the root.)
+    await expect(selectors.panel.commissions(page)).toBeVisible();
   });
 
   test('Settings panel opens', async ({ page }) => {

@@ -15,8 +15,12 @@
 //   - The balance series is the CUMULATIVE closing balance at each month end,
 //     anchored to the LATEST dated transaction (the seed is MOCK_NOW-anchored,
 //     so building the axis from `new Date()` would drift away from the data).
+//   - Every contribution is also attributed to whoever paid it — the member, a
+//     payroll deduction their employer remitted, or the employer's own leg — so
+//     no surface has to guess from `source` alone. See `isRunPosted`.
 
 import { activeCoverTotal, activePolicies } from '../../utils/policies';
+import { isRunPosted } from '../../utils/periodSettlement';
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
@@ -94,11 +98,23 @@ export function deriveSubscriberAnalytics(subscriber, transactions = []) {
   // contributions: positive 'contribution' rows; net signed delta: every row
   // that moves the savings balance ('contribution' +, 'withdrawal' -). Premiums
   // are excluded from both (they pay insurance, not the savings pot).
+  //
+  // Contributions are ALSO bucketed by who paid them, so the monthly bars can
+  // stack the two legs instead of merging employer money into one anonymous
+  // total: selfPaid (the member's own payments) · fromPay (the employee leg of an
+  // employer contribution run — the member's money, deducted from their pay and
+  // remitted by the employer) · fromEmployer (the employer leg).
   const contribByMonth = new Map(); // ym → summed contribution amount
+  const selfPaidByMonth = new Map();
+  const fromPayByMonth = new Map();
+  const fromEmployerByMonth = new Map();
   const deltaByMonth = new Map(); // ym → summed signed savings delta
   let earliest = null;
   let latest = null;
   let totalContributed = 0;
+  let selfPaidTotal = 0;
+  let fromPayTotal = 0;
+  let fromEmployerTotal = 0;
 
   for (const t of feed) {
     const d = parseDate(t.date);
@@ -113,6 +129,13 @@ export function deriveSubscriberAnalytics(subscriber, transactions = []) {
       contribByMonth.set(ym, (contribByMonth.get(ym) || 0) + c);
       deltaByMonth.set(ym, (deltaByMonth.get(ym) || 0) + c);
       totalContributed += c;
+      const leg = t.source === 'employer'
+        ? fromEmployerByMonth
+        : (isRunPosted(t) ? fromPayByMonth : selfPaidByMonth);
+      leg.set(ym, (leg.get(ym) || 0) + c);
+      if (leg === fromEmployerByMonth) fromEmployerTotal += c;
+      else if (leg === fromPayByMonth) fromPayTotal += c;
+      else selfPaidTotal += c;
     } else if (t.type === 'withdrawal') {
       // Already negative in the feed; treat defensively either way.
       const delta = amount > 0 ? -amount : amount;
@@ -124,13 +147,19 @@ export function deriveSubscriberAnalytics(subscriber, transactions = []) {
   const hasDatedFeed = earliest != null && latest != null;
   const months = hasDatedFeed ? monthRange(earliest, latest) : [];
 
-  // Contributions-by-month bar series (one bar per month in the range).
+  // Contributions-by-month bar series (one bar per month in the range). `value`
+  // stays the month TOTAL (the single-bar chart and the contributions export read
+  // it); selfPaid/fromPay/fromEmployer are the same money split by who paid, for
+  // the stacked variant. They always sum to `value` (± rounding).
   const contributionSeries = months.map((ym) => {
     const [y, m] = ym.split('-');
     return {
       key: ym,
       label: monthLabel(Number(y), Number(m) - 1),
       value: Math.round(contribByMonth.get(ym) || 0),
+      selfPaid: Math.round(selfPaidByMonth.get(ym) || 0),
+      fromPay: Math.round(fromPayByMonth.get(ym) || 0),
+      fromEmployer: Math.round(fromEmployerByMonth.get(ym) || 0),
     };
   });
 
@@ -161,6 +190,11 @@ export function deriveSubscriberAnalytics(subscriber, transactions = []) {
       unitsHeld,
       currentUnitValue,
       totalContributed: Math.round(totalContributed),
+      // The same lifetime total split by who paid — drives the stacked bars and
+      // lets a surface hide the split entirely for a self-funded member.
+      selfPaidContributed: Math.round(selfPaidTotal),
+      fromPayContributed: Math.round(fromPayTotal),
+      employerContributed: Math.round(fromEmployerTotal),
       cover,
       insuranceStatus,
       premiumMonthly,
@@ -178,13 +212,44 @@ export function deriveSubscriberAnalytics(subscriber, transactions = []) {
 // resolve to a defined cell on every row, or the .xlsx export goes blank (the
 // {key,label}-vs-string [object Object] trap — see utils/xlsx.js).
 
-/** A flat per-transaction table (date · type · source · amount · method · ref · status). */
+/**
+ * Who a transaction's money came from, in the member's own words. Exported so the
+ * All Transactions report's own CSV uses the SAME vocabulary as this one — two
+ * downloads of the same ledger must not word the attribution differently.
+ *
+ * This column used to print `titleCase(t.source)` — literally "Own" / "Employer".
+ * "Own" is false on a downloadable statement for the employee leg of an employer
+ * contribution run: the money is the member's, but their employer deducted it from
+ * their pay and remitted it, so the member never made that payment. Run-posted
+ * rows are told apart by `contributionRunId` (utils/periodSettlement isRunPosted),
+ * which is the only marker that distinguishes payroll from a self-paid top-up.
+ */
+export function paidByLabel(t) {
+  // Employer-sourced rows (the employer leg, and employer-funded group cover) are
+  // the company's money whatever their type.
+  if (t?.source === 'employer') return 'From your employer';
+  switch (t?.type) {
+    case 'contribution':
+      return isRunPosted(t) ? 'From your pay' : 'You paid';
+    // Money coming back OUT to the member — nobody "paid" these in.
+    case 'withdrawal':
+    case 'claim':
+      return 'Paid to you';
+    // 'premium' / 'premium_sweep' (and anything new) are the member's own money.
+    default:
+      return 'You paid';
+  }
+}
+
+/** A flat per-transaction table (date · type · paid by · amount · method · ref · status). */
 export function buildTransactionsExport(transactions = []) {
   const feed = Array.isArray(transactions) ? transactions : [];
   const columns = [
     { key: 'date', label: 'Date' },
     { key: 'type', label: 'Type' },
-    { key: 'source', label: 'Source' },
+    // Key stays `source` (the field it derives from); only the header and the
+    // values are member-voice now.
+    { key: 'source', label: 'Paid by' },
     { key: 'amount', label: 'Amount (UGX)' },
     { key: 'method', label: 'Method' },
     { key: 'reference', label: 'Reference' },
@@ -193,7 +258,7 @@ export function buildTransactionsExport(transactions = []) {
   const rows = feed.map((t) => ({
     date: t.date ? String(t.date).slice(0, 10) : '',
     type: titleCase(t.type),
-    source: titleCase(t.source || 'own'),
+    source: paidByLabel(t),
     amount: Number(t.amount) || 0,
     method: t.method ?? '',
     reference: t.reference ?? '',

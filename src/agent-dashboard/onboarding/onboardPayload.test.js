@@ -1,7 +1,8 @@
 // OnboardingComplete.buildPayload — agent-onboard insurance persistence.
 //
-// The agent schedule form (ContributionSettingsForm) emits `insuranceTypes` (an
-// array of 'life'|'health'|'funeral') plus the legacy `includeInsurance` boolean.
+// The agent onboarding wizard now renders the SAME ContributionSettings the
+// subscriber sees at /signup/contribution, which emits `insuranceTypes` (an array
+// of 'life'|'health'|'funeral') plus the legacy `includeInsurance` boolean.
 // buildPayload splits it into `insurancePolicy` (life → insurance_policies) and
 // `insuranceProducts` (health/funeral → subscriber_insurance_products), deriving
 // covers/premiums from the savings constants. A schedule with no insuranceTypes
@@ -119,5 +120,54 @@ describe('OnboardingComplete.buildPayload', () => {
     expect(payload).not.toHaveProperty('insurancePolicy');
     expect(payload).not.toHaveProperty('insuranceProducts');
     expect(payload.contributionSchedule.includeInsurance).toBe(false);
+  });
+
+  // ── Fields only the shared ContributionSettings emits ─────────────────────
+  // buildPayload has always READ paymentMethod + insuranceSavingsPct, but the old
+  // agent-only form emitted neither, so they silently fell through to defaults on
+  // every agent-onboarded subscriber. Sharing the signup component fixed that;
+  // these cases pin it so a future form swap can't regress it unnoticed.
+  it('forwards the chosen paymentMethod (0072 stamps it on the first contribution)', () => {
+    const payload = buildPayload({
+      ...base,
+      contributionSchedule: {
+        frequency: 'monthly', amount: 50000, retirementPct: 80, emergencyPct: 20,
+        includeInsurance: false, insuranceTypes: [], paymentMethod: 'momo',
+      },
+    });
+    expect(payload.paymentMethod).toBe('momo');
+  });
+
+  it('forwards the save-to-cover trio (funding mode, annual target, savings split)', () => {
+    const payload = buildPayload({
+      ...base,
+      contributionSchedule: {
+        frequency: 'monthly', amount: 50000, retirementPct: 80, emergencyPct: 20,
+        includeInsurance: true, insuranceTypes: ['health'],
+        insuranceFundingMode: 'save_to_cover',
+        insurancePremiumTarget: health.premiumMonthly * 12,
+        insuranceSavingsPct: 50,
+        contributionIndexationPct: 5,
+      },
+    });
+    expect(payload.contributionSchedule).toMatchObject({
+      insuranceFundingMode: 'save_to_cover',
+      insurancePremiumTarget: health.premiumMonthly * 12,
+      insuranceSavingsPct: 50,
+      contributionIndexationPct: 5,
+    });
+  });
+
+  it('still defaults the save-to-cover trio when a schedule omits them', () => {
+    const payload = buildPayload({
+      ...base,
+      contributionSchedule: { frequency: 'monthly', amount: 50000, includeInsurance: false },
+    });
+    expect(payload.contributionSchedule).toMatchObject({
+      insuranceFundingMode: 'pay_now',
+      insurancePremiumTarget: 0,
+      insuranceSavingsPct: 100,
+      contributionIndexationPct: 0,
+    });
   });
 });

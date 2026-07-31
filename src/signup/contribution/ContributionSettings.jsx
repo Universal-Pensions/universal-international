@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { calcFV, parseAmount, FREQUENCY, periodsPerYear } from '../../utils/finance';
 import { EASE_OUT_EXPO } from '../../utils/motion';
@@ -13,6 +13,7 @@ import {
   presetsForFrequency,
 } from '../../constants/savings';
 import SignupTopbar from '../SignupTopbar';
+import { useOnboardAudience } from '../OnboardAudienceContext';
 import { PillChipGroup } from '../../components/PillChip';
 import styles from './ContributionSettings.module.css';
 
@@ -69,21 +70,37 @@ function digitsOnly(str, max = 10) {
 }
 
 // Single-column breakpoint: below this the summary aside stacks under the wizard
-// card (see the @media (max-width:1100px) block in the stylesheet). We mirror it
-// in JS so `payMode` can render the payment picker IN the wizard card — right
+// card (see the @container (max-width:1100px) block in the stylesheet). We mirror
+// it in JS so `payMode` can render the payment picker IN the wizard card — right
 // above the sticky footer Pay CTA — instead of in the off-screen stacked aside.
-const NARROW_MQ = '(max-width: 1100px)';
-function subscribeNarrow(cb) {
-  const mql = window.matchMedia(NARROW_MQ);
-  mql.addEventListener('change', cb);
-  return () => mql.removeEventListener('change', cb);
-}
-function useIsNarrowLayout() {
-  return useSyncExternalStore(
-    subscribeNarrow,
-    () => window.matchMedia(NARROW_MQ).matches,
-    () => false,
-  );
+//
+// This measures the CONTAINER (`.page`, which carries `container-type:
+// inline-size`), not the viewport. A viewport media query was wrong for the
+// embedded agent-onboarding host: there the available width is the viewport
+// minus the 240px agent rail, so a 1101px viewport left a ~797px column while
+// JS still reported "wide" and the 2-column grid crushed the left column to
+// ~433px. It also could never see the rail collapse. Measuring the very element
+// the container query sits on guarantees `showInCardPay` and `.mobilePay
+// { display }` can never disagree — one picker, never two, never zero.
+const NARROW_MAX = 1100;
+function useIsNarrowContainer(ref) {
+  const [narrow, setNarrow] = useState(false);
+  useEffect(() => {
+    const el = ref.current;
+    // No ResizeObserver (jsdom) → stay on the wide layout, which is what the
+    // previous matchMedia hook's SSR snapshot also returned.
+    if (!el || typeof ResizeObserver === 'undefined') return undefined;
+    // `observe()` delivers an initial callback in the same frame — the observer
+    // loop runs after layout and BEFORE paint — so there is no wrong-layout flash
+    // and no need to seed the value synchronously.
+    const ro = new ResizeObserver(([entry]) => {
+      const w = entry?.contentRect?.width ?? el.offsetWidth;
+      setNarrow(w > 0 && w <= NARROW_MAX);
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [ref]);
+  return narrow;
 }
 
 /** Short product name for the compact cover cards ("Life insurance" → "Life"). */
@@ -205,6 +222,7 @@ function IconAlert() {
  * is zero the tin can never fill → an inline warning replaces the helper note.
  */
 function SaveUpTin({ target, monthlyEmergency, monthsToCover, emergencyPct, isZero }) {
+  const isAgent = useOnboardAudience() === 'agent';
   const monthsWord = monthsToCover === 1 ? 'month' : 'months';
   // Live pace gauge: coin height + surface tempo are derived from how fast cover
   // would fill, so every split/product edit visibly moves the pile. fxKey remounts
@@ -221,7 +239,9 @@ function SaveUpTin({ target, monthlyEmergency, monthsToCover, emergencyPct, isZe
       </div>
       <div className={styles.detailBody}>
         <p className={styles.buildMsg}>
-          You are not covered yet. Cover starts the day your coins reach the line.
+          {isAgent
+            ? 'They’re not covered yet. Cover starts the day their coins reach the line.'
+            : 'You are not covered yet. Cover starts the day your coins reach the line.'}
         </p>
         <div className={styles.tinArea}>
           <div className={styles.tin}>
@@ -255,7 +275,9 @@ function SaveUpTin({ target, monthlyEmergency, monthsToCover, emergencyPct, isZe
             <div className={styles.tinSub}>
               {isZero
                 ? 'Right now nothing goes into the tin.'
-                : 'Your saved money moves into the tin on its own.'}
+                : isAgent
+                  ? 'Their saved money moves into the tin on its own.'
+                  : 'Your saved money moves into the tin on its own.'}
             </div>
           </div>
         </div>
@@ -298,9 +320,11 @@ function resolveInitialInsurance(initial) {
  * State is owned by ContributionSettings.
  */
 function PaymentMethodPicker({ method, setMethod, momoProvider, setMomoProvider, momoPhone, setMomoPhone, processing }) {
+  const isAgent = useOnboardAudience() === 'agent';
+  const payQ = isAgent ? 'How will they pay?' : 'How will you pay?';
   return (
-    <section className={styles.pmtSection} aria-label="How will you pay?">
-      <div className={styles.sectionEyebrow}>How will you pay?</div>
+    <section className={styles.pmtSection} aria-label={payQ}>
+      <div className={styles.sectionEyebrow}>{payQ}</div>
 
       <PillChipGroup label="Payment method" layout="grid" columns={1} className={styles.pmtMethodList}>
         {PAYMENT_METHODS.map((m) => {
@@ -375,7 +399,8 @@ function PaymentMethodPicker({ method, setMethod, momoProvider, setMomoProvider,
                             <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="1.6" />
                             <path d="M12 8v4.5M12 16v.5" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" />
                           </svg>
-                          You’ll be redirected to Pesapal to complete payment securely.
+                          You’ll be redirected to Pesapal to complete
+                          {isAgent ? ' the payment ' : ' payment '}securely.
                           Supports Visa, Mastercard, bank transfer and major mobile wallets.
                         </p>
                       )}
@@ -404,8 +429,43 @@ function PaymentMethodPicker({ method, setMethod, momoProvider, setMomoProvider,
  * page 1 sets the savings schedule (frequency, amount, split, yearly step-up),
  * page 2 adds optional family cover with a "pay now / save up for it" choice.
  * A live "Your plan" summary aside and a pinned footer CTA drive the payment.
+ *
+ * Shared by TWO hosts, following the same pattern as the KYC steps (which
+ * OnboardKycFlow reuses verbatim under its own chrome):
+ *
+ *  - `/signup/contribution` (self-signup) — owns the whole viewport: renders
+ *    `<main>` + `SignupTopbar`, is `100dvh` tall, and scrolls the card body
+ *    internally against a pinned footer.
+ *  - The agent onboarding wizard's Schedule stage — passes `embedded`, which
+ *    hands chrome + scrolling back to the host (see the prop notes below).
+ *
+ * Copy switches first-person → third-person via `useOnboardAudience()`, exactly
+ * as the shared KYC steps do. `embedded` and audience are deliberately
+ * INDEPENDENT: one is layout, the other is voice.
+ *
+ * @param {object}   initial          existing contributionSchedule, or null
+ * @param {string}   dob              drives the retirement-horizon projections
+ * @param {string}   phone            9 local digits — prefills the MoMo field.
+ *                                    NOT a canonical +256… number (digitsOnly
+ *                                    would truncate it to 10 chars).
+ * @param {boolean}  collectSchedule  false → the compact employer-invite
+ *                                    `SplitOnlyView`. That branch keeps its own
+ *                                    `<main>` + `SignupTopbar` and ignores
+ *                                    `embedded`; it is unreachable from the
+ *                                    agent path, which always collects.
+ * @param {boolean}  embedded         render inside a host that already owns the
+ *                                    page chrome and the scrollport: no `<main>`
+ *                                    landmark, no `SignupTopbar`, auto height
+ *                                    with page-scroll instead of `100dvh` +
+ *                                    internal scroll, and no document-level
+ *                                    Escape handler.
+ * @param {Function} onClose          ✕ / footer-back. Host decides where that goes.
+ * @param {Function} onConfirm        awaited with the finished schedule object.
  */
-export default function ContributionSettings({ initial, dob, phone, collectSchedule = true, onClose, onConfirm }) {
+export default function ContributionSettings({ initial, dob, phone, collectSchedule = true, embedded = false, onClose, onConfirm }) {
+  // Third-person copy when a field agent is filling this in for someone else —
+  // the same switch the eight shared KYC steps use. Independent of `embedded`.
+  const isAgent = useOnboardAudience() === 'agent';
   const [page, setPage] = useState('contrib');
   const [frequency, setFrequency] = useState(initial?.frequency ?? 'monthly');
   const [amountStr, setAmountStr] = useState(initial?.amount ? String(initial.amount) : '');
@@ -435,6 +495,7 @@ export default function ContributionSettings({ initial, dob, phone, collectSched
   const [processing, setProcessing] = useState(false);
 
   const amountInputRef = useRef(null);
+  const pageRef = useRef(null);
   const pbodyRef = useRef(null);
   const shellRef = useRef(null);
   const mobilePayRef = useRef(null);
@@ -442,17 +503,24 @@ export default function ContributionSettings({ initial, dob, phone, collectSched
   // On phones/tablets the summary aside stacks below the tall wizard card, so the
   // payment picker there is off-screen (and the sticky Pay footer scrolls away
   // before you reach it). On narrow layouts we instead render the pay block IN
-  // the wizard card, keeping it adjacent to the footer CTA.
-  const isNarrow = useIsNarrowLayout();
+  // the wizard card, keeping it adjacent to the footer CTA. Measured off `.page`
+  // — the container-query element — so JS and CSS always agree.
+  const isNarrow = useIsNarrowContainer(pageRef);
 
-  // Escape returns without saving.
+  // Escape returns without saving. Only when we own the whole page: embedded, the
+  // listener is document-level but `onClose` steps the HOST wizard back a stage, so
+  // any Escape anywhere on the agent dashboard — dismissing the Ask-AI panel, the
+  // Settings slide-in, the notification popover, a bottom sheet — would silently
+  // discard the schedule just entered. The ✕ and the footer Back cover intentional
+  // exit there.
   useEffect(() => {
+    if (embedded) return undefined;
     function onKey(e) {
       if (e.key === 'Escape' && !processing) onClose();
     }
     document.addEventListener('keydown', onKey);
     return () => document.removeEventListener('keydown', onKey);
-  }, [onClose, processing]);
+  }, [embedded, onClose, processing]);
 
   // When entering pay mode on a narrow layout, bring the in-card payment block
   // into view so tapping "Continue to payment" visibly reveals the method chooser
@@ -516,15 +584,17 @@ export default function ContributionSettings({ initial, dob, phone, collectSched
   // (and no-cover) pays only the contribution — the premium fills from the tin.
   const payTotal = hasAmount ? (hasProducts && isRouteA ? amount + insuranceTarget : amount) : 0;
   const dueDisplay = hasAmount ? (page === 'insurance' ? payTotal : amount) : 0;
+  // "Their"/"your" saving throughout — the agent is not the data subject.
+  const theirSaving = isAgent ? 'Their saving' : 'Your saving';
   const dueBrk = page !== 'insurance'
-    ? 'This is just your saving. Cover comes next.'
+    ? `This is just ${isAgent ? 'their' : 'your'} saving. Cover comes next.`
     : (!hasProducts
-        ? 'No cover chosen — just your saving.'
+        ? `No cover chosen — just ${isAgent ? 'their' : 'your'} saving.`
         : (isRouteA
-            ? 'Your saving + one year of cover.'
+            ? `${theirSaving} + one year of cover.`
             : (coverPerPeriod > 0
-                ? `Your saving — ${formatUGXExact(coverPerPeriod)} of it builds your cover.`
-                : 'Your saving — assign liquid savings to start building cover.')));
+                ? `${theirSaving} — ${formatUGXExact(coverPerPeriod)} of it builds ${isAgent ? 'their' : 'your'} cover.`
+                : `${theirSaving} — assign liquid savings to start building cover.`)));
 
   // ── Checkout breakdown ("You pay today" itemisation) ──────────────
   // What actually leaves the member's wallet today: the pension contribution,
@@ -543,9 +613,9 @@ export default function ContributionSettings({ initial, dob, phone, collectSched
   // The insurance PAYOUT (Σ cover) — what the family receives, shown as context
   // beneath the charges. Distinct from the premium (what they pay).
   const payoutSub = isRouteA
-    ? 'Paid to your family on a valid claim'
+    ? `Paid to ${isAgent ? 'their' : 'your'} family on a valid claim`
     : (coverPerPeriod > 0
-        ? 'Starts once your savings reach it'
+        ? `Starts once ${isAgent ? 'their' : 'your'} savings reach it`
         : 'Assign liquid savings to start it');
 
   const yrs = yearsToRetirement(dob);
@@ -573,7 +643,7 @@ export default function ContributionSettings({ initial, dob, phone, collectSched
   const coverCardSub = !hasProducts
     ? 'Add cover on this step'
     : isRouteA
-      ? 'Covered when you pay'
+      ? `Covered when ${isAgent ? 'they' : 'you'} pay`
       : coverGetsNothing
         ? 'Add liquid savings'
         : `Building · about ${monthsLabel}`;
@@ -585,9 +655,21 @@ export default function ContributionSettings({ initial, dob, phone, collectSched
     setPayMode(false);
     setPage(next);
     requestAnimationFrame(() => {
-      if (pbodyRef.current) pbodyRef.current.scrollTop = 0;
-      if (shellRef.current) shellRef.current.scrollTop = 0;
+      if (embedded) {
+        // Embedded, `.pbody`/`.shell` are `overflow: visible` — resetting their
+        // scrollTop is a no-op and the real scrollport is the host's. Bring the
+        // top of the card back into view instead, or tapping "Next" leaves the
+        // agent mid-card looking at the middle of the new page.
+        pageRef.current?.scrollIntoView({ block: 'start', behavior: 'smooth' });
+      } else {
+        if (pbodyRef.current) pbodyRef.current.scrollTop = 0;
+        if (shellRef.current) shellRef.current.scrollTop = 0;
+      }
     });
+    // Focus is deliberately NOT moved here. goPage runs from both the tabs (which
+    // take focus natively on click) and the footer CTA (where focus must STAY, so
+    // the same button carries the user on to "Continue to payment" without a
+    // round-trip back down the page).
   }
 
   function handlePresetClick(value) {
@@ -679,7 +761,7 @@ export default function ContributionSettings({ initial, dob, phone, collectSched
     ? (method === 'gateway' ? 'Redirecting…' : 'Processing…')
     : (method === 'gateway' ? 'Continue with Pesapal' : `Pay ${formatUGXExact(payTotal)}`);
   const ctaLabel = page === 'contrib'
-    ? 'Next: protect your family'
+    ? `Next: protect ${isAgent ? 'their' : 'your'} family`
     : (payMode ? payLabel : 'Continue to payment');
   const ctaDisabled = page === 'insurance' && payMode && (!canPay || processing);
   const onInsurance = page === 'insurance';
@@ -698,7 +780,7 @@ export default function ContributionSettings({ initial, dob, phone, collectSched
     <div className={styles.paytoday}>
       <div className={styles.ptHead}>
         <div className={styles.ptHeadMain}>
-          <span className={styles.ptKey}>You pay today</span>
+          <span className={styles.ptKey}>{isAgent ? 'They pay today' : 'You pay today'}</span>
           <span className={styles.ptVal}>{hasAmount ? formatUGXExact(dueDisplay) : 'UGX —'}</span>
         </div>
         {hasBreakdown && (
@@ -762,11 +844,23 @@ export default function ContributionSettings({ initial, dob, phone, collectSched
     </div>
   );
 
-  return (
-    <main className={styles.page} aria-label="Set up your savings and first payment">
-      <SignupTopbar stageKey="plan" />
+  // Embedded, the host owns the page landmark and the chrome. A second <main>
+  // would be a duplicate landmark (both agent shells already render
+  // `<main id="main">`, which is also the skip-link target), and SignupTopbar
+  // would contradict the host's own stepper AND offer two `<Link to="/">` exits
+  // that drop the agent out of their dashboard mid-onboarding.
+  const Root = embedded ? 'div' : 'main';
 
-      <div className={styles.shell} data-pinned="true" ref={shellRef}>
+  return (
+    <Root
+      className={styles.page}
+      data-embedded={embedded || undefined}
+      aria-label={embedded ? undefined : 'Set up your savings and first payment'}
+      ref={pageRef}
+    >
+      {!embedded && <SignupTopbar stageKey="plan" />}
+
+      <div className={styles.shell} data-pinned={embedded ? undefined : 'true'} ref={shellRef}>
       <motion.div
         className={`${styles.card} ${styles.cardWizard}`}
         initial={{ opacity: 0, y: 14, scale: 0.99 }}
@@ -789,7 +883,7 @@ export default function ContributionSettings({ initial, dob, phone, collectSched
                 {page === 'insurance' ? <IconCheck /> : '1'}
               </span>
               <span className={styles.substepLabel}>
-                Your savings<small>How much &amp; how often</small>
+                {isAgent ? 'Their savings' : 'Your savings'}<small>How much &amp; how often</small>
               </span>
             </button>
             <button
@@ -802,14 +896,14 @@ export default function ContributionSettings({ initial, dob, phone, collectSched
             >
               <span className={styles.substepNum} aria-hidden="true">2</span>
               <span className={styles.substepLabel}>
-                Protect your family<small>Add cover (optional)</small>
+                {isAgent ? 'Protect their family' : 'Protect your family'}<small>Add cover (optional)</small>
               </span>
             </button>
           </div>
           <button
             type="button"
             className={styles.closeBtn}
-            aria-label="Close contribution setup"
+            aria-label={embedded ? 'Back to the KYC step' : 'Close contribution setup'}
             onClick={onClose}
           >
             <svg viewBox="0 0 24 24" width="18" height="18" fill="none" aria-hidden="true">
@@ -912,8 +1006,8 @@ export default function ContributionSettings({ initial, dob, phone, collectSched
             </section>
 
             {/* Section 3 — Allocation */}
-            <section className={styles.section} aria-label="Split your savings">
-              <div className={styles.sectionEyebrow}>03 · Split your savings</div>
+            <section className={styles.section} aria-label={isAgent ? 'Split their savings' : 'Split your savings'}>
+              <div className={styles.sectionEyebrow}>03 · Split {isAgent ? 'their' : 'your'} savings</div>
 
               <div className={styles.splitHead}>
                 <div className={styles.splitSide}>
@@ -958,7 +1052,7 @@ export default function ContributionSettings({ initial, dob, phone, collectSched
             </section>
 
             {/* Section 4 — Yearly step-up (indexation) */}
-            <section className={styles.section} aria-label="Grow your saving each year">
+            <section className={styles.section} aria-label={isAgent ? 'Grow their saving each year' : 'Grow your saving each year'}>
               <div className={styles.idxTop}>
                 <div className={styles.idxTopText}>
                   <div className={styles.sectionEyebrow}>
@@ -966,7 +1060,7 @@ export default function ContributionSettings({ initial, dob, phone, collectSched
                     <span className={styles.sectionAside}>optional</span>
                   </div>
                   <p className={styles.idxSub}>
-                    Prices rise every year. Let your saving rise a little too, so it keeps its value.
+                    Prices rise every year. Let {isAgent ? 'their' : 'your'} saving rise a little too, so it keeps its value.
                   </p>
                 </div>
                 <div className={styles.idxBadge} data-off={indexationPct === 0}>
@@ -980,7 +1074,7 @@ export default function ContributionSettings({ initial, dob, phone, collectSched
                 step={1}
                 value={indexationPct}
                 onChange={(e) => setIndexationPct(Number.parseInt(e.target.value, 10))}
-                aria-label="How much your saving goes up each year"
+                aria-label={isAgent ? 'How much their saving goes up each year' : 'How much your saving goes up each year'}
                 aria-valuetext={indexationPct === 0 ? 'Off, saving stays the same' : `Goes up ${indexationPct} percent each year`}
                 className={`${styles.slider} ${styles.idxSlider}`}
                 style={{ '--pct': `${(indexationPct / 15) * 100}%` }}
@@ -991,7 +1085,7 @@ export default function ContributionSettings({ initial, dob, phone, collectSched
               </div>
               <div className={styles.idxEffect}>
                 {indexationPct === 0 ? (
-                  'Your saving stays the same each year.'
+                  `${isAgent ? 'Their' : 'Your'} saving stays the same each year.`
                 ) : hasAmount ? (
                   <>
                     {formatUGXExact(amount)} now →{' '}
@@ -1007,14 +1101,14 @@ export default function ContributionSettings({ initial, dob, phone, collectSched
 
           {/* PAGE 2 — Protect your family */}
           <div className={styles.pagePanel} data-on={page === 'insurance'}>
-            <section className={styles.section} aria-label="Protect your family">
+            <section className={styles.section} aria-label={isAgent ? 'Protect their family' : 'Protect your family'}>
               <div className={styles.sectionEyebrow}>
-                05 · Protect your family
+                05 · Protect {isAgent ? 'their' : 'your'} family
                 <span className={styles.sectionAside}>optional add-ons</span>
               </div>
-              <p className={styles.pageMuted}>Pick your cover. Pay once a year.</p>
+              <p className={styles.pageMuted}>Pick {isAgent ? 'their' : 'your'} cover. Pay once a year.</p>
 
-              <div className={styles.prods} role="group" aria-label="Choose your cover">
+              <div className={styles.prods} role="group" aria-label={isAgent ? 'Choose their cover' : 'Choose your cover'}>
                 {ORDERED_INSURANCE.map((p) => {
                   const active = insuranceTypes.includes(p.id);
                   return (
@@ -1049,8 +1143,8 @@ export default function ContributionSettings({ initial, dob, phone, collectSched
 
               {hasProducts && (
                 <>
-                  <p className={styles.routesHeading}>How do you want to pay?</p>
-                  <div className={styles.routes} role="radiogroup" aria-label="How do you want to pay">
+                  <p className={styles.routesHeading}>{isAgent ? 'How do they want to pay?' : 'How do you want to pay?'}</p>
+                  <div className={styles.routes} role="radiogroup" aria-label={isAgent ? 'How do they want to pay' : 'How do you want to pay'}>
                     <button
                       type="button"
                       role="radio"
@@ -1079,7 +1173,7 @@ export default function ContributionSettings({ initial, dob, phone, collectSched
                         <span className={styles.routeLabel}>Save up for it</span>
                       </span>
                       <span className={styles.routeSub}>
-                        Your saving fills the tin. Cover starts when your coins reach the line.
+                        {isAgent ? 'Their' : 'Your'} saving fills the tin. Cover starts when {isAgent ? 'their' : 'your'} coins reach the line.
                       </span>
                       <span className={styles.routeTag} data-tone="build">Save up</span>
                     </button>
@@ -1096,7 +1190,7 @@ export default function ContributionSettings({ initial, dob, phone, collectSched
                     <>
                       <div className={styles.savePct}>
                         <div className={styles.savePctHead}>
-                          <span className={styles.savePctLabel}>How much of your liquid savings builds cover?</span>
+                          <span className={styles.savePctLabel}>How much of {isAgent ? 'their' : 'your'} liquid savings builds cover?</span>
                           <strong className={styles.savePctVal}>{savingsPct}%</strong>
                         </div>
                         <input
@@ -1195,13 +1289,13 @@ export default function ContributionSettings({ initial, dob, phone, collectSched
       {!showInCardPay && (
       <motion.aside
         className={styles.summaryCard}
-        aria-label="Your plan summary"
+        aria-label={isAgent ? 'Their plan summary' : 'Your plan summary'}
         initial={{ opacity: 0, y: 14, scale: 0.99 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
         transition={{ duration: 0.55, ease: EASE_OUT_EXPO, delay: 0.08 }}
       >
         <header className={styles.sumHd}>
-          <div className={styles.sumHdTitle}>{payMode ? 'Payment' : 'Your plan'}</div>
+          <div className={styles.sumHdTitle}>{payMode ? 'Payment' : (isAgent ? 'Their plan' : 'Your plan')}</div>
           <div className={styles.sumHdSub}>{payMode ? 'Choose how to pay' : `Step ${onInsurance ? '2' : '1'} of 2`}</div>
         </header>
 
@@ -1224,13 +1318,13 @@ export default function ContributionSettings({ initial, dob, phone, collectSched
           <>
         {/* You put in — the contribution now + monthly-overall */}
         <div className={styles.putin}>
-          <div className={styles.putinLabel}>You put in</div>
+          <div className={styles.putinLabel}>{isAgent ? 'They put in' : 'You put in'}</div>
           <div className={styles.putinBig}>
             {hasAmount ? formatUGXExact(amount) : 'UGX —'}
             {hasAmount && <small>/{periodLabel}</small>}
           </div>
           <p className={styles.putinSub}>
-            {hasAmount ? planSubText : 'Enter an amount to see your plan.'}
+            {hasAmount ? planSubText : `Enter an amount to see ${isAgent ? 'their' : 'your'} plan.`}
           </p>
         </div>
 
@@ -1244,7 +1338,7 @@ export default function ContributionSettings({ initial, dob, phone, collectSched
               </span>
             </div>
             <p className={styles.ocSub}>
-              {retirementYears == null ? 'Add your date of birth' : `Locked until age ${RETIREMENT_AGE}`}
+              {retirementYears == null ? `Add ${isAgent ? 'their' : 'your'} date of birth` : `Locked until age ${RETIREMENT_AGE}`}
             </p>
           </div>
 
@@ -1278,14 +1372,25 @@ export default function ContributionSettings({ initial, dob, phone, collectSched
       </motion.aside>
       )}
       </div>
-    </main>
+    </Root>
   );
 }
 
 /**
- * Employer-only invite completion — collects ONLY the retirement/emergency split
- * and a "Finish enrolment" action (no frequency/amount/insurance/payment). The
- * employer funds the member via contribution runs; the member starts at 0.
+ * Employer-invite completion — collects ONLY the retirement/emergency split and a
+ * "Finish enrolment" action (no frequency/amount/insurance/payment).
+ *
+ * This is the path for EVERY employer invite (migration 0092 sets
+ * employer_invites.collect_schedule to a constant false). Under the unified
+ * contribution model the employer sets BOTH legs — what comes out of the member's
+ * pay and what the company adds — so the member has no amount to choose and no
+ * first deposit to pay; their schedule row is created at 0 and the employer's
+ * contribution runs fund them from then on. Insurance is deliberately not offered
+ * here either: group cover is employer-funded via the 0067 fan-out, and 0068
+ * blocks a member from re-buying a product their employer already pays for.
+ *
+ * The retirement/emergency split IS the member's own choice, which is why it is
+ * the one thing this screen collects.
  */
 function SplitOnlyView({ retirementPct, emergencyPct, setRetirementPct, onClose, onConfirm }) {
   const [processing, setProcessing] = useState(false);
@@ -1326,8 +1431,9 @@ function SplitOnlyView({ retirementPct, emergencyPct, setRetirementPct, onClose,
           </header>
 
           <p style={{ margin: '0 0 1.25rem', color: 'var(--color-gray)', lineHeight: 1.6 }}>
-            Your employer funds your pension. Choose how your savings are split between long-term
-            retirement and accessible liquid savings.
+            Your pension is paid for through your job — your employer decides what comes out of
+            your pay and what the company adds on top. Choose how your savings are split between
+            long-term retirement and accessible liquid savings.
           </p>
 
           <section className={styles.section} aria-label="Retirement vs liquid savings">

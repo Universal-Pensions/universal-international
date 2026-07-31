@@ -32,7 +32,14 @@ test.describe('branch dashboard — desktop (routed)', () => {
     await page.goto('/dashboard');
     await page.waitForLoadState('networkidle', { timeout: 20_000 });
     await expect(selectors.errorBoundary.fallback(page)).toHaveCount(0);
-    await expect(page.getByText(/branch overview/i).first()).toBeVisible();
+    // "Branch overview" identifies the home view. The mobile shell exposes it as
+    // the aria-label of a region; the desktop shell renders it as text. Accept
+    // either so this reads the same on both.
+    await expect(
+      page.getByRole('region', { name: /branch overview/i })
+        .or(page.getByText(/branch overview/i))
+        .first(),
+    ).toBeVisible();
     await expect(page.getByText(/branch admin/i).first()).toBeVisible();
     await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
   });
@@ -130,12 +137,28 @@ test.describe('branch dashboard — mobile (panels, byte-identical)', () => {
     await page.goto('/dashboard');
     await page.waitForLoadState('networkidle', { timeout: 20_000 });
     await expect(selectors.errorBoundary.fallback(page)).toHaveCount(0);
-    // The mobile MobileHeader hamburger only exists in the panel/drawer shell —
-    // its presence proves the useIsDesktop() gate fell through to mobile.
-    await expect(page.getByRole('button', { name: /open menu/i })).toBeVisible();
-    await expect(page.getByText(/branch overview/i).first()).toBeVisible();
-    // And the routed desktop rail link must NOT exist below the breakpoint.
-    await expect(page.getByRole('link', { name: 'Commissions', exact: true })).toHaveCount(0);
+    // The mobile shell's bottom tab bar proves the useIsDesktop() gate fell
+    // through to mobile: its nav landmark is labelled "Branch navigation"
+    // (BranchBottomTabBar), whereas the desktop rail's is "Primary"
+    // (BranchSideNavDesktop) — so this can only match below the breakpoint.
+    // (Was the MobileHeader "open menu" hamburger, removed when the mobile shell
+    // moved from a drawer to the persistent app-bar + bottom-tab layout.)
+    await expect(
+      page.getByRole('navigation', { name: /branch navigation/i }),
+    ).toBeVisible();
+    // "Branch overview" identifies the home view. The mobile shell exposes it as
+    // the aria-label of a region; the desktop shell renders it as text. Accept
+    // either so this reads the same on both.
+    await expect(
+      page.getByRole('region', { name: /branch overview/i })
+        .or(page.getByText(/branch overview/i))
+        .first(),
+    ).toBeVisible();
+    // And the DESKTOP rail must not be mounted below the breakpoint. Assert on the
+    // rail's nav landmark ("Primary", BranchSideNavDesktop) — not on a Commissions
+    // link, because the mobile shell is routed too now and legitimately renders
+    // its own NavLinks in the bottom tab bar.
+    await expect(page.getByRole('navigation', { name: /^primary$/i })).toHaveCount(0);
     // The mobile panel flow itself is unchanged — exercised by the existing
     // panel-based suites; here we only lock the shell boundary.
   });

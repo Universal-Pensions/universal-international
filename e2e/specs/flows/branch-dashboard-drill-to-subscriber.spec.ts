@@ -54,9 +54,24 @@ async function loadBranchScope() {
 
 async function openAgentsPanel(page: Page) {
   await page.goto('/dashboard');
-  await selectors.dashboardShell.agentsTab(page).first().click();
-  await page.getByRole('button', { name: /view existing agents/i }).click();
-  await expect(page.getByRole('heading', { name: /existing agents/i })).toBeVisible({ timeout: 15_000 });
+  // The branch shell is now fully ROUTED (BranchDesktopShell owns a <Routes>):
+  // the rail renders NavLinks to /dashboard/agents, not a button that opens a
+  // "View existing agents" flyout over a panel. Accept either shape so this
+  // reads the same on both the routed shell and the legacy panel tree.
+  const agentsNav = page
+    .getByRole('link', { name: /^agents$/i })
+    .or(selectors.dashboardShell.agentsTab(page));
+  await agentsNav.first().click();
+
+  const legacyFlyoutItem = page.getByRole('button', { name: /view existing agents/i });
+  if (await legacyFlyoutItem.isVisible({ timeout: 1_500 }).catch(() => false)) {
+    await legacyFlyoutItem.click();
+  }
+
+  // Routed shell titles the page "Agents"; the legacy panel used "Existing Agents".
+  await expect(
+    page.getByRole('heading', { name: /^(existing )?agents$/i }).first(),
+  ).toBeVisible({ timeout: 15_000 });
 }
 
 test.describe('branch admin → drill agent → subscriber (scoped)', () => {

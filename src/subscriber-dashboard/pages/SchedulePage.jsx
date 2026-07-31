@@ -6,10 +6,17 @@ import {
   useMakeContribution,
   useFundInsuranceProducts,
   useContributionPaidThisMonth,
+  useMyEmployerFunding,
 } from '../../hooks/useSubscriber';
 import { useToast } from '../../contexts/ToastContext';
 import { useIsDesktop } from '../../hooks/useIsDesktop';
-import { formatUGX } from '../../utils/currency';
+import { formatUGX, formatNumber } from '../../utils/currency';
+import {
+  deriveContributionLegs,
+  formatLegRateForMember,
+  isLegZero,
+  memberFundingSummary,
+} from '../../utils/contributionModel';
 import { contributionOwed, buildAnnualSettleLineItems } from '../../utils/periodSettlement';
 import PageHeader from '../../components/PageHeader';
 import PaySheet from '../../components/PaySheet';
@@ -42,17 +49,98 @@ export default function SchedulePage() {
   const existing = sub?.contributionSchedule;
   const isNew = !existing;
 
+  // ── Employer-sponsored members ──────────────────────────────────────────────
+  // Both contribution legs are COMPANY-WIDE employer settings (migration 0092),
+  // remitted every month by the employer's contribution run. The member has no
+  // say in either figure — the only thing on this page that is genuinely theirs
+  // is the retirement/liquid split (and any family cover they buy themselves).
+  //
+  // `useMyEmployerFunding()` returns null for a self-pay member, and EVERY
+  // employer branch below is gated on that, so the self-pay page stays
+  // byte-identical in behaviour and copy.
+  const { data: funding } = useMyEmployerFunding();
+  const legs = funding ? deriveContributionLegs(funding, funding.compensation) : null;
+  // A 0/0 employer config is legal under 0092 — it simply funds no pension.
+  // `memberFundingSummary` returns null for it, which is the app-wide "hide the
+  // funding surface" signal, and that is the right call here too: nothing arrives
+  // from payroll, so the member's own schedule really is theirs to set.
+  const fundingSummary = funding ? memberFundingSummary(funding, funding.employerName) : null;
+  const employerFunded = Boolean(funding) && fundingSummary !== null;
+  const employerName = funding?.employerName || 'your employer';
+  const payLegZero = !funding
+    || isLegZero(funding.employeeBasis, funding.employeePct, funding.employeeAmount);
+  const topUpLegZero = !funding
+    || isLegZero(funding.employerBasis, funding.employerPct, funding.employerAmount);
+  // The save-to-cover sweep (migration 0072, `IF NEW.source = 'own'`) accrues ONLY
+  // own-source contributions toward a building policy. A member whose employee leg
+  // is zero never produces an 'own' row from payroll, so a "save up for it" policy
+  // could never complete — they would be saving toward cover that never arrives.
+  // The employer leg is pension money and must NOT be diverted into premiums, so
+  // the route is refused rather than the trigger widened.
+  const buildImpossible = employerFunded && payLegZero;
+
+  // Seed the editor's amount field with the REAL employee leg instead of the
+  // employer member's placeholder 0, so the figure they see is the one leaving
+  // their pay. It is display-only: `handleSave` discards it and stores 0 (see the
+  // comment there). Two side effects this deliberately buys:
+  //   • the form's own save gate (`amount >= MIN_CONTRIBUTION`) opens, so an
+  //     employer member can finally save a split change — with a stored amount of
+  //     0 they could not save at all;
+  //   • the dirty check compares against the employer's figure, so merely opening
+  //     the page never looks like an edit.
+  // Spreading a missing `existing` is deliberate: an employer member with no
+  // schedule row still has nothing to "set up" (their amount is already decided),
+  // so the editor should open in edit framing rather than first-run framing.
+  const formInitial = employerFunded ? { ...existing, amount: legs.employeeLeg } : existing;
+
+  // Handed to SubscriberScheduleForm so the amount input itself renders read-only
+  // with a "Set by your employer" chip. The form is owned by another workstream;
+  // until it honours this prop the lock is enforced here in `handleSave` (the
+  // stored amount can never be the member's typed figure) and stated in the panel
+  // copy below. Shape: { label, note } — null for a self-pay member.
+  const amountLock = employerFunded
+    ? {
+        label: 'Set by your employer',
+        note: `${employerName} sets this amount and sends it to your pension every month.`,
+      }
+    : null;
+
   async function handleSave(schedule) {
     if (!sub) return;
+    // Refuse an impossible build up-front, before anything is written: creating the
+    // policy would strand the member on cover that can never activate.
+    if (
+      buildImpossible
+      && schedule.insuranceFundingMode === 'save_to_cover'
+      && ((schedule.addedProducts ?? []).length > 0
+        || (sub.policies ?? []).some((p) => p.status === 'building'))
+    ) {
+      addToast(
+        'error',
+        `For family cover, choose “Pay now”. Saving up for it fills from money you send yourself, and nothing comes out of your pay — ${employerName} pays your whole pension.`,
+      );
+      return;
+    }
     setSubmitting(true);
     try {
+      // An employer-funded member has NO voluntary schedule of their own: the
+      // amount shown to them is the employer's employee leg, which payroll remits.
+      // The form's amount field is seeded with that figure so they can SEE it, so
+      // whatever it holds is discarded here and the stored amount stays 0. Storing
+      // the leg instead would count it twice — the home dashboard adds the stored
+      // schedule to the funded legs (`ownMonthly + fundedMonthly`), and
+      // `paidThisMonth` deliberately ignores run-posted rows, so the settle sheet
+      // below would also bill the member for their own payroll deduction. Their
+      // extra saving is an ad-hoc top-up on the Save page instead.
+      const amountToStore = employerFunded ? 0 : schedule.amount;
+
       // 1) Persist the schedule itself (frequency / amount / split / step-up +
       //    the include-insurance flag). The 0072 funding-mode/target columns are
       //    RPC-locked, so they DON'T ride this PATCH — the funding op below sets
       //    them via the DEFINER RPC.
       await updateSchedule.mutateAsync({
         frequency: schedule.frequency,
-        amount: schedule.amount,
+        amount: amountToStore,
         retirementPct: schedule.retirementPct,
         emergencyPct: schedule.emergencyPct,
         includeInsurance: schedule.includeInsurance,
@@ -60,9 +148,16 @@ export default function SchedulePage() {
         contributionIndexationPct: schedule.contributionIndexationPct,
         ...(schedule.nextDueDate ? { nextDueDate: schedule.nextDueDate } : {}),
       });
-      addToast('success', isNew ? 'Schedule set up.' : 'Contribution schedule updated.');
+      addToast(
+        'success',
+        employerFunded
+          ? 'Saved. Your split is updated.'
+          : (isNew ? 'Schedule set up.' : 'Contribution schedule updated.'),
+      );
 
-      const owed = contributionOwed(schedule.amount, paidThisMonthAmount);
+      // Derived from what was STORED, so an employer-funded member is never asked
+      // to pay their payroll leg out of pocket here (stored amount 0 → owed 0).
+      const owed = contributionOwed(amountToStore, paidThisMonthAmount);
       const added = schedule.addedProducts ?? [];
       const payNow = schedule.insuranceFundingMode !== 'save_to_cover';
       const savingsPct = schedule.insuranceSavingsPct;
@@ -182,6 +277,63 @@ export default function SchedulePage() {
     />
   );
 
+  // Employer-funded members: the contribution amount is NOT theirs to set, so it
+  // is stated read-only with the same lock affordance the Save page uses for a
+  // scheduled amount ("Set by your schedule" → "Set by your employer"), alongside
+  // both figures in plain words. Rendered above the editor on mobile and desktop
+  // so the split below reads as the one real choice on the page.
+  const fundingPanel = employerFunded ? (
+    <section className={styles.employer} aria-labelledby="sched-funding-title">
+      <p className={styles.employerEyebrow}>How your pension is funded</p>
+      <p className={styles.employerTitle} id="sched-funding-title">{fundingSummary}</p>
+      <span className={styles.employerAmountKey}>Out of your pay each month</span>
+      <div
+        className={styles.employerAmount}
+        role="img"
+        aria-label={`${formatUGX(legs.employeeLeg, { compact: false })} of your pay goes to your pension each month. Set by your employer.`}
+      >
+        <span className={styles.employerCur} aria-hidden="true">UGX</span>
+        <span className={styles.employerNum}>{formatNumber(legs.employeeLeg)}</span>
+        <span className={styles.employerLock}>
+          <svg aria-hidden="true" width="13" height="13" viewBox="0 0 16 16" fill="none">
+            <rect x="3.25" y="7" width="9.5" height="6.25" rx="1.25" stroke="currentColor" strokeWidth="1.4" />
+            <path d="M5.25 7V5.25a2.75 2.75 0 0 1 5.5 0V7" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+          </svg>
+          Set by your employer
+        </span>
+      </div>
+      <ul className={styles.employerLegs}>
+        <li className={styles.employerLeg}>
+          <span className={styles.employerLegKey}>Your share</span>
+          <span className={styles.employerLegVal}>
+            {payLegZero
+              ? 'Nothing — at no cost to you'
+              : formatLegRateForMember(funding.employeeBasis, funding.employeePct, funding.employeeAmount)}
+          </span>
+        </li>
+        <li className={styles.employerLeg}>
+          <span className={styles.employerLegKey}>{employerName} adds</span>
+          <span className={styles.employerLegVal}>
+            {topUpLegZero
+              ? 'Nothing'
+              : `${formatLegRateForMember(funding.employerBasis, funding.employerPct, funding.employerAmount)} · ${formatUGX(legs.employerLeg, { compact: false })} each month`}
+          </span>
+        </li>
+      </ul>
+      <p className={styles.employerNote}>
+        {employerName} sends this to your pension every month — you do not pay it here, and
+        the amount is not yours to change. What you choose below is how your money is split,
+        and any family cover you add. To put in extra of your own, use <b>Save</b>.
+      </p>
+      {buildImpossible && (
+        <p className={styles.employerWarn}>
+          For family cover, choose <b>Pay now</b>. “Save up for it” fills from money you
+          send yourself, and nothing comes out of your pay — so the tin would never fill.
+        </p>
+      )}
+    </section>
+  ) : null;
+
   // A cold-start query failure would otherwise render a silent blank schedule
   // form — surface a retry card instead (mirrors HomePage's error handling).
   if (isError) {
@@ -207,12 +359,22 @@ export default function SchedulePage() {
     }));
     return (
       <div className={styles.page}>
+        {/* An employer-funded member does not "tune" an amount they never chose —
+            the title + subtitle name what is actually theirs to decide. */}
         <PageHeader
-          title={settle ? 'Settle this month' : (isNew ? 'Set up contribution schedule' : 'Tune your schedule')}
+          title={
+            settle
+              ? 'Settle this month'
+              : employerFunded
+                ? 'Your pension plan'
+                : (isNew ? 'Set up contribution schedule' : 'Tune your schedule')
+          }
           subtitle={
             settle
               ? 'Pay for the changes you just made to this month’s plan.'
-              : 'Your contribution and your family cover, in one place'
+              : employerFunded
+                ? `${employerName} sets the amount. You choose how it’s split and what cover you add.`
+                : 'Your contribution and your family cover, in one place'
           }
           fallback="/dashboard/save"
         />
@@ -266,15 +428,17 @@ export default function SchedulePage() {
           </div>
         ) : (
           <div className={styles.frame}>
+            {fundingPanel}
             {sub && (
               <SubscriberScheduleForm
-                initial={existing}
+                initial={formInitial}
                 age={sub.age}
                 heldPolicies={sub.policies}
                 layout="split"
                 onSave={handleSave}
                 submitting={submitting}
-                submitLabel={isNew ? 'Set up schedule' : undefined}
+                submitLabel={isNew && !employerFunded ? 'Set up schedule' : undefined}
+                amountLock={amountLock}
               />
             )}
           </div>
@@ -293,19 +457,25 @@ export default function SchedulePage() {
           <section className={styles.intro}>
             <p className={styles.introEyebrow}>Contribution plan</p>
             <p className={styles.introTitle}>
-              {isNew ? 'Set up your schedule' : 'Tune your schedule'}
+              {employerFunded
+                ? 'Your pension plan'
+                : (isNew ? 'Set up your schedule' : 'Tune your schedule')}
             </p>
             <p className={styles.introSub}>
-              Your contribution and your family cover, in one place.
+              {employerFunded
+                ? `${employerName} sets the amount. You choose how it’s split and what cover you add.`
+                : 'Your contribution and your family cover, in one place.'}
             </p>
           </section>
+          {fundingPanel}
           {sub && (
             <SubscriberScheduleForm
-              initial={existing}
+              initial={formInitial}
               age={sub.age}
               heldPolicies={sub.policies}
               onSave={handleSave}
               submitting={submitting}
+              amountLock={amountLock}
             />
           )}
         </div>

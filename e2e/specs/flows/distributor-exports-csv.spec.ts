@@ -105,7 +105,9 @@ test.describe('distributor → commission detail Download', () => {
 
     // Open the Commissions panel (sidebar → Commissions).
     await selectors.dashboardShell.commissionsTab(page).click();
-    const panel = page.getByRole('dialog', { name: /commission settlement/i });
+    // The panel's accessible name is "Commissions" (aria-label on the root);
+    // /commission settlement/i matched its inner subtitle text, never the root.
+    const panel = selectors.panel.commissions(page);
     await expect(panel).toBeVisible();
 
     // Smoke: the panel mounts without an error boundary fallback. The

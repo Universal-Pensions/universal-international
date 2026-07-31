@@ -28,6 +28,19 @@
   margin-bottom: var(--space-1);
 }
 
+/* Green + tick is a success claim, so it waits for the RPC like the headline
+   does. Pending reads as neutral indigo (the tick isn't drawn at all); a failed
+   save reads as the error tone. */
+.successIcon[data-status='pending'] {
+  background: color-mix(in srgb, var(--color-indigo) 8%, transparent);
+  color: var(--color-indigo-soft);
+}
+
+.successIcon[data-status='error'] {
+  background: rgba(220, 53, 69, 0.1);
+  color: var(--color-status-poor);
+}
+
 .title {
   font-family: var(--font-display);
   font-size: var(--text-2xl);

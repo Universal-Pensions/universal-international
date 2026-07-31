@@ -92,15 +92,49 @@ export function useBranchPendingContributions(branchId) {
 }
 
 /**
- * Fetch all entities at a given hierarchy level.
+ * Fetch all entities at a given hierarchy level, optionally narrowed to one
+ * parent.
+ *
+ * `scope` mirrors `entities.getAllAtLevel`'s second argument — e.g.
+ * `useAllEntities('subscriber', { agentId })`. It is threaded into the query key
+ * so a scoped list never reads (or clobbers) the unscoped cache entry. Passing
+ * no scope keeps the original key `['entities', level]` byte-for-byte, so every
+ * existing caller and its cached data are untouched.
+ *
  * @param {string} level - Hierarchy level
+ * @param {{agentId?: string, branchId?: string, districtId?: string, distributorId?: string}} [scope]
  * @returns {import('@tanstack/react-query').UseQueryResult<Object[]>}
  */
-export function useAllEntities(level) {
+export function useAllEntities(level, scope = null) {
+  // Normalise to a stable key fragment: an object literal would be a new
+  // reference every render, and key order must not matter.
+  const scopeKey = scope
+    ? Object.entries(scope)
+        .filter(([, v]) => v)
+        .sort(([a], [b]) => a.localeCompare(b))
+        .map(([k, v]) => `${k}:${v}`)
+        .join('|')
+    : null;
   return useQuery({
-    queryKey: ['entities', level],
-    queryFn: () => entities.getAllAtLevel(level),
+    queryKey: scopeKey ? ['entities', level, scopeKey] : ['entities', level],
+    queryFn: () => entities.getAllAtLevel(level, scope),
     enabled: !!level,
+  });
+}
+
+/**
+ * Subscribers under a BRANCH — a two-hop read (branch → agents → subscribers)
+ * that `useAllEntities('subscriber', …)` can't express, since `subscribers` has
+ * no branch_id column. See `entities.getSubscribersForBranch`.
+ *
+ * @param {string|null} branchId
+ * @returns {import('@tanstack/react-query').UseQueryResult<Object[]>}
+ */
+export function useSubscribersForBranch(branchId) {
+  return useQuery({
+    queryKey: ['entities', 'subscriber', `branchId:${branchId}`],
+    queryFn: () => entities.getSubscribersForBranch(branchId),
+    enabled: !!branchId,
   });
 }
 

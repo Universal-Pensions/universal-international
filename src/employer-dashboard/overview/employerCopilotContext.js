@@ -14,7 +14,7 @@
 
 import { formatUGX } from '../../utils/currency';
 import { groupInsuranceProducts } from '../../utils/groupInsurance';
-import { companyFundingLabel } from '../employees/fundingLabel';
+import { contributionFundingLabel } from '../../utils/contributionModel';
 
 /** A member "contributes" if they have a non-zero monthly compensation — the v2
  *  run driver. Compensation > 0 means a run will fund them (employee and/or
@@ -79,7 +79,7 @@ export function buildEmployerCopilotContext({
     participationPct: Math.round(derived.participationRate),
     pendingKyc,
     pendingNames: pendingInvites.map((inv) => inv.prefill?.fullName).filter(Boolean),
-    fundingLabel: companyFundingLabel(cfg),
+    fundingLabel: contributionFundingLabel(cfg),
     coverLabel: coverSum > 0 ? formatUGX(coverSum, { compact: false }) : 'no group cover',
     totalContributions: metrics.totalContributions || 0,
     lastRunLabel: runs[0]?.periodLabel || null,
