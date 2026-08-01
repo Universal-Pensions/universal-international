@@ -1,5 +1,13 @@
 // Smoke tests for the branch admin dashboard.
 //
+// NOTE on `waitForLoadState('networkidle', …).catch(() => {})`: the catch is
+// deliberate and matches every other spec in this suite. The dashboard keeps
+// polling (React Query refetches), so "networkidle" is frequently never
+// reached; an UNGUARDED wait then throws after burning its full 20s and fails a
+// test whose actual assertions would have passed. That is exactly how the
+// branch smoke specs failed intermittently — the wait is a best-effort settle
+// hint, never the assertion.
+//
 // As of the desktop redesign, the branch shell is a `useIsDesktop()` (>=1024px)
 // gate: on DESKTOP it renders BranchDesktopShell — a routed 3-column shell with
 // a white nav rail and one URL per destination (/dashboard, /dashboard/agents,
@@ -30,7 +38,7 @@ test.describe('branch dashboard — desktop (routed)', () => {
 
   test('overview loads', async ({ page }) => {
     await page.goto('/dashboard');
-    await page.waitForLoadState('networkidle', { timeout: 20_000 });
+    await page.waitForLoadState('networkidle', { timeout: 20_000 }).catch(() => {});
     await expect(selectors.errorBoundary.fallback(page)).toHaveCount(0);
     // "Branch overview" identifies the home view. The mobile shell exposes it as
     // the aria-label of a region; the desktop shell renders it as text. Accept
@@ -46,7 +54,7 @@ test.describe('branch dashboard — desktop (routed)', () => {
 
   test('rail navigates to each routed page', async ({ page }) => {
     await page.goto('/dashboard');
-    await page.waitForLoadState('networkidle', { timeout: 20_000 });
+    await page.waitForLoadState('networkidle', { timeout: 20_000 }).catch(() => {});
 
     await page.getByRole('link', { name: 'Agents', exact: true }).click();
     await expect(page).toHaveURL(/\/dashboard\/agents/);
@@ -71,7 +79,7 @@ test.describe('branch dashboard — desktop (routed)', () => {
 
   test('Add agent opens an in-page view (not a modal) with Single + Bulk tabs', async ({ page }) => {
     await page.goto('/dashboard/agents');
-    await page.waitForLoadState('networkidle', { timeout: 20_000 });
+    await page.waitForLoadState('networkidle', { timeout: 20_000 }).catch(() => {});
     await page.getByRole('button', { name: /add agent/i }).click();
     // Integrated in-page view — the heading swaps, the URL stays on /agents,
     // and crucially there is NO dialog/modal.
@@ -86,7 +94,7 @@ test.describe('branch dashboard — desktop (routed)', () => {
 
   test('agent roster shows active/inactive (no "Onboarding") and drills into a detail page', async ({ page }) => {
     await page.goto('/dashboard/agents');
-    await page.waitForLoadState('networkidle', { timeout: 20_000 });
+    await page.waitForLoadState('networkidle', { timeout: 20_000 }).catch(() => {});
     // The bogus "Onboarding" status is gone — agents are Active or Inactive.
     await expect(page.getByText(/onboarding/i)).toHaveCount(0);
     await expect(page.getByText(/^active$/i).first()).toBeVisible();
@@ -100,7 +108,7 @@ test.describe('branch dashboard — desktop (routed)', () => {
 
   test('Support ticket opens a read-only thread', async ({ page }) => {
     await page.goto('/dashboard/support');
-    await page.waitForLoadState('networkidle', { timeout: 20_000 });
+    await page.waitForLoadState('networkidle', { timeout: 20_000 }).catch(() => {});
     // TicketListRow's accessible name is the ticket subject. Click the first
     // seeded branch ticket → read-only ThreadView ("All tickets" back, no composer).
     await page.getByRole('button', {
@@ -114,13 +122,13 @@ test.describe('branch dashboard — desktop (routed)', () => {
     // intercept it for branch (open the mobile panel + rewrite the URL back to
     // /dashboard). The desktop gate must let the routed page render and STAY.
     await page.goto('/dashboard/analytics');
-    await page.waitForLoadState('networkidle', { timeout: 20_000 });
+    await page.waitForLoadState('networkidle', { timeout: 20_000 }).catch(() => {});
     await expect(selectors.errorBoundary.fallback(page)).toHaveCount(0);
     await expect(page).toHaveURL(/\/dashboard\/analytics/);
     await expect(page.getByRole('heading', { level: 1, name: /^analytics$/i })).toBeVisible();
 
     await page.goto('/dashboard/commissions');
-    await page.waitForLoadState('networkidle', { timeout: 20_000 });
+    await page.waitForLoadState('networkidle', { timeout: 20_000 }).catch(() => {});
     await expect(page).toHaveURL(/\/dashboard\/commissions/);
     await expect(page.getByRole('heading', { level: 1, name: /^commissions$/i })).toBeVisible();
   });
@@ -135,7 +143,7 @@ test.describe('branch dashboard — mobile (panels, byte-identical)', () => {
 
   test('renders the original mobile panel shell, not the routed desktop rail', async ({ page }) => {
     await page.goto('/dashboard');
-    await page.waitForLoadState('networkidle', { timeout: 20_000 });
+    await page.waitForLoadState('networkidle', { timeout: 20_000 }).catch(() => {});
     await expect(selectors.errorBoundary.fallback(page)).toHaveCount(0);
     // The mobile shell's bottom tab bar proves the useIsDesktop() gate fell
     // through to mobile: its nav landmark is labelled "Branch navigation"

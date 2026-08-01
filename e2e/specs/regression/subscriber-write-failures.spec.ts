@@ -143,7 +143,12 @@ test.describe('subscriber dashboard → write-failure surfaces', () => {
     await failPath(page, /\/rest\/v1\/rpc\//, ['POST']);
 
     await page.goto('/dashboard/withdraw/savings');
-    await expect(page.getByRole('heading', { level: 1, name: /^withdraw$/i })).toBeVisible();
+    // The h1 is "Withdraw savings", not "Withdraw" — renamed by the subscriber
+    // desktop redesign (228717d, 2026-06-19), which also split the old single
+    // /dashboard/withdraw page into a hub plus /withdraw/savings and
+    // /withdraw/claim. The anchored /^withdraw$/i this replaces could never
+    // match again.
+    await expect(page.getByRole('heading', { level: 1, name: /^withdraw savings$/i })).toBeVisible();
 
     // The amount input is a `<input type="range">` slider (WithdrawPage.jsx:164-176)
     // — role="slider", aria-label "Withdrawal amount from your <Savings|Retirement>
@@ -216,21 +221,28 @@ test.describe('subscriber dashboard → write-failure surfaces', () => {
     await page.goto('/dashboard/withdraw/claim');
     await expect(page.getByRole('heading', { level: 1, name: /file a claim/i })).toBeVisible();
 
-    // T13: skip-removal decision — convert to expect.soft.
-    // ClaimPage requires up to 4 file uploads via a `<input type="file">`
-    // (ClaimPage.jsx:304-318); the submit CTA stays disabled until at least
-    // one file is attached. Synthesising real file payloads via
-    // page.setInputFiles is out of scope for a toast-wiring regression — the
-    // useToast pipeline itself is verified by Profile Save above. Acknowledge
-    // the page mounted and the file dropzone is reachable, then exit.
-    const fileDropzone = page.locator('input[type="file"]').first();
-    expect
-      .soft(
-        await fileDropzone.count(),
-        'ClaimPage file dropzone must be present; the underlying claims-table 500 ' +
-          'path is feature-gated by required file uploads (toast wiring covered by Profile Save).',
-      )
-      .toBeGreaterThan(0);
+    // ClaimPage requires up to 4 file uploads via an `<input type="file">`; the
+    // submit CTA stays disabled until at least one file is attached.
+    // Synthesising real file payloads is out of scope for a toast-wiring
+    // regression — the useToast pipeline itself is verified by Profile Save
+    // above. So we assert the page mounted and the dropzone is REACHABLE.
+    //
+    // "Reachable" now means one click deeper. ClaimPage is a list → form →
+    // review flow, and the file input lives in the FORM view; the landing view
+    // is the claims list ("File a claim"). This assertion used to read
+    // `input[type=file]` straight off the landing page, which stopped matching
+    // once the list view existed — it had been silently soft-failing rather
+    // than guarding anything.
+    await page.getByRole('button', { name: /file a new claim/i }).first().click();
+    await expect(page.getByRole('heading', { level: 1, name: /^new claim$/i })).toBeVisible();
+
+    const fileDropzone = page.locator('input[type="file"]');
+    await expect(
+      fileDropzone.first(),
+      'ClaimPage file dropzone must be present in the form view; the underlying '
+        + 'claims-table 500 path is feature-gated by required file uploads '
+        + '(toast wiring covered by Profile Save).',
+    ).toBeAttached();
   });
 
   test('Insurance shows error toast on 500', async ({ page }) => {

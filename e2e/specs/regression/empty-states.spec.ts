@@ -38,8 +38,16 @@ test.describe('ViewBranches empty states', () => {
     await expect(page.getByRole('button', { name: /^overview$/i })).toBeVisible();
 
     // Open ViewBranches.
+    //
+    // ONE click, not two. The distributor two-mode redesign (65dcab5,
+    // 2026-07-22) made `/dashboard` open in DASH mode, where the rail navigates
+    // straight to a full-page ViewBranches — `Sidebar.jsx` renders the
+    // Branch/Agent/Subscriber flyouts (`View Existing Branches`, `Create New
+    // Branch`) only when `mapMode` is true. This spec previously clicked
+    // "Branches" and then the flyout item, which no longer exists in dash mode.
+    // The panel heading is the same `<h2>Existing Branches</h2>` in both modes,
+    // so only the navigation changed.
     await page.getByRole('button', { name: /^branches$/i }).click();
-    await page.getByRole('button', { name: /view existing branches/i }).click();
     await expect(page.getByRole('heading', { name: /existing branches/i, level: 2 })).toBeVisible();
 
     // Type a query that won't match any branch — Z-prefixed random suffix.

@@ -117,10 +117,36 @@ export default function Modal({
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
 
-    // Defer until after the portal mounts.
-    const focusTimer = window.setTimeout(() => {
+    // Defer until after the portal mounts — and RETRY until it actually has.
+    //
+    // This used to be a single `setTimeout(…, 0)` that bailed on
+    // `if (!root) return;`. AnimatePresence inserts the dialog asynchronously,
+    // so on the first tick after `open` flips, `dialogRef.current` is often
+    // still null — and the one-shot timer then gave up SILENTLY, leaving focus
+    // on whatever triggered the modal.
+    //
+    // That was not a cosmetic focus nit. `handleKeyDown` is bound to the
+    // BACKDROP (see the render below), so it only ever sees an Escape that
+    // originates inside the portal. With focus left outside, Escape reached the
+    // trigger button instead and the modal could not be dismissed by keyboard
+    // AT ALL — measured on the distributor ViewBranches confirm dialog, where
+    // `document.activeElement` stayed on the "Deactivate branch" button and the
+    // dialog survived Escape. The focus trap and the aria-modal contract were
+    // equally dead, since neither can work from outside the dialog.
+    let attempts = 0;
+    let focusTimer = 0;
+    const tryFocus = () => {
       const root = dialogRef.current;
-      if (!root) return;
+      if (!root) {
+        // ~20 × 16ms ≈ one third of a second: comfortably longer than the
+        // portal + AnimatePresence mount, and bounded so a modal that never
+        // mounts cannot spin forever.
+        if (attempts < 20) {
+          attempts += 1;
+          focusTimer = window.setTimeout(tryFocus, 16);
+        }
+        return;
+      }
       const focusables = getFocusableElements(root);
       const target = focusables[0] || root;
       try {
@@ -129,7 +155,8 @@ export default function Modal({
         // Some non-HTMLElements (or jsdom edge cases) don't accept options.
         target.focus?.();
       }
-    }, 0);
+    };
+    focusTimer = window.setTimeout(tryFocus, 0);
 
     return () => {
       window.clearTimeout(focusTimer);

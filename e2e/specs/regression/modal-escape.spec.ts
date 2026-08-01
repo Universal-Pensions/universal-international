@@ -60,9 +60,10 @@ test.describe('Modal Escape regression', () => {
       await page.goto('/dashboard');
       await expect(page.getByRole('button', { name: /^overview$/i })).toBeVisible();
 
-      // Open ViewBranches.
+      // Open ViewBranches. ONE click — the two-mode redesign (65dcab5,
+      // 2026-07-22) made dash mode navigate the rail straight to the full page;
+      // the "View Existing Branches" flyout only renders in MAP mode now.
       await page.getByRole('button', { name: /^branches$/i }).click();
-      await page.getByRole('button', { name: /view existing branches/i }).click();
       const panelHeading = page.getByRole('heading', { name: /existing branches/i, level: 2 });
       await expect(panelHeading).toBeVisible();
 
@@ -128,6 +129,28 @@ test.describe('Modal Escape regression', () => {
       // branch?".
       const modals = page.getByRole('dialog');
       await expect(modals).toHaveCount(1, { timeout: 5_000 });
+
+      // Wait for focus to actually land INSIDE the dialog before pressing
+      // Escape. `Modal` binds its key handler to the BACKDROP, so Escape is only
+      // seen once focus is within the portal; the portal mounts asynchronously
+      // (AnimatePresence), so there is a brief window after the dialog appears
+      // where focus is still on the trigger. A real user never hits that window
+      // — they read the prompt first — but Playwright presses within
+      // milliseconds. Waiting here tests the contract rather than the race.
+      //
+      // NB this window used to be unbounded: Modal's focus step was a one-shot
+      // `setTimeout(0)` that gave up silently if the node wasn't mounted yet, so
+      // focus NEVER moved and Escape could not dismiss the dialog at all. Fixed
+      // in Modal.jsx (bounded retry); this wait covers the residual mount time.
+      await expect
+        .poll(
+          () => page.evaluate(() => {
+            const dlg = document.querySelector('[role="dialog"]');
+            return !!(dlg && document.activeElement && dlg.contains(document.activeElement));
+          }),
+          { timeout: 5_000, message: 'focus should move into the dialog when it opens' },
+        )
+        .toBe(true);
 
       // Press Escape inside the modal. The shared <Modal> primitive calls
       // e.preventDefault + e.stopPropagation + nativeEvent.stopImmediatePropagation
@@ -202,8 +225,21 @@ test.describe('Modal Escape regression', () => {
       await page.goto('/dashboard');
       await expect(page.getByRole('button', { name: /^overview$/i })).toBeVisible();
 
-      // Open the CommissionPanel (its outer container is role="dialog"
-      // aria-label="Commissions").
+      // Switch to MAP view before opening Commissions — this is load-bearing,
+      // not incidental.
+      //
+      // The two-mode redesign (65dcab5, 2026-07-22) gave CommissionPanel two
+      // forms. In DASH mode `DashboardShell` renders `<CommissionPanel fullPage />`
+      // as a routed page: `role="region"`, and its document-level Escape listener
+      // is disabled outright (`if (e.key === 'Escape' && !fullPage)` in
+      // CommissionPanel.jsx). Testing the Escape contract there would assert
+      // nothing — there is no listener left to stop.
+      //
+      // The contract this spec exists to guard only exists in the DIALOG form,
+      // which `DashboardShell` renders behind `{!dashMode && …}`: `role="dialog"`
+      // WITH the live Escape-closes-the-panel listener. So drive map mode, where
+      // an Escape that escaped the modal really would close the panel.
+      await page.getByRole('switch', { name: /map view/i }).click();
       await page.getByRole('button', { name: /^commissions$/i }).click();
       const panel = page.getByRole('dialog', { name: /^commissions$/i });
       await expect(panel).toBeVisible();
