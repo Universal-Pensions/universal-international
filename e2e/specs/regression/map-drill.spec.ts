@@ -126,15 +126,18 @@ async function waitForMapSettled(page: Page, label: string): Promise<void> {
 }
 
 /**
- * Click a Leaflet polygon ONCE and assert the URL advances to `expectSegment`.
+ * Click a settled Leaflet polygon and assert the URL advances to `expectSegment`.
  *
- * The single-click discipline is the whole point of the regression: with the ref
- * fix in place the first genuine click resolves the polygon name → id and drills,
- * so the URL advances. If the bc3312f ref fix is reverted, the click handler holds
- * an empty name→id map, drillDown never fires, and this waitForURL times out — the
- * failure we want. A re-clicking poll would paper over that, so we deliberately do
- * NOT retry the click and do NOT pass force:true (the click must hit-test a real,
- * visible, settled polygon).
+ * With the bc3312f ref fix in place a genuine click resolves the polygon
+ * name → id and drills, so the URL advances. If that fix is reverted the handler
+ * holds an empty name→id map, drillDown never fires, and NO click at ANY
+ * coordinate can advance the URL — every attempt is exhausted and this throws,
+ * which is the regression the spec exists to catch (mutation-verified).
+ *
+ * Bounded to 3 attempts, re-settling between each, because the map swaps its
+ * polygon layers asynchronously as metrics land; a strict single click raced
+ * node identity and failed ~1 run in 3 for reasons unrelated to drilling. Never
+ * `force: true` — the click must hit-test a real, visible, settled polygon.
  */
 async function clickPolygonUntilUrl(
   page: Page,
@@ -145,31 +148,36 @@ async function clickPolygonUntilUrl(
   // to stop animating, so the click below hit-tests a settled polygon.
   await waitForMapSettled(page, label);
 
-  // Target the SMALLEST interactive polygon, not `.first()`.
+  // Pick the BIGGEST real shape: drop the single largest polygon, then take the
+  // largest of what remains.
   //
-  // At region level `.first()` was fine (4 sibling region shapes). After the
-  // region drill the layer set becomes the region OUTLINE plus its districts,
-  // and the outline is index 0 at ~1097×739 — the full map. Clicking it fails
-  // actionability forever: Playwright aims at the element's CENTRE, which lands
-  // on whichever district is painted on top, so the hit-test never resolves to
-  // the outline and the click retries until timeout. That is precisely how this
-  // spec failed once it was pointed at map mode.
+  // Two traps this avoids, both hit while fixing this spec:
   //
-  // The smallest shape is always a real district (or a real region at country
-  // level), never the enclosing outline, so this is stable under layer-order
-  // changes — unlike `.last()`, which only works by accident of append order.
-  const smallestIndex = await page.locator(INTERACTIVE_PATH).evaluateAll((els) => {
-    let best = 0;
-    let bestArea = Infinity;
-    els.forEach((el, i) => {
+  //  * `.first()` — after the region drill the layer set is the region OUTLINE
+  //    plus its districts, and the outline is index 0 at ~1097×739 (the whole
+  //    map). Playwright aims at an element's CENTRE, which for the outline lands
+  //    on whichever district is painted on top, so the hit-test never resolves
+  //    back to the outline and the click retries until timeout.
+  //
+  //  * smallest-polygon — safely never the outline, but a sliver district's
+  //    centre is easily occluded by neighbours drawn over it, so the click lands
+  //    on the wrong shape and the URL never advances. Observed on r-eastern.
+  //
+  // The enclosing outline is by definition the largest bbox (it bounds every
+  // child), so dropping exactly one and taking the next gives the biggest
+  // genuinely-clickable target. At country level there is no outline — only the
+  // 4 region shapes — so this simply picks the second-largest region, which is
+  // equally valid.
+  const targetIndex = await page.locator(INTERACTIVE_PATH).evaluateAll((els) => {
+    const areas = els.map((el, i) => {
       const r = el.getBoundingClientRect();
-      const area = r.width * r.height;
-      if (area > 0 && area < bestArea) {
-        bestArea = area;
-        best = i;
-      }
-    });
-    return best;
+      return { i, area: r.width * r.height };
+    }).filter((a) => a.area > 0);
+    if (areas.length === 0) return 0;
+    areas.sort((a, b) => b.area - a.area);
+    // areas[0] is the outline when one is present; fall back to it if it is the
+    // only shape on the layer.
+    return (areas[1] ?? areas[0]).i;
   });
   // Click by COORDINATE, not by element handle.
   //
@@ -196,7 +204,7 @@ async function clickPolygonUntilUrl(
   const ATTEMPTS = 3;
   for (let attempt = 1; attempt <= ATTEMPTS; attempt += 1) {
     // Re-measure every attempt — a swap invalidates the previous geometry.
-    const box = await page.locator(INTERACTIVE_PATH).nth(smallestIndex).boundingBox();
+    const box = await page.locator(INTERACTIVE_PATH).nth(targetIndex).boundingBox();
     if (box) {
       await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
       try {

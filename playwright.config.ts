@@ -30,8 +30,22 @@ export default defineConfig({
   // Demo-app data fetches against Supabase can take several seconds on cold
   // start (Vite chunk compile + first PostgREST roundtrip). Generous defaults
   // keep first-touch tests reliable; warm runs are still fast.
-  timeout: 45_000,
-  expect: { timeout: 15_000 },
+  //
+  // RAISED from 45s/15s after auditing the residual flakiness. Every remaining
+  // intermittent failure in a full serial run traced to the SAME cause: a tight
+  // per-assertion budget losing to the live Singapore database while ~130 specs
+  // hammer it. Measured example — the subscriber AgentPage renders a bare
+  // spinner and no <h1> until its query resolves; warm that is ~1s, but under
+  // full-suite load it intermittently crossed the old 15s expect budget. The
+  // DB itself was verified clean (it returns to baseline exactly after a run),
+  // so this is latency, not state leakage.
+  //
+  // These are CEILINGS, not waits: a passing assertion still returns as soon as
+  // it is satisfied, so warm runs are unchanged (~6 min for the chromium
+  // project). Raising them costs nothing on green and only lets a genuinely
+  // slow-but-correct surface finish instead of being reported as broken.
+  timeout: 75_000,
+  expect: { timeout: 25_000 },
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 1 : 0,
@@ -45,8 +59,13 @@ export default defineConfig({
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
     video: 'retain-on-failure',
-    actionTimeout: 10_000,
-    navigationTimeout: 15_000,
+    // Raised alongside `timeout`/`expect.timeout` above, and for the same
+    // reason: an ACTION (click/fill) waits for the target to become actionable,
+    // so a control that only renders after a slow query hits this budget, not
+    // the expect one. Observed on the ClaimPage "File a new claim" button under
+    // full-suite load. Same argument as above — a ceiling, not a wait.
+    actionTimeout: 20_000,
+    navigationTimeout: 25_000,
   },
 
   projects: [

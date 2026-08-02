@@ -62,21 +62,24 @@ test.describe('agent → drill subscribers (regression baseline)', () => {
     // mean "off-screen" rather than "missing". The realistic assertion is
     // that AT LEAST ONE of the top in-scope names is visible after the
     // list mounts. We take the first 3 candidates to avoid flake on order.
+    //
+    // Expressed as ONE locator alternation rather than a `Promise.race` over
+    // three separate `toBeVisible` calls. That race was wrong twice over:
+    // `Promise.race` settles on the first promise to FINISH, so a candidate
+    // that timed out at 5.0s could beat one that would have become visible at
+    // 5.1s and hand back `null`; and the fixed 5s budget was itself too tight
+    // once the list is rendering under full-suite load. A single locator waits
+    // for whichever name appears first and gets one honest timeout.
     const candidateNames = rows.slice(0, 3).map((r) => r.name);
-    const found = await Promise.race(
-      candidateNames.map(async (name) => {
-        try {
-          await expect(page.getByText(name, { exact: true }).first()).toBeVisible({ timeout: 5_000 });
-          return name;
-        } catch {
-          return null;
-        }
-      }),
-    );
-    expect(
-      found,
+    const escapeRe = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const anyCandidate = page
+      .getByText(new RegExp(`^(?:${candidateNames.map(escapeRe).join('|')})$`))
+      .first();
+
+    await expect(
+      anyCandidate,
       `expected one of [${candidateNames.join(', ')}] to be visible on the agent's subscriber list`,
-    ).toBeTruthy();
+    ).toBeVisible({ timeout: 20_000 });
   });
 
   test('subscriber detail and schedule pages load for an in-scope subscriber', async ({ page }) => {

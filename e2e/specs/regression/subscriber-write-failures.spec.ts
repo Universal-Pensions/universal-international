@@ -233,7 +233,14 @@ test.describe('subscriber dashboard → write-failure surfaces', () => {
     // `input[type=file]` straight off the landing page, which stopped matching
     // once the list view existed — it had been silently soft-failing rather
     // than guarding anything.
-    await page.getByRole('button', { name: /file a new claim/i }).first().click();
+    // Wait for the list view to finish loading before clicking. The CTA only
+    // renders once the claims + policies queries resolve, so clicking straight
+    // away races them — under full-suite load that lost against the action
+    // timeout.
+    const fileNewClaim = page.getByRole('button', { name: /file a new claim/i }).first();
+    await expect(fileNewClaim, 'ClaimPage list view should offer the "File a new claim" CTA')
+      .toBeVisible({ timeout: 30_000 });
+    await fileNewClaim.click();
     await expect(page.getByRole('heading', { level: 1, name: /^new claim$/i })).toBeVisible();
 
     const fileDropzone = page.locator('input[type="file"]');

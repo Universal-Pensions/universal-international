@@ -130,10 +130,32 @@ test.describe('subscriber dashboard smoke', () => {
   test('Agent loads (/dashboard/agent)', async ({ page }) => {
     await page.goto('/dashboard/agent');
     await expect(selectors.errorBoundary.fallback(page)).toHaveCount(0);
-    // AgentPage title is `agent?.name || 'Your agent'` — agent name depends on
-    // who is assigned to the seeded subscriber, so assert on the level-1
-    // heading existing rather than a brittle name match.
-    await expect(page.getByRole('heading', { level: 1 }).first()).toBeVisible();
+
+    // The <h1> IS the settle signal — it just needs a realistic budget.
+    //
+    // While the agent query is in flight AgentPage renders a bare spinner and
+    // NO <h1> at all (`loadingAgent ? <spinner> : …`), so this assertion is a
+    // race against that query. Warm it resolves in ~1s; under full-suite load
+    // against the live demo DB it occasionally exceeds the 15s default, which
+    // made this the single most frequent flake in the suite.
+    //
+    // Do NOT try to "settle" on the text "Your agent" — the left nav rail has a
+    // menu item with exactly that label, so such a wait matches instantly and
+    // silently does nothing. (Measured: h1s=[] with the spinner still up while
+    // that text was already visible.) The heading is the only honest signal.
+    //
+    // The raised timeout does not weaken the check: a genuinely broken page
+    // never renders an h1 and still fails, and the ErrorCard branch is asserted
+    // separately below.
+    await expect(
+      page.getByRole('heading', { level: 1 }).first(),
+      'AgentPage should settle out of its loading spinner and render a heading',
+    ).toBeVisible({ timeout: 45_000 });
+
+    // A slow load must not be confused with a failed one: the error branch
+    // ("We couldn't load your agent") renders no h1 either, so assert it is
+    // absent rather than letting a real query failure look like a timeout.
+    await expect(page.getByText(/couldn't load your agent/i)).toHaveCount(0);
   });
 
   test('Profile tab loads (/dashboard/settings)', async ({ page }) => {
