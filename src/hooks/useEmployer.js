@@ -223,6 +223,26 @@ export function useBulkCreateInvites(employerId) {
   });
 }
 
+/**
+ * Mutation: send a "finish your sign-up" reminder to selected pending invitees
+ * over the chosen channels (email / SMS / WhatsApp). Takes
+ * `{ invites, channels }` and resolves to `{ sent, unreachable, perChannel }`.
+ *
+ * Refreshes the pending-invites list on success so the rows pick up the session
+ * nudge log ("reminded 2 minutes ago"). Demo mock — no provider is wired up,
+ * see `services/employer.js#sendInviteNudges`.
+ * @param {string} employerId
+ */
+export function useSendInviteNudges(employerId) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (payload) => employer.sendInviteNudges(payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['pendingInvites', employerId] });
+    },
+  });
+}
+
 /** Mutation: cancel (expire) a pending invite. */
 export function useCancelInvite(employerId) {
   const queryClient = useQueryClient();

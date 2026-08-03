@@ -13,7 +13,7 @@ import PageHeader from '../../components/PageHeader';
 import PaySheet from '../../components/PaySheet';
 import InlinePayPanel from '../../components/InlinePayPanel';
 import ErrorCard from '../../components/feedback/ErrorCard';
-import { MOBILE_MONEY_METHODS } from '../../constants/payment';
+import { PAYMENT_METHODS } from '../../constants/payment';
 import styles from './InsurancePage.module.css';
 import flow from './desktopFlow.module.css';
 
@@ -342,8 +342,7 @@ export default function InsurancePage() {
         { label: 'Cover', value: formatUGX(selectedTier.cover, { compact: false }) },
         { label: 'Annual premium', value: `${formatUGX(selectedAnnual, { compact: false })} / yr` },
       ]}
-      methods={MOBILE_MONEY_METHODS}
-      note="You’ll receive an SMS prompt to authorise the payment on your mobile money account."
+      methods={PAYMENT_METHODS}
       submitting={paySubmitting}
       primaryLabel={`Pay ${formatUGX(selectedAnnual, { compact: false })}`}
       cancelLabel="Cancel"
@@ -430,7 +429,6 @@ export default function InsurancePage() {
           { label: 'Cover', value: formatUGX(selectedTier.cover, { compact: false }) },
           { label: 'Annual premium', value: `${formatUGX(selectedAnnual, { compact: false })} / yr` },
         ]}
-        note="You'll receive an SMS prompt to authorise the payment on your mobile money account."
         submitting={paySubmitting}
         success={{
           title: 'Cover updated',

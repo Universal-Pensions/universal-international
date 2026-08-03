@@ -2,7 +2,6 @@ import { useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { useEmployerScope } from '../../contexts/EmployerScopeContext';
-import { useEmployerPanel } from '../../contexts/EmployerPanelContext';
 import {
   useEmployer,
   useEmployerMetrics,
@@ -94,7 +93,6 @@ export default function OverviewDesktop() {
   const { user } = useAuth();
   const { employerId } = useEmployerScope();
   const navigate = useNavigate();
-  const { setKycOpen } = useEmployerPanel();
 
   const { data: employer } = useEmployer(employerId);
   const { data: metrics = {} } = useEmployerMetrics(employerId);
@@ -217,7 +215,7 @@ export default function OverviewDesktop() {
             insuranceOn={insuranceOn}
             cover={totalCover}
             onRun={() => navigate('/dashboard/runs')}
-            onKyc={() => setKycOpen(true)}
+            onKyc={() => navigate('/dashboard/pending-kyc')}
             onInsurance={() => navigate('/dashboard/insurance')}
           />
         </Card>

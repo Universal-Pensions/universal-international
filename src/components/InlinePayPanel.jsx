@@ -2,7 +2,8 @@ import { useCallback, useState } from 'react';
 import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 import { EASE_OUT_EXPO } from '../utils/motion';
 import { formatUGX } from '../utils/currency';
-import { PillChip, PillChipGroup } from './PillChip';
+import PaymentMethodPicker from './payment/PaymentMethodPicker';
+import { usePaymentMethod, gatewayPause } from './payment/usePaymentMethod';
 import styles from './InlinePayPanel.module.css';
 
 /**
@@ -14,10 +15,13 @@ import styles from './InlinePayPanel.module.css';
  *
  * The data contract mirrors <PaySheet> on purpose, so the three sheet-driven
  * pages (Schedule-settle, Insurance upgrade, Policy renewal) are a near
- * drop-in: pass `methods` and the panel owns the picker, calling
- * `onPay(method.full)`. Save / Withdraw choose their method on the left form,
- * so they omit `methods` and the panel calls `onPay()` with no argument and
- * surfaces the chosen method as a normal line item.
+ * drop-in: pass `methods` and the panel owns the picker — including the card /
+ * bank gateway and the mocked authorising hop — then calls `onPay(record)`,
+ * where `record` is the string to store as the payment method ('MTN Mobile
+ * Money', 'Bank transfer', or 'Visa •••• 4242'). Save / Withdraw choose their
+ * method on the left form, so they omit `methods`; the panel then calls
+ * `onPay()` with no argument, surfaces the chosen method as a normal line item,
+ * and leaves the gateway hop to the caller.
  *
  * Bespoke confirm content (Save's retirement/emergency split, Withdraw's
  * retirement-impact warning) goes through `lineItems` + the `extra` slot. The
@@ -74,10 +78,34 @@ export default function InlinePayPanel({
 }) {
   const reduceMotion = useReducedMotion();
   const hasMethods = Array.isArray(methods) && methods.length > 0;
-  const [methodId, setMethodId] = useState(hasMethods ? methods[0].id : undefined);
-  const method = hasMethods ? methods.find((m) => m.id === methodId) ?? methods[0] : null;
+  const pay = usePaymentMethod(hasMethods ? methods : []);
+
+  // When the panel owns the picker it also owns the mocked gateway hop, so
+  // `busy` covers that as well as the caller's in-flight write. When it does
+  // not (Save / Withdraw), everything below falls back to the caller's props
+  // and the panel behaves exactly as it did before.
+  const [authorising, setAuthorising] = useState(false);
+  const busy = submitting || authorising;
+  const activeNote = hasMethods ? (pay.note ?? note) : note;
+  const activeSubmittingLabel = hasMethods ? pay.submittingLabel : submittingLabel;
+  const canSubmit = canPay && (!hasMethods || pay.ready);
 
   const primaryClass = primaryTone === 'danger' ? styles.btnDanger : styles.btnPrimary;
+
+  async function handlePay() {
+    if (busy || !canSubmit) return;
+    if (!hasMethods) {
+      onPay?.();
+      return;
+    }
+    setAuthorising(true);
+    try {
+      await gatewayPause(pay.kind);
+      await onPay?.(pay.record);
+    } finally {
+      setAuthorising(false);
+    }
+  }
 
   // Focus moves into the panel when it appears (the triggering CTA on the left
   // unmounts/hides, so focus would otherwise fall to <body>), and into the
@@ -132,42 +160,33 @@ export default function InlinePayPanel({
             {extra}
 
             {hasMethods && (
-              <div className={styles.methodBlock}>
-                <span className={styles.methodLabel}>Pay with</span>
-                <PillChipGroup label="Payment method" layout="row">
-                  {methods.map((m) => (
-                    <PillChip
-                      key={m.id}
-                      selected={methodId === m.id}
-                      onClick={() => setMethodId(m.id)}
-                    >
-                      {m.label}
-                    </PillChip>
-                  ))}
-                </PillChipGroup>
-                {method?.helper && <p className={styles.methodHelper}>{method.helper}</p>}
-              </div>
+              <PaymentMethodPicker
+                state={pay}
+                variant="chips"
+                submitting={busy}
+                className={styles.methodBlock}
+              />
             )}
 
-            {note && <p className={styles.note}>{note}</p>}
+            {activeNote && <p className={styles.note}>{activeNote}</p>}
 
             <div className={styles.actions}>
               <button
                 type="button"
                 className={`${styles.btn} ${styles.btnGhost}`}
                 onClick={onCancel}
-                disabled={submitting}
+                disabled={busy}
               >
                 {cancelLabel}
               </button>
               <button
                 type="button"
                 className={`${styles.btn} ${primaryClass}`}
-                onClick={() => onPay?.(method?.full)}
-                disabled={submitting || !canPay}
+                onClick={handlePay}
+                disabled={busy || !canSubmit}
               >
-                {submitting
-                  ? submittingLabel
+                {busy
+                  ? activeSubmittingLabel
                   : (primaryLabel ?? `Pay ${formatUGX(total, { compact: false })}`)}
               </button>
             </div>

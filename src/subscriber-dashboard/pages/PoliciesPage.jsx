@@ -18,7 +18,7 @@ import PageHeader from '../../components/PageHeader';
 import EmptyState from '../../components/EmptyState';
 import PaySheet from '../../components/PaySheet';
 import InlinePayPanel from '../../components/InlinePayPanel';
-import { MOBILE_MONEY_METHODS } from '../../constants/payment';
+import { PAYMENT_METHODS } from '../../constants/payment';
 import styles from './PoliciesPage.module.css';
 import flow from './desktopFlow.module.css';
 
@@ -382,8 +382,7 @@ export default function PoliciesPage() {
         { label: 'Cover', value: formatUGX(renewing.cover, { compact: false }) },
         { label: 'Annual premium', value: `${formatUGX(renewing.renewalAmount, { compact: false })} / yr` },
       ]}
-      methods={MOBILE_MONEY_METHODS}
-      note="You’ll receive an SMS prompt to authorise the payment on your mobile money account."
+      methods={PAYMENT_METHODS}
       submitting={submitting}
       primaryLabel={`Pay ${formatUGX(renewing.renewalAmount, { compact: false })}`}
       cancelLabel="Cancel"
@@ -464,7 +463,6 @@ export default function PoliciesPage() {
           { label: 'Cover', value: formatUGX(renewing.cover, { compact: false }) },
           { label: 'Annual premium', value: `${formatUGX(renewing.renewalAmount, { compact: false })} / yr` },
         ] : []}
-        note="You'll receive an SMS prompt to authorise the payment on your mobile money account."
         submitting={submitting}
         success={{
           title: 'Policy renewed',

@@ -3,13 +3,15 @@ import { createPortal } from 'react-dom';
 import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 import { EASE_OUT_EXPO } from '../utils/motion';
 import { formatUGX } from '../utils/currency';
-import { PillChip, PillChipGroup } from './PillChip';
-import { MOBILE_MONEY_METHODS } from '../constants/payment';
+import { PAYMENT_METHODS } from '../constants/payment';
+import PaymentMethodPicker from './payment/PaymentMethodPicker';
+import { usePaymentMethod, gatewayPause } from './payment/usePaymentMethod';
 import styles from './PaySheet.module.css';
 
-// Mobile-money methods, matching the Save / Policies flows. Single-sourced in
-// constants/payment so the desktop <InlinePayPanel> offers the SAME picker.
-const DEFAULT_METHODS = MOBILE_MONEY_METHODS;
+// Mobile money + card + bank transfer, matching the Save / Policies flows.
+// Single-sourced in constants/payment so the desktop <InlinePayPanel> offers
+// the SAME picker.
+const DEFAULT_METHODS = PAYMENT_METHODS;
 
 /**
  * Shared demo pay sheet — a portaled bottom sheet with a confirm view (eyebrow +
@@ -17,8 +19,12 @@ const DEFAULT_METHODS = MOBILE_MONEY_METHODS;
  * the Policies renewal flow, the InsurancePage cover upgrade, and the schedule
  * "settle this period" prompt, so every pay surface looks the same.
  *
- * The sheet owns the method selection; `onPay` receives the chosen method's full
- * name (e.g. 'MTN Mobile Money') so callers can pass it straight to their RPC.
+ * The sheet owns the method selection AND its gateway (card entry / bank
+ * details). `onPay` receives the string to record as the payment method — the
+ * method's full name for mobile money and bank transfer, or a brand + last-4
+ * label for a card ('Visa •••• 4242') — so callers pass it straight to their
+ * RPC. The mocked gateway hop runs here, before `onPay` fires, so callers get
+ * the authorising step for free.
  *
  * @param {{
  *   open: boolean,
@@ -58,12 +64,28 @@ export default function PaySheet({
   onClose,
 }) {
   const reduceMotion = useReducedMotion();
-  const [methodId, setMethodId] = useState(methods[0]?.id);
-  const method = methods.find((m) => m.id === methodId) ?? methods[0];
+  const pay = usePaymentMethod(methods);
+
+  // The mocked gateway hop is owned here, so `busy` covers both it and the
+  // caller's own in-flight write. Everything that could interrupt a payment —
+  // the close affordances and the pay button — gates on `busy`, not `submitting`.
+  const [authorising, setAuthorising] = useState(false);
+  const busy = submitting || authorising;
 
   function handleClose() {
-    if (submitting) return;
+    if (busy) return;
     onClose?.();
+  }
+
+  async function handlePay() {
+    if (busy || !pay.ready) return;
+    setAuthorising(true);
+    try {
+      await gatewayPause(pay.kind);
+      await onPay?.(pay.record);
+    } finally {
+      setAuthorising(false);
+    }
   }
 
   return createPortal(
@@ -107,31 +129,31 @@ export default function PaySheet({
                   </ul>
                 )}
 
-                <div className={styles.methodBlock}>
-                  <span className={styles.methodLabel}>Pay with</span>
-                  <PillChipGroup label="Payment method" layout="row">
-                    {methods.map((m) => (
-                      <PillChip key={m.id} selected={methodId === m.id} onClick={() => setMethodId(m.id)}>
-                        {m.label}
-                      </PillChip>
-                    ))}
-                  </PillChipGroup>
-                  {method?.helper && <p className={styles.methodHelper}>{method.helper}</p>}
-                </div>
+                <PaymentMethodPicker
+                  state={pay}
+                  variant="chips"
+                  submitting={busy}
+                  className={styles.methodBlock}
+                />
 
-                {note && <p className={styles.confirmNote}>{note}</p>}
+                {/* The selected method supplies its own note (SMS prompt vs card
+                    authorisation vs transfer clearing), so a caller-passed
+                    `note` is only the fallback for a method-less sheet. */}
+                {(pay.note ?? note) && <p className={styles.confirmNote}>{pay.note ?? note}</p>}
 
                 <div className={styles.sheetActions}>
-                  <button type="button" className={styles.secondaryBtn} onClick={handleClose} disabled={submitting}>
+                  <button type="button" className={styles.secondaryBtn} onClick={handleClose} disabled={busy}>
                     {cancelLabel}
                   </button>
                   <button
                     type="button"
                     className={styles.primaryBtn}
-                    onClick={() => onPay?.(method?.full)}
-                    disabled={submitting}
+                    onClick={handlePay}
+                    disabled={busy || !pay.ready}
                   >
-                    {submitting ? 'Processing…' : (payLabel ?? `Pay ${formatUGX(total, { compact: false })}`)}
+                    {busy
+                      ? pay.submittingLabel
+                      : (payLabel ?? `Pay ${formatUGX(total, { compact: false })}`)}
                   </button>
                 </div>
               </div>

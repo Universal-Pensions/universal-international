@@ -25,6 +25,7 @@ import { IS_SUPABASE_ENABLED } from './api';
 import { normalizeFrequency } from '../utils/finance';
 import { groupInsurancePremiumPerMember } from '../utils/groupInsurance';
 import { deriveContributionLegs } from '../utils/contributionModel';
+import { NUDGE_LATENCY_MS, reachableChannels } from '../constants/nudge';
 import { currentTime } from '../data/mockData';
 import {
   EMPLOYER,
@@ -925,10 +926,19 @@ export async function bulkCreateEmployerInvites(prefills = []) {
   return { created, failed: prefills.length - created, total: prefills.length };
 }
 
-/** List the employer's PENDING invites (the roster's pending-KYC rows). */
+/**
+ * List the employer's PENDING invites (the roster's pending-KYC rows).
+ *
+ * Each row is decorated with `lastNudge` from the session nudge log
+ * (`{ at, channels }`, or null) so the pending-KYC page can show who has
+ * already been reminded without a schema change — see `_nudgeLog` below.
+ */
 export async function listPendingInvites(employerId) {
   if (!IS_SUPABASE_ENABLED) {
-    return _mockInvites.filter((i) => i.employer_id === employerId && i.status === 'pending').map(mapInvite);
+    return _mockInvites
+      .filter((i) => i.employer_id === employerId && i.status === 'pending')
+      .map(mapInvite)
+      .map(withNudge);
   }
   if (!employerId) return [];
   const { data, error } = await supabase
@@ -938,7 +948,69 @@ export async function listPendingInvites(employerId) {
     .eq('status', 'pending')
     .order('created_at', { ascending: false });
   if (error) throw error;
-  return (data ?? []).map(mapInvite);
+  return (data ?? []).map(mapInvite).map(withNudge);
+}
+
+/** Attach the session nudge record (if any) to a mapped invite. */
+function withNudge(invite) {
+  return { ...invite, lastNudge: _nudgeLog.get(invite.token) ?? null };
+}
+
+/**
+ * Session-scoped record of which invites have been nudged and when, keyed by
+ * token → { at: ISO string, channels: string[] }. Deliberately in-memory:
+ * persisting it would need a column on `employer_invites`, and the send itself
+ * is a demo mock (no provider), so a per-session log is the honest scope — it
+ * mirrors the `_sessionMutations` / `_entityOverrides` stores elsewhere and
+ * resets on refresh. See CLAUDE.md §10a.
+ */
+const _nudgeLog = new Map();
+
+/** Nudge history for the invites currently on screen. Never throws. */
+export function getInviteNudgeLog() {
+  return Object.fromEntries(_nudgeLog);
+}
+
+/**
+ * Send a "finish your sign-up" reminder to pending invitees.
+ *
+ * DEMO SCOPE (CLAUDE.md §10a): no email / SMS / WhatsApp provider is wired up.
+ * This resolves after a realistic pause and records the attempt in the session
+ * nudge log so the UI can show "reminded 2 minutes ago". Nothing is delivered.
+ *
+ * Reachability is enforced per recipient, not globally: a channel only counts
+ * for someone who has the contact detail it needs (`constants/nudge.js`). An
+ * invite that none of the chosen channels can reach is reported back in
+ * `unreachable` so the caller can say so rather than silently dropping them.
+ *
+ * @param {{ invites: Array<{token:string, prefill?:object}>, channels: string[] }} payload
+ * @returns {Promise<{ sent:number, unreachable:Array<{token:string,name:string}>,
+ *   perChannel: Record<string, number> }>}
+ */
+export async function sendInviteNudges({ invites = [], channels = [] } = {}) {
+  await new Promise((resolve) => setTimeout(resolve, NUDGE_LATENCY_MS));
+
+  const perChannel = Object.fromEntries(channels.map((c) => [c, 0]));
+  const unreachable = [];
+  let sent = 0;
+
+  for (const inv of invites) {
+    const reachable = reachableChannels(inv, channels);
+    if (reachable.length === 0) {
+      unreachable.push({ token: inv.token, name: inv.prefill?.fullName || 'Invited member' });
+      continue;
+    }
+    for (const channelId of reachable) perChannel[channelId] += 1;
+    sent += 1;
+    // REAL clock, deliberately not `currentTime()`. This records something the
+    // user just did in this session, and it is rendered with
+    // `formatRelativeTime`, which compares against the real `new Date()`.
+    // Stamping it with MOCK_NOW (2026-07-01) made a just-sent reminder read as
+    // "Reminded 1 Jul". MOCK_NOW is for seeded demo data, not live actions.
+    _nudgeLog.set(inv.token, { at: new Date().toISOString(), channels: reachable });
+  }
+
+  return { sent, unreachable, perChannel };
 }
 
 /** Cancel (expire) a pending invite. */

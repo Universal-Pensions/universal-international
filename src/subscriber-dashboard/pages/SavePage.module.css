@@ -369,86 +369,9 @@
   border-color: var(--color-indigo);
   color: var(--color-white);
 }
-.methodList {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-.method {
-  display: flex;
-  align-items: center;
-  gap: 11px;
-  width: 100%;
-  text-align: left;
-  background: var(--color-white);
-  border: 1.5px solid var(--color-lavender);
-  border-radius: var(--radius-md);
-  padding: 12px;
-  cursor: pointer;
-  touch-action: manipulation;
-}
-.methodOn {
-  border-color: var(--color-indigo);
-  background: color-mix(in srgb, var(--color-indigo) 4%, transparent);
-}
-.method:focus-visible {
-  outline: 2px solid var(--color-indigo-soft);
-  outline-offset: 2px;
-}
-.methodPic {
-  width: 38px;
-  height: 38px;
-  flex: 0 0 auto;
-  border-radius: var(--radius-sm);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-family: var(--font-display);
-  font-weight: 800;
-  font-size: 11px;
-}
-.methodPic[data-id='mtn'] {
-  background: color-mix(in srgb, var(--color-amber) 20%, #fff);
-  color: #8a6209;
-}
-.methodPic[data-id='airtel'] {
-  background: color-mix(in srgb, var(--color-indigo) 12%, #fff);
-  color: var(--color-indigo);
-}
-.methodInfo {
-  flex: 1;
-  min-width: 0;
-}
-.methodInfo b {
-  display: block;
-  font-family: var(--font-display);
-  font-weight: 700;
-  font-size: 13px;
-  color: var(--color-slate);
-}
-.methodInfo small {
-  font-size: 10.5px;
-  color: var(--color-gray);
-}
-.radio {
-  margin-left: auto;
-  width: 20px;
-  height: 20px;
-  flex: 0 0 auto;
-  border-radius: var(--radius-full);
-  border: 2px solid var(--color-lavender);
-  position: relative;
-}
-.methodOn .radio {
-  border-color: var(--color-indigo);
-}
-.methodOn .radio::after {
-  content: '';
-  position: absolute;
-  inset: 3px;
-  border-radius: var(--radius-full);
-  background: var(--color-indigo);
-}
+/* The payment-method rows that used to live here moved to the shared
+   <PaymentMethodPicker variant="rows">, which serves every subscriber pay
+   surface (mobile money, card, bank transfer) from one place. */
 
 /* Allocation slider (2-tone indigo / teal) */
 .splitHead {

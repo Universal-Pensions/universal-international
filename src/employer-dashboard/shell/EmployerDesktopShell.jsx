@@ -9,7 +9,6 @@ import NotificationBell from '../../components/notifications/NotificationBell';
 import EmployerSideNavDesktop from './EmployerSideNavDesktop';
 import EmployerCopilotPanel from './EmployerCopilotPanel';
 import OnboardStaffPanel from '../employees/OnboardStaffPanel';
-import PendingKyc from '../kyc/PendingKyc';
 import { sparkIcon } from '../desktop/icons';
 import styles from './EmployerDesktopShell.module.css';
 
@@ -22,9 +21,10 @@ const COLLAPSE_KEY = 'employerNavCollapsed';
  * table lives one level up in EmployerDashboardShell and is shared with the
  * mobile shell. Mirrors AgentDesktopShell: collapse state lifted here so the grid
  * reflows; the AI panel is the third grid column (force-collapses the rail while
- * open); "Ask AI" + the notification bell float top-right. Onboard + Pending-KYC
- * reuse their existing slide-in panels as overlays, triggered from pages via
- * useEmployerPanel — so we keep the shipped invite/KYC flows verbatim.
+ * open); "Ask AI" + the notification bell float top-right. Onboard still reuses
+ * its slide-in panel as an overlay, triggered from Employees via
+ * useEmployerPanel. (Pending-KYC used to do the same; it is now the routed
+ * /dashboard/pending-kyc page on desktop as well as phone.)
  */
 export function DesktopLayout() {
   const location = useLocation();
@@ -32,7 +32,7 @@ export function DesktopLayout() {
   const askAiRef = useRef(null);
   const copilotId = useId();
   const { employerId } = useEmployerScope();
-  const { onboardOpen, kycOpen } = useEmployerPanel();
+  const { onboardOpen } = useEmployerPanel();
 
   const [copilotOpen, setCopilotOpen] = useState(false);
   const toggleCopilot = useCallback(() => setCopilotOpen((prev) => !prev), []);
@@ -67,7 +67,7 @@ export function DesktopLayout() {
   }, [location.pathname]);
 
   // Flag the document while the desktop shell is mounted so the tight ~8px
-  // radius also reaches body-level portals (Onboard/Pending-KYC slide panels,
+  // radius also reaches body-level portals (the Onboard slide panel,
   // Modal, the NotificationBell popover). Removed on unmount → never present for
   // employer mobile. Matches AgentDesktopShell's body-class trick.
   useEffect(() => {
@@ -125,7 +125,6 @@ export function DesktopLayout() {
           pages via useEmployerPanel. Gated on their open flag so their data
           hooks don't fire on cold load (mirrors the mobile shell). */}
       {onboardOpen && <OnboardStaffPanel />}
-      {kycOpen && <PendingKyc />}
     </div>
   );
 }

@@ -142,28 +142,10 @@
 }
 
 /* ── Method picker (Insurance / Policies / Schedule-settle) ───────────────── */
+/* Spacing only — <PaymentMethodPicker> owns the block's internal layout, label
+   and helper text so the picker looks identical here and in PaySheet. */
 .methodBlock {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
   margin-top: var(--space-4);
-}
-
-.methodLabel {
-  font-family: var(--font-display);
-  font-weight: 700;
-  font-size: var(--text-xs);
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  color: var(--color-gray);
-}
-
-.methodHelper {
-  font-family: var(--font-body);
-  font-size: 12px;
-  color: var(--color-gray);
-  margin: 0;
-  font-variant-numeric: tabular-nums;
 }
 
 /* ── Note ─────────────────────────────────────────────────────────────────── */

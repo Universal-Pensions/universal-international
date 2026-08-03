@@ -22,7 +22,7 @@ import PageHeader from '../../components/PageHeader';
 import PaySheet from '../../components/PaySheet';
 import InlinePayPanel from '../../components/InlinePayPanel';
 import SubscriberScheduleForm from '../../components/contribution/SubscriberScheduleForm';
-import { MOBILE_MONEY_METHODS } from '../../constants/payment';
+import { PAYMENT_METHODS } from '../../constants/payment';
 import ErrorCard from '../../components/feedback/ErrorCard';
 import styles from './SchedulePage.module.css';
 import flow from './desktopFlow.module.css';
@@ -265,7 +265,6 @@ export default function SchedulePage() {
         label: li.label,
         value: `${li.kind === 'insurance' ? '+' : ''}${formatUGX(li.amount, { compact: false })}`,
       }))}
-      note="You'll receive an SMS prompt to authorise the payment on your mobile money account."
       payLabel={settle ? `Pay ${formatUGX(settle.total, { compact: false })}` : undefined}
       cancelLabel="Maybe later"
       submitting={settleSubmitting}
@@ -411,8 +410,7 @@ export default function SchedulePage() {
                   eyebrow="Settle this month"
                   total={settle.total}
                   subtitle="Pay for the changes you just made to this month’s plan."
-                  methods={MOBILE_MONEY_METHODS}
-                  note="You’ll receive an SMS prompt to authorise the payment on your mobile money account."
+                  methods={PAYMENT_METHODS}
                   submitting={settleSubmitting}
                   primaryLabel={`Pay ${formatUGX(settle.total, { compact: false })}`}
                   cancelLabel="Maybe later"

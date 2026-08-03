@@ -36,9 +36,18 @@ export function PillChip({ selected = false, children, onClick, className = '', 
   );
 }
 
+/**
+ * layout:
+ *   'row'  — one line, chips stretched evenly and shrinking to fit (default)
+ *   'wrap' — chips sized to their content, wrapping onto further lines. Use
+ *            when the chip count or label length can outgrow a narrow column
+ *            (e.g. the payment-method picker inside a confirm panel).
+ *   'grid' — fixed `columns` grid
+ */
 export function PillChipGroup({ label, layout = 'row', columns = 3, className = '', children }) {
   const ref = useRef(null);
   const isGrid = layout === 'grid';
+  const layoutClass = isGrid ? styles.grid : layout === 'wrap' ? styles.wrap : styles.row;
 
   // Signature of which chip is selected (and how many there are) so the roving
   // tabindex effect below re-runs only when selection or the child set changes,
@@ -78,7 +87,7 @@ export function PillChipGroup({ label, layout = 'row', columns = 3, className = 
       ref={ref}
       role="radiogroup"
       aria-label={label}
-      className={`${styles.group} ${isGrid ? styles.grid : styles.row} ${className}`}
+      className={`${styles.group} ${layoutClass} ${className}`}
       style={isGrid ? { '--pill-cols': columns } : undefined}
       onKeyDown={handleKeyDown}
     >

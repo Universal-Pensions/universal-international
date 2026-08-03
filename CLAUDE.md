@@ -188,7 +188,7 @@ These are intentional limits of a demo platform built for sales reps. Do not pro
 - **Unit price** is hardcoded at **1,000 UGX/unit** in `trg_transactions_contribution`. No real fund NAV.
 - **JWT** — fixed 24h TTL, no refresh, custom HS256 (not Supabase Auth). Fine for short demo sessions.
 - **`demo_personas` fallback IDs** (`a-001` / `b-kam-015` / `d-001`) keep every login successful even if the persona seed drifted.
-- **No payment processor.** "Pay now" buttons demonstrate flow only.
+- **No payment processor.** "Pay now" buttons demonstrate flow only. Every subscriber pay surface offers **MTN MoMo · Airtel Money · Card · Bank transfer** via the shared `PaymentMethodPicker`; the card form and its "Authorising with your bank" step are a **mocked gateway** (no processor, no Luhn check, card details never leave component state), and the bank-transfer account details are placeholders. See `FRONTEND.md §11`/§16a.
 - **Mocked chat.** `src/services/chat.js` returns keyword-matched mock replies for the data assistant, agent DM, and subscriber co-pilot.
 - **Per-session mutation stores** (`entities._entityOverrides`, `subscriber._sessionMutations`) layer demo writes over frozen `mockData.js` and reset on refresh — intentional for the "what-if" demo flows.
 

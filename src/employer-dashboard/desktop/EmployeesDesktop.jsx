@@ -3,11 +3,11 @@
 // and ViewEmployees' search/filter logic. The roster shows counts / compensation
 // / funding / status ONLY — per-member pension balances are private and never
 // surfaced to the employer. Each row links to the member detail at
-// /dashboard/employees/{id}. Onboard + Pending-KYC reuse the shipped slide-in
-// flows via useEmployerPanel (mounted at the shell root).
+// /dashboard/employees/{id}. Onboard reuses the shipped slide-in flow via
+// useEmployerPanel (mounted at the shell root); Pending-KYC is a routed page.
 
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useEmployerScope } from '../../contexts/EmployerScopeContext';
 import { useEmployerPanel } from '../../contexts/EmployerPanelContext';
 import { useEmployer, useEmployerMetrics, useEmployees, usePendingInvites } from '../../hooks/useEmployer';
@@ -50,7 +50,8 @@ function fundingTag(cfg) {
 
 export default function EmployeesDesktop() {
   const { employerId } = useEmployerScope();
-  const { setOnboardOpen, setKycOpen } = useEmployerPanel();
+  const navigate = useNavigate();
+  const { setOnboardOpen } = useEmployerPanel();
 
   const { data: employer } = useEmployer(employerId);
   const { data: metrics = {} } = useEmployerMetrics(employerId);
@@ -158,7 +159,7 @@ export default function EmployeesDesktop() {
         </Btn>
       </div>
 
-      {/* Pending-invite context note → opens the Pending KYC panel */}
+      {/* Pending-invite context note → the routed Pending KYC page */}
       {pendingKyc > 0 && (
         <div className={ui.note}>
           <span className={ui.noteIcon}>{pendingIcon(16)}</span>
@@ -166,7 +167,7 @@ export default function EmployeesDesktop() {
             {formatNumber(pendingKyc)} {pendingKyc === 1 ? 'person' : 'people'} invited
             and awaiting sign-up.
           </span>
-          <button type="button" className={styles.noteCta} onClick={() => setKycOpen(true)}>
+          <button type="button" className={styles.noteCta} onClick={() => navigate('/dashboard/pending-kyc')}>
             Review in Pending KYC →
           </button>
         </div>

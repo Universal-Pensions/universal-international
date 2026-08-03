@@ -18,8 +18,6 @@ import { createContext, useContext, useState, useMemo, useCallback } from 'react
  * @property {(open: boolean) => void} setRunsOpen
  * @property {boolean} insuranceOpen
  * @property {(open: boolean) => void} setInsuranceOpen
- * @property {boolean} kycOpen
- * @property {(open: boolean) => void} setKycOpen
  * @property {boolean} reportsOpen
  * @property {(open: boolean) => void} setReportsOpen
  * @property {boolean} supportOpen
@@ -37,7 +35,6 @@ export function EmployerPanelProvider({ children }) {
   const [employeesOpen, setEmployeesOpen] = useState(false);
   const [runsOpen, setRunsOpen] = useState(false);
   const [insuranceOpen, setInsuranceOpen] = useState(false);
-  const [kycOpen, setKycOpen] = useState(false);
   const [reportsOpen, setReportsOpen] = useState(false);
   const [supportOpen, setSupportOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -49,7 +46,6 @@ export function EmployerPanelProvider({ children }) {
     setEmployeesOpen(false);
     setRunsOpen(false);
     setInsuranceOpen(false);
-    setKycOpen(false);
     setReportsOpen(false);
     setSupportOpen(false);
     setSettingsOpen(false);
@@ -60,7 +56,6 @@ export function EmployerPanelProvider({ children }) {
     employeesOpen, setEmployeesOpen,
     runsOpen, setRunsOpen,
     insuranceOpen, setInsuranceOpen,
-    kycOpen, setKycOpen,
     reportsOpen, setReportsOpen,
     supportOpen, setSupportOpen,
     settingsOpen, setSettingsOpen,
@@ -68,7 +63,7 @@ export function EmployerPanelProvider({ children }) {
     closeAllPanels,
   }), [
     employeesOpen,
-    runsOpen, insuranceOpen, kycOpen, reportsOpen, supportOpen, settingsOpen, onboardOpen,
+    runsOpen, insuranceOpen, reportsOpen, supportOpen, settingsOpen, onboardOpen,
     closeAllPanels,
   ]);
 

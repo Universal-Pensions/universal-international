@@ -22,20 +22,15 @@ import {
   MOBILE_QUICK_CONTRIBUTION_AMOUNTS,
   RETIREMENT_AGE,
 } from '../../constants/savings';
-import { PillChip, PillChipGroup } from '../../components/PillChip';
 import InlinePayPanel from '../../components/InlinePayPanel';
+import PaymentMethodPicker, { GatewayAuthorising } from '../../components/payment/PaymentMethodPicker';
+import { usePaymentMethod, gatewayPause } from '../../components/payment/usePaymentMethod';
+import { PAYMENT_METHODS } from '../../constants/payment';
 import ErrorCard from '../../components/feedback/ErrorCard';
 import styles from './SavePage.module.css';
 import flow from './desktopFlow.module.css';
 
 const PRESET_AMOUNTS = MOBILE_QUICK_CONTRIBUTION_AMOUNTS;
-
-// Mobile-money only per the redesign mockup. Bank transfer was dropped from the
-// Save flow for product — flag left here so it can be reinstated if needed.
-const METHODS = [
-  { id: 'mtn',    label: 'MTN MoMo',     full: 'MTN Mobile Money', helper: '+256 71 100 0001' },
-  { id: 'airtel', label: 'Airtel Money', full: 'Airtel Money',     helper: '+256 70 100 0001' },
-];
 
 // Matches the schedule form's default (SubscriberScheduleForm) and the
 // server-side schedule default (retirement_pct ?? 80), so a subscriber with no
@@ -45,10 +40,6 @@ const DEFAULT_RETIREMENT_PCT = 80;
 // Hero opens on a valid preset (UGX 25K) so the amount reads as a real figure
 // rather than "—" before any interaction — matches mockup 02.
 const DEFAULT_AMOUNT = 25_000;
-
-function methodById(id) {
-  return METHODS.find((m) => m.id === id) ?? METHODS[0];
-}
 
 export default function SavePage() {
   const navigate = useNavigate();
@@ -109,9 +100,14 @@ export default function SavePage() {
 
   const [view, setView] = useState('form'); // form | confirm | success
   const [amountStr, setAmountStr] = useState(String(prefillAmount ?? DEFAULT_AMOUNT));
-  const [method, setMethod] = useState('mtn');
   const [submitting, setSubmitting] = useState(false);
   const [resultTx, setResultTx] = useState(null);
+
+  // This page picks the method on the FORM step (mobile radio rows / desktop
+  // chips) rather than inside the confirm surface, so it owns the picker state
+  // and — unlike the panel-driven pages — runs the mocked gateway hop itself in
+  // handleConfirm. `pay.record` is what lands in `transactions.method`.
+  const pay = usePaymentMethod(PAYMENT_METHODS);
 
   // Desktop (>=1024px) presents the scheduled-vs-top-up choice as an on-page
   // segmented toggle; mobile has none (the locked/editable split there is driven
@@ -169,7 +165,7 @@ export default function SavePage() {
   }, [sub, hasAmount, amount]);
 
   function handleContinue() {
-    if (!hasAmount) return;
+    if (!hasAmount || !pay.ready) return;
     // Mint the stable idempotency nonce once, as the confirm sheet opens.
     contributionNonce.current = crypto.randomUUID();
     setView('confirm');
@@ -190,13 +186,17 @@ export default function SavePage() {
     if (submitting) return;
     setSubmitting(true);
     try {
+      // Mocked gateway hop (card authorisation / transfer capture) BEFORE the
+      // write, so the confirm surface shows the authorising step. No-op for
+      // mobile money — see constants/payment GATEWAY_LATENCY_MS.
+      await gatewayPause(pay.kind);
       // Ad-hoc contribution. The stable nonce makes a double-tap / retry
       // idempotent on the server (§4a F-1). retirementPct comes from the saved
       // schedule, so the payment lands in the buckets the user already chose.
       const tx = await makeContribution.mutateAsync({
         amount,
         retirementPct,
-        method: methodById(method).full,
+        method: pay.record,
         nonce: contributionNonce.current ?? undefined,
       });
       setResultTx(tx);
@@ -352,15 +352,10 @@ export default function SavePage() {
               </div>
 
               <div className={flow.card}>
-                <span className={flow.fieldLabel}>Pay from</span>
-                <PillChipGroup label="Payment method" layout="row">
-                  {METHODS.map((m) => (
-                    <PillChip key={m.id} selected={method === m.id} onClick={() => setMethod(m.id)}>
-                      {m.label}
-                    </PillChip>
-                  ))}
-                </PillChipGroup>
-                <p className={styles.methodHelper} style={{ marginTop: '10px' }}>{methodById(method).helper}</p>
+                {/* Method + its gateway (card fields / bank details). Chosen on
+                    the form so the right column's confirm panel stays a pure
+                    review step. */}
+                <PaymentMethodPicker state={pay} variant="chips" label="Pay from" />
                 {/* The action CTA lives on the left in form view; once the user
                     advances to confirm/success the right column owns the pay
                     actions, so this is hidden to avoid a second, stale CTA. */}
@@ -368,7 +363,7 @@ export default function SavePage() {
                   <button
                     type="button"
                     className={`${flow.cta} ${flow.ctaPrimary}`}
-                    disabled={!hasAmount}
+                    disabled={!hasAmount || !pay.ready}
                     onClick={handleContinue}
                   >
                     <svg aria-hidden="true" viewBox="0 0 24 24" fill="none">
@@ -441,6 +436,10 @@ export default function SavePage() {
                   </p>
                 </div>
               ) : (
+                /* The picker lives in the (now inert) left column, so the
+                   authorising step is mirrored into this panel via `extra`,
+                   where the member is actually looking. `GatewayAuthorising`
+                   renders nothing for the methods with no gateway hop. */
                 <InlinePayPanel
                   view={view === 'success' ? 'success' : 'confirm'}
                   ariaLabel={view === 'success' ? 'Top-up complete' : 'Confirm top-up'}
@@ -449,11 +448,13 @@ export default function SavePage() {
                   lineItems={[
                     { label: `Retirement (${retirementPct}%)`, value: formatUGX(retAmt, { compact: false }), dot: 'var(--color-indigo)' },
                     { label: `Emergency (${emergencyPct}%)`, value: formatUGX(emgAmt, { compact: false }), dot: 'var(--color-indigo-soft)' },
-                    { label: 'Payment method', value: methodById(method).full },
+                    { label: 'Payment method', value: pay.record },
                     { label: 'New balance', value: formatUGX(newBalance, { compact: false }), highlight: true, positive: true },
                   ]}
-                  note="You'll receive an SMS prompt to authorise the payment on your mobile money account."
+                  extra={submitting ? <GatewayAuthorising state={pay} /> : null}
+                  note={pay.note}
                   submitting={submitting}
+                  submittingLabel={pay.submittingLabel}
                   canPay={hasAmount}
                   primaryLabel="Confirm & pay"
                   cancelLabel="Back"
@@ -558,30 +559,11 @@ export default function SavePage() {
           )}
         </section>
 
-        {/* Pay with — full-width radio rows (mobile money only). */}
+        {/* Pay with — full-width radio rows, plus the card / bank gateway the
+            chosen method reveals. */}
         <section className={styles.section} aria-labelledby="save-method-label">
           <h2 className={styles.sectionTitle} id="save-method-label">Pay with</h2>
-          <div className={styles.methodList} role="radiogroup" aria-label="Payment method">
-            {METHODS.map((m) => (
-              <button
-                type="button"
-                key={m.id}
-                role="radio"
-                aria-checked={method === m.id}
-                className={`${styles.method} ${method === m.id ? styles.methodOn : ''}`}
-                onClick={() => setMethod(m.id)}
-              >
-                <span className={styles.methodPic} data-id={m.id} aria-hidden="true">
-                  {m.id === 'mtn' ? 'MTN' : 'Airtel'}
-                </span>
-                <span className={styles.methodInfo}>
-                  <b>{m.full}</b>
-                  <small>{m.helper}</small>
-                </span>
-                <span className={styles.radio} aria-hidden="true" />
-              </button>
-            ))}
-          </div>
+          <PaymentMethodPicker state={pay} variant="rows" label="Payment method" hideLabel />
         </section>
       </div>
 
@@ -589,7 +571,7 @@ export default function SavePage() {
         <button
           type="button"
           className={styles.primaryBtn}
-          disabled={!hasAmount}
+          disabled={!hasAmount || !pay.ready}
           onClick={handleContinue}
         >
           <span>{lockedMode ? 'Pay' : 'Top up'}</span>
@@ -640,16 +622,17 @@ export default function SavePage() {
                         desktop confirm (with the split) renders via InlinePayPanel. */}
                     <li className={styles.confirmRow}>
                       <span>Payment method</span>
-                      <strong>{methodById(method).full}</strong>
+                      <strong>{pay.record}</strong>
                     </li>
                     <li className={styles.confirmRow} data-highlight="true">
                       <span>New balance</span>
                       <strong>{formatUGX(newBalance, { compact: false })}</strong>
                     </li>
                   </ul>
-                  <p className={styles.confirmNote}>
-                    You&apos;ll receive an SMS prompt to authorise the payment on your mobile money account.
-                  </p>
+                  {/* The picker sits on the page BEHIND this sheet, so mirror
+                      the authorising step in here. No-op for non-card methods. */}
+                  {submitting && <GatewayAuthorising state={pay} />}
+                  <p className={styles.confirmNote}>{pay.note}</p>
 
                   <div className={styles.sheetActions}>
                     <button
@@ -666,7 +649,7 @@ export default function SavePage() {
                       disabled={submitting}
                       onClick={handleConfirm}
                     >
-                      {submitting ? 'Processing…' : 'Confirm & pay'}
+                      {submitting ? pay.submittingLabel : 'Confirm & pay'}
                     </button>
                   </div>
                 </div>

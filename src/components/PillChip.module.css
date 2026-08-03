@@ -19,6 +19,18 @@
   padding-right: var(--space-3);
 }
 
+/* Wrapping groups size each chip to its label and spill onto further lines
+   rather than being squeezed off the edge — for groups whose chip count or
+   label length can outgrow a narrow column (the payment-method picker inside a
+   confirm panel). Chips still grow to share a part-filled line. */
+.wrap {
+  flex-wrap: wrap;
+}
+
+.wrap > .chip {
+  flex: 1 1 auto;
+}
+
 .grid {
   display: grid;
   grid-template-columns: repeat(var(--pill-cols, 3), 1fr);
