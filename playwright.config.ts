@@ -125,7 +125,12 @@ export default defineConfig({
         '**/smoke/subscriber-dashboard.spec.ts',
         '**/smoke/agent-dashboard.spec.ts',
         '**/smoke/_health.spec.ts',
-          '**/flows/distributor-exports-csv.spec.ts',
+        '**/flows/distributor-exports-csv.spec.ts',
+        // Both of these ship a distinct PHONE body over shared logic (the
+        // payment-method picker's "rows" variant; the pending-KYC phone body),
+        // so they must be proven on the mobile projects too — not just desktop.
+        '**/regression/subscriber-payment-methods.spec.ts',
+        '**/regression/employer-kyc-nudge.spec.ts',
       ],
     },
     // Mobile WebKit (iPhone 12 viewport, WebKit engine) — Safari/iOS
@@ -139,7 +144,12 @@ export default defineConfig({
         '**/smoke/subscriber-dashboard.spec.ts',
         '**/smoke/agent-dashboard.spec.ts',
         '**/smoke/_health.spec.ts',
-          '**/flows/distributor-exports-csv.spec.ts',
+        '**/flows/distributor-exports-csv.spec.ts',
+        // Both of these ship a distinct PHONE body over shared logic (the
+        // payment-method picker's "rows" variant; the pending-KYC phone body),
+        // so they must be proven on the mobile projects too — not just desktop.
+        '**/regression/subscriber-payment-methods.spec.ts',
+        '**/regression/employer-kyc-nudge.spec.ts',
       ],
     },
   ],
