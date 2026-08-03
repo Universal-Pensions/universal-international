@@ -26,6 +26,9 @@ const fill = (id, value) => fireEvent.change(document.getElementById(id), { targ
 
 const VALID = {
   'ra-org': 'Kampala Steel Ltd',
+  // Required for BOTH kinds since 0095 — the admin "+ New Employer" form has
+  // always captured it, so the public form provisioned a weaker account.
+  'ra-registrationNo': '80020002345678',
   'ra-name': 'Jane Doe',
   'ra-email': 'jane@kampalasteel.co.ug',
   'ra-phone': '0771 234 567',
@@ -89,6 +92,7 @@ describe('<RequestAccess />', () => {
     expect(submitAccessRequest).toHaveBeenCalledWith(expect.objectContaining({
       type: 'employer',
       orgName: 'Kampala Steel Ltd',
+      registrationNo: '80020002345678',
       contactPhone: '+256771234567',
       sector: 'Manufacturing',
       district: 'Kampala',

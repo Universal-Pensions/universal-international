@@ -170,6 +170,13 @@ export default function ViewAccessRequests({ fullPage = false }) {
                         </div>
                       </div>
                       <div className={styles.rowMetrics}>
+                        {/* Captured for BOTH kinds since 0095 — it rides through
+                            to create_employer / create_distributor on approve,
+                            so the admin should see it before deciding. */}
+                        <div className={styles.metric}>
+                          <span className={styles.metricVal}>{r.registrationNo || '—'}</span>
+                          <span className={styles.metricLabel}>Reg. no.</span>
+                        </div>
                         {r.kind === 'employer' && (
                           <div className={styles.metric}>
                             <span className={styles.metricVal}>{r.sector || '—'}</span>

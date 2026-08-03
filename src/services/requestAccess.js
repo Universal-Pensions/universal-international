@@ -15,6 +15,7 @@ import { api, IS_SUPABASE_ENABLED } from './api';
  * @param {{
  *   type: 'employer' | 'distributor',
  *   orgName: string,
+ *   registrationNo?: string,
  *   contactName?: string,
  *   contactEmail?: string,
  *   contactPhone?: string,
@@ -31,6 +32,7 @@ export async function submitAccessRequest(payload) {
     const res = await api.post('/access-request', {
       type: payload.type === 'distributor' ? 'distributor' : 'employer',
       orgName: payload.orgName,
+      registrationNo: payload.registrationNo,
       contactName: payload.contactName,
       contactEmail: payload.contactEmail,
       contactPhone: payload.contactPhone,

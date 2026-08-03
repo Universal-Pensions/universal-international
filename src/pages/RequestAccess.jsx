@@ -35,6 +35,7 @@ const COPY = {
     lede: 'Staff pensions plus group Life, Health and Funeral cover — set up from one staff list.',
     orgLabel: 'Company name',
     orgPlaceholder: 'e.g. Kampala Steel Ltd',
+    regHint: 'As it appears on your URSB certificate.',
     back: '/employers',
     backLabel: 'Back to employers',
   },
@@ -44,12 +45,13 @@ const COPY = {
     lede: 'Branches, field agents and commissions across Uganda — managed from one map.',
     orgLabel: 'Network name',
     orgPlaceholder: 'e.g. Busoga Financial Services',
+    regHint: 'Your company registration number — as it appears on your URSB certificate.',
     back: '/distributors',
     backLabel: 'Back to distributors',
   },
 };
 
-const EMPTY = { org: '', name: '', email: '', phone: '', sector: '', district: '' };
+const EMPTY = { org: '', registrationNo: '', name: '', email: '', phone: '', sector: '', district: '' };
 
 // Module scope, NOT redefined inside the component — a component identity that
 // changes every render remounts each input and steals focus on every keystroke.
@@ -111,6 +113,7 @@ export default function RequestAccess() {
       await submitAccessRequest({
         type,
         orgName: form.org.trim(),
+        registrationNo: form.registrationNo.trim(),
         contactName: form.name.trim(),
         contactEmail: form.email.trim(),
         // Store the sign-in key in the canonical form the auth layer computes.
@@ -192,6 +195,19 @@ export default function RequestAccess() {
                   value={form.org} onChange={update('org')} error={errors.org}
                   autoComplete="organization" placeholder={copy.orgPlaceholder}
                   maxLength={MAX_LEN.org[type]}
+                />
+                {/* Company identity sits with the org name — the admin
+                    "+ New Employer" form has always captured it, so a
+                    self-signed-up account was otherwise provisioned without it
+                    (migration 0095). Required for distributors too: they are
+                    registered companies in Uganda as well. */}
+                <Field
+                  id="ra-registrationNo" label="Company registration number"
+                  value={form.registrationNo} onChange={update('registrationNo')}
+                  error={errors.registrationNo}
+                  autoComplete="off" placeholder="e.g. 80020002345678"
+                  maxLength={MAX_LEN.registrationNo}
+                  hint={copy.regHint}
                 />
                 <Field
                   id="ra-name" label="Your name"

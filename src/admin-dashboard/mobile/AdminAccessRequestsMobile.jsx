@@ -79,6 +79,13 @@ export default function AdminAccessRequestsMobile() {
                   {[r.sector, r.district].filter(Boolean).join(' · ')}
                 </div>
               )}
+              {/* Captured for both kinds since 0095 and carried into the
+                  create_* RPC on approve — show it before the admin decides. */}
+              {r.registrationNo && (
+                <div style={{ color: 'var(--color-gray)', fontSize: 12.5, marginTop: 2 }}>
+                  Reg. no. {r.registrationNo}
+                </div>
+              )}
               <div style={{ color: 'var(--color-gray)', fontSize: 11.5, marginTop: 2 }}>Requested {formatDate(r.createdAt)}</div>
               <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
                 <button

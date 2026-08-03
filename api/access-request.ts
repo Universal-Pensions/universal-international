@@ -6,8 +6,8 @@
 // /api/contact, so there is no anon RPC / anon INSERT policy). A super-admin
 // later triages the row (list/approve/deny) via the 0079 admin RPCs.
 //
-// Body: { type: 'employer' | 'distributor', orgName, contactName?, contactEmail?,
-//         contactPhone?, sector?, district?, message? }
+// Body: { type: 'employer' | 'distributor', orgName, registrationNo, contactName?,
+//         contactEmail?, contactPhone?, sector?, district?, message? }
 // Returns: { submitted: true, id }
 
 import type { VercelRequest, VercelResponse } from '@vercel/node';
@@ -29,6 +29,7 @@ const UG_MOBILE_RE = /^\+256(70|71|74|75|76|77|78)\d{7}$/;
 type AccessRequestBody = {
   type?: string;
   orgName?: string;
+  registrationNo?: string;
   contactName?: string;
   contactEmail?: string;
   contactPhone?: string;
@@ -65,6 +66,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
   const kind = rawType === 'distributor' ? 'distributor' : 'employer';
   const orgName = str(body.orgName);
+  const registrationNo = str(body.registrationNo);
   const contactName = str(body.contactName);
   const contactEmail = str(body.contactEmail);
   const contactPhone = str(body.contactPhone);
@@ -79,6 +81,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   // what we store is byte-identical to what `verify-otp` computes at login.
   const canonicalPhone = toCanonicalUGPhone(contactPhone);
   if (!orgName) return res.status(400).json({ code: 'invalid_org_name' });
+  // Required for BOTH kinds. An employer or a distributor is a registered
+  // company in Uganda, and an admin creating either by hand is asked for it —
+  // capturing it here is what stops a self-signed-up account provisioning
+  // without the number its admin-created twin always has (migration 0095).
+  if (!registrationNo) return res.status(400).json({ code: 'invalid_registration_no' });
   if (!contactName) return res.status(400).json({ code: 'invalid_contact_name' });
   if (!contactEmail || !EMAIL_RE.test(contactEmail)) {
     return res.status(400).json({ code: 'invalid_email' });
@@ -98,6 +105,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   // Org cap is per-kind: create_distributor truncates at 120, create_employer 160.
   const tooLong =
     checkLen(orgName, kind === 'distributor' ? 120 : 160, 'org_name_too_long') ??
+    checkLen(registrationNo, 64, 'registration_no_too_long') ??
     checkLen(contactName, 120, 'contact_name_too_long') ??
     checkLen(contactEmail, 254, 'contact_email_too_long') ??
     checkLen(contactPhone, 32, 'contact_phone_too_long') ??
@@ -125,6 +133,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     id,
     kind,
     org_name: orgName,
+    registration_no: registrationNo || null,
     contact_name: contactName || null,
     contact_email: contactEmail || null,
     contact_phone: canonicalPhone,   // the sign-in key, canonical +256XXXXXXXXX

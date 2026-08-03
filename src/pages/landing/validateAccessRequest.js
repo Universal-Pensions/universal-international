@@ -7,6 +7,12 @@
 //              migration 0090 writes that row at approval time from exactly this
 //              value. No phone => no account anyone can ever sign in to.
 //   email    — the only channel we have to tell a requester they were approved.
+//   regNo    — the company registration number. BOTH kinds are registered
+//              companies in Uganda, and the admin "+ New Employer" form has
+//              always asked for it; without it here a self-signed-up account
+//              provisioned with a NULL where its admin-created twin has a value
+//              (migration 0095 closed the DB side and added the distributor
+//              column, which did not exist at all).
 //   sector   — employer only; `create_employer` stores it on the account.
 //   district — employer only; `approve_access_request` resolves the NAME to a
 //              `districts.id`, so a free-text value that isn't a real district
@@ -26,13 +32,16 @@ export const EMAIL_PATTERN = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
  * match the visual/DOM order on BOTH variants.
  */
 export const FIELD_ORDER = {
-  employer: ['org', 'name', 'email', 'phone', 'sector', 'district'],
-  distributor: ['org', 'name', 'email', 'phone'],
+  employer: ['org', 'registrationNo', 'name', 'email', 'phone', 'sector', 'district'],
+  distributor: ['org', 'registrationNo', 'name', 'email', 'phone'],
 };
 
 /** Max lengths, matched to the `left(...)` truncation in approve_access_request. */
 export const MAX_LEN = {
   org: { employer: 160, distributor: 120 },
+  // Matches the api/access-request.ts cap and the left(...,64) truncation in
+  // approve_access_request.
+  registrationNo: 64,
   name: 120,
   email: 160,
   phone: 32,
@@ -42,6 +51,7 @@ export const MAX_LEN = {
 
 const MSG = {
   org: 'Please enter your organisation’s name.',
+  registrationNo: 'Please enter your company registration number.',
   name: 'Please enter your name.',
   email: 'Please enter your work email.',
   emailBad: 'That email address does not look right.',
@@ -67,6 +77,11 @@ export function validateAccessRequest(form = {}, type = 'employer') {
     const org = v('org');
     if (!org) errors.org = MSG.org;
     else if (org.length > (MAX_LEN.org[type] ?? MAX_LEN.org.employer)) errors.org = MSG.tooLong;
+  }
+  if (fields.includes('registrationNo')) {
+    const regNo = v('registrationNo');
+    if (!regNo) errors.registrationNo = MSG.registrationNo;
+    else if (regNo.length > MAX_LEN.registrationNo) errors.registrationNo = MSG.tooLong;
   }
   if (fields.includes('name')) {
     const name = v('name');
@@ -100,6 +115,7 @@ export function validateAccessRequest(form = {}, type = 'employer') {
 /** Server error codes -> plain-language copy. `api.js` attaches `err.code`. */
 const CODE_MESSAGES = {
   invalid_org_name: MSG.org,
+  invalid_registration_no: MSG.registrationNo,
   invalid_contact_name: MSG.name,
   invalid_email: MSG.emailBad,
   invalid_phone: MSG.phoneBad,
@@ -107,6 +123,7 @@ const CODE_MESSAGES = {
   invalid_district: MSG.districtBad,
   invalid_type: 'That link looks wrong. Please go back and try again.',
   org_name_too_long: MSG.tooLong,
+  registration_no_too_long: MSG.tooLong,
   contact_name_too_long: MSG.tooLong,
   contact_email_too_long: MSG.tooLong,
   contact_phone_too_long: MSG.tooLong,

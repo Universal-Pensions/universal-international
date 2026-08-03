@@ -357,6 +357,7 @@ describe('entities service', () => {
         data: {
           id: 'd-new-1', name: 'Western Region Distributor', parent_id: 'ug',
           manager_name: 'Jane Mgr', manager_phone: '+256770000000', manager_email: 'jane@x.com',
+          registration_no: '80020002345678',
           status: 'active', created_at: '2026-06-08T00:00:00Z',
         },
         error: null,
@@ -366,11 +367,14 @@ describe('entities service', () => {
         managerName: 'Jane Mgr',
         managerPhone: '+256770000000',
         managerEmail: 'jane@x.com',
+        registrationNo: '80020002345678',
       });
       // Mapped (camelCase) shape with the EMPTY_METRICS placeholder.
       expect(dist).toMatchObject({
         id: 'd-new-1', name: 'Western Region Distributor', parentId: 'ug',
         managerName: 'Jane Mgr', managerPhone: '+256770000000', managerEmail: 'jane@x.com',
+        // 0095 — a distributor is a registered company in Uganda too.
+        registrationNo: '80020002345678',
         status: 'active',
       });
       expect(dist.metrics).toMatchObject({ totalSubscribers: 0, totalAgents: 0, aum: 0 });
@@ -381,6 +385,7 @@ describe('entities service', () => {
         p_manager_phone: '+256770000000',
         p_manager_email: 'jane@x.com',
         p_parent_id: 'ug',
+        p_registration_no: '80020002345678',
       });
     });
 
@@ -397,6 +402,7 @@ describe('entities service', () => {
         p_manager_phone: null,
         p_manager_email: null,
         p_parent_id: 'ug',
+        p_registration_no: null,
       });
     });
 

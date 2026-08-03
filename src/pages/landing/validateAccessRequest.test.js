@@ -3,6 +3,7 @@ import { validateAccessRequest, FIELD_ORDER, messageForCode } from './validateAc
 
 const VALID_EMPLOYER = {
   org: 'Kampala Steel Ltd',
+  registrationNo: '80020002345678',
   name: 'Jane Doe',
   email: 'jane@kampalasteel.co.ug',
   phone: '0771234567',
@@ -26,6 +27,42 @@ describe('validateAccessRequest', () => {
   it.each(FIELD_ORDER.employer)('rejects a whitespace-only %s', (field) => {
     const errors = validateAccessRequest({ ...VALID_EMPLOYER, [field]: '   ' }, 'employer');
     expect(errors[field]).toBeTruthy();
+  });
+
+  // 0095 — the deviation this closes: the admin "+ New Employer" form has always
+  // captured a company registration number while the public form did not, so a
+  // self-signed-up employer provisioned with a NULL where its admin-created twin
+  // had a value (approve_access_request passed a literal NULL). Distributors are
+  // registered companies in Uganda too, so BOTH kinds require it.
+  describe('company registration number (parity with the admin create forms)', () => {
+    it('is required for an employer', () => {
+      expect(validateAccessRequest({ ...VALID_EMPLOYER, registrationNo: '' }, 'employer').registrationNo)
+        .toBeTruthy();
+    });
+
+    it('is required for a distributor too', () => {
+      expect(FIELD_ORDER.distributor).toContain('registrationNo');
+      expect(validateAccessRequest({ ...VALID_EMPLOYER, registrationNo: '' }, 'distributor').registrationNo)
+        .toBeTruthy();
+    });
+
+    it('rejects one longer than the 64-char DB/API cap', () => {
+      const long = '8'.repeat(65);
+      expect(validateAccessRequest({ ...VALID_EMPLOYER, registrationNo: long }, 'employer').registrationNo)
+        .toBeTruthy();
+      expect(validateAccessRequest({ ...VALID_EMPLOYER, registrationNo: '8'.repeat(64) }, 'employer').registrationNo)
+        .toBeUndefined();
+    });
+
+    it('is asked for before the contact details on both variants', () => {
+      // FIELD_ORDER drives "focus the first invalid input", so it must match the
+      // DOM order — registration number sits with the org identity.
+      for (const kind of ['employer', 'distributor']) {
+        const order = FIELD_ORDER[kind];
+        expect(order.indexOf('registrationNo')).toBe(order.indexOf('org') + 1);
+        expect(order.indexOf('registrationNo')).toBeLessThan(order.indexOf('name'));
+      }
+    });
   });
 
   it('does not require sector or district for a distributor', () => {

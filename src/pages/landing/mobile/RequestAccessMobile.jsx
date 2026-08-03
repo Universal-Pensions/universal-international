@@ -37,7 +37,7 @@ export default function RequestAccessMobile() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
   const [errors, setErrors] = useState({});
-  const [form, setForm] = useState({ name: '', org: '', email: '', phone: '', sector: '', district: '' });
+  const [form, setForm] = useState({ name: '', org: '', registrationNo: '', email: '', phone: '', sector: '', district: '' });
 
   const update = (key) => (e) => {
     if (error) setError('');
@@ -65,6 +65,7 @@ export default function RequestAccessMobile() {
       await submitAccessRequest({
         type,
         orgName: form.org.trim(),
+        registrationNo: form.registrationNo.trim(),
         contactName: form.name.trim(),
         contactEmail: form.email.trim(),
         contactPhone: toCanonicalUGPhone(form.phone),
@@ -111,6 +112,18 @@ export default function RequestAccessMobile() {
                 aria-invalid={errors.org ? true : undefined}
                 aria-describedby={errors.org ? 'ra-org-err' : undefined} />
               {errors.org && <span className={styles.ferr} id="ra-org-err">{errors.org}</span>}
+            </div>
+            <div className={styles.fgroup}>
+              {/* Company registration number — parity with the admin
+                  "+ New Employer" form, and required for distributors too
+                  (they are registered companies in Uganda as well). 0095. */}
+              <label className={styles.flabel} htmlFor="ra-registrationNo">Company registration number</label>
+              <input className={styles.finput} id="ra-registrationNo" value={form.registrationNo}
+                onChange={update('registrationNo')} placeholder="e.g. 80020002345678"
+                maxLength={MAX_LEN.registrationNo} disabled={submitting}
+                aria-invalid={errors.registrationNo ? true : undefined}
+                aria-describedby={errors.registrationNo ? 'ra-registrationNo-err' : undefined} />
+              {errors.registrationNo && <span className={styles.ferr} id="ra-registrationNo-err">{errors.registrationNo}</span>}
             </div>
             <div className={styles.fgroup}>
               <label className={styles.flabel} htmlFor="ra-name">Your name</label>

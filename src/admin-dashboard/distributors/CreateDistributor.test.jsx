@@ -78,12 +78,15 @@ describe('<CreateDistributor />', () => {
     await screen.findByRole('heading', { name: /new distributor/i });
 
     await user.type(screen.getByLabelText(/distributor name/i), '  Western Region Distributor  ');
+    await user.type(screen.getByLabelText(/registration no/i), '  80020002345678  ');
     await user.type(screen.getByLabelText(/manager name/i), '  Jane Mgr  ');
     await user.click(screen.getByRole('button', { name: /create distributor/i }));
 
     await waitFor(() => expect(entities.createDistributor).toHaveBeenCalledTimes(1));
     expect(entities.createDistributor.mock.calls[0][0]).toEqual({
       name: 'Western Region Distributor',
+      // 0095 — parity with the public request-access form, which requires it.
+      registrationNo: '80020002345678',
       managerName: 'Jane Mgr',
       // Empty optional fields collapse to the documented null defaults.
       managerPhone: null,

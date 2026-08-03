@@ -7,7 +7,7 @@ import { useCreateDistributor } from '../../hooks/useEntity';
 import { useToast } from '../../contexts/ToastContext';
 import styles from '../adminPanels.module.css';
 
-const EMPTY = { name: '', managerName: '', managerPhone: '', managerEmail: '' };
+const EMPTY = { name: '', registrationNo: '', managerName: '', managerPhone: '', managerEmail: '' };
 
 /**
  * Map a raw Supabase/Postgres error to a friendly local message. Mirrors the
@@ -68,6 +68,7 @@ export default function CreateDistributor() {
     try {
       await createDistributor.mutateAsync({
         name: form.name.trim(),
+        registrationNo: form.registrationNo.trim() || null,
         managerName: form.managerName.trim() || null,
         managerPhone: form.managerPhone.trim() || null,
         managerEmail: form.managerEmail.trim() || null,
@@ -142,6 +143,22 @@ export default function CreateDistributor() {
                     onChange={(e) => update('name', e.target.value)}
                     placeholder="e.g. Western Region Distributor"
                     autoFocus
+                  />
+                </div>
+
+                {/* A distributor is a registered company in Uganda, same as an
+                    employer — the public request-access form now captures this,
+                    so the admin form asks for it too rather than reintroducing
+                    the admin-vs-self-signup deviation in reverse (0095). */}
+                <div className={styles.field}>
+                  <label className={styles.label} htmlFor="cd-reg">Registration no.</label>
+                  <input
+                    id="cd-reg"
+                    className={styles.input}
+                    value={form.registrationNo}
+                    onChange={(e) => update('registrationNo', e.target.value)}
+                    placeholder="Company reg. number"
+                    maxLength={64}
                   />
                 </div>
 

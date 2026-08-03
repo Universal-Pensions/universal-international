@@ -189,6 +189,7 @@ function mapDistributor(row) {
     managerName: row.manager_name,
     managerPhone: row.manager_phone,
     managerEmail: row.manager_email,
+    registrationNo: row.registration_no ?? null,
     status: row.status,
     createdAt: row.created_at,
     metrics: EMPTY_METRICS,
@@ -1194,9 +1195,10 @@ export async function updateDistributor(id, patch) {
 
 /**
  * @endpoint RPC create_distributor(p_name, p_manager_name, p_manager_phone,
- *   p_manager_email, p_parent_id) — admin-only SECURITY DEFINER write (0049).
+ *   p_manager_email, p_parent_id, p_registration_no) — admin-only SECURITY
+ *   DEFINER write (0049; p_registration_no added in 0095).
  * @param {{name: string, managerName?: string, managerPhone?: string,
- *   managerEmail?: string, parentId?: string}} payload
+ *   managerEmail?: string, parentId?: string, registrationNo?: string}} payload
  * @returns {Promise<Object>} newly-inserted, mapped distributor row
  * @cache Caller invalidates: ['entities','distributor']
  * @scope Admin only — the RPC RAISEs for any other app_role.
@@ -1212,6 +1214,7 @@ export async function createDistributor(payload) {
       manager_name: payload.managerName ?? null,
       manager_phone: payload.managerPhone ?? null,
       manager_email: payload.managerEmail ?? null,
+      registration_no: payload.registrationNo ?? null,
       status: 'active',
       created_at: new Date().toISOString(),
     });
@@ -1222,6 +1225,7 @@ export async function createDistributor(payload) {
     p_manager_phone: payload.managerPhone ?? null,
     p_manager_email: payload.managerEmail ?? null,
     p_parent_id: payload.parentId ?? 'ug',
+    p_registration_no: payload.registrationNo ?? null,
   });
   if (error) throw error;
   const mapped = mapDistributor(data);
