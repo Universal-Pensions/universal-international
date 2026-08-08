@@ -1,0 +1,44 @@
+/* Admin "Unit price" page — page-local bits only. Layout, cards, tiles, table
+   and filter chips all come from employer-dashboard/desktop/ui.module.css, and
+   the form kit from admin-dashboard/adminPanels.module.css. */
+
+/* Mounted inside the map-mode drawer rather than the dash canvas. */
+.drawer {
+  padding: 20px;
+}
+
+.heroSub {
+  font-size: 13px;
+  color: var(--color-ink-soft, #5b6076);
+}
+
+/* A rise is green and a fall is red — a falling unit price is a real loss and
+   must not be softened into a neutral colour. */
+.up   { color: var(--color-green-ink, #1F6B41); }
+.down { color: var(--color-poor-ink, #B02530); }
+
+.helper {
+  margin: 2px 0 0;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--color-ink-soft, #5b6076);
+}
+
+.chartWrap {
+  padding: 4px 4px 0;
+  min-height: 260px;
+}
+
+.empty {
+  padding: 28px 8px;
+  text-align: center;
+  font-size: 14px;
+  color: var(--color-ink-soft, #5b6076);
+}
+
+.confirmBody {
+  margin: 0 0 12px;
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--color-ink, #2F3550);
+}
