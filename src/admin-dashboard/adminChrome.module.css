@@ -1,0 +1,38 @@
+/* Admin desktop chrome that is not part of the reused distributor shell.
+   Kept out of dashboard/DashboardShell.module.css because that file is shared
+   with the distributor role, which has different top-right chrome. */
+
+/* Top-right global-action cluster: notification bell + Ask AI.
+   Matches AskAiFab's own desktop docking (top/right: var(--space-4)) and its
+   z-index: 60 — above the map/overlay/topbar chrome (all <= 40) but below the
+   copilot drawer (200/210) and the mobile drawer (90/100). */
+.topRight {
+  position: fixed;
+  top: var(--space-4);
+  right: var(--space-4);
+  z-index: 60;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+/* AskAiFab positions ITSELF fixed (it is shared with the distributor shell, so
+   its own rule is left alone). Inside this cluster it must lay out normally —
+   targeted by element rather than class, since the class belongs to another
+   module and is not importable here. */
+.topRight > button {
+  position: static;
+  inset: auto;
+}
+
+/* Below the FAB's own 769px breakpoint the button returns to a bottom-right
+   floating FAB, so the cluster must not trap it in the corner — let the bell
+   sit alone up top and the FAB float as designed. */
+@media (max-width: 768px) {
+  .topRight { gap: 0; }
+  .topRight > button { position: fixed; right: 20px; bottom: 20px; }
+}
+
+@media print {
+  .topRight { display: none; }
+}

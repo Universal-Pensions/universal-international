@@ -23,7 +23,6 @@ import {
 } from '../../employer-dashboard/desktop/ui';
 import ui from '../../employer-dashboard/desktop/ui.module.css';
 import { PALETTE, axisTick, chartTooltip } from '../../employer-dashboard/reports/chartConfig';
-import panels from '../adminPanels.module.css';
 import styles from './AdminNavDesktop.module.css';
 
 const priceIcon = (
@@ -115,7 +114,9 @@ export default function AdminNavDesktop({ fullPage = false }) {
   // rather than an empty box — the single most common cause of a fat-finger move.
   const formState = form ?? {
     navDate: todayIso,
-    unitPrice: d?.currentNav != null ? String(d.currentNav) : '',
+    // Seeded to 2dp: this is a price, and `1571.4` next to a register that reads
+    // "UGX 1,571.40" looks like a different number.
+    unitPrice: d?.currentNav != null ? Number(d.currentNav).toFixed(2) : '',
   };
   const setField = (k, v) => { setFormError(null); setForm({ ...formState, [k]: v }); };
 
@@ -242,10 +243,17 @@ export default function AdminNavDesktop({ fullPage = false }) {
           value={overview.isLoading ? '—' : formatNumber(Math.round(d?.unitsInIssue ?? 0))}
           sub={`Held by ${formatNumber(d?.membersPriced ?? 0)} members`}
         />
+        {/* The AVERAGE of each member's own growth, not the pooled
+            total-growth-over-total-basis figure. Pooled is money-weighted, so a
+            few large long-tenured balances pull it away from what a typical
+            member sees on their own dashboard. Both are shown — the tile answers
+            "how are members doing", the sub answers "how is the fund doing". */}
         <Tile
-          accent="green" icon={priceIcon} label="Growth for members"
-          value={overview.isLoading ? '—' : pct(d?.growthPct)}
-          sub={`${formatUGX(Math.abs(d?.totalGrowth ?? 0))} ${(d?.totalGrowth ?? 0) < 0 ? 'below' : 'above'} what was paid in`}
+          accent="green" icon={priceIcon} label="Average growth per member"
+          value={overview.isLoading ? '—' : pct(d?.avgGrowthPct)}
+          sub={overview.isLoading
+            ? 'Across all members'
+            : `Across ${formatNumber(d?.membersWithBasis ?? 0)} members · whole fund ${pct(d?.growthPct)}`}
         />
         <Tile
           accent="amber" icon={clockIcon} label="Days not priced"
@@ -257,36 +265,39 @@ export default function AdminNavDesktop({ fullPage = false }) {
 
       <Card>
         <SectionHead icon={priceIcon} title="Set today's price" />
-        <form className={panels.form} onSubmit={onSubmit}>
-          <div className={panels.row2}>
-            <div className={panels.field}>
-              {/* Input nested inside the label as well as wired by id — the repo's
-                  a11y lint requires both nesting and an explicit association. */}
-              <label className={panels.label} htmlFor="nav-date">
-                Day <span className={panels.req}>*</span>
+        <form className={styles.form} onSubmit={onSubmit}>
+          <div className={ui.fieldGrid}>
+            <div className={ui.field}>
+              {/* Input nested inside its label AND wired by id — the repo's a11y
+                  lint wants both. .fLabel stacks them, which a bare label won't. */}
+              <label className={styles.fLabel} htmlFor="nav-date">
+                Day
                 <input
                   id="nav-date" aria-label="Valuation day"
-                  className={panels.input} type="date" max={todayIso}
+                  className={ui.fieldInput} type="date" max={todayIso}
                   value={formState.navDate} disabled={busy}
                   onChange={(e) => setField('navDate', e.target.value)}
                 />
               </label>
             </div>
-            <div className={panels.field}>
-              <label className={panels.label} htmlFor="nav-price">
-                Price of one unit (UGX) <span className={panels.req}>*</span>
-                <input
-                  id="nav-price" aria-label="Price of one unit in shillings"
-                  className={panels.input} type="number" step="0.01" min="0.01"
-                  inputMode="decimal" value={formState.unitPrice} disabled={busy}
-                  onChange={(e) => setField('unitPrice', e.target.value)}
-                />
+            <div className={ui.field}>
+              <label className={styles.fLabel} htmlFor="nav-price">
+                Price of one unit
+                <span className={ui.inputGroup}>
+                  <span className={ui.addon}>UGX</span>
+                  <input
+                    id="nav-price" aria-label="Price of one unit in shillings"
+                    className={ui.fieldInput} type="number" step="0.01" min="0.01"
+                    inputMode="decimal" value={formState.unitPrice} disabled={busy}
+                    onChange={(e) => setField('unitPrice', e.target.value)}
+                  />
+                </span>
               </label>
             </div>
           </div>
 
           {movePct != null && priceIsUsable && (
-            <p className={styles.helper}>
+            <p className={ui.fieldHint}>
               {Math.abs(movePct) < 0.005
                 ? 'Same as the price now.'
                 : <>That&apos;s <b className={movePct >= 0 ? styles.up : styles.down}>
@@ -298,15 +309,15 @@ export default function AdminNavDesktop({ fullPage = false }) {
           )}
 
           {duplicateRow && (
-            <p className={styles.helper}>
-              A price of {price(duplicateRow.unitPrice)} is already recorded for this day.
-              Saving will replace it.
+            <p className={styles.notice}>
+              A price of {price(duplicateRow.unitPrice)} is already recorded for this
+              day. Saving will replace it.
             </p>
           )}
 
-          {formError && <div className={panels.errorBox} role="alert">{formError}</div>}
+          {formError && <div className={styles.errorBox} role="alert">{formError}</div>}
 
-          <div className={panels.formActions}>
+          <div className={styles.actions}>
             <Btn variant="primary" type="submit" disabled={busy}>
               {busy ? 'Saving…' : 'Publish price'}
             </Btn>
@@ -448,7 +459,7 @@ export default function AdminNavDesktop({ fullPage = false }) {
           Every member&apos;s savings change with it. The fund would move from{' '}
           <b>{formatUGX(d?.aum ?? 0)}</b> to <b>{formatUGX(projectedAum ?? 0)}</b>.
         </p>
-        <div className={panels.formActions}>
+        <div className={styles.actions}>
           <Btn variant="secondary" type="button" onClick={() => setConfirm(null)} disabled={busy}>
             Cancel
           </Btn>

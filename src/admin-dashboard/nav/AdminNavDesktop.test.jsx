@@ -50,8 +50,10 @@ const OVERVIEW = {
   totalInvested: 2221500000,
   totalGrowth: 204000000,
   growthPct: 9.19,
+  avgGrowthPct: 9.38,
   membersPriced: 5060,
   membersUnpriced: 0,
+  membersWithBasis: 5059,
   firstNavDate: '2021-11-01',
   publishedCount: 1240,
   pendingDays: 4,
@@ -105,6 +107,19 @@ beforeEach(() => {
 });
 
 describe('AdminNavDesktop', () => {
+  // The tile must report the AVERAGE of each member's own growth, not the pooled
+  // total-growth-over-total-basis figure — they are genuinely different numbers
+  // (9.38% vs 9.19% here) and only the first is a fact about members.
+  it('reports average growth PER MEMBER, with the pooled fund figure alongside', async () => {
+    renderPage();
+    // Tile labels render during loading, so wait for the data before asserting
+    // on values — otherwise this reads the '—' placeholder.
+    await screen.findAllByText('UGX 1,565.02');
+    expect(screen.getByText('Average growth per member')).toBeInTheDocument();
+    expect(screen.getByText('+9.38%')).toBeInTheDocument();
+    expect(screen.getByText(/Across 5,059 members · whole fund \+9\.19%/)).toBeInTheDocument();
+  });
+
   it('shows the current price, the fund size and the unpriced-day count', async () => {
     renderPage();
     // The price appears in the hero AND in the history row — assert on both.

@@ -42,9 +42,15 @@ export const EMPTY_NAV_OVERVIEW = Object.freeze({
   aum: 0,
   totalInvested: 0,
   totalGrowth: 0,
+  // Pooled: total growth / total cost basis. Money-weighted, so a few large
+  // long-tenured balances pull it away from the typical member's experience.
   growthPct: 0,
+  // The mean of each member's OWN growth% (0107). This is what the page shows —
+  // it is a fact about members, where the pooled figure is a fact about the fund.
+  avgGrowthPct: 0,
   membersPriced: 0,
   membersUnpriced: 0,
+  membersWithBasis: 0,
   firstNavDate: null,
   publishedCount: 0,
   pendingDays: 0,
