@@ -106,6 +106,10 @@
 .statGrow {
   color: var(--color-green-ink, #1f6e44) !important;
 }
+/* Unit prices fall as well as rise — a real loss must not render green. */
+.statLoss {
+  color: var(--color-poor-ink, #B02530) !important;
+}
 .statStrip small {
   display: block;
   font-size: 10.5px;

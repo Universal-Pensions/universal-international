@@ -97,4 +97,61 @@ describe('buildContributionPayload', () => {
     const p = buildContributionPayload(signup, sched({ includeInsurance: true, insuranceTypes: ['life'], insurancePremium: 2000 }), '+256711000001');
     expect(p.contributionSchedule.insurancePremium).toBe(2000);
   });
+
+  // ── Per-product cover amounts ─────────────────────────────────────────────
+  // Every case above omits `insuranceCovers`, so they double as the proof that a
+  // schedule written before per-product cover existed still produces the old
+  // entry-tier payload byte for byte.
+  it('carries the chosen cover tier into insurancePolicy + insuranceProducts', () => {
+    const p = buildContributionPayload(signup, sched({
+      includeInsurance: true,
+      insuranceTypes: ['life', 'health'],
+      insuranceCovers: { life: 5_000_000, health: 8_000_000 },
+    }), '+256711000001');
+    expect(p.insurancePolicy).toEqual({ cover: 5_000_000, premiumMonthly: 7_500 });
+    expect(p.insuranceProducts).toEqual([
+      { product: 'health', cover: 8_000_000, premiumMonthly: 11_000 },
+    ]);
+  });
+
+  it('prefers the wizard-resolved insuranceSelections over the cover map', () => {
+    // insuranceSelections is what the summary card and the pay total were
+    // computed from, so it wins when both are present.
+    const p = buildContributionPayload(signup, sched({
+      includeInsurance: true,
+      insuranceTypes: ['life'],
+      insuranceCovers: { life: 1_000_000 },
+      insuranceSelections: [{ product: 'life', cover: 3_000_000, premiumMonthly: 5_000 }],
+    }), '+256711000001');
+    expect(p.insurancePolicy).toEqual({ cover: 3_000_000, premiumMonthly: 5_000 });
+  });
+
+  it('re-derives the premium from the ladder rather than trusting the snapshot', () => {
+    // A hand-edited or stale localStorage draft must not be able to pair a high
+    // cover with a cheap premium — no RPC validates the two against each other.
+    const p = buildContributionPayload(signup, sched({
+      includeInsurance: true,
+      insuranceTypes: ['life'],
+      insuranceSelections: [{ product: 'life', cover: 5_000_000, premiumMonthly: 1 }],
+    }), '+256711000001');
+    expect(p.insurancePolicy).toEqual({ cover: 5_000_000, premiumMonthly: 7_500 });
+  });
+
+  it('snaps an off-ladder cover down to the nearest tier', () => {
+    const p = buildContributionPayload(signup, sched({
+      includeInsurance: true,
+      insuranceTypes: ['life'],
+      insuranceCovers: { life: 4_000_000 },
+    }), '+256711000001');
+    expect(p.insurancePolicy).toEqual({ cover: 3_000_000, premiumMonthly: 5_000 });
+  });
+
+  it('keeps the legacy insuranceCover key in step with the real life row', () => {
+    const p = buildContributionPayload(signup, sched({
+      includeInsurance: true,
+      insuranceTypes: ['life'],
+      insuranceCovers: { life: 5_000_000 },
+    }), '+256711000001');
+    expect(p.contributionSchedule.insuranceCover).toBe(5_000_000);
+  });
 });

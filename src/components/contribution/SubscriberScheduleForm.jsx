@@ -15,15 +15,18 @@ import {
   INSURANCE_PRODUCTS,
   presetsForFrequency,
   annualPremium,
+  tierForCover,
   tinFillState,
   TIN_LINE_PCT,
 } from '../../constants/savings';
+import { defaultCoverMap } from '../../utils/insuranceSelection';
 import {
   activePolicies,
   buildingPolicies,
   buildingProgress,
   productName,
 } from '../../utils/policies';
+import CoverTierPicker from '../insurance/CoverTierPicker';
 import styles from './SubscriberScheduleForm.module.css';
 
 /**
@@ -62,12 +65,19 @@ import styles from './SubscriberScheduleForm.module.css';
  * }} props
  *
  * `showInsurance` (default true): render the Insurance tab + the purchased-cover
- * panel, and emit the insurance selection on save. The AGENT schedule-edit pages
- * pass `false` — an agent cannot authorise a premium for someone else
- * (`fund_insurance_products` requires `app_role='subscriber'`), so insurance is
- * the subscriber's own decision. When false the tab, its panel and the cover box
- * are all hidden AND the save payload omits every insurance key, so the
- * subscriber's existing insurance flag is left untouched.
+ * panel, and emit the insurance selection on save. When false the tab, its panel
+ * and the cover box are all hidden AND the save payload omits every insurance
+ * key, so the subscriber's existing insurance flag is left untouched.
+ *
+ * NOTE: no surface enables it today — every caller passes `false`, for two
+ * different reasons:
+ *   • the AGENT schedule-edit pages, because an agent cannot authorise a premium
+ *     for someone else (`fund_insurance_products` requires `app_role='subscriber'`);
+ *   • the SUBSCRIBER's own SchedulePage, because cover is a decision that belongs
+ *     on ONE page — Account settings → Insurance cover — not split across two
+ *     surfaces that could disagree about what the member holds.
+ * The tab is kept (and still tested) because signup asks the same question, but
+ * treat re-enabling it on a schedule surface as a product decision, not a tweak.
  *
  * `onCancel`: the subscriber's own page has nowhere to cancel to (the schedule IS
  * the page), but the agent pages navigate back to a subscriber detail route — so
@@ -115,6 +125,11 @@ export default function SubscriberScheduleForm({
   // Selection starts at everything held (so the plan reflects what's owned); the
   // user adds NEW products on top. Held products stay selected (locked on).
   const [addedTypes, setAddedTypes] = useState(() => new Set());
+  // Cover AMOUNT chosen per NEWLY-ADDED product. Held cover isn't editable here
+  // (its price is already agreed and its policy already exists), so this map
+  // only ever covers products in `addedTypes`. Seeded at each product's entry
+  // tier the moment it's toggled on.
+  const [addedCovers, setAddedCovers] = useState(() => defaultCoverMap());
 
   // Route + savings split apply to NEW cover being funded. Default to the current
   // funding mode; a subscriber already building keeps "save up".
@@ -136,9 +151,17 @@ export default function SubscriberScheduleForm({
 
   // Newly-selected products = the ones the user toggled on that aren't already
   // held. These are what get funded on save (Route A charges / Route B builds).
+  // Newly-added products carrying the cover tier the subscriber chose, so the
+  // annual total, the save-up projection, the settle sheet and the funding RPC
+  // all price the cover actually being bought (not the catalogue entry tier).
   const addedProducts = useMemo(
-    () => INSURANCE_PRODUCTS.filter((p) => addedTypes.has(p.id) && !heldTypes.has(p.id)),
-    [addedTypes, heldTypes],
+    () => INSURANCE_PRODUCTS
+      .filter((p) => addedTypes.has(p.id) && !heldTypes.has(p.id))
+      .map((p) => {
+        const tier = tierForCover(p.id, addedCovers[p.id]);
+        return tier ? { ...p, cover: tier.cover, premiumMonthly: tier.premiumMonthly } : p;
+      }),
+    [addedTypes, heldTypes, addedCovers],
   );
   const hasNewCover = addedProducts.length > 0;
   const addedAnnualTotal = addedProducts.reduce((s, p) => s + annualPremium(p), 0);
@@ -209,6 +232,11 @@ export default function SubscriberScheduleForm({
       if (next.has(id)) next.delete(id); else next.add(id);
       return next;
     });
+  }
+
+  /** Set the cover amount for a newly-added product. */
+  function setAddedCover(id, cover) {
+    setAddedCovers((prev) => ({ ...prev, [id]: cover }));
   }
 
   function handleSave() {
@@ -482,38 +510,65 @@ export default function SubscriberScheduleForm({
                     const held = heldTypes.has(p.id);
                     const isActive = activeTypes.has(p.id);
                     const on = held || addedTypes.has(p.id);
+                    const adding = on && !held;
+                    // Held cover is priced by the policy the subscriber already
+                    // owns — quoting the catalogue entry tier would misstate what
+                    // a member on a higher tier actually pays. New cover is
+                    // priced by the tier they're choosing right now.
+                    const heldPolicy = held ? heldPolicies.find((h) => h.type === p.id) : null;
+                    const shown = adding
+                      ? (addedProducts.find((a) => a.id === p.id) ?? p)
+                      : (heldPolicy ?? p);
+                    const short = shortName(p.label);
                     return (
-                      <button
+                      // Container + switch, not one <button>: the cover ladder is
+                      // a range input and cannot nest inside a button.
+                      <div
                         key={p.id}
-                        type="button"
-                        role="switch"
-                        aria-checked={on}
-                        aria-disabled={held || undefined}
                         className={styles.prod}
                         data-active={on}
                         data-held={held || undefined}
-                        onClick={() => toggleProduct(p.id)}
                       >
-                        <span className={styles.prodIcon} aria-hidden="true"><ProductIcon id={p.id} /></span>
-                        <span className={styles.prodCopy}>
-                          <span className={styles.prodName}>{shortName(p.label)}</span>
-                          <span className={styles.prodBlurb}>{p.blurb}</span>
-                        </span>
-                        <span className={styles.prodRight}>
-                          <span className={styles.prodPrice}>
-                            {formatUGX(annualPremium(p), { compact: false })}<small>/yr</small>
+                        <button
+                          type="button"
+                          role="switch"
+                          aria-checked={on}
+                          aria-disabled={held || undefined}
+                          className={styles.prodBtn}
+                          onClick={() => toggleProduct(p.id)}
+                        >
+                          <span className={styles.prodIcon} aria-hidden="true"><ProductIcon id={p.id} /></span>
+                          <span className={styles.prodCopy}>
+                            <span className={styles.prodName}>{short}</span>
+                            <span className={styles.prodBlurb}>{p.blurb}</span>
                           </span>
-                          {held ? (
-                            <span className={styles.prodHeld} data-state={isActive ? 'active' : 'building'}>
-                              {isActive ? 'Active' : 'Building'}
+                          <span className={styles.prodRight}>
+                            <span className={styles.prodPrice}>
+                              {formatUGX(annualPremium(shown), { compact: false })}<small>/yr</small>
                             </span>
-                          ) : (
-                            <span className={styles.prodToggle} aria-hidden="true">
-                              <span className={styles.prodToggleKnob} />
-                            </span>
-                          )}
-                        </span>
-                      </button>
+                            {held ? (
+                              <span className={styles.prodHeld} data-state={isActive ? 'active' : 'building'}>
+                                {isActive ? 'Active' : 'Building'}
+                              </span>
+                            ) : (
+                              <span className={styles.prodToggle} aria-hidden="true">
+                                <span className={styles.prodToggleKnob} />
+                              </span>
+                            )}
+                          </span>
+                        </button>
+                        {adding && (
+                          <div className={styles.prodPick}>
+                            <CoverTierPicker
+                              variant="card"
+                              productId={p.id}
+                              value={addedCovers[p.id]}
+                              label={`${short} cover amount`}
+                              onChange={(cover) => setAddedCover(p.id, cover)}
+                            />
+                          </div>
+                        )}
+                      </div>
                     );
                   })}
                 </div>

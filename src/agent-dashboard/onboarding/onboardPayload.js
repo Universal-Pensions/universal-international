@@ -5,7 +5,7 @@
 
 import { toCanonicalUGPhone } from '../../utils/phone';
 import { normalizeFrequency } from '../../utils/finance';
-import { INSURANCE_PRODUCTS, INSURANCE_COVER, INSURANCE_PREMIUM_MONTHLY } from '../../constants/savings';
+import { buildInsuranceSplit } from '../../utils/insuranceSelection';
 
 /**
  * Build the payload `create_subscriber_from_agent_onboard` expects from the
@@ -17,35 +17,23 @@ import { INSURANCE_PRODUCTS, INSURANCE_COVER, INSURANCE_PREMIUM_MONTHLY } from '
  * retired agent-only form emitted neither, and both silently defaulted).
  *
  * Insurance is multi-product: the wizard emits `insuranceTypes` (an array of
- * 'life' | 'health' | 'funeral'). We split it for the signup chain
- * (`_insert_subscriber_chain`, migration 0065):
+ * 'life' | 'health' | 'funeral') plus the cover amount chosen per product. The
+ * shared `buildInsuranceSplit` (utils/insuranceSelection.js — the SAME split the
+ * self-signup builder uses) turns that into what the signup chain
+ * (`_insert_subscriber_chain`, migrations 0065/0072) reads:
  *   - life            → `insurancePolicy` (life row in `insurance_policies`).
  *   - health/funeral  → `insuranceProducts` (rows in `subscriber_insurance_products`).
- * Covers/premiums come from `INSURANCE_PRODUCTS` (the form emits ids only).
- * Legacy fallback: a schedule with no `insuranceTypes` but `includeInsurance`
- * true is treated as life-only (preserves the pre-multi-product behaviour).
+ * Covers/premiums come from the tier the agent picked on the cover step, with
+ * each product's entry tier as the fallback. Legacy fallback: a schedule with no
+ * `insuranceTypes` but `includeInsurance` true is treated as life-only at the
+ * entry tier (preserves the pre-multi-product behaviour).
+ *
+ * NOTE this builder deliberately emits NO `contributionSchedule.insurancePremium`
+ * or `.insuranceCover` — it never has, and the SQL reads neither.
  */
 export function buildPayload(signup) {
   const schedule = signup.contributionSchedule || {};
-  const types = Array.isArray(schedule.insuranceTypes) ? schedule.insuranceTypes : null;
-  // Any insurance chosen — drives the schedule's legacy include_insurance flag.
-  const includeInsurance = types ? types.length > 0 : (schedule.includeInsurance ?? false);
-
-  // Life → insurancePolicy (unchanged contract). Honour insuranceTypes when the
-  // form emitted it; otherwise the legacy boolean means life-only.
-  const wantsLife = types ? types.includes('life') : includeInsurance;
-  const insurancePolicy = wantsLife
-    ? { cover: INSURANCE_COVER, premiumMonthly: INSURANCE_PREMIUM_MONTHLY }
-    : null;
-
-  // Health/funeral → insuranceProducts array (life never lands here — it belongs
-  // in insurance_policies). cover/premium sourced from INSURANCE_PRODUCTS.
-  const insuranceProducts = (types ?? [])
-    .filter((id) => id === 'health' || id === 'funeral')
-    .map((id) => {
-      const product = INSURANCE_PRODUCTS.find((p) => p.id === id);
-      return { product: id, cover: product?.cover ?? 0, premiumMonthly: product?.premiumMonthly ?? 0 };
-    });
+  const { includeInsurance, insurancePolicy, insuranceProducts } = buildInsuranceSplit(schedule);
 
   return {
     phone: toCanonicalUGPhone(signup.phone) || signup.phone,

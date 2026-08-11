@@ -1,40 +1,30 @@
 import { useCallback, useEffect, useState } from 'react';
 import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
-import { parseAmount } from '../../utils/finance';
-import { activeCoverTotal, activePolicies } from '../../utils/policies';
+import { activeCoverTotal, activePolicies, productName } from '../../utils/policies';
+import { hospitalCashQuote } from '../../utils/hospitalCash';
+import { HOSPITAL_CASH_DAYS, annualPremium, defaultTier } from '../../constants/savings';
+import { claimTypeLabel, claimStatusMeta } from '../../constants/claims';
 import { EASE_OUT_EXPO } from '../../utils/motion';
-import { formatNumber, formatUGX } from '../../utils/currency';
+import { formatUGX } from '../../utils/currency';
 import { formatDate } from '../../utils/date';
 import { useCurrentSubscriber, useSubmitClaim, useSubscriberClaims } from '../../hooks/useSubscriber';
 import { useToast } from '../../contexts/ToastContext';
 import { useIsDesktop } from '../../hooks/useIsDesktop';
-import { PillChip, PillChipGroup } from '../../components/PillChip';
 import ErrorCard from '../../components/feedback/ErrorCard';
 import { goBackOrFallback } from '../shell/navigation';
 import { useSubscriberAppBar } from '../shell/subscriberAppBarContext';
 import styles from './ClaimPage.module.css';
 import flow from './desktopFlow.module.css';
 
-const CLAIM_TYPES = [
-  { id: 'medical',          label: 'Medical' },
-  { id: 'accident',         label: 'Accident' },
-  { id: 'hospitalization',  label: 'Hospitalisation' },
-  { id: 'critical_illness', label: 'Critical illness' },
-];
-
 const MAX_FILE_BYTES = 5 * 1024 * 1024;
 
-function statusMeta(status) {
-  switch (status) {
-    case 'approved':
-    case 'paid':         return { label: status === 'paid' ? 'Paid' : 'Approved', tone: 'ok' };
-    case 'submitted':    return { label: 'Submitted', tone: 'info' };
-    case 'under_review': return { label: 'Under review', tone: 'pending' };
-    case 'rejected':     return { label: 'Rejected', tone: 'alert' };
-    default:             return { label: status, tone: 'info' };
-  }
-}
+/** Cheapest way into any cover — the empty state's price hook. */
+const CHEAPEST_ANNUAL = Math.min(
+  ...['life', 'health', 'funeral'].map((id) => annualPremium(defaultTier(id))),
+);
+
+const todayIso = () => new Date().toISOString().slice(0, 10);
 
 export default function ClaimPage() {
   const navigate = useNavigate();
@@ -45,28 +35,124 @@ export default function ClaimPage() {
   const submitClaim = useSubmitClaim(sub?.id);
 
   const [view, setView] = useState('list'); // list | form | review | success
-  const [claimType, setClaimType] = useState('medical');
-  const [claimDate, setClaimDate] = useState(() => new Date().toISOString().slice(0, 10));
-  const [claimAmount, setClaimAmount] = useState('');
+  const [admissionDate, setAdmissionDate] = useState('');
+  const [dischargeDate, setDischargeDate] = useState('');
+  const [provider, setProvider] = useState('');
   const [claimDesc, setClaimDesc] = useState('');
   const [claimFiles, setClaimFiles] = useState([]);
   const [submitting, setSubmitting] = useState(false);
   const [resultClaim, setResultClaim] = useState(null);
 
   const { data: claims = [] } = useSubscriberClaims(sub?.id);
-  // Cover figures span ALL active products (life + health + funeral), not the
-  // legacy life-only row — so a member with only health/funeral cover can still
-  // file a claim and sees their real cover, matching Policies / Home.
   const activeIns = activePolicies(sub);
   const coverTotal = activeCoverTotal(sub);
   const premiumTotal = activeIns.reduce((s, p) => s + (Number(p.premiumMonthly) || 0), 0);
   // Self-paid cover is billed as ONE annual premium (rate × 12), never monthly.
   const annualPremiumTotal = premiumTotal * 12;
   const nextRenewal = activeIns.map((p) => p.renewalDate).filter(Boolean).sort()[0] || null;
-  const noPolicy = activeIns.length === 0;
 
-  const claimAmtNum = parseAmount(claimAmount) ?? 0;
-  const canReview = claimType && claimDate && claimAmtNum > 0 && claimDesc.trim().length >= 6;
+  // WHO CAN CLAIM WHAT is the rule this page turns on. Hospital cash pays the
+  // member while they are alive, so it is the only thing claimable here. Life
+  // and funeral pay out BECAUSE the member has died — their nominee claims them
+  // through the public form at /claim, with no account.
+  const hospitalCash = activeIns.find((p) => p.type === 'health') || null;
+  const deathBenefits = activeIns.filter((p) => p.type === 'life' || p.type === 'funeral');
+  const noPolicy = activeIns.length === 0;
+  // Three states: file a claim · explain the nominee route · upsell.
+  const gate = hospitalCash ? 'claimable' : (deathBenefits.length > 0 ? 'nominee-only' : 'none');
+
+  // Live preview. The server re-derives all of this in submit_hospital_cash_claim
+  // (0099) and is the authority — nothing here is sent as an amount.
+  const quote = hospitalCashQuote({
+    policy: hospitalCash,
+    admission: admissionDate,
+    discharge: dischargeDate,
+    claims,
+  });
+
+  const canReview = Boolean(
+    admissionDate && dischargeDate
+    && quote.nights >= 1 && quote.payableNights >= 1
+    && provider.trim().length > 0
+    && claimDesc.trim().length >= 6,
+  );
+
+  // ── Shared form fragments ───────────────────────────────────────────────────
+  // Desktop and mobile render the same inputs in different chrome, so they are
+  // built once here rather than duplicated into both branches.
+  const stayFields = (
+    <>
+      <div className={styles.fieldRow}>
+        <label className={styles.field}>
+          <span className={styles.fieldLabel}>Admitted on</span>
+          <input
+            type="date"
+            className={styles.input}
+            value={admissionDate}
+            max={dischargeDate || todayIso()}
+            onChange={(e) => setAdmissionDate(e.target.value)}
+          />
+        </label>
+        <label className={styles.field}>
+          <span className={styles.fieldLabel}>Discharged on</span>
+          <input
+            type="date"
+            className={styles.input}
+            value={dischargeDate}
+            min={admissionDate || undefined}
+            max={todayIso()}
+            onChange={(e) => setDischargeDate(e.target.value)}
+          />
+        </label>
+      </div>
+      <label className={styles.field}>
+        <span className={`${styles.fieldLabel} ${flow.fieldLabelGap}`}>Hospital or clinic</span>
+        <input
+          type="text"
+          className={styles.input}
+          value={provider}
+          onChange={(e) => setProvider(e.target.value)}
+          placeholder="e.g. Mulago National Referral Hospital"
+          maxLength={160}
+        />
+      </label>
+    </>
+  );
+
+  // What the member will actually be paid, updating as they type. Hospital cash
+  // pays per NIGHT, so the cover figure on its own would overstate this.
+  const payoutPreview = admissionDate && dischargeDate ? (
+    <div className={styles.payoutCard} data-tone={quote.payableNights > 0 ? 'ok' : 'warn'}>
+      {quote.nights < 1 ? (
+        <p className={styles.payoutNote}>
+          Hospital cash pays for each <strong>night</strong> you stay. Choose a discharge
+          date after your admission date.
+        </p>
+      ) : quote.payableNights < 1 ? (
+        <p className={styles.payoutNote}>
+          You&apos;ve already claimed all <strong>{HOSPITAL_CASH_DAYS} covered nights</strong> for
+          this policy year. Your allowance resets on {formatDate(hospitalCash?.renewalDate)}.
+        </p>
+      ) : (
+        <>
+          <span className={styles.payoutEyebrow}>You&apos;ll receive</span>
+          <div className={styles.payoutBig}>{formatUGX(quote.payout, { compact: false })}</div>
+          <p className={styles.payoutNote}>
+            {quote.payableNights} {quote.payableNights === 1 ? 'night' : 'nights'}
+            {' × '}{formatUGX(quote.dailyRate, { compact: false })} a night ·{' '}
+            {quote.remaining - quote.payableNights} of your {HOSPITAL_CASH_DAYS} covered
+            nights left after this.
+          </p>
+          {quote.capped && (
+            <p className={styles.payoutWarn}>
+              You stayed {quote.nights} nights, but only {quote.payableNights} are still
+              covered this policy year — so that&apos;s what this claim pays.
+            </p>
+          )}
+        </>
+      )}
+    </div>
+  ) : null;
 
   const { registerBack } = useSubscriberAppBar();
   const handleBack = useCallback(() => {
@@ -108,15 +194,17 @@ export default function ClaimPage() {
     if (!canReview || !sub) return;
     setSubmitting(true);
     try {
+      // No amount is sent. The RPC prices the stay from the member's own policy
+      // (cover ÷ 20 a night) and caps it against the nights they have already
+      // used this policy year — see migration 0099.
       const claim = await submitClaim.mutateAsync({
-        type: claimType,
-        incidentDate: claimDate,
-        amount: claimAmtNum,
+        admissionDate,
+        dischargeDate,
+        provider: provider.trim(),
         description: claimDesc.trim(),
-        // Real File objects propagate to the mutation. Today the mock service
-        // only logs the file count; once the backend lands, swap the service
-        // implementation to send a multipart/form-data POST (or a presigned-
-        // URL upload) — the call sites here don't need to change.
+        // Real File objects propagate to the mutation, but there is still no
+        // storage bucket and no documents column — the review screen says so
+        // rather than implying an upload happened. See BACKEND.md §14a.
         files: claimFiles,
       });
       setResultClaim(claim);
@@ -130,9 +218,12 @@ export default function ClaimPage() {
   }
 
   function resetForm() {
-    setClaimType('medical');
-    setClaimDate(new Date().toISOString().slice(0, 10));
-    setClaimAmount('');
+    // Dates start EMPTY rather than defaulting to today: a hospital stay is a
+    // real event the member has to recall, and a pre-filled date is the kind of
+    // default people submit without reading.
+    setAdmissionDate('');
+    setDischargeDate('');
+    setProvider('');
     setClaimDesc('');
     setClaimFiles([]);
     setResultClaim(null);
@@ -210,7 +301,7 @@ export default function ClaimPage() {
               exit={reducedMotion ? undefined : { opacity: 0, y: -8 }}
               transition={{ duration: 0.28, ease: EASE_OUT_EXPO }}
             >
-              {noPolicy ? (
+              {gate === 'none' ? (
                 <section className={styles.emptyCoverCard}>
                   <div className={styles.shieldIcon} aria-hidden="true">
                     <svg viewBox="0 0 24 24" width="28" height="28" fill="none">
@@ -218,16 +309,58 @@ export default function ClaimPage() {
                       <path d="M9 12l2.2 2 3.8-4" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round"/>
                     </svg>
                   </div>
-                  <h2 className={styles.emptyTitle}>No active policy</h2>
+                  <h2 className={styles.emptyTitle}>No active cover</h2>
                   <p className={styles.emptyText}>
-                    Add life cover from <strong>UGX 24,000 / yr</strong>. You&apos;ll be covered up to UGX 1M.
+                    You have nothing to claim on yet. Cover starts from{' '}
+                    <strong>{formatUGX(CHEAPEST_ANNUAL, { compact: false })} / yr</strong>.
                   </p>
                   <button
                     type="button"
                     className={styles.primaryBtn}
-                    onClick={() => navigate('/dashboard/save/schedule')}
+                    onClick={() => navigate('/dashboard/settings/insurance')}
                   >
                     Add cover
+                  </button>
+                </section>
+              ) : gate === 'nominee-only' ? (
+                // The member holds only DEATH benefits. Saying "no claims
+                // available" would be wrong and slightly alarming; the honest
+                // answer is that someone else makes this claim, on their behalf,
+                // and the useful action is to check that person is on file.
+                <section className={styles.emptyCoverCard}>
+                  <div className={styles.shieldIcon} aria-hidden="true">
+                    <svg viewBox="0 0 24 24" width="28" height="28" fill="none">
+                      <path d="M12 3l7 3v5c0 4.5-3 8-7 10-4-2-7-5.5-7-10V6l7-3z" stroke="currentColor" strokeWidth="1.75" strokeLinejoin="round"/>
+                      <path d="M12 8v4M12 16h.01" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round"/>
+                    </svg>
+                  </div>
+                  <h2 className={styles.emptyTitle}>Your family makes this claim</h2>
+                  <p className={styles.emptyText}>
+                    You hold{' '}
+                    <strong>
+                      {deathBenefits.map((p) => productName(p.type).toLowerCase()).join(' and ')}
+                    </strong>
+                    . These pay out to the people you&apos;ve named, after you&apos;ve passed
+                    away — so the claim is made by them, not by you. Make sure your
+                    beneficiaries are on file and know how to reach us.
+                  </p>
+                  <button
+                    type="button"
+                    className={styles.primaryBtn}
+                    onClick={() => navigate('/dashboard/settings/nominees')}
+                  >
+                    Check your beneficiaries
+                  </button>
+                  <p className={styles.emptyText}>
+                    Add <strong>hospital cash</strong> and you can claim for yourself
+                    whenever you spend a night in hospital.
+                  </p>
+                  <button
+                    type="button"
+                    className={styles.linkBtn}
+                    onClick={() => navigate('/dashboard/settings/insurance')}
+                  >
+                    Add hospital cash
                   </button>
                 </section>
               ) : (
@@ -260,11 +393,11 @@ export default function ClaimPage() {
                         <li className={styles.claimsEmpty}>No claims filed yet.</li>
                       )}
                       {claims.map((c) => {
-                        const meta = statusMeta(c.status);
+                        const meta = claimStatusMeta(c.status);
                         return (
                           <li key={c.id} className={styles.claimRow}>
                             <div className={styles.claimHead}>
-                              <span className={styles.claimType}>{CLAIM_TYPES.find((t) => t.id === c.type)?.label || c.type}</span>
+                              <span className={styles.claimType}>{claimTypeLabel(c)}</span>
                               <span className={styles.claimStatus} data-tone={meta.tone}>
                                 <span className={styles.statusDot} />
                                 {meta.label}
@@ -304,38 +437,8 @@ export default function ClaimPage() {
                 <div className={flow.splitHost}>
                   <div className={flow.split}>
                     <div className={flow.col}>
-                      <div className={flow.card}>
-                        <span className={flow.fieldLabel}>What are you claiming for?</span>
-                        <PillChipGroup label="Claim type" layout="grid" columns={2}>
-                          {CLAIM_TYPES.map((c) => (
-                            <PillChip key={c.id} selected={claimType === c.id} onClick={() => setClaimType(c.id)}>
-                              {c.label}
-                            </PillChip>
-                          ))}
-                        </PillChipGroup>
-                      </div>
-
-                      <div className={flow.card}>
-                        <span className={flow.fieldLabel}>When did it happen?</span>
-                        <input
-                          type="date"
-                          className={styles.input}
-                          value={claimDate}
-                          max={new Date().toISOString().slice(0, 10)}
-                          onChange={(e) => setClaimDate(e.target.value)}
-                          aria-label="Incident date"
-                        />
-                        <span className={`${flow.fieldLabel} ${flow.fieldLabelGap}`}>Claim amount (UGX)</span>
-                        <input
-                          type="text"
-                          inputMode="numeric"
-                          className={styles.input}
-                          value={claimAmount ? formatNumber(parseAmount(claimAmount) ?? 0) : ''}
-                          onChange={(e) => setClaimAmount(e.target.value.replace(/[^\d]/g, ''))}
-                          placeholder="e.g. 350,000"
-                          aria-label="Claim amount in UGX"
-                        />
-                      </div>
+                      <div className={flow.card}>{stayFields}</div>
+                      {payoutPreview}
 
                       <div className={flow.card}>
                         <span className={flow.fieldLabel} id="claim-desc-label-desktop">Describe what happened</span>
@@ -443,50 +546,12 @@ export default function ClaimPage() {
               <section className={styles.section}>
                 <div className={styles.sectionHead}>
                   <span className={styles.sectionIdx}>01</span>
-                  <h2 className={styles.sectionTitle}>What happened?</h2>
+                  <h2 className={styles.sectionTitle}>Your hospital stay</h2>
                 </div>
-                <PillChipGroup label="Claim type" layout="grid" columns={2}>
-                  {CLAIM_TYPES.map((c) => (
-                    <PillChip
-                      key={c.id}
-                      selected={claimType === c.id}
-                      onClick={() => setClaimType(c.id)}
-                    >
-                      {c.label}
-                    </PillChip>
-                  ))}
-                </PillChipGroup>
+                {stayFields}
               </section>
 
-              <section className={styles.section}>
-                <div className={styles.sectionHead}>
-                  <span className={styles.sectionIdx}>02</span>
-                  <h2 className={styles.sectionTitle}>When &amp; how much?</h2>
-                </div>
-                <div className={styles.fieldRow}>
-                  <label className={styles.field}>
-                    <span className={styles.fieldLabel}>Incident date</span>
-                    <input
-                      type="date"
-                      className={styles.input}
-                      value={claimDate}
-                      max={new Date().toISOString().slice(0, 10)}
-                      onChange={(e) => setClaimDate(e.target.value)}
-                    />
-                  </label>
-                  <label className={styles.field}>
-                    <span className={styles.fieldLabel}>Amount (UGX)</span>
-                    <input
-                      type="text"
-                      inputMode="numeric"
-                      className={styles.input}
-                      value={claimAmount ? formatNumber(parseAmount(claimAmount) ?? 0) : ''}
-                      onChange={(e) => setClaimAmount(e.target.value.replace(/[^\d]/g, ''))}
-                      placeholder="e.g. 350,000"
-                    />
-                  </label>
-                </div>
-              </section>
+              {payoutPreview}
 
               <section className={styles.section}>
                 <div className={styles.sectionHead}>
@@ -567,20 +632,34 @@ export default function ClaimPage() {
               transition={{ duration: 0.28, ease: EASE_OUT_EXPO }}
             >
               <section className={styles.reviewCard}>
-                <span className={styles.confirmEyebrow}>Claiming</span>
-                <div className={styles.confirmBig}>{formatUGX(claimAmtNum, { compact: false })}</div>
+                <span className={styles.confirmEyebrow}>You&apos;ll receive</span>
+                <div className={styles.confirmBig}>{formatUGX(quote.payout, { compact: false })}</div>
                 <ul className={styles.summaryList}>
                   <li className={styles.summaryRow}>
-                    <span>Type</span>
-                    <strong>{CLAIM_TYPES.find((t) => t.id === claimType)?.label}</strong>
+                    <span>Cover</span>
+                    <strong>{productName('health')}</strong>
                   </li>
                   <li className={styles.summaryRow}>
-                    <span>Incident</span>
-                    <strong>{formatDate(claimDate)}</strong>
+                    <span>Hospital</span>
+                    <strong>{provider.trim()}</strong>
+                  </li>
+                  <li className={styles.summaryRow}>
+                    <span>Stay</span>
+                    <strong>{formatDate(admissionDate)} → {formatDate(dischargeDate)}</strong>
+                  </li>
+                  <li className={styles.summaryRow}>
+                    <span>Nights paid</span>
+                    <strong>
+                      {quote.payableNights} × {formatUGX(quote.dailyRate, { compact: false })}
+                    </strong>
                   </li>
                   <li className={styles.summaryRow}>
                     <span>Documents</span>
-                    <strong>{claimFiles.length} file{claimFiles.length !== 1 ? 's' : ''}</strong>
+                    {/* Honest about the demo limit rather than implying an upload
+                        happened — there is no storage bucket (BACKEND.md §14a). */}
+                    <strong>
+                      {claimFiles.length} file{claimFiles.length !== 1 ? 's' : ''} attached
+                    </strong>
                   </li>
                 </ul>
                 <p className={styles.reviewDesc}>{claimDesc}</p>
@@ -621,15 +700,16 @@ export default function ClaimPage() {
       </div>
 
       {/* On desktop the form's Review CTA is inline in the split column, so the
-          page footer is suppressed for the form view (it still drives the list /
-          review / success actions, constrained to the narrow column). */}
-      {!noPolicy && !(isDesktop && view === 'form') && (
+          page footer is suppressed for the form view (it still drives the
+          review / success actions, constrained to the narrow column).
+
+          The LIST view has no footer at all: `.fileNewBtn` above already carries
+          "File a new claim", directly under the cover it applies to, and it is
+          the only version that also shows when there are no past claims. The
+          footer is not sticky, so a second copy at the bottom of the list was
+          the same button twice on one screen. */}
+      {!noPolicy && view !== 'list' && !(isDesktop && view === 'form') && (
         <footer className={`${styles.footer}${isDesktop ? ` ${flow.narrow}` : ''}`}>
-          {view === 'list' && claims.length > 0 && (
-            <button type="button" className={styles.primaryBtn} onClick={() => { resetForm(); setView('form'); }}>
-              File a new claim
-            </button>
-          )}
           {view === 'form' && (
             <button
               type="button"

@@ -400,15 +400,27 @@ export default function HomeDesktop({ subscriber }) {
         <div className={styles.kpi} style={{ '--ac': 'var(--color-green)', '--tint': '46,139,87' }}>
           <div className={styles.kpiChip}>{glyph.growth(18)}</div>
           <div className={styles.kpiLabel}>Investment growth</div>
-          <div className={`${styles.kpiValue} ${styles.kpiValueGrow}`}>
-            {net > 0 ? `+${growthPct.toFixed(1)}%` : '—'}
+          <div
+            className={`${styles.kpiValue} ${growth < 0 ? styles.kpiValueLoss : styles.kpiValueGrow}`}
+          >
+            {/* Growth can be negative — the unit price falls as well as rises —
+                so the sign is derived, never hardcoded to "+". */}
+            {net > 0
+              ? `${growth < 0 ? '−' : '+'}${Math.abs(growthPct).toFixed(1)}%`
+              : '—'}
           </div>
           <div className={styles.kpiExplain}>
-            {net > 0
-              // "more than you saved" is wrong for a member whose pension is partly
-              // (or wholly) employer-funded — they didn't save all of the principal.
-              ? `≈ ${formatUGX(growth)} more than ${showFunding ? 'was paid in' : 'you saved'}.`
-              : 'Start saving to see your growth.'}
+            {/* "more than you saved" is wrong for a member whose pension is partly
+                (or wholly) employer-funded — they didn't save all of the principal. */}
+            {net <= 0
+              ? 'Start saving to see your growth.'
+              : growth > 0
+                ? `≈ ${formatUGX(growth)} more than ${showFunding ? 'was paid in' : 'you saved'}.`
+                : growth < 0
+                  // Plain language: say what happened and that it can recover,
+                  // without jargon. Losses are real and must not be hidden.
+                  ? `≈ ${formatUGX(Math.abs(growth))} less than ${showFunding ? 'was paid in' : 'you saved'}. Unit prices go up and down.`
+                  : `Same as ${showFunding ? 'was paid in' : 'you saved'} so far.`}
           </div>
         </div>
 

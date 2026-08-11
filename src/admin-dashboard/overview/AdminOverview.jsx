@@ -5,19 +5,30 @@ import { useAdminPanel } from '../../contexts/AdminPanelContext';
 import {
   usePlatformOverview,
   useEntityMetrics,
-  useAllEntities,
   useChildren,
   useChildrenMetrics,
   useTopEntities,
   useEmployerGeoRollup,
 } from '../../hooks/useEntity';
+import { useAdminAttention } from '../../hooks/useAdminAttention';
+import { usePlatformTicketMetrics } from '../../hooks/useTickets';
 import { formatUGX, formatNumber } from '../../utils/currency';
 import { EASE_OUT_EXPO as EASE } from '../../utils/motion';
 import MiniChart from '../../dashboard/shared/MiniChart';
+import NeedsAttentionCard, { NeedsAttentionPill } from './NeedsAttentionCard';
+import {
+  computeAdminAttention,
+  countToAction,
+  attentionPanelDesktop,
+  REUSES_EXISTING_PANEL,
+} from './adminAttentionDerive';
 // Reuse the distributor overview's flat white/indigo aesthetic verbatim — the
 // styling is role-blind (tiles / split / cards / gauge / tables); only the data
 // framing below is re-scoped to the platform-wide admin picture.
 import styles from '../../dashboard/overview/DistributorOverview.module.css';
+// The Needs-attention card's own module carries the one admin-only class the
+// shared overview module must not gain — see the note above .cardAccent there.
+import attn from './NeedsAttentionCard.module.css';
 
 /* ── Inline icons (a small kit beyond shared/Icons.jsx) ───────────────────── */
 const svg = (d, o = {}) => (
@@ -73,22 +84,6 @@ const IC = {
     <path d="M12 3l9 16H3l9-16z" stroke="currentColor" strokeWidth="1.75" strokeLinejoin="round" />
     <path d="M12 10v4M12 17h.01" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" />
   </>),
-  pending: svg(<>
-    <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="1.75" />
-    <path d="M12 7v5l3 2" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" />
-  </>),
-  pin: svg(<>
-    <path d="M12 21s7-6.3 7-11a7 7 0 10-14 0c0 4.7 7 11 7 11z" stroke="currentColor" strokeWidth="1.75" strokeLinejoin="round" />
-    <circle cx="12" cy="10" r="2.5" stroke="currentColor" strokeWidth="1.75" />
-  </>),
-  spark: svg(<>
-    <path d="M12 3v4M12 17v4M3 12h4M17 12h4M6 6l2.5 2.5M15.5 15.5L18 18M18 6l-2.5 2.5M8.5 15.5L6 18" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" />
-  </>),
-  handAdd: svg(<>
-    <circle cx="12" cy="8" r="4" stroke="currentColor" strokeWidth="1.75" />
-    <path d="M5 21v-1a7 7 0 0110-6.3" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" />
-    <path d="M18 15v6M15 18h6" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" />
-  </>),
   chevron: (w = 14) => svg(<path d="M9 6l6 6-6 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />, { w }),
   up: (w = 12) => svg(<path d="M6 15l6-6 6 6" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" />, { w }),
   down: (w = 12) => svg(<path d="M6 9l6 6 6-6" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" />, { w }),
@@ -125,21 +120,21 @@ function Tile({ tone, icon, label, value, sub, subTone, onClick }) {
  * dash mode still falls back to the shared OverlayPanel (via the shell).
  */
 export default function AdminOverview() {
-  const { drillDown, setViewSubscribersOpen, setViewAgentsOpen, setViewBranchesOpen, setDrillTargetBranchId, setDrillTargetAgentId } = useDashboard();
-  const { setViewDistributorsOpen, setViewEmployersOpen } = useAdminPanel();
+  const { drillDown, setViewSubscribersOpen, setViewAgentsOpen, setViewBranchesOpen, setDrillTargetBranchId, setDrillTargetAgentId, setViewTicketsOpen } = useDashboard();
+  const { setViewDistributorsOpen, setViewEmployersOpen, setViewAccessRequestsOpen, setAttentionType } = useAdminPanel();
 
   const { data: platform } = usePlatformOverview();
   const { data: country } = useEntityMetrics('country', 'ug');
-  // Full branch/distributor lists power the "needs attention" rows (status only);
-  // the top-N tables no longer pull the whole collections.
-  const { data: branchesRaw = [] } = useAllEntities('branch');
-  const { data: distributorsRaw = [] } = useAllEntities('distributor');
   const { data: regions = [] } = useChildren('country', 'ug');
   const { data: regionMetrics = {} } = useChildrenMetrics('country', 'ug');
   // Bounded server-side top-N (0077) — replaces the old whole agent + branch
-  // collection pull + client-side sort just to render two 6-row tables.
+  // collection pull + client-side sort just to render the table.
   const { data: topBranches = [] } = useTopEntities('branch', 'aum', 6);
-  const { data: topAgents = [] } = useTopEntities('agent', 'contributions', 6);
+  // Ten Needs-attention counts in one round-trip (0097), plus the ticket counts
+  // that RPC cannot supply (ticketing has no Supabase tables — see
+  // services/tickets.js getPlatformTicketMetrics).
+  const { data: attention } = useAdminAttention();
+  const { data: ticketMetrics } = usePlatformTicketMetrics();
 
   const p = platform ?? {};
   const c = country ?? {};
@@ -148,7 +143,6 @@ export default function AdminOverview() {
   // country rollup that undercounts them.
   const subs = p.totalSubscribers || 0;
   const active = p.activeSubscribers || 0;
-  const inactive = p.inactiveSubscribers ?? Math.max(0, subs - active);
   const activeRate = subs > 0 ? Math.round((active / subs) * 100) : 0;
   const aum = p.aum || 0;
   const contributions = p.totalContributions || 0;
@@ -156,9 +150,9 @@ export default function AdminOverview() {
   const branchCount = p.branches || 0;
   const distributorCount = p.distributors || 0;
   const employerCount = p.employers || 0;
-  const viaDist = p.subscribersViaDistributor ?? 0;
-  const viaEmp = p.subscribersViaEmployer ?? 0;
-  const direct = p.subscribersDirect ?? 0;
+  // The acquisition-channel split (viaDistributor / viaEmployer / direct) is no
+  // longer read here — it only ever fed the deleted "Today's snapshot" card. It
+  // remains on the get_platform_overview payload for the map-mode country card.
 
   const monthly = Array.isArray(c.monthlyContributions) ? c.monthlyContributions : [];
   const monthlyHasData = monthly.some((v) => v > 0);
@@ -184,17 +178,32 @@ export default function AdminOverview() {
     ) === 0),
     [regions, regionMetrics, employerGeo],
   );
-  const inactiveBranches = useMemo(
-    () => branchesRaw.filter((b) => b.status === 'inactive'),
-    [branchesRaw],
+  // Inactive-branch count now rides along on get_admin_attention rather than
+  // pulling the whole 316-row branch collection just to length a filter.
+  const inactiveBranches = attention?.inactiveBranches ?? 0;
+
+  const attentionItems = useMemo(
+    () => computeAdminAttention(attention, {
+      openComplaints: ticketMetrics?.openCount ?? 0,
+      urgentComplaints: ticketMetrics?.urgentOpenCount ?? 0,
+    }),
+    [attention, ticketMetrics],
   );
-  const inactiveDistributors = useMemo(
-    () => distributorsRaw.filter((d) => d.status === 'inactive'),
-    [distributorsRaw],
-  );
+  const toAction = countToAction(attentionItems);
 
   const openBranchList = () => { setDrillTargetBranchId(null); setViewBranchesOpen(true); };
   const openAgentList = () => { setDrillTargetAgentId(null); setViewAgentsOpen(true); };
+
+  /* Desktop admin has no routes — the shell derives its page from boolean panel
+     flags — so a Needs-attention row sets panel state rather than navigating.
+     Two signals hand off to the purpose-built panel they already own (approve /
+     deny, ticket threads) instead of the generic drill-down. */
+  const openAttention = (item) => {
+    const target = attentionPanelDesktop(item.type);
+    if (target.panel === REUSES_EXISTING_PANEL.pendingAccessRequests) { setViewAccessRequestsOpen(true); return; }
+    if (target.panel === REUSES_EXISTING_PANEL.pendingComplaints) { setViewTicketsOpen(true); return; }
+    setAttentionType(target.attentionType);
+  };
 
   const dash = health / 100;
   const CIRC = 2 * Math.PI * 54;
@@ -271,6 +280,36 @@ export default function AdminOverview() {
             </div>
           </section>
 
+          {/* Platform network — the admin's domain shortcuts. Sits under the
+              health score rather than in the right column so that column can
+              open with Needs attention, level with the score. */}
+          <section className={styles.card}>
+            <div className={styles.cardHead}><span className={styles.cardIc}>{IC.network}</span>Platform network</div>
+            <div className={styles.attn}>
+              <button className={styles.attnRow} onClick={() => setViewDistributorsOpen(true)}>
+                <span className={styles.attnIc} data-tone="indigo">{IC.network}</span>
+                <span className={styles.attnVal}>{formatNumber(distributorCount)}</span>
+                <span className={styles.attnTx}><span className={styles.attnL}>{distributorCount === 1 ? 'Distributor' : 'Distributors'}</span><span className={styles.attnS}>Network operators across the platform</span></span>
+                <span className={styles.attnGo}>Manage {IC.chevron()}</span>
+              </button>
+              <button className={styles.attnRow} onClick={() => setViewEmployersOpen(true)}>
+                <span className={styles.attnIc} data-tone="indigo">{IC.company}</span>
+                <span className={styles.attnVal}>{formatNumber(employerCount)}</span>
+                <span className={styles.attnTx}><span className={styles.attnL}>{employerCount === 1 ? 'Employer' : 'Employers'}</span><span className={styles.attnS}>Companies funding staff pensions</span></span>
+                <span className={styles.attnGo}>Manage {IC.chevron()}</span>
+              </button>
+              <button className={styles.attnRow} onClick={openBranchList}>
+                <span className={styles.attnIc} data-tone="indigo">{IC.building}</span>
+                <span className={styles.attnVal}>{formatNumber(branchCount)}</span>
+                <span className={styles.attnTx}><span className={styles.attnL}>Branches</span><span className={styles.attnS}>
+                  {formatNumber(agentCount)} agents in the field
+                  {inactiveBranches > 0 ? ` · ${formatNumber(inactiveBranches)} inactive` : ''}
+                </span></span>
+                <span className={styles.attnGo}>View {IC.chevron()}</span>
+              </button>
+            </div>
+          </section>
+
           {/* Contributions trend */}
           {monthlyHasData && (
             <section className={styles.card}>
@@ -329,116 +368,26 @@ export default function AdminOverview() {
         </div>
 
         <div className={styles.col}>
-          {/* Platform network — the admin's domain shortcuts */}
-          <section className={styles.card}>
-            <div className={styles.cardHead}><span className={styles.cardIc}>{IC.network}</span>Platform network</div>
-            <div className={styles.attn}>
-              <button className={styles.attnRow} onClick={() => setViewDistributorsOpen(true)}>
-                <span className={styles.attnIc} data-tone="indigo">{IC.network}</span>
-                <span className={styles.attnVal}>{formatNumber(distributorCount)}</span>
-                <span className={styles.attnTx}><span className={styles.attnL}>{distributorCount === 1 ? 'Distributor' : 'Distributors'}</span><span className={styles.attnS}>Network operators across the platform</span></span>
-                <span className={styles.attnGo}>Manage {IC.chevron()}</span>
-              </button>
-              <button className={styles.attnRow} onClick={() => setViewEmployersOpen(true)}>
-                <span className={styles.attnIc} data-tone="indigo">{IC.company}</span>
-                <span className={styles.attnVal}>{formatNumber(employerCount)}</span>
-                <span className={styles.attnTx}><span className={styles.attnL}>{employerCount === 1 ? 'Employer' : 'Employers'}</span><span className={styles.attnS}>Companies funding staff pensions</span></span>
-                <span className={styles.attnGo}>Manage {IC.chevron()}</span>
-              </button>
-              <button className={styles.attnRow} onClick={openBranchList}>
-                <span className={styles.attnIc} data-tone="indigo">{IC.building}</span>
-                <span className={styles.attnVal}>{formatNumber(branchCount)}</span>
-                <span className={styles.attnTx}><span className={styles.attnL}>Branches</span><span className={styles.attnS}>{formatNumber(agentCount)} agents in the field</span></span>
-                <span className={styles.attnGo}>View {IC.chevron()}</span>
-              </button>
-            </div>
-          </section>
+          {/* Needs attention — ten platform signals, always all ten (a clear
+              signal shows a green "Clear" pill rather than disappearing) so the
+              card reads as a fixed checklist the admin can scan by position.
 
-          {/* Needs attention */}
-          <section className={styles.card}>
-            <div className={styles.cardHead}><span className={styles.cardIc}>{IC.alert}</span>Needs attention</div>
-            <div className={styles.attn}>
-              <button className={styles.attnRow} onClick={() => setViewSubscribersOpen(true)}>
-                <span className={styles.attnIc} data-tone="amber">{IC.pending}</span>
-                <span className={styles.attnVal}>{formatNumber(inactive)}</span>
-                <span className={styles.attnTx}><span className={styles.attnL}>Dormant subscribers</span><span className={styles.attnS}>No recent contribution</span></span>
-                <span className={styles.attnGo}>Review {IC.chevron()}</span>
-              </button>
-              {inactiveDistributors.length > 0 && (
-                <button className={styles.attnRow} onClick={() => setViewDistributorsOpen(true)}>
-                  <span className={styles.attnIc} data-tone="red">{IC.network}</span>
-                  <span className={styles.attnVal}>{inactiveDistributors.length}</span>
-                  <span className={styles.attnTx}><span className={styles.attnL}>{inactiveDistributors.length === 1 ? 'Deactivated distributor' : 'Deactivated distributors'}</span><span className={styles.attnS}>{inactiveDistributors.slice(0, 2).map((d) => d.name).join(' · ')}{inactiveDistributors.length > 2 ? ' …' : ''}</span></span>
-                  <span className={styles.attnGo}>Review {IC.chevron()}</span>
-                </button>
-              )}
-              {emptyRegions.length > 0 && (
-                <button className={styles.attnRow} onClick={() => setViewSubscribersOpen(true)}>
-                  <span className={styles.attnIc} data-tone="red">{IC.pin}</span>
-                  <span className={styles.attnVal}>{emptyRegions.length}</span>
-                  <span className={styles.attnTx}><span className={styles.attnL}>Regions with no members</span><span className={styles.attnS}>{emptyRegions.map((r) => r.name).join(' & ')} — coverage gap</span></span>
-                  <span className={styles.attnGo}>Review {IC.chevron()}</span>
-                </button>
-              )}
-              {inactiveBranches.length > 0 && (
-                <button className={styles.attnRow} onClick={openBranchList}>
-                  <span className={styles.attnIc} data-tone="indigo">{IC.alert}</span>
-                  <span className={styles.attnVal}>{inactiveBranches.length}</span>
-                  <span className={styles.attnTx}><span className={styles.attnL}>{inactiveBranches.length === 1 ? 'Inactive branch' : 'Inactive branches'}</span><span className={styles.attnS}>{inactiveBranches.slice(0, 2).map((b) => b.name).join(' · ')}{inactiveBranches.length > 2 ? ' …' : ''}</span></span>
-                  <span className={styles.attnGo}>Review {IC.chevron()}</span>
-                </button>
-              )}
+              It opens the right column, level with the health score, and carries
+              an accent rail: this is the only card on the page that asks the
+              admin to DO something, and it was reading as a footnote below the
+              network shortcuts. The rail is conditional — an amber edge on a
+              card reading "All clear" would be a warning about nothing. */}
+          <section className={`${styles.card} ${toAction > 0 ? attn.cardAccent : ''}`.trim()}>
+            <div className={styles.cardHead} id="admin-attn-head">
+              <span className={styles.cardIc}>{IC.alert}</span>
+              Needs attention
+              <NeedsAttentionPill items={attentionItems} align />
             </div>
-          </section>
-
-          {/* Today snapshot + subscriber channels */}
-          <section className={styles.card}>
-            <div className={styles.cardHead}><span className={styles.cardIc} data-tone="teal">{IC.spark}</span>Today&rsquo;s snapshot</div>
-            <div className={styles.feed}>
-              <div className={styles.feedLive}><span className={styles.feedPulse} /> Updated just now</div>
-              <div className={styles.fitem}>
-                <span className={styles.fic} data-tone="green">{IC.handAdd}</span>
-                <span className={styles.ftext}><span className={styles.ft}><b>{formatNumber(c.newSubscribersToday || 0)}</b> new subscribers enrolled today</span><span className={styles.fm}>platform-wide</span></span>
-              </div>
-              <div className={styles.fitem}>
-                <span className={styles.fic} data-tone="green">{IC.coins}</span>
-                <span className={styles.ftext}><span className={styles.ft}>Contributions collected — <b>{formatUGX(c.dailyContributions || 0)}</b></span><span className={styles.fm}>today</span></span>
-              </div>
-              <div className={styles.fitem}>
-                <span className={styles.fic}>{IC.person}</span>
-                <span className={styles.ftext}><span className={styles.ft}><b>{formatNumber(viaDist)}</b> via distributors · <b>{formatNumber(viaEmp)}</b> via employers{direct > 0 ? <> · <b>{formatNumber(direct)}</b> direct</> : null}</span><span className={styles.fm}>subscriber acquisition channels</span></span>
-              </div>
-            </div>
-          </section>
-
-          {/* Top agents */}
-          <section className={styles.tableCard}>
-            <div className={styles.tableHead}>
-              <div className={styles.tableTitle}><span className={styles.cardIc} data-tone="teal">{IC.employees}</span>Top agents</div>
-              <button className={styles.tableLink} onClick={openAgentList}>View all →</button>
-            </div>
-            <div className={styles.tableScroll}>
-              <table className={styles.tbl}>
-                <thead><tr><th>Agent</th><th className={styles.num}>Subs</th><th className={styles.num}>Contributions</th></tr></thead>
-                <tbody>
-                  {topAgents.map((a) => (
-                    <tr key={a.id} className={styles.rowAct} onClick={() => drillDown('agent', a.id)} aria-label={`View ${a.name}`}>
-                      <td>
-                        <span className={styles.member}>
-                          <span className={styles.avatar} data-tone="teal">{initials(a.name)}</span>
-                          <span className={styles.memberText}>
-                            <span className={styles.mName}>{a.name}</span>
-                            <span className={styles.mSub}>{a.parentName || '—'}</span>
-                          </span>
-                        </span>
-                      </td>
-                      <td className={styles.num}>{formatNumber(a.m?.totalSubscribers || 0)}</td>
-                      <td className={styles.num}>{formatUGX(a.m?.totalContributions || 0)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+            <NeedsAttentionCard
+              items={attentionItems}
+              onSelect={openAttention}
+              headerId="admin-attn-head"
+            />
           </section>
         </div>
       </div>

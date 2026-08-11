@@ -297,10 +297,14 @@ test.describe('agent → onboard new subscriber (UI + RPC + DB)', () => {
     // exercised: life → insurance_policies, health/funeral →
     // subscriber_insurance_products. Route A ("Pay now") makes 0072 post the
     // extra type='premium' transaction asserted below.
+    // Covers: raised off the entry tiers, and deliberately DIFFERENT from the
+    // self-signup spec's choices, so the DB block proves the AGENT's selection
+    // is what gets stored for the member they enrolled.
     await fillContributionPlan(page, {
       audience: 'agent',
       amount: '50000',
       toggleProducts: ['health', 'funeral'],
+      covers: { life: 3_000_000, health: 12_000_000, funeral: 5_000_000 },
     });
     await clickPay(page);
 
@@ -360,6 +364,28 @@ test.describe('agent → onboard new subscriber (UI + RPC + DB)', () => {
       await rowExists('subscriber_insurance_products', { subscriber_id: sub!.id, product: 'funeral' }),
       `funeral subscriber_insurance_products row should be created for ${sub!.id}`,
     ).toBe(true);
+
+    // Per-product COVER AMOUNTS chosen by the AGENT on the cover step. Row
+    // existence can't distinguish a real selection from the entry-tier default,
+    // so assert the figures — this is the agent half of "every role that can
+    // onboard a subscriber stores the cover it was told to".
+    const lifeRow = await getRow<{ cover: string; premium_monthly: string }>(
+      'insurance_policies', { subscriber_id: sub!.id },
+    );
+    expect(Number(lifeRow!.cover), 'life cover should be the tier the agent picked').toBe(3_000_000);
+    expect(Number(lifeRow!.premium_monthly), 'life premium should come from the ladder').toBe(5_000);
+
+    const healthRow = await getRow<{ cover: string; premium_monthly: string }>(
+      'subscriber_insurance_products', { subscriber_id: sub!.id, product: 'health' },
+    );
+    expect(Number(healthRow!.cover), 'health cover should be the tier the agent picked').toBe(12_000_000);
+    expect(Number(healthRow!.premium_monthly), 'health premium should come from the ladder').toBe(15_000);
+
+    const funeralRow = await getRow<{ cover: string; premium_monthly: string }>(
+      'subscriber_insurance_products', { subscriber_id: sub!.id, product: 'funeral' },
+    );
+    expect(Number(funeralRow!.cover), 'funeral cover should be the tier the agent picked').toBe(5_000_000);
+    expect(Number(funeralRow!.premium_monthly), 'funeral premium should come from the ladder').toBe(3_250);
 
     // The payment step is what makes these two rows possible. Before the parity
     // change the agent form emitted no `paymentMethod` at all (buildPayload read

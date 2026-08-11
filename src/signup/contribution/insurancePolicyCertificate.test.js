@@ -27,7 +27,7 @@ describe('buildPolicyCertificateHtml', () => {
     // cover formatted via the central en-UG formatter (grouped, exact).
     expect(html).toContain('1,000,000');
     // productLabel drives the certificate title.
-    expect(html).toContain('Certificate of Life Insurance');
+    expect(html).toContain('Certificate of Insurance — Life');
   });
 
   it('escapes HTML in the holder name (no raw tag injection)', () => {
@@ -37,8 +37,13 @@ describe('buildPolicyCertificateHtml', () => {
   });
 
   it('reflects the product label in the title for non-life products', () => {
-    expect(buildPolicyCertificateHtml({ ...base, productLabel: 'Health' }))
-      .toContain('Certificate of Health Insurance');
+    // The title is "Certificate of Insurance — <product>", not "Certificate of
+    // <product> Insurance", so it stays grammatical for a product whose name
+    // isn't an adjective ("Hospital cash").
+    expect(buildPolicyCertificateHtml({ ...base, productLabel: 'Hospital cash' }))
+      .toContain('Certificate of Insurance — Hospital cash');
+    expect(buildPolicyCertificateHtml({ ...base, productLabel: 'Funeral' }))
+      .toContain('Certificate of Insurance — Funeral');
   });
 
   it('hides the beneficiaries section when showBeneficiaries is false', () => {

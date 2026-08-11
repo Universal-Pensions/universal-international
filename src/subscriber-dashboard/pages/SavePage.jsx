@@ -21,6 +21,7 @@ import {
   MIN_CONTRIBUTION,
   MOBILE_QUICK_CONTRIBUTION_AMOUNTS,
   RETIREMENT_AGE,
+  DEFAULT_RETIREMENT_PCT,
 } from '../../constants/savings';
 import InlinePayPanel from '../../components/InlinePayPanel';
 import PaymentMethodPicker, { GatewayAuthorising } from '../../components/payment/PaymentMethodPicker';
@@ -31,11 +32,6 @@ import styles from './SavePage.module.css';
 import flow from './desktopFlow.module.css';
 
 const PRESET_AMOUNTS = MOBILE_QUICK_CONTRIBUTION_AMOUNTS;
-
-// Matches the schedule form's default (SubscriberScheduleForm) and the
-// server-side schedule default (retirement_pct ?? 80), so a subscriber with no
-// saved schedule sees the same 80/20 split everywhere.
-const DEFAULT_RETIREMENT_PCT = 80;
 
 // Hero opens on a valid preset (UGX 25K) so the amount reads as a real figure
 // rather than "—" before any interaction — matches mockup 02.

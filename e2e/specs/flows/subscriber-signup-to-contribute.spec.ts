@@ -303,10 +303,14 @@ test.describe('subscriber → signup wizard → first contribution (UI + DB)', (
     // RPC listener before clicking Pay and asserts the 200 — the authoritative
     // signal that the SECURITY DEFINER function completed (and, by implication,
     // that the trigger chain created subscriber_balances + the first commission).
+    // Covers: each product is raised OFF its entry tier so the DB block below
+    // proves the amount the user chose is what Postgres stores — an entry-tier
+    // default would pass even if the cover picker were ignored entirely.
     await walkContributionAndPay(page, 'create_subscriber_from_signup', {
       audience: 'self',
       presetLabel: QUICK_CONTRIBUTION_LABEL,
       toggleProducts: ['health', 'funeral'],
+      covers: { life: 5_000_000, health: 8_000_000, funeral: 3_000_000 },
     });
 
     // ── DB verification ──────────────────────────────────────────────────
@@ -363,6 +367,28 @@ test.describe('subscriber → signup wizard → first contribution (UI + DB)', (
       await rowExists('subscriber_insurance_products', { subscriber_id: sub!.id, product: 'funeral' }),
       `funeral subscriber_insurance_products row should be created for ${sub!.id}`,
     ).toBe(true);
+
+    // Per-product COVER AMOUNTS. Row existence alone can't tell a chosen tier
+    // from the entry-tier default, so assert the actual figures: the tiers the
+    // helper clicked must be what landed, with the ladder's matching premium
+    // (the payload builder re-derives the premium, never trusting the client).
+    const lifeRow = await getRow<{ cover: string; premium_monthly: string }>(
+      'insurance_policies', { subscriber_id: sub!.id },
+    );
+    expect(Number(lifeRow!.cover), 'life cover should be the tier the user picked').toBe(5_000_000);
+    expect(Number(lifeRow!.premium_monthly), 'life premium should come from the ladder').toBe(7_500);
+
+    const healthRow = await getRow<{ cover: string; premium_monthly: string }>(
+      'subscriber_insurance_products', { subscriber_id: sub!.id, product: 'health' },
+    );
+    expect(Number(healthRow!.cover), 'health cover should be the tier the user picked').toBe(8_000_000);
+    expect(Number(healthRow!.premium_monthly), 'health premium should come from the ladder').toBe(11_000);
+
+    const funeralRow = await getRow<{ cover: string; premium_monthly: string }>(
+      'subscriber_insurance_products', { subscriber_id: sub!.id, product: 'funeral' },
+    );
+    expect(Number(funeralRow!.cover), 'funeral cover should be the tier the user picked').toBe(3_000_000);
+    expect(Number(funeralRow!.premium_monthly), 'funeral premium should come from the ladder').toBe(2_100);
 
     // Password hash — the raw password we typed at ReviewStep travels through
     // SignupContext → ContributionRoute → verify-otp, which bcrypts it onto

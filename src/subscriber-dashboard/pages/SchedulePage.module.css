@@ -187,24 +187,10 @@
   color: var(--color-indigo-soft);
 }
 
-/* Zero employee leg: "save up for cover" can never fill (the 0072 sweep accrues
-   only own-source money), so the member is steered to pay-now before they choose. */
-.employerWarn {
-  margin: 10px 0 0;
-  padding: 9px 11px;
-  background: color-mix(in srgb, var(--color-status-warning) 10%, var(--color-white));
-  border: 1px solid color-mix(in srgb, var(--color-status-warning) 35%, transparent);
-  border-radius: var(--radius-md);
-  font-family: var(--font-body);
-  font-size: 11.5px;
-  line-height: 1.5;
-  color: var(--color-slate);
-}
-
-.employerWarn b {
-  font-family: var(--font-display);
-  font-weight: 700;
-}
+/* `.employerWarn` lived here: a zero-employee-leg member was steered to pay-now
+   because "save up for cover" could never fill (the 0072 sweep accrues only
+   own-source money). It went with the cover controls when those moved to the
+   Insurance cover page — this page no longer asks anyone to choose a route. */
 
 @media (min-width: 1024px) {
   .page {

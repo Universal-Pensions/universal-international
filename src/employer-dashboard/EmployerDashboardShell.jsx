@@ -18,6 +18,7 @@ import OverviewPage from './pages/OverviewPage';
 import EmployeesPage from './pages/EmployeesPage';
 import MemberDetailPage from './pages/MemberDetailPage';
 import RunsPage from './pages/RunsPage';
+import ContributionsPage from './pages/ContributionsPage';
 import InsurancePage from './pages/InsurancePage';
 import AnalyticsPage from './pages/AnalyticsPage';
 import SupportPage from './pages/SupportPage';
@@ -61,6 +62,7 @@ export default function EmployerDashboardShell() {
             <Route path="employees" element={<EmployeesPage />} />
             <Route path="employees/:id" element={<MemberDetailPage />} />
             <Route path="runs" element={<RunsPage />} />
+            <Route path="contributions" element={<ContributionsPage />} />
             <Route path="insurance" element={<InsurancePage />} />
             <Route path="analytics" element={<AnalyticsPage />} />
             <Route path="support" element={<SupportPage />} />

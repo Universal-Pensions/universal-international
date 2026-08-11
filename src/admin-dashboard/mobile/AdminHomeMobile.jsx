@@ -3,22 +3,20 @@ import { NavLink } from 'react-router-dom';
 import {
   usePlatformOverview,
   useEntityMetrics,
-  useAllEntities,
   useTopEntities,
 } from '../../hooks/useEntity';
+import { useAdminAttention } from '../../hooks/useAdminAttention';
+import { usePlatformTicketMetrics } from '../../hooks/useTickets';
 import { formatUGXShort, formatNumber } from '../../utils/currency';
 import ErrorCard from '../../components/feedback/ErrorCard';
+import NeedsAttentionCard, { NeedsAttentionPill } from '../overview/NeedsAttentionCard';
+import { computeAdminAttention, attentionRouteMobile } from '../overview/adminAttentionDerive';
 // Reuse the distributor mobile vocabulary — the platform's phone look is uniform.
 import styles from '../../dashboard/mobile/distributorMobile.module.css';
 
 const ChevIcon = (
   <svg viewBox="0 0 24 24" width="17" height="17" fill="none" aria-hidden="true">
     <path d="M9 6l6 6-6 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-  </svg>
-);
-const AlertIcon = (
-  <svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-    <circle cx="12" cy="12" r="9" /><path d="M12 8v4M12 16h.01" />
   </svg>
 );
 const NodeIcon = (
@@ -65,14 +63,15 @@ function HomeGauge({ value }) {
 export default function AdminHomeMobile() {
   const { data: platform = {}, isLoading, isError, error, refetch } = usePlatformOverview();
   const { data: country = {} } = useEntityMetrics('country', 'ug');
-  const { data: distributorsRaw = [] } = useAllEntities('distributor');
   const { data: topBranches = [] } = useTopEntities('branch', 'aum', 5);
-  const { data: topAgents = [] } = useTopEntities('agent', 'contributions', 5);
+  // Same two sources as the desktop overview, through the same derive module, so
+  // the phone and the desktop can never disagree on a signal.
+  const { data: attention } = useAdminAttention();
+  const { data: ticketMetrics } = usePlatformTicketMetrics();
 
   const p = platform ?? {};
   const subs = p.totalSubscribers || 0;
   const active = p.activeSubscribers || 0;
-  const inactive = p.inactiveSubscribers != null ? p.inactiveSubscribers : Math.max(0, subs - active);
   const activeRate = subs > 0 ? Math.round((active / subs) * 100) : 0;
   const aum = p.aum || 0;
 
@@ -82,9 +81,12 @@ export default function AdminHomeMobile() {
   const monthChange = lastMonth > 0 ? Math.round(((thisMonth - lastMonth) / lastMonth) * 100) : null;
 
   const health = activeRate;
-  const inactiveDistributors = useMemo(
-    () => distributorsRaw.filter((d) => d.status === 'inactive'),
-    [distributorsRaw],
+  const attentionItems = useMemo(
+    () => computeAdminAttention(attention, {
+      openComplaints: ticketMetrics?.openCount ?? 0,
+      urgentComplaints: ticketMetrics?.urgentOpenCount ?? 0,
+    }),
+    [attention, ticketMetrics],
   );
 
   if (isError) {
@@ -156,23 +158,18 @@ export default function AdminHomeMobile() {
         </div>
       </section>
 
-      {/* NEEDS ATTENTION */}
+      {/* NEEDS ATTENTION — all ten platform signals; a clear signal keeps its
+          row and shows a green "Clear" pill rather than disappearing. */}
       <section className={styles.card} aria-label="Needs attention">
-        <header className={styles.cardHd}><h3>Needs attention</h3></header>
-        <NavLink to="/dashboard/subscribers" className={styles.lrow}>
-          <span className={`${styles.lIc} ${styles.tintAmber}`} aria-hidden="true">{AlertIcon}</span>
-          <span className={styles.lMid}><b>Dormant subscribers</b><small>No recent contribution</small></span>
-          <span className={styles.attnNum}>{formatNumber(inactive)}</span>
-          <span className={styles.chev}>{ChevIcon}</span>
-        </NavLink>
-        {inactiveDistributors.length > 0 && (
-          <NavLink to="/dashboard/distributors" className={styles.lrow}>
-            <span className={`${styles.lIc} ${styles.tintRed}`} aria-hidden="true">{AlertIcon}</span>
-            <span className={styles.lMid}><b>{inactiveDistributors.length === 1 ? 'Inactive distributor' : 'Inactive distributors'}</b><small>Deactivated network operators</small></span>
-            <span className={styles.attnNum}>{inactiveDistributors.length}</span>
-            <span className={styles.chev}>{ChevIcon}</span>
-          </NavLink>
-        )}
+        <header className={styles.cardHd} id="admin-attn-head-m">
+          <h3>Needs attention</h3>
+          <NeedsAttentionPill items={attentionItems} />
+        </header>
+        <NeedsAttentionCard
+          items={attentionItems}
+          hrefFor={(item) => attentionRouteMobile(item.type)}
+          headerId="admin-attn-head-m"
+        />
       </section>
 
       {/* NETWORK HEALTH */}
@@ -219,22 +216,6 @@ export default function AdminHomeMobile() {
         {topBranches.length === 0 && <p className={styles.scoreNote}>No branches yet.</p>}
       </section>
 
-      {/* TOP AGENTS */}
-      <section className={styles.card} aria-label="Top agents">
-        <header className={styles.cardHd}><h3>Top agents</h3><NavLink to="/dashboard/agents" className={styles.link}>View all</NavLink></header>
-        {topAgents.map((a) => {
-          const am = a.m || {};
-          return (
-            <NavLink to={`/dashboard/agents/${a.id}`} key={a.id} className={styles.lrow}>
-              <span className={styles.av} data-tone="teal" aria-hidden="true">{initials(a.name)}</span>
-              <span className={styles.lMid}><b>{a.name}</b><small>{a.parentName || '—'} · {formatNumber(am.totalSubscribers || 0)} subs</small></span>
-              <span className={styles.lEnd}><span className={styles.lAmt} style={{ fontSize: 13 }}>{formatUGXShort(am.totalContributions || 0)}</span></span>
-              <span className={styles.chev}>{ChevIcon}</span>
-            </NavLink>
-          );
-        })}
-        {topAgents.length === 0 && <p className={styles.scoreNote}>No agents yet.</p>}
-      </section>
     </>
   );
 }

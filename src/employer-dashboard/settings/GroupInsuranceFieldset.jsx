@@ -18,7 +18,8 @@ import { formatUGX } from '../../utils/currency';
 
 const PRODUCTS = [
   { id: 'life', label: 'Life insurance', blurb: 'Lump sum for beneficiaries' },
-  { id: 'health', label: 'Health insurance', blurb: 'Hospital & clinic cover' },
+  // id stays 'health' — the stored product enum; 'Hospital cash' is its name.
+  { id: 'health', label: 'Hospital cash', blurb: 'Hospital & clinic cover' },
   { id: 'funeral', label: 'Funeral insurance', blurb: 'Eases funeral & burial costs' },
 ];
 

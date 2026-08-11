@@ -9,6 +9,14 @@ import { render, screen } from '@testing-library/react';
 import { MemoryRouter, Routes, Route } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
+// The app bar now mounts a NotificationBell scoped to the signed-in distributor
+// (so admin Needs-attention escalations actually land), which makes the chrome
+// auth-dependent. The shell is rendered here without an AuthProvider, so stub
+// the context rather than wrapping every case.
+vi.mock('../../contexts/AuthContext', () => ({
+  useAuth: () => ({ user: { role: 'distributor', distributorId: 'd-001' }, logout: vi.fn() }),
+}));
+
 vi.mock('../mobile/DistributorHomeMobile', () => ({ default: () => <div data-testid="page-home">Home</div> }));
 vi.mock('../mobile/BranchesMobile', () => ({ default: () => <div data-testid="page-branches" /> }));
 vi.mock('../mobile/BranchDetailMobile', () => ({ default: () => <div data-testid="page-branch-detail" /> }));

@@ -2,6 +2,8 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import logo from '../../assets/logo.png';
 import { useDistributorAppBar } from './distributorAppBarContext';
 import styles from './DistributorMobileAppBar.module.css';
+import { useAuth } from '../../contexts/AuthContext';
+import NotificationBell from '../../components/notifications/NotificationBell';
 
 const BackIcon = (
   <svg viewBox="0 0 24 24" width="19" height="19" fill="none" aria-hidden="true">
@@ -56,6 +58,7 @@ function resolve(pathname) {
 export default function DistributorMobileAppBar({ onOpenAI }) {
   const navigate = useNavigate();
   const location = useLocation();
+  const distributorId = useAuth().user?.distributorId;
   const { backRef } = useDistributorAppBar();
   const meta = resolve(location.pathname);
 
@@ -79,6 +82,11 @@ export default function DistributorMobileAppBar({ onOpenAI }) {
 
       {meta.actions && (
         <div className={styles.actions}>
+          {/* See Sidebar.jsx — mounted so admin Needs-attention escalations
+              actually reach the distributor. */}
+          {distributorId && (
+            <NotificationBell role="distributor" entityId={distributorId} align="right" portal />
+          )}
           <button
             type="button"
             className={styles.iconBtn}

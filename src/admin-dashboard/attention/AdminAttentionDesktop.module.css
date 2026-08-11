@@ -1,0 +1,60 @@
+/* Admin attention drill-down — desktop. Mirrors
+   src/branch-dashboard/desktop/AttentionAgentsDesktop.module.css so the two
+   drill-downs read as the same screen at different scopes. Table chrome comes
+   from employer-dashboard/desktop/ui.module.css; this file adds only the
+   identity cell, the action column and the empty state. */
+
+.empty {
+  margin: 0;
+  padding: var(--space-6) var(--space-3);
+  text-align: center;
+  font-size: var(--text-sm, 14px);
+  color: var(--color-gray);
+}
+
+/* ── Identity cell ───────────────────────────────────────────────────────── */
+.who {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+.rowLink {
+  text-decoration: none;
+  color: inherit;
+  border-radius: var(--radius-sm);
+}
+.rowLink:hover .whoName { color: var(--color-indigo); }
+.rowLink:focus-visible {
+  outline: 2px solid var(--color-indigo-soft);
+  outline-offset: 2px;
+}
+
+.whoName {
+  display: block;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: var(--text-sm, 14px);
+  color: var(--color-slate);
+  /* Long member/batch names must not stretch the table past its container. */
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 34ch;
+  transition: color 0.15s ease;
+}
+.whoMeta {
+  display: block;
+  font-size: var(--text-xs);
+  color: var(--color-gray);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 48ch;
+}
+
+.actionCell {
+  text-align: right;
+  white-space: nowrap;
+}

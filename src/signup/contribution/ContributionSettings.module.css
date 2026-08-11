@@ -925,6 +925,34 @@
   margin: 0 0.1rem;
 }
 
+/* ── Employer-invite completion — the two "here's what happens" lines ────
+   Body-sized, not the legend-sized .bucketHelp these replaced: on that screen
+   these ARE the content (there is no slider left for them to annotate), and a
+   sponsored member reading their pension terms should not be reading 11px.
+   The dot aligns to the FIRST line rather than centring, so it stays beside the
+   text when the line wraps on a narrow phone. */
+.inviteFact {
+  margin: 0;
+  display: grid;
+  grid-template-columns: 6px 1fr;
+  align-items: start;
+  gap: 0.6rem;
+  font-family: var(--font-body);
+  font-size: var(--text-sm);
+  color: var(--color-gray);
+  line-height: 1.55;
+}
+
+.inviteFact .bucketDot {
+  /* (line-height × font-size − dot) / 2, so it optically centres on line one. */
+  margin-top: 0.5em;
+}
+
+.inviteFact strong {
+  font-weight: 700;
+  color: var(--color-indigo);
+}
+
 /* ── Section 4 — Yearly step-up (indexation) ────────────────────────── */
 .idxTop {
   display: flex;
@@ -1036,24 +1064,24 @@
   gap: 0.55rem;
 }
 
+/* The card is a CONTAINER (frame + selected state); `.prodToggle` inside it is
+   the actual switch. They were one <button> until cover amounts arrived — a
+   range input can't nest inside a button, so the frame and the control had to
+   separate. All interactive styling therefore lives on `.prodToggle`. */
 .prod {
   position: relative;
   display: flex;
   flex-direction: column;
-  align-items: flex-start;
-  text-align: left;
-  gap: 0.1rem;
   padding: 0.75rem;
   background: var(--color-white);
   border: 1.5px solid var(--color-lavender);
   border-radius: 0.5rem;
-  cursor: pointer;
   transition:
     background 0.2s var(--ease-out-expo),
     border-color 0.2s var(--ease-out-expo);
 }
 
-.prod:hover:not([data-active="true"]) {
+.prod:has(.prodToggle:hover):not([data-active="true"]) {
   border-color: var(--color-indigo-soft);
 }
 
@@ -1061,6 +1089,37 @@
   border-color: var(--color-indigo);
   background: color-mix(in srgb, var(--color-indigo) 3.5%, transparent);
   box-shadow: inset 0 0 0 1px var(--color-indigo);
+}
+
+.prodToggle {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  text-align: left;
+  gap: 0.1rem;
+  /* The frame owns padding/background/border — the toggle is a bare surface so
+     its hit area still covers the whole card. */
+  margin: -0.75rem;
+  padding: 0.75rem;
+  background: transparent;
+  border: none;
+  border-radius: 0.5rem;
+  cursor: pointer;
+  font: inherit;
+  color: inherit;
+}
+
+.prodToggle:focus-visible {
+  outline: 2px solid var(--color-indigo-soft);
+  outline-offset: -2px;
+}
+
+/* Cover-amount ladder, revealed inside the card once the product is selected.
+   Separated from the toggle by a hairline so it reads as a second decision. */
+.prodPick {
+  margin-top: 0.55rem;
+  padding-top: 0.55rem;
+  border-top: 1px solid var(--color-lavender);
 }
 
 .prodTick {

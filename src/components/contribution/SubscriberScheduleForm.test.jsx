@@ -4,7 +4,7 @@
 // fund newly-added cover (fund_insurance_products).
 
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import SubscriberScheduleForm from './SubscriberScheduleForm';
 
@@ -54,7 +54,7 @@ describe('<SubscriberScheduleForm />', () => {
     let saved = null;
     renderForm({ heldPolicies: HELD_LIFE, onSave: (p) => { saved = p; } });
     await user.click(screen.getByRole('tab', { name: /Insurance/ }));
-    await user.click(screen.getByRole('switch', { name: /Health/ }));
+    await user.click(screen.getByRole('switch', { name: /Hospital cash/ }));
     await user.click(screen.getByRole('button', { name: 'Save changes' }));
     expect(saved).not.toBeNull();
     expect(saved.insuranceFundingMode).toBe('pay_now');
@@ -68,7 +68,7 @@ describe('<SubscriberScheduleForm />', () => {
     let saved = null;
     renderForm({ heldPolicies: [], onSave: (p) => { saved = p; } });
     await user.click(screen.getByRole('tab', { name: /Insurance/ }));
-    await user.click(screen.getByRole('switch', { name: /Health/ }));
+    await user.click(screen.getByRole('switch', { name: /Hospital cash/ }));
     await user.click(screen.getByRole('radio', { name: /Save up/ }));
     await user.click(screen.getByRole('button', { name: 'Save changes' }));
     expect(saved.insuranceFundingMode).toBe('save_to_cover');
@@ -80,6 +80,68 @@ describe('<SubscriberScheduleForm />', () => {
     renderForm({ heldPolicies: HELD_LIFE });
     const save = screen.getByRole('button', { name: 'No changes to save' });
     expect(save).toBeDisabled();
+  });
+
+  // ── Per-product cover amounts ─────────────────────────────────────────────
+  // Cover levels are pickable when ADDING a product. Held cover is not: its
+  // price is already agreed and its policy row already exists, so re-pricing it
+  // here would silently disagree with what the member is paying.
+  describe('cover amounts', () => {
+    const pickCover = (user, product, cover) => user.click(
+      within(screen.getByRole('group', { name: `${product} cover amount` }))
+        .getByRole('button', { name: new RegExp(`^UGX ${cover} cover`) }),
+    );
+
+    it('shows a cover picker only for products being added', async () => {
+      const user = userEvent.setup();
+      renderForm({ heldPolicies: HELD_LIFE });
+      await user.click(screen.getByRole('tab', { name: /Insurance/ }));
+
+      // Nothing added yet, and held life must never offer one.
+      expect(screen.queryByRole('group', { name: /cover amount$/ })).toBeNull();
+
+      await user.click(screen.getByRole('switch', { name: /Hospital cash/ }));
+      expect(screen.getByRole('group', { name: 'Hospital cash cover amount' })).toBeInTheDocument();
+      expect(screen.queryByRole('group', { name: 'Life cover amount' })).toBeNull();
+    });
+
+    it('funds the chosen tier, not the catalogue entry tier', async () => {
+      const user = userEvent.setup();
+      let saved = null;
+      renderForm({ heldPolicies: HELD_LIFE, onSave: (p) => { saved = p; } });
+      await user.click(screen.getByRole('tab', { name: /Insurance/ }));
+      await user.click(screen.getByRole('switch', { name: /Hospital cash/ }));
+      await pickCover(user, 'Hospital cash', '8,000,000');
+      await user.click(screen.getByRole('button', { name: 'Save changes' }));
+
+      expect(saved.addedProducts).toEqual([
+        { product: 'health', cover: 8_000_000, premiumMonthly: 11_000 },
+      ]);
+    });
+
+    it('reprices the annual cost readout as the tier changes', async () => {
+      const user = userEvent.setup();
+      renderForm({ heldPolicies: HELD_LIFE });
+      await user.click(screen.getByRole('tab', { name: /Insurance/ }));
+      await user.click(screen.getByRole('switch', { name: /Funeral/ }));
+
+      const cost = screen.getByText(/New cover · cost for one year/).parentElement;
+      expect(cost).toHaveTextContent('UGX 18,000'); // funeral entry tier
+
+      await pickCover(user, 'Funeral', '8,000,000');
+      expect(cost).toHaveTextContent('UGX 60,000');
+    });
+
+    it('prices a held policy from the policy, not the catalogue', async () => {
+      const user = userEvent.setup();
+      // A member on life tier 3 pays 90,000/yr — quoting the catalogue's entry
+      // tier (24,000) would misstate their own cover back at them.
+      renderForm({
+        heldPolicies: [{ ...HELD_LIFE[0], cover: 5_000_000, premiumMonthly: 7_500 }],
+      });
+      await user.click(screen.getByRole('tab', { name: /Insurance/ }));
+      expect(screen.getByRole('switch', { name: /Life/ })).toHaveAccessibleName(/90,000/);
+    });
   });
 
   // ── showInsurance={false} — the AGENT schedule-edit surface ──────────────

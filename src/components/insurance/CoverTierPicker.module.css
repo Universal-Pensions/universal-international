@@ -1,0 +1,137 @@
+/* CoverTierPicker — cover-amount ladder for one insurance product.
+ *
+ * `.slider`, `.marks` and `.mark` are lifted VERBATIM from the settings cover
+ * page (`subscriber-dashboard/pages/InsurancePage.module.css`, where they were
+ * `.slider` / `.tierMarks` / `.tierMark`) so that page's interaction stays
+ * pixel-identical after it switched to this shared component. Change them here
+ * only. */
+
+.root {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+/* Compact variant — sits inside a product card in the signup multi-select grid,
+   where the card is ~290px at 3-up desktop and full width on mobile. */
+.root[data-variant='card'] {
+  gap: 0.25rem;
+}
+
+.slider {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 6px;
+  border-radius: var(--radius-full);
+  background: linear-gradient(to right, var(--color-indigo) 0%, var(--color-indigo) var(--pct), var(--color-lavender) var(--pct), var(--color-lavender) 100%);
+  outline: none;
+}
+
+.root[data-variant='card'] .slider {
+  height: 4px;
+}
+
+.slider:focus-visible {
+  outline: 2px solid var(--color-indigo-soft);
+  outline-offset: 4px;
+  border-radius: var(--radius-full);
+}
+
+.slider:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--color-white);
+  border: 3px solid var(--color-indigo);
+  cursor: pointer;
+  box-shadow: var(--shadow-sm);
+}
+
+.slider::-moz-range-thumb {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--color-white);
+  border: 3px solid var(--color-indigo);
+  cursor: pointer;
+}
+
+.root[data-variant='card'] .slider::-webkit-slider-thumb {
+  width: 16px;
+  height: 16px;
+  border-width: 2.5px;
+}
+
+.root[data-variant='card'] .slider::-moz-range-thumb {
+  width: 16px;
+  height: 16px;
+  border-width: 2.5px;
+}
+
+.marks {
+  display: flex;
+  justify-content: space-between;
+  gap: 4px;
+}
+
+.mark {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  /* Comfortable touch target — the mark is the primary way to pick a tier on
+     a phone, where dragging a 4-stop slider is fiddly. */
+  min-height: 44px;
+  background: transparent;
+  border: none;
+  color: var(--color-indigo-soft);
+  font-family: var(--font-body);
+  font-size: 11px;
+  cursor: pointer;
+  padding: 2px 4px;
+  letter-spacing: 0.02em;
+}
+
+.mark[data-active='true'] {
+  color: var(--color-indigo);
+  font-family: var(--font-display);
+  font-weight: 700;
+}
+
+.mark:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.root[data-variant='card'] .mark {
+  /* The card grid can't spare 44px of dead space per picker; touch targets on
+     the compact variant come from the slider thumb instead. */
+  min-height: 28px;
+  font-size: 10px;
+  padding: 2px;
+}
+
+.readout {
+  margin: 0;
+  font-family: var(--font-body);
+  font-size: var(--text-xs);
+  color: var(--color-gray);
+  font-variant-numeric: tabular-nums;
+}
+
+.readout b {
+  font-family: var(--font-display);
+  font-weight: 800;
+  color: var(--color-slate);
+}
+
+.root[data-variant='card'] .readout {
+  font-size: 10.5px;
+}

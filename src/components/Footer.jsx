@@ -33,7 +33,10 @@ const LINKS = {
   Support: [
     { label: 'Help center', type: 'route', to: '/faq' },
     { label: 'Contact us', type: 'route', to: '/contact' },
-    { label: 'Find an agent', type: 'pending' },
+    // Life and funeral cover pay out after the member has died, so the person
+    // claiming has no account and nothing to sign in to. This is their way in.
+    // It replaces a 'pending' placeholder rather than lengthening the column.
+    { label: 'Claim for a loved one', type: 'route', to: '/claim' },
     { label: 'Branch locator', type: 'pending' },
   ],
 };

@@ -20,15 +20,18 @@ const FALLBACK_PREMIUM_MONTHLY = 2_000;
 
 // Display name + stable ordering per product. Falls back to the
 // INSURANCE_PRODUCTS label, then a generic title.
+// NOTE the keys are the STORED product ids and never change — 'health' is the
+// enum value in subscriber_insurance_products.product and in every RLS/RPC
+// product check. 'Hospital cash' is only what that product is called.
 const PRODUCT_LABEL = {
   life: 'Life cover',
-  health: 'Health insurance',
+  health: 'Hospital cash',
   funeral: 'Funeral cover',
 };
 const PRODUCT_ORDER = ['life', 'health', 'funeral'];
 
-// Compact product labels for one-line cover summaries ("Life & Health").
-const PRODUCT_SHORT = { life: 'Life', health: 'Health', funeral: 'Funeral' };
+// Compact product labels for one-line cover summaries ("Life & Hospital cash").
+const PRODUCT_SHORT = { life: 'Life', health: 'Hospital cash', funeral: 'Funeral' };
 
 // Exported so agent-side surfaces (PolicyChips) reuse the SAME product→label map
 // the subscriber policies page uses — no third copy to drift.

@@ -213,6 +213,13 @@ export function useSubmitClaim(id) {
   });
 }
 
+/**
+ * Sets the cover on ONE held policy with no payment — the DOWNGRADE path.
+ * Payload is `{ product = 'life', cover, premiumMonthly }`; the service routes
+ * life to `insurance_policies` and health/funeral to
+ * `subscriber_insurance_products`. UPGRADES belong to `useFundInsuranceProducts`
+ * below, which charges the annual premium.
+ */
 export function useUpdateInsuranceCover(id) {
   const invalidate = useInvalidateSubscriber(id);
   return useMutation({

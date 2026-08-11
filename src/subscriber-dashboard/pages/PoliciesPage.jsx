@@ -221,7 +221,7 @@ export default function PoliciesPage() {
   function handleCertificate(policy) {
     // Life + funeral pay out to named beneficiaries; health does not.
     const hasBeneficiaries = policy.type === 'life' || policy.type === 'funeral';
-    const PRODUCT_LABEL = { life: 'Life', health: 'Health', funeral: 'Funeral' };
+    const PRODUCT_LABEL = { life: 'Life', health: 'Hospital cash', funeral: 'Funeral' };
     const ok = openPolicyCertificate({
       holderName: sub?.name,
       memberId: formatMemberId(sub?.phone),

@@ -75,6 +75,7 @@ import niraVerify from '../api/kyc/nira-verify.js';
 import agentReferral from '../api/kyc/agent-referral.js';
 import contact from '../api/contact.js';
 import accessRequest from '../api/access-request.js';
+import nomineeClaim from '../api/nominee-claim.js';
 import chat from '../api/chat.js';
 
 const app = express();
@@ -265,6 +266,7 @@ app.all('/api/kyc/nira-verify', toExpress(niraVerify));
 app.all('/api/kyc/agent-referral', writeLimiter, toExpress(agentReferral)); // G18 — DB insert (spam to agent_referrals)
 app.all('/api/contact', writeLimiter, toExpress(contact)); // G18 — DB insert (spam to contact_submissions)
 app.all('/api/access-request', writeLimiter, toExpress(accessRequest)); // DB insert (public employer/distributor lead form — spam vector)
+app.all('/api/nominee-claim', writeLimiter, toExpress(nomineeClaim));   // DB insert (public bereavement claim form — spam vector)
 app.all('/api/chat', chatLimiter, toExpress(chat)); // G18 / 2b.5 — unauthenticated keyword chain; cost/DoS vector once wired to a real LLM
 
 // ─── 10. Sentry error handler — MUST come after routes, before custom error

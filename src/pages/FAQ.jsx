@@ -41,6 +41,13 @@ const FAQ_ITEMS = [
     a: 'Our field agents are trained to help you understand pension benefits, complete registration, and set up contribution plans. They are available across all regions of Uganda to provide in-person support.',
   },
   {
+    // The single most-asked question at the worst possible moment. It names the
+    // split explicitly, because "how do I claim" has two different answers
+    // depending on which cover and who is asking.
+    q: 'Someone in my family has died. How do we claim?',
+    a: 'Life cover and Funeral cover pay out to the people the member named, so the claim is made by them — not by the member. You do not need an account: go to universalpensions.com/claim, tell us who has died and how to reach you, and we will call you within two working days. Hospital cash is different: the member claims that themselves from their own account, for each night they spend in hospital.',
+  },
+  {
     q: 'Is my data safe?',
     a: 'We use industry-standard encryption and security protocols to protect your personal and financial information. All data is stored securely and handled in compliance with Uganda\'s data protection regulations.',
   },

@@ -170,4 +170,53 @@ describe('OnboardingComplete.buildPayload', () => {
       contributionIndexationPct: 0,
     });
   });
+
+  // ── Per-product cover amounts ─────────────────────────────────────────────
+  // The agent picks the cover level on the same wizard the subscriber uses, so
+  // an agent-onboarded member must get the amount the agent chose. Every case
+  // above omits `insuranceCovers` and therefore also proves the entry-tier
+  // fallback still produces the historical payload.
+  it('carries the cover tier the agent chose into both insurance shapes', () => {
+    const payload = buildPayload({
+      ...base,
+      contributionSchedule: {
+        frequency: 'monthly', amount: 50000, includeInsurance: true,
+        insuranceTypes: ['life', 'funeral'],
+        insuranceCovers: { life: 2_000_000, funeral: 8_000_000 },
+      },
+    });
+    expect(payload.insurancePolicy).toEqual({ cover: 2_000_000, premiumMonthly: 3_500 });
+    expect(payload.insuranceProducts).toEqual([
+      { product: 'funeral', cover: 8_000_000, premiumMonthly: 5_000 },
+    ]);
+  });
+
+  it('re-derives the premium from the ladder rather than trusting the snapshot', () => {
+    const payload = buildPayload({
+      ...base,
+      contributionSchedule: {
+        frequency: 'monthly', amount: 50000, includeInsurance: true,
+        insuranceTypes: ['health'],
+        insuranceSelections: [{ product: 'health', cover: 12_000_000, premiumMonthly: 1 }],
+      },
+    });
+    expect(payload.insuranceProducts).toEqual([
+      { product: 'health', cover: 12_000_000, premiumMonthly: 15_000 },
+    ]);
+  });
+
+  it('never emits the legacy insuranceCover / insurancePremium schedule keys', () => {
+    // The self-signup builder emits both; this one never has. The SQL reads
+    // neither, so adding them here would be a silent contract change.
+    const payload = buildPayload({
+      ...base,
+      contributionSchedule: {
+        frequency: 'monthly', amount: 50000, includeInsurance: true,
+        insuranceTypes: ['life'], insuranceCovers: { life: 5_000_000 },
+        insurancePremium: 9999,
+      },
+    });
+    expect(payload.contributionSchedule).not.toHaveProperty('insuranceCover');
+    expect(payload.contributionSchedule).not.toHaveProperty('insurancePremium');
+  });
 });

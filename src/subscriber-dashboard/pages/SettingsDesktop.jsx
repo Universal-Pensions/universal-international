@@ -90,10 +90,12 @@ export default function SettingsDesktop() {
         </div>
       </motion.section>
 
-      {/* Settings tiles — same destinations as the mobile row list, minus the
-          contribution schedule (promoted to the sidebar nav on desktop). */}
+      {/* Settings tiles — the same destinations as the mobile row list. The
+          contribution-schedule tile used to be filtered out here because the
+          desktop sidebar carried its own "Schedule" nav item; that item is gone,
+          so this is now the only way in and the list must not be filtered. */}
       <motion.div variants={itemVariants} className={styles.grid}>
-        {SECTIONS.filter((s) => s.id !== 'schedule').map((s) => (
+        {SECTIONS.map((s) => (
           <button
             key={s.id}
             type="button"

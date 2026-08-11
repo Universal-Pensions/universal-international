@@ -86,15 +86,30 @@ export default function OverviewMobile() {
       {/* Hero — funding status */}
       <div className={`${s.card} ${s.grad}`}>
         <div className={s.greet}><b>Welcome back, {firstName}</b> · {employer?.name || 'Your company'}</div>
-        <div className={s.frame}>
-          <div className={s.frameLabel}>Total contributions to date · employee + employer</div>
+        {/* The drill-down into Contribution history. Desktop reaches that page
+            from its two leg tiles; the phone shows one combined figure, so this
+            is the phone's only door to it — without it the page is routed and
+            unreachable. Opens unfiltered, since this total is both legs. */}
+        <button
+          type="button"
+          className={`${s.frame} ${s.frameBtn}`}
+          onClick={() => navigate('/dashboard/contributions')}
+        >
+          <div className={s.frameLabel}>
+            Total contributions to date · employee + employer
+            <svg className={s.frameChev} viewBox="0 0 24 24" width="14" height="14" fill="none"
+              stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"
+              aria-hidden="true">
+              <path d="M9 18l6-6-6-6" />
+            </svg>
+          </div>
           <div className={s.heroVal}>{formatUGX(totalContributions)}</div>
           <div className={s.frameSub}>
             {runs.length > 0
               ? `across ${formatNumber(runs.length)} run${runs.length === 1 ? '' : 's'}${sinceLabel ? ` since ${sinceLabel}` : ''}`
               : 'No contribution runs yet'}
           </div>
-        </div>
+        </button>
         <div className={s.statStrip}>
           <button type="button" className={s.tapCell} onClick={() => navigate('/dashboard/employees')}>
             <b>{formatNumber(active)}<span style={{ color: 'var(--color-gray)', fontWeight: 600, fontSize: 12 }}> / {formatNumber(derived.headcount)}</span></b>

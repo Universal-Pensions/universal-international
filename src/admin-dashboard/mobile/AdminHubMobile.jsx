@@ -78,6 +78,24 @@ export default function AdminHubMobile() {
           <span className={styles.tileIc} aria-hidden="true">{InboxIcon}</span>
           <span><b>Access requests</b><small>Approve sign-ups</small></span>
         </NavLink>
+        <NavLink to="/dashboard/nav" className={styles.tile} aria-label="Unit price">
+          <span className={styles.tileIc} aria-hidden="true">
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor"
+              strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M3 17l6-6 4 4 7-7" /><path d="M14 8h6v6" />
+            </svg>
+          </span>
+          <span><b>Unit price</b><small>Set today&apos;s price</small></span>
+        </NavLink>
+        <NavLink to="/dashboard/nominee-claims" className={styles.tile} aria-label="Nominee claims">
+          <span className={styles.tileIc} aria-hidden="true">
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor"
+              strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M12 3l7 3v5c0 4.5-3 8-7 10-4-2-7-5.5-7-10V6l7-3z" /><path d="M9.5 12l1.8 1.8 3.2-3.4" />
+            </svg>
+          </span>
+          <span><b>Nominee claims</b><small>Life &amp; funeral deaths</small></span>
+        </NavLink>
         <NavLink to="/dashboard/reports" className={styles.tile} aria-label="Reports">
           <span className={styles.tileIc} aria-hidden="true">{ReportsIcon}</span>
           <span><b>Reports</b><small>Download data</small></span>

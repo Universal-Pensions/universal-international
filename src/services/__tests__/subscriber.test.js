@@ -309,20 +309,48 @@ describe('subscriber service — real (Supabase) branch', () => {
       await expect(svc.submitClaim(null)).rejects.toThrow(/id required/i);
     });
 
-    it('inserts a claim with sensible defaults', async () => {
-      supabaseMock.__queueFrom('claims', {
+    it('files through the RPC and never sends an amount', async () => {
+      // Migration 0099 moved claim pricing server-side and DROPPED
+      // claims_insert_self. The client sends dates + a hospital name; the RPC
+      // derives cover ÷ 20 per night and caps it against the policy-year
+      // allowance. A client-supplied amount would be the hole that closed.
+      supabaseMock.__queueRpc('submit_hospital_cash_claim', {
         data: {
-          id: 'c-x', subscriber_id: 's-1', type: 'medical',
-          status: 'submitted', amount: 50000,
-          incident_date: '2026-05-26', submitted_date: '2026-05-26',
+          id: 'clm-x', subscriberId: 's-1', type: 'health', product: 'health',
+          status: 'submitted', amount: 750000, nights: 5, dailyBenefit: 150000,
+          incidentDate: '2026-03-12', dischargeDate: '2026-03-17',
+          submittedDate: '2026-03-20', provider: 'Mulago',
         },
         error: null,
       });
-      const claim = await svc.submitClaim('s-1', { type: 'medical', amount: 50000 });
-      expect(claim.status).toBe('submitted');
-      const insertArgs = supabaseMock.__getFromCalls('claims').at(-1).chain.insert.mock.calls[0][0];
-      expect(insertArgs.subscriber_id).toBe('s-1');
-      expect(insertArgs.amount).toBe(50000);
+
+      const claim = await svc.submitClaim('s-1', {
+        admissionDate: '2026-03-12',
+        dischargeDate: '2026-03-17',
+        provider: 'Mulago',
+        description: 'Malaria admission',
+        nonce: 'claim-nonce-1',
+      });
+
+      expect(claim).toMatchObject({ status: 'submitted', amount: 750000, nights: 5 });
+      expect(supabaseMock.__getFromCalls('claims')).toHaveLength(0); // no direct insert
+
+      const args = supabaseMock.__getRpcCalls('submit_hospital_cash_claim').at(-1).args;
+      expect(args).toEqual({
+        p_nonce: 'claim-nonce-1',
+        p_admission_date: '2026-03-12',
+        p_discharge_date: '2026-03-17',
+        p_provider: 'Mulago',
+        p_description: 'Malaria admission',
+      });
+      expect(args).not.toHaveProperty('p_amount');
+    });
+
+    it('mints a nonce when the caller omits one', async () => {
+      supabaseMock.__queueRpc('submit_hospital_cash_claim', { data: { id: 'clm-y' }, error: null });
+      await svc.submitClaim('s-1', { admissionDate: '2026-03-12', dischargeDate: '2026-03-13' });
+      expect(supabaseMock.__getRpcCalls('submit_hospital_cash_claim').at(-1).args.p_nonce)
+        .toEqual(expect.any(String));
     });
   });
 

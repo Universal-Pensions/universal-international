@@ -166,6 +166,10 @@ export default function OverviewDesktop() {
         </span>
       </Hero>
 
+      {/* Every tile is a drill-down: the forecast leads to the page that posts
+          the next run; each leg total leads to the payments it is the sum of
+          (`?leg=` pre-filters the history, so the page opens on the same money
+          the tile shows). */}
       <MetricRow cols={4}>
         <Tile
           accent="indigoSoft"
@@ -173,6 +177,7 @@ export default function OverviewDesktop() {
           label="Next contribution"
           value={formatUGX(nextAmount)}
           sub={runDue ? 'Due now · funds all active staff' : 'Monthly cadence · all active staff'}
+          to="/dashboard/runs"
         />
         <Tile
           accent="indigo"
@@ -180,6 +185,7 @@ export default function OverviewDesktop() {
           label="Total employee contribution"
           value={formatUGX(employeeTotal)}
           sub={employeeRateLabel}
+          to="/dashboard/contributions?leg=employee"
         />
         <Tile
           accent="green"
@@ -187,13 +193,18 @@ export default function OverviewDesktop() {
           label="Total employer contribution"
           value={formatUGX(employerTotal)}
           sub={employerRateLabel}
+          to="/dashboard/contributions?leg=employer"
         />
+        {/* The only tile that leads somewhere — the routed Pending KYC page. Links
+            even at zero: that page's empty state says "everyone signed up", which
+            is a better answer than a dead card. Mirrors the mobile Overview row. */}
         <Tile
           accent="teal"
           icon={pendingIcon(18)}
           label="Pending KYC"
           value={formatNumber(pendingKyc)}
           sub={pendingKyc > 0 ? 'Invited · awaiting sign-up' : 'No pending invites'}
+          to="/dashboard/pending-kyc"
         />
       </MetricRow>
 

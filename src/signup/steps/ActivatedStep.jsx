@@ -2,6 +2,7 @@ import { motion } from 'framer-motion';
 import { EASE_OUT_EXPO } from '../../utils/motion';
 import { formatUGX } from '../../utils/currency';
 import { INSURANCE_PRODUCTS } from '../../constants/savings';
+import { resolveScheduleTier } from '../../utils/insuranceSelection';
 
 import { formatMemberId } from '../../utils/memberId';
 import { useSignup } from '../SignupContext';
@@ -40,18 +41,25 @@ export default function ActivatedStep({ onFinish, snapshot }) {
     : (contributionSchedule?.includeInsurance ? ['life'] : []);
   const policies = INSURANCE_PRODUCTS
     .filter((p) => selectedTypes.includes(p.id))
-    .map((p) => ({
-      id: p.id,
-      // "Life insurance" → "Life" for the certificate title.
-      productLabel: p.label.replace(/\s*insurance$/i, ''),
-      barLabel: p.label,
-      cover: p.cover,
-      // Premiums are now charged as a single yearly amount (annual model).
-      premiumAnnual: p.premiumMonthly * 12,
-      // Health is a personal cover with no beneficiary payout; life/funeral pay
-      // out to beneficiaries.
-      showBeneficiaries: p.id !== 'health',
-    }));
+    .map((p) => {
+      // Cover is chosen per product on the cover step, so the certificate must
+      // print the tier the member actually bought — reading p.cover straight off
+      // the catalogue would issue everyone an entry-tier document. Falls back to
+      // the entry tier for schedules written before per-product cover existed.
+      const tier = resolveScheduleTier(p.id, contributionSchedule) ?? p;
+      return {
+        id: p.id,
+        // "Life insurance" → "Life" for the certificate title.
+        productLabel: p.label.replace(/\s*insurance$/i, ''),
+        barLabel: p.label,
+        cover: tier.cover,
+        // Premiums are now charged as a single yearly amount (annual model).
+        premiumAnnual: tier.premiumMonthly * 12,
+        // Health is a personal cover with no beneficiary payout; life/funeral pay
+        // out to beneficiaries.
+        showBeneficiaries: p.id !== 'health',
+      };
+    });
 
   function handleDownloadPolicy(policy) {
     const ok = openPolicyCertificate({

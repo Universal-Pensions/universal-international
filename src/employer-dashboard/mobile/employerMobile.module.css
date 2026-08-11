@@ -64,12 +64,37 @@
   padding: 15px 16px;
   margin-top: 13px;
 }
+/* The hero frame as a drill-down control. Only the button reset plus a full-
+   width left-aligned box — every visual property still comes from `.frame`, so
+   the tappable and static versions cannot drift apart. */
+.frameBtn {
+  display: block;
+  width: 100%;
+  text-align: left;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.frameBtn:active {
+  background: rgba(255, 255, 255, 0.9);
+}
 .frameLabel {
   font-family: var(--font-display);
   font-weight: 600;
   font-size: 11.5px;
   color: var(--color-gray);
   margin-bottom: 5px;
+}
+.frameBtn .frameLabel {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.frameChev {
+  flex-shrink: 0;
+  color: var(--color-indigo);
 }
 .heroVal {
   font-family: var(--font-display);

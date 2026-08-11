@@ -194,7 +194,7 @@ export default function WithdrawPage() {
               <p className={flow.subtitle}>
                 {locked
                   ? `Locked until age ${RETIREMENT_AGE} — your retirement savings unlock then. Use your Savings pot any time.`
-                  : `UGX ${formatUGXShort(max)} available · paid to your ${method === 'bank' ? 'bank account' : 'Mobile Money'} in 1–2 days.`}
+                  : `UGX ${formatUGXShort(max)} available · paid to your ${method === 'bank' ? 'bank account' : 'Mobile Money'} in 24 hours.`}
               </p>
             </div>
           </header>
@@ -298,7 +298,7 @@ export default function WithdrawPage() {
                   ))}
                 </PillChipGroup>
                 <p className={styles.helperLine} style={{ marginTop: '10px' }}>
-                  Funds reach your registered account ({sub?.phone || 'your number'}) within 2 business days.
+                  Funds reach your registered account ({sub?.phone || 'your number'}) within 24 hours.
                 </p>
                 {/* The action CTA lives on the left in form view; once the user
                     advances to confirm/success the right column owns the actions,
@@ -369,7 +369,7 @@ export default function WithdrawPage() {
                     </li>
                     <li className={flow.sumRow}>
                       <span>Arrives</span>
-                      <span className={flow.sumVal}>1–2 days</span>
+                      <span className={flow.sumVal}>Within 24 hours</span>
                     </li>
                   </ul>
                   {bucket === 'retirement' && retirementImpact != null ? (
@@ -413,7 +413,7 @@ export default function WithdrawPage() {
                   onCancel={closeSheet}
                   success={{
                     title: 'Withdrawal requested',
-                    subtitle: `${formatUGX(amount, { compact: false })} will arrive via ${methodLabel} within 2 business days.`,
+                    subtitle: `${formatUGX(amount, { compact: false })} will arrive via ${methodLabel} within 24 hours.`,
                     reference: resultWd?.reference,
                   }}
                   successPrimary={{ label: 'Back to home', onClick: () => navigate('/dashboard') }}
@@ -563,7 +563,7 @@ export default function WithdrawPage() {
             ))}
           </PillChipGroup>
           <p className={styles.helperLine}>
-            Funds reach your registered account ({sub?.phone || 'your number'}) within 2 business days.
+            Funds reach your registered account ({sub?.phone || 'your number'}) within 24 hours.
           </p>
         </section>
       </div>
@@ -687,7 +687,7 @@ export default function WithdrawPage() {
                     </div>
                     <h2 className={styles.successTitle}>Withdrawal requested</h2>
                     <p className={styles.successSubtitle}>
-                      {formatUGX(amount, { compact: false })} will arrive via {methodLabel} within 2 business days.
+                      {formatUGX(amount, { compact: false })} will arrive via {methodLabel} within 24 hours.
                     </p>
                     {resultWd?.reference && (
                       <div className={styles.successRef}>Reference <strong>{resultWd.reference}</strong></div>

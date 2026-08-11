@@ -25,6 +25,8 @@ import { supabase } from './supabaseClient';
 import { IS_SUPABASE_ENABLED } from './api';
 import { normalizeFrequency } from '../utils/finance';
 import { derivePolicies } from '../utils/policies';
+import { hospitalCashQuote } from '../utils/hospitalCash';
+import { HOSPITAL_CASH_DAYS } from '../constants/savings';
 import { paidThisMonth } from '../utils/periodSettlement';
 import { normalizeContributionConfig } from '../utils/contributionModel';
 import { SUBSCRIBERS, AGENTS, BRANCHES, currentTime } from '../data/mockData';
@@ -108,6 +110,18 @@ function applyMutations(sub) {
     retirementBalance: Math.max(0, (sub.retirementBalance || 0) + m.balanceDelta.retirement),
     emergencyBalance: Math.max(0, (sub.emergencyBalance || 0) + m.balanceDelta.emergency),
     unitsHeld: Math.max(0, sub.unitsHeld + (m.balanceDelta.total / (sub.currentUnitValue || 1))),
+    // Cost basis moves with the session's own money too, or an unsaved
+    // contribution would read as instant growth — the exact bug this replaced.
+    // Contributions add their full amount; a withdrawal removes the same
+    // FRACTION of basis as of value (average-cost), so growth% is unchanged by it.
+    invested: (() => {
+      const base = Number(sub.invested) || 0;
+      const priorTotal = Number(sub.netBalance) || 0;
+      const delta = m.balanceDelta.total || 0;
+      if (delta >= 0) return base + delta;
+      if (priorTotal <= 0) return 0;
+      return Math.max(0, base * (1 - Math.min(1, -delta / priorTotal)));
+    })(),
     totalContributions:
       (sub.totalContributions || 0) +
       m.extraTransactions
@@ -234,18 +248,28 @@ function mapSubscriberRow(row) {
     unitValueAsOf: row.unit_value_as_of,
     insuranceSameAsPension: row.insurance_same_as_pension,
 
-    // Balance snapshot (from subscriber_balances)
+    // Balance snapshot (from subscriber_balances).
+    // Since migration 0104 `total_balance` is MARKET VALUE — the member's units
+    // priced at the fund's current unit price — not a running cash total. It
+    // moves whenever the admin publishes a new NAV.
     netBalance: Number(bal?.total_balance ?? 0),
     retirementBalance: Number(bal?.retirement_balance ?? 0),
     emergencyBalance: Number(bal?.emergency_balance ?? 0),
     unitsHeld: Number(bal?.units ?? 0),
-    // Legacy callers still read totalContributions on subscriber summary —
-    // pension total contributed is netBalance + total withdrawn, but the
-    // dashboards approximate via lifetime trigger. With no separate denorm
-    // column, expose total_balance as a conservative proxy. (Subscriber pages
-    // that care about lifetime contributions should read the transactions
-    // feed and aggregate themselves.)
-    totalContributions: Number(bal?.total_balance ?? 0),
+    retirementUnits: Number(bal?.retirement_units ?? 0),
+    emergencyUnits: Number(bal?.emergency_units ?? 0),
+    // Cost basis: what the member actually paid in, reduced proportionally on
+    // withdrawal. This is what makes deriveInvestmentGrowth() real rather than
+    // invented — see the warning on that function.
+    invested: Number(bal?.invested ?? 0),
+    // Which valuation day the cached balance figures reflect.
+    navAsOf: bal?.nav_as_of ?? null,
+    // `totalContributions` now reads the real cost basis. It used to alias
+    // total_balance, which was defensible only while the unit price was frozen
+    // and balance therefore equalled money contributed. With a floating NAV that
+    // alias would report market value as "contributed" and overstate it by the
+    // growth. `invested` is the honest answer to "what went in".
+    totalContributions: Number(bal?.invested ?? 0),
     totalWithdrawals: 0,
 
     // Schedule (from contribution_schedules)
@@ -348,10 +372,18 @@ function mapClaimRow(row) {
   return {
     id: row.id,
     subscriberId: row.subscriber_id,
+    // `product` is the discriminator from migration 0099; `type` holds a legacy
+    // incident category on older rows and mirrors `product` on newer ones.
+    product: row.product ?? null,
     type: row.type,
     status: row.status,
     amount: Number(row.amount),
+    // For hospital cash, incident_date is the ADMISSION date.
     incidentDate: row.incident_date,
+    dischargeDate: row.discharge_date ?? null,
+    nights: row.nights == null ? null : Number(row.nights),
+    provider: row.provider ?? null,
+    dailyBenefit: row.daily_benefit == null ? null : Number(row.daily_benefit),
     submittedDate: row.submitted_date,
     description: row.description,
   };
@@ -881,46 +913,89 @@ export async function requestWithdrawal(
   return data;
 }
 
-/** INSERTs a claim row. */
+/**
+ * File a HOSPITAL CASH claim (migration 0099 `submit_hospital_cash_claim`).
+ *
+ * Hospital cash is the only product a living member can claim — life and
+ * funeral pay out after death and are claimed by a nominee through the public
+ * intake form (`/claim`), never here.
+ *
+ * The caller does NOT send an amount. The RPC derives it from the member's own
+ * policy (cover ÷ 20 per night) and caps it against the nights they have already
+ * used this policy year, then records it. Before 0099 this was a direct client
+ * `.insert()` under `claims_insert_self`, which meant a member could POST any
+ * figure they liked and the 20-night cap was decorative; that policy is now
+ * dropped and the RPC is the only writer. Idempotent on `nonce`.
+ *
+ * NOTE `payload.files` is still accepted and still goes nowhere — there is no
+ * storage bucket and no documents column. The UI says so rather than implying
+ * an upload happened. See BACKEND.md §14a.
+ *
+ * @param {string} id
+ * @param {{ admissionDate: string, dischargeDate: string, provider?: string,
+ *           description?: string, nonce?: string, files?: File[] }} payload
+ */
 export async function submitClaim(id, payload = {}) {
+  const {
+    admissionDate, dischargeDate, provider = '', description = '', nonce,
+  } = payload;
+
   if (!IS_SUPABASE_ENABLED) {
     const sub = SUBSCRIBERS[id];
     if (!sub) throw new Error('Subscriber not found');
+
+    // Mirror the RPC's guards and maths so mock mode can't disagree with live.
+    const merged = attachPolicies(applyMutations(sub));
+    const policy = (merged.policies || [])
+      .find((p) => p.type === 'health' && p.status === 'active' && p.cover > 0);
+    if (!policy) throw new Error('no active hospital cash cover');
+
+    const quote = hospitalCashQuote({
+      policy,
+      admission: admissionDate,
+      discharge: dischargeDate,
+      claims: merged.claims || [],
+      now: currentTime(),
+    });
+    if (quote.nights < 1) {
+      throw new Error('hospital cash pays per night — discharge must be after admission');
+    }
+    if (quote.payableNights < 1) {
+      throw new Error(`the ${HOSPITAL_CASH_DAYS} covered nights for this policy year are already used up`);
+    }
+
     const m = readSession(id);
-    const dateStr = todayIso();
     const claim = {
       id: `clm-${id}-${Date.now()}`,
+      subscriberId: id,
+      type: 'health',
+      product: 'health',
       status: 'submitted',
-      submittedDate: dateStr,
-      incidentDate: payload.incidentDate || dateStr,
-      type: payload.type || 'medical',
-      amount: payload.amount || 0,
-      description: payload.description || '',
+      amount: quote.payout,
+      incidentDate: admissionDate,
+      dischargeDate,
+      nights: quote.payableNights,
+      provider: provider.trim() || null,
+      dailyBenefit: quote.dailyRate,
+      submittedDate: todayIso(),
+      description,
     };
     m.extraClaims.unshift(claim);
     return claim;
   }
 
   if (!id) throw new Error('Subscriber id required');
-  const today = todayIso();
-  const claimId = `clm-${id}-${Date.now()}`;
-  const row = unwrap(
-    await supabase
-      .from('claims')
-      .insert({
-        id: claimId,
-        subscriber_id: id,
-        type: payload.type || 'medical',
-        status: 'submitted',
-        amount: Number(payload.amount ?? 0),
-        incident_date: payload.incidentDate || today,
-        submitted_date: today,
-        description: payload.description ?? '',
-      })
-      .select()
-      .single(),
-  );
-  return mapClaimRow(row);
+  const { data, error } = await supabase.rpc('submit_hospital_cash_claim', {
+    p_nonce: nonce ?? crypto.randomUUID(),
+    p_admission_date: admissionDate,
+    p_discharge_date: dischargeDate,
+    p_provider: provider,
+    p_description: description,
+  });
+  if (error) throw error;
+  // The RPC already returns the camelCase mapClaimRow shape (same contract as
+  // request_withdrawal), so there is nothing to re-map.
+  return data;
 }
 
 /**
@@ -1049,48 +1124,107 @@ export async function updateNominees(id, { pension, insurance } = {}) {
   return getSubscriberNominees(id);
 }
 
+/** Products a subscriber can hold. Life lives in its own table (see below). */
+const INSURANCE_PRODUCT_IDS = ['life', 'health', 'funeral'];
+
 /**
- * UPSERT into insurance_policies. If no row exists (subscriber declined at
- * signup), INSERT a fresh one; otherwise UPDATE. Status derives from cover.
+ * Set a subscriber's cover for ONE product, WITHOUT taking a payment.
+ *
+ * This is the DOWNGRADE path. Lowering cover is free — the reduced premium
+ * applies from the next renewal — so it writes directly rather than going
+ * through a money RPC. UPGRADES must go through `fundInsuranceProducts`, which
+ * actually charges the annual premium.
+ *
+ * Routing mirrors the storage split introduced by migration 0064:
+ *   - life            → `insurance_policies` (subscriber_id PK). UPSERT, because
+ *     a member who declined at signup has no row yet.
+ *   - health/funeral  → `subscriber_insurance_products` ((subscriber_id, product)
+ *     PK). UPDATE only — deliberately not an upsert: a product the member does
+ *     not hold cannot be "downgraded", and creating one here would hand out free
+ *     cover that no premium was ever charged for.
+ *
+ * Both are plain client writes gated by the subscriber's own `*_self` RLS
+ * (0003/0007 for life, `sip_update_self` in 0064 for the rest) — the same lane
+ * `renewPolicy` already uses.
+ *
+ * @param {string} id
+ * @param {{ product?: 'life'|'health'|'funeral', cover: number, premiumMonthly: number }} payload
  */
-export async function updateInsuranceCover(id, { cover, premiumMonthly } = {}) {
+export async function updateInsuranceCover(id, { product = 'life', cover, premiumMonthly } = {}) {
+  if (!INSURANCE_PRODUCT_IDS.includes(product)) {
+    throw new Error(`Unknown insurance product: ${product}`);
+  }
   const active = Number(cover ?? 0) > 0;
+  const status = active ? 'active' : 'inactive';
+
   if (!IS_SUPABASE_ENABLED) {
     const sub = SUBSCRIBERS[id];
     if (!sub) throw new Error('Subscriber not found');
     const m = readSession(id);
-    m.insuranceOverride = {
-      ...(m.insuranceOverride ?? sub.insurance),
-      cover,
-      premiumMonthly,
-      status: active ? 'active' : 'inactive',
-    };
-    // Selecting cover (re)activates the life policy for a year — the policies
-    // page derives active/expired from the renewal date, so push it forward.
-    setRenewalOverride(id, 'life', active);
-    return m.insuranceOverride;
+    if (product === 'life') {
+      m.insuranceOverride = {
+        ...(m.insuranceOverride ?? sub.insurance),
+        cover,
+        premiumMonthly,
+        status,
+      };
+    }
+    // Mirror EVERY product (life included) into the products override so the
+    // derived `policies` array — and everything reading it, like the Policies
+    // page and activeCoverTotal — sees the new cover, not just the legacy
+    // single-life `insurance` object.
+    const prior = m.insuranceProductsOverride.find((o) => o.product === product)
+      ?? applyMutations(sub).insuranceProducts.find((p) => p.product === product)
+      ?? {};
+    m.insuranceProductsOverride = [
+      ...m.insuranceProductsOverride.filter((o) => o.product !== product),
+      {
+        ...prior,
+        product,
+        cover: Number(cover ?? 0),
+        premiumMonthly: Number(premiumMonthly ?? 0),
+        status,
+        policyStart: prior.policyStart ?? todayIso(),
+        renewalDate: active ? renewalIsoFromNow(1) : prior.renewalDate,
+      },
+    ];
+    // Selecting cover (re)activates the policy for a year — the policies page
+    // derives active/expired from the renewal date, so push it forward.
+    setRenewalOverride(id, product, active);
+    return product === 'life'
+      ? m.insuranceOverride
+      : m.insuranceProductsOverride.find((o) => o.product === product);
   }
 
   if (!id) throw new Error('Subscriber id required');
-  setRenewalOverride(id, 'life', active);
-  const status = active ? 'active' : 'inactive';
-  const row = unwrap(
-    await supabase
-      .from('insurance_policies')
-      .upsert(
-        {
-          subscriber_id: id,
-          cover: Number(cover ?? 0),
-          premium_monthly: Number(premiumMonthly ?? 0),
-          status,
-          updated_at: new Date().toISOString(),
-        },
-        { onConflict: 'subscriber_id' },
-      )
-      .select()
-      .single(),
-  );
+  setRenewalOverride(id, product, active);
+  const patch = {
+    cover: Number(cover ?? 0),
+    premium_monthly: Number(premiumMonthly ?? 0),
+    status,
+    updated_at: new Date().toISOString(),
+  };
+
+  const row = product === 'life'
+    ? unwrap(
+      await supabase
+        .from('insurance_policies')
+        .upsert({ subscriber_id: id, ...patch }, { onConflict: 'subscriber_id' })
+        .select()
+        .single(),
+    )
+    : unwrap(
+      await supabase
+        .from('subscriber_insurance_products')
+        .update(patch)
+        .eq('subscriber_id', id)
+        .eq('product', product)
+        .select()
+        .single(),
+    );
+
   return {
+    product,
     cover: Number(row.cover),
     premiumMonthly: Number(row.premium_monthly),
     policyStart: row.policy_start,

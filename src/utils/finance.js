@@ -180,60 +180,50 @@ export function amtToSlider(a, min, max) {
   return ((Math.log(Math.max(a, min)) - lo) / (hi - lo)) * 100;
 }
 
-/** Clamp `n` into the inclusive range [lo, hi]. */
-function clamp(n, lo, hi) {
-  return Math.min(hi, Math.max(lo, n));
-}
-
-/** Whole months elapsed since an ISO date string; `fallback` if absent/invalid. */
-function monthsSince(dateStr, fallback) {
-  if (!dateStr) return fallback;
-  const then = new Date(dateStr).getTime();
-  if (Number.isNaN(then)) return fallback;
-  const months = (Date.now() - then) / (1000 * 60 * 60 * 24 * 30.44);
-  return months > 0 ? months : fallback;
-}
-
-/** Small deterministic djb2 string hash, always returned as a non-negative int. */
-function hashString(str) {
-  let h = 5381;
-  for (let i = 0; i < str.length; i += 1) {
-    h = ((h << 5) + h + str.charCodeAt(i)) >>> 0;
-  }
-  return h;
-}
-
 /**
- * Derive a believable "amount invested" + investment growth for a subscriber.
+ * Report a member's "amount invested" and their REAL investment growth.
  *
- * The demo has no real cost basis — every contribution buys units at the fixed
- * 1,000 UGX price, so `total_balance` equals total contributed and raw growth is
- * always zero. To give the dashboards a meaningful "invested vs grown" story we
- * discount the current balance back over the member's tenure at the app's own
- * assumed return (`MONTHLY_RATE` — the same rate `calcFV` projects forward),
- * i.e. invested = what would have compounded up to today's balance.
+ * Growth is `balance − invested`, where both figures come from the database:
+ * `netBalance` is the member's units valued at the fund's current unit price,
+ * and `invested` is their cost basis — what they actually paid in, reduced
+ * proportionally on every withdrawal (average-cost). Both are maintained by the
+ * contribution trigger and `request_withdrawal` (migration 0104), priced from
+ * the NAV the admin publishes.
  *
- * Deterministic per subscriber (no `Math.random`), so figures stay stable across
- * renders and never disagree between the mobile PulseCard and desktop HomeDesktop.
+ * ⚠️ HISTORY — DO NOT REINTRODUCE A DERIVATION HERE. Until 0103-0105 this
+ * function INVENTED growth: it discounted the balance backwards over a synthetic
+ * tenure (registration date + a per-id jitter, clamped to 3..36 months) at
+ * `MONTHLY_RATE`. Because the clamp floored at 3 months and 3 months at 10%/yr
+ * is exactly +2.5%, a member who signed up and paid once immediately saw
+ * "INVESTMENT GROWTH +2.5%" having been invested for a single day. The fake
+ * existed because the old schema had no cost-basis column and a frozen 1,000 UGX
+ * unit price, so real growth was structurally always zero. It now has both.
  *
- * @param {{ netBalance?: number, registeredDate?: string, id?: string }} subscriber
+ * ⚠️ GROWTH CAN BE NEGATIVE. Unit prices fall as well as rise, and 6 members
+ * currently sit at a small loss. Callers must not assume a positive value or
+ * hardcode a "+" sign.
+ *
+ * `MONTHLY_RATE` is deliberately NOT used here. It is the forward-PROJECTION
+ * assumption behind `calcFV`, which is a different thing from a realised return —
+ * conflating the two is what produced the bug above.
+ *
+ * @param {{ netBalance?: number, invested?: number }} subscriber
  * @returns {{ invested: number, growth: number, growthPct: number }}
  */
 export function deriveInvestmentGrowth(subscriber) {
   const balance = Number(subscriber?.netBalance) || 0;
   if (balance <= 0) return { invested: 0, growth: 0, growthPct: 0 };
 
-  // Tenure (months) from registration, fallback 18mo, plus a small stable
-  // per-subscriber jitter so equal-tenure members don't show identical growth.
-  const base = monthsSince(subscriber?.registeredDate, 18);
-  const jitter = (hashString(String(subscriber?.id ?? '')) % 7) - 3; // -3..+3
-  const tenureMonths = clamp(base + jitter, 3, 36);
+  const invested = Number(subscriber?.invested);
+  // No cost basis on the record (a stale cache, or a mock fixture that predates
+  // the column) — report the balance as entirely principal and show no growth.
+  // Never invent a figure: that is the whole point of this change.
+  if (!Number.isFinite(invested) || invested <= 0) {
+    return { invested: balance, growth: 0, growthPct: 0 };
+  }
 
-  const factor = Math.pow(1 + MONTHLY_RATE, tenureMonths);
-  const invested = Math.round(balance / factor);
   const growth = balance - invested;
-  const growthPct = invested > 0 ? (growth / invested) * 100 : 0;
-  return { invested, growth, growthPct };
+  return { invested, growth, growthPct: (growth / invested) * 100 };
 }
 
 /**

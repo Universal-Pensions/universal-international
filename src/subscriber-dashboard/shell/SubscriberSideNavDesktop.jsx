@@ -41,9 +41,9 @@ const PRIMARY = [
   },
   {
     to: '/dashboard/save',
-    // `end` so "Save" highlights only on the Save page itself — the child route
-    // /dashboard/save/schedule has its own "Schedule" nav item below.
-    end: true,
+    // No `end`: the child route /dashboard/save/schedule (reached from Account
+    // settings → Contribution settings) has no nav item of its own, so it must
+    // light up its parent rather than leaving the rail with nothing active.
     label: 'Save',
     icon: (
       <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" width="20" height="20">
@@ -78,16 +78,6 @@ const SECONDARY = [
     ),
   },
   {
-    to: '/dashboard/save/schedule',
-    label: 'Schedule',
-    icon: (
-      <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" width="20" height="20">
-        <rect x="3" y="5" width="18" height="16" rx="2" stroke="currentColor" strokeWidth="1.75" />
-        <path d="M3 10h18M8 3v4M16 3v4" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" />
-      </svg>
-    ),
-  },
-  {
     to: '/dashboard/agent',
     label: 'Your agent',
     icon: (
@@ -109,7 +99,7 @@ const SECONDARY = [
   },
   {
     to: '/dashboard/settings',
-    label: 'Settings',
+    label: 'Account settings',
     icon: (
       <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" width="20" height="20">
         <circle cx="12" cy="12" r="3" stroke="currentColor" strokeWidth="1.75" />

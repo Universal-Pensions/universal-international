@@ -12,48 +12,214 @@ export const START_AGE = 25;
 export const MIN_CONTRIBUTION = 5_000;
 export const MIN_WITHDRAW = 5_000;
 
-/** Default insurance cover and monthly premium for the entry tier (life). */
-export const INSURANCE_PREMIUM_MONTHLY = 2_000;
-export const INSURANCE_COVER = 1_000_000;
+/**
+ * Default retirement / liquid split for a member's OWN contribution schedule.
+ *
+ * This is the member's choice to make — 80/20, 60/40, 100/0, whatever suits them
+ * — and it governs ONLY money they put in themselves: their scheduled
+ * contribution and any ad-hoc top-up on the Save page. 80/20 is what they start
+ * on until they change it, and it mirrors the column defaults on
+ * `contribution_schedules.retirement_pct` / `.emergency_pct` (migration 0001).
+ *
+ * ⚠️ NOT to be confused with `EMPLOYER_FUNDED_SPLIT` in utils/contributionModel.
+ * That one is where an EMPLOYER's contribution runs land (100% retirement) and is
+ * a property of the run engine, not a schedule value. The two are deliberately
+ * independent: an employer member on a 60/40 schedule still has every shilling
+ * their employer sends go to retirement, and their own 60/40 applies to their own
+ * money. Using either constant in the other's place re-couples them.
+ */
+export const DEFAULT_RETIREMENT_PCT = 80;
+export const DEFAULT_SCHEDULE_SPLIT = Object.freeze({
+  retirementPct: DEFAULT_RETIREMENT_PCT,
+  emergencyPct: 100 - DEFAULT_RETIREMENT_PCT,
+});
+
+/* ── Per-product cover ladders ───────────────────────────────────────────────
+ * Each product sells FOUR cover levels. Tier 0 is the entry level and doubles as
+ * the universal fallback: it holds the value that product shipped as its single
+ * fixed cover before per-product amounts existed, so any caller that ignores the
+ * ladder (a legacy localStorage draft, an old payload) lands on exactly the old
+ * behaviour.
+ *
+ * `life`'s ladder is lifted VERBATIM from the cover slider that used to live
+ * privately in subscriber-dashboard/pages/InsurancePage.jsx — that page and this
+ * constant had drifted into two unrelated pricing tables, which is the whole
+ * reason this lives here now. Health and funeral extend from their own base on
+ * the same shape of curve.
+ *
+ * Invariant (asserted in savings-cover-tiers.test.js): cover and premium both
+ * rise strictly, while the premium PER SHILLING of cover strictly falls — buying
+ * more cover is always cheaper per unit. Demo pricing in UGX; there is no NAV,
+ * no underwriting, and the server validates nothing beyond `>= 0`, so this table
+ * is the only pricing authority in the system.
+ */
+const PRODUCT_TIERS = {
+  life: [
+    { cover: 1_000_000, premiumMonthly: 2_000 }, //  24,000/yr · 0.200 %/mo
+    { cover: 2_000_000, premiumMonthly: 3_500 }, //  42,000/yr · 0.175 %/mo
+    { cover: 3_000_000, premiumMonthly: 5_000 }, //  60,000/yr · 0.167 %/mo
+    { cover: 5_000_000, premiumMonthly: 7_500 }, //  90,000/yr · 0.150 %/mo
+  ],
+  health: [
+    { cover: 3_000_000, premiumMonthly: 5_000 }, //  60,000/yr · 0.167 %/mo
+    { cover: 5_000_000, premiumMonthly: 7_500 }, //  90,000/yr · 0.150 %/mo
+    { cover: 8_000_000, premiumMonthly: 11_000 }, // 132,000/yr · 0.138 %/mo
+    { cover: 12_000_000, premiumMonthly: 15_000 }, // 180,000/yr · 0.125 %/mo
+  ],
+  funeral: [
+    { cover: 2_000_000, premiumMonthly: 1_500 }, //  18,000/yr · 0.075 %/mo
+    { cover: 3_000_000, premiumMonthly: 2_100 }, //  25,200/yr · 0.070 %/mo
+    { cover: 5_000_000, premiumMonthly: 3_250 }, //  39,000/yr · 0.065 %/mo
+    { cover: 8_000_000, premiumMonthly: 5_000 }, //  60,000/yr · 0.063 %/mo
+  ],
+};
+
+/**
+ * Days of hospitalisation the hospital-cash benefit pays out over. The product's
+ * cover figure is the TOTAL across these days, so the headline the member cares
+ * about — what lands in their hand per night — is cover ÷ this.
+ */
+export const HOSPITAL_CASH_DAYS = 20;
+
+/**
+ * Entry-tier (life) cover and monthly premium.
+ *
+ * Derived from the ladder rather than hand-written so life's tier 0 and these
+ * two constants can never disagree. DO NOT repoint them at a higher tier:
+ * `utils/groupInsurance.js` divides one by the other to get the employer group
+ * rate (0.2 %/mo), so changing either silently reprices group insurance for
+ * every covered employee on every roster.
+ */
+export const INSURANCE_PREMIUM_MONTHLY = PRODUCT_TIERS.life[0].premiumMonthly;
+export const INSURANCE_COVER = PRODUCT_TIERS.life[0].cover;
 
 /**
  * Insurance products a subscriber can add to their contribution schedule.
  *
- * Configurable: add, remove, or reprice an entry here and the contribution
- * form (selection list, premium maths, and live summary) picks it up
- * automatically — no component edits needed. `id` is the stable key carried in
- * the schedule's `insuranceTypes` selection; `icon` maps to an inline glyph in
- * each consuming form. Premiums/cover are demo values in UGX.
+ * Configurable: add, remove, or reprice an entry here (and its ladder above) and
+ * the contribution form (selection list, premium maths, and live summary) picks
+ * it up automatically — no component edits needed. `id` is the stable key
+ * carried in the schedule's `insuranceTypes` selection; `icon` maps to an inline
+ * glyph in each consuming form.
  *
- * `life` deliberately mirrors INSURANCE_PREMIUM_MONTHLY / INSURANCE_COVER so the
- * legacy single-product path (signup, agent onboard) stays consistent.
+ * Each entry spreads its own tier 0, so `cover` / `premiumMonthly` remain
+ * present and unchanged for every caller that reads a product without caring
+ * about the ladder (`utils/policies.js`, `utils/periodSettlement.js`, …).
+ * `tiers` is the opt-in for callers that let the user pick an amount.
  */
 export const INSURANCE_PRODUCTS = [
   {
+    // `id` stays 'health' — it is the stored enum value in
+    // subscriber_insurance_products.product, the RLS/RPC product check, and
+    // every existing row. Only the LABEL is the product's public name.
     id: 'health',
-    label: 'Health insurance',
+    label: 'Hospital cash',
     blurb: 'Hospital & clinic cover',
+    // Hospital cash does NOT reimburse bills — it pays a flat daily amount for
+    // each night in hospital, up to this many days. The cover figure is the
+    // total across those days, so the daily benefit is cover ÷ benefitDays
+    // (see `dailyBenefit`). Every tier divides evenly by 20.
+    benefitDays: HOSPITAL_CASH_DAYS,
     icon: 'health',
-    premiumMonthly: 5_000,
-    cover: 3_000_000,
+    tiers: PRODUCT_TIERS.health,
+    ...PRODUCT_TIERS.health[0],
   },
   {
     id: 'funeral',
     label: 'Funeral insurance',
     blurb: 'Eases funeral & burial costs',
     icon: 'funeral',
-    premiumMonthly: 1_500,
-    cover: 2_000_000,
+    tiers: PRODUCT_TIERS.funeral,
+    ...PRODUCT_TIERS.funeral[0],
   },
   {
     id: 'life',
     label: 'Life insurance',
     blurb: 'Lump sum for your beneficiaries',
     icon: 'life',
-    premiumMonthly: INSURANCE_PREMIUM_MONTHLY,
-    cover: INSURANCE_COVER,
+    tiers: PRODUCT_TIERS.life,
+    ...PRODUCT_TIERS.life[0],
   },
 ];
+
+/**
+ * An INSURANCE_PRODUCTS entry by id, or null for an unknown id.
+ * @param {string} productId
+ */
+export function insuranceProduct(productId) {
+  return INSURANCE_PRODUCTS.find((p) => p.id === productId) ?? null;
+}
+
+/**
+ * The cover ladder for a product — `[{ cover, premiumMonthly }]`, ascending.
+ * Empty array for an unknown id, so callers can `.length`-check without a guard.
+ * @param {string} productId
+ */
+export function coverTiers(productId) {
+  return insuranceProduct(productId)?.tiers ?? [];
+}
+
+/**
+ * A product's entry tier — the default selection and the universal fallback.
+ * @returns {{ cover: number, premiumMonthly: number, index: number } | null}
+ */
+export function defaultTier(productId) {
+  const tiers = coverTiers(productId);
+  return tiers.length ? { ...tiers[0], index: 0 } : null;
+}
+
+/**
+ * A product's tier by ladder position, clamped into range.
+ * @returns {{ cover: number, premiumMonthly: number, index: number } | null}
+ */
+export function coverTierAt(productId, index) {
+  const tiers = coverTiers(productId);
+  if (!tiers.length) return null;
+  const i = Math.min(Math.max(Number(index) || 0, 0), tiers.length - 1);
+  return { ...tiers[i], index: i };
+}
+
+/**
+ * Resolve a cover AMOUNT to its ladder tier.
+ *
+ * An exact match wins. Otherwise the nearest tier AT OR BELOW the amount is
+ * returned — never tier 0 by default. That matters for real data: an
+ * employer-set cover, a hand-edited row, or a value left behind by a repricing
+ * is off-ladder, and collapsing it to tier 0 makes the UI offer a "downgrade" to
+ * the cheapest level (the exact bug the old `findIndex(t => t.cover === cover)`
+ * in InsurancePage produced). `exact` lets a caller tell the two cases apart.
+ *
+ * @param {string} productId
+ * @param {number} cover — cover amount in UGX
+ * @returns {{ cover: number, premiumMonthly: number, index: number, exact: boolean } | null}
+ */
+/**
+ * The DAILY payout for a product whose cover is spread over a fixed number of
+ * days (hospital cash). Returns `null` for products that pay a single lump sum
+ * (life, funeral), so callers can render the daily line only where it is true.
+ *
+ * @param {string} productId
+ * @param {number} cover — that product's total cover in UGX
+ * @returns {number | null} whole UGX per day
+ */
+export function dailyBenefit(productId, cover) {
+  const days = insuranceProduct(productId)?.benefitDays;
+  if (!days) return null;
+  return Math.round((Number(cover) || 0) / days);
+}
+
+export function tierForCover(productId, cover) {
+  const tiers = coverTiers(productId);
+  if (!tiers.length) return null;
+  const target = Number(cover) || 0;
+  const exactIdx = tiers.findIndex((t) => t.cover === target);
+  if (exactIdx >= 0) return { ...tiers[exactIdx], index: exactIdx, exact: true };
+  let idx = 0;
+  for (let i = 0; i < tiers.length; i += 1) {
+    if (tiers[i].cover <= target) idx = i;
+  }
+  return { ...tiers[idx], index: idx, exact: false };
+}
 
 /**
  * Annual premium for an insurance product, in UGX.
@@ -65,6 +231,10 @@ export const INSURANCE_PRODUCTS = [
  * basis, so derive the yearly figure here rather than re-hardcoding ×12 at each
  * call site. Mirrors the DB anchor `premium_monthly * 12` used by the accrual
  * trigger and `policies.js` renewal maths.
+ *
+ * Accepts an INSURANCE_PRODUCTS entry OR one of its `tiers` — both carry
+ * `premiumMonthly`, so `annualPremium(tierForCover('life', cover))` is the
+ * canonical way to price a chosen cover level.
  *
  * @param {{ premiumMonthly?: number }} product
  * @returns {number} annual premium in whole UGX

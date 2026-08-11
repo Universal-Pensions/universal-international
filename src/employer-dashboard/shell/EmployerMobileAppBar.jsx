@@ -39,6 +39,7 @@ const TAB = {
 const SECONDARY = {
   '/dashboard/insurance': 'Insurance & benefits',
   '/dashboard/pending-kyc': 'Pending KYC',
+  '/dashboard/contributions': 'Contribution history',
 };
 
 function resolve(pathname) {

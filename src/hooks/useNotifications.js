@@ -54,3 +54,23 @@ export function useMarkNotificationsRead() {
     },
   });
 }
+
+/**
+ * Send an in-app notification from an admin Needs-attention drill-down
+ * (migration 0097 `admin_notify`).
+ *
+ * Invalidates the feed + unread badge so the admin's own bell reflects an
+ * ops-queue escalation immediately. Deliberately does NOT invalidate
+ * ['adminAttention']: notifying somebody does not change any signal's count, and
+ * refetching the ten aggregates on every send would be pure waste.
+ */
+export function useSendAdminNotification() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (params) => notifications.sendAdminNotification(params),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['notifications'] });
+      queryClient.invalidateQueries({ queryKey: ['notificationsUnread'] });
+    },
+  });
+}

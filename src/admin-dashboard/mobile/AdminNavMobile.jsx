@@ -150,18 +150,28 @@ export default function AdminNavMobile() {
         <section className={styles.card}>
           <p className={styles.eyebrow}>How the price has moved</p>
           <div className={styles.spark} aria-hidden="true">
+            {/* The BAR is the inner <i> — `.sparkCol` is only the full-height
+                column it sits at the bottom of, and carries no paint of its own.
+                Height therefore belongs on the <i>: put it on the column and the
+                whole chart renders invisible. */}
             {spark.map((v, i) => (
-              <span
-                key={`${v}-${i}`}
-                className={styles.sparkCol}
-                style={{ height: `${8 + ((v - sparkMin) / sparkRange) * 92}%` }}
-              />
+              <span key={`${v}-${i}`} className={styles.sparkCol}>
+                <i style={{ height: `${8 + ((v - sparkMin) / sparkRange) * 92}%` }} />
+              </span>
             ))}
           </div>
         </section>
       )}
 
-      <button type="button" className={styles.signout} onClick={() => setSheetOpen(true)}>
+      {/* The page's primary action, so it takes the primary button — NOT
+          `.signout`, whose red is reserved for destructive actions (CLAUDE.md
+          §6). Publishing the day's price is routine work, not a warning. */}
+      <button
+        type="button"
+        className={`${styles.btn} ${styles.btnPri}`}
+        style={{ width: '100%' }}
+        onClick={() => setSheetOpen(true)}
+      >
         Set today&apos;s price
       </button>
 

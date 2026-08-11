@@ -526,7 +526,7 @@ function mockAgentReply(message, firstName) {
     return `Sure — easiest is to use the Top up button on your dashboard. If you'd prefer Mobile Money via me, send the amount and I'll send a payment prompt to your phone.`;
   }
   if (l.includes('withdraw')) {
-    return `Got it. Emergency bucket withdrawals are usually 1–2 working days. I can walk you through the form, or process it on your behalf if you share the amount and reason.`;
+    return `Got it. Emergency bucket withdrawals are usually within 24 hours. I can walk you through the form, or process it on your behalf if you share the amount and reason.`;
   }
   if (l.includes('nominee') || l.includes('beneficiary')) {
     return `Happy to help update your nominees. We'll need each person's full name, NIN, and the share %. Shares must total 100%.`;

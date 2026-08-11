@@ -367,6 +367,9 @@
 }
 
 .kpiValueGrow { color: var(--color-green-ink); }
+/* Unit prices fall as well as rise, so a real loss must be showable. Same ink
+   the mobile/branch surfaces use for a downward move. */
+.kpiValueLoss { color: var(--color-poor-ink, #B02530); }
 
 .kpiExplain {
   margin-top: var(--space-2);

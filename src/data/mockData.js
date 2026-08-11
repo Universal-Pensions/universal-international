@@ -543,6 +543,12 @@ function generateSubscribers() {
         netBalance,
         retirementBalance,
         emergencyBalance,
+        // Cost basis of the units still held, at the average price they were
+        // bought for. Mirrors what subscriber_balances.invested holds under
+        // Supabase, so deriveInvestmentGrowth() reads a REAL basis in mock mode
+        // too and never falls back to inventing one. Consistent by construction
+        // with this block's own growth model (avgPurchaseValue < currentUnitValue).
+        invested: Math.round(unitsHeld * avgPurchaseValue),
 
         contributionSchedule: {
           frequency,
@@ -713,6 +719,51 @@ const subs = generateSubscribers();
     // 0072 trigger sweeps it later. Drop any annual 'premium' row the generic
     // generator gave this member so the building demo shows no premium charge.
     demo.transactions = (demo.transactions ?? []).filter((t) => t.type !== 'premium');
+  }
+}
+
+// ── multi-product cover demo (per-product cover amounts) ─────────────────────
+// The generator gives every insured member a single LIFE policy at the entry
+// tier, so offline (`VITE_USE_SUPABASE=false`) the settings cover page would
+// show Health and Funeral as "—" for everyone and the product selector would
+// have nothing to switch between. Pin one member holding TWO products at
+// DIFFERENT ladder tiers, which also exercises activeCoverTotal /
+// activeCoverProductsLabel ("Life & Health") on the summary cards.
+//
+// Policy rows only — deliberately NO extra 'premium' transaction, so the
+// annual-premium invariant test (src/data/__tests__) stays a literal check
+// against the single seeded rate.
+{
+  const demo = subs['s-0003'];
+  if (demo) {
+    const start = demo.insurance?.policyStart;
+    const renews = demo.insurance?.renewalDate;
+    demo.insurance = {
+      ...demo.insurance,
+      cover: 2_000_000,        // life ladder tier 1
+      premiumMonthly: 3_500,
+      status: 'active',
+    };
+    demo.insuranceProducts = [
+      {
+        product: 'life',
+        cover: 2_000_000,
+        premiumMonthly: 3_500,
+        policyStart: start,
+        renewalDate: renews,
+        status: 'active',
+        fundedBy: 'self',
+      },
+      {
+        product: 'health',
+        cover: 8_000_000,      // health ladder tier 2 — a deliberate upgrade
+        premiumMonthly: 11_000,
+        policyStart: start,
+        renewalDate: renews,
+        status: 'active',
+        fundedBy: 'self',
+      },
+    ];
   }
 }
 // Pre-group subscribers by agent for O(1) lookup instead of O(n) filter

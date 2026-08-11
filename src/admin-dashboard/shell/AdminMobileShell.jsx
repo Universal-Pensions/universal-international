@@ -17,6 +17,9 @@ import EmployerDetailMobile from '../mobile/EmployerDetailMobile';
 import AdminNetworkMobile from '../mobile/AdminNetworkMobile';
 import AdminSettingsMobile from '../mobile/AdminSettingsMobile';
 import AdminAccessRequestsMobile from '../mobile/AdminAccessRequestsMobile';
+import AdminNavMobile from '../mobile/AdminNavMobile';
+import AdminNomineeClaimsMobile from '../mobile/AdminNomineeClaimsMobile';
+import AdminAttentionMobile from '../attention/AdminAttentionMobile';
 import AdminHubMobile from '../mobile/AdminHubMobile';
 
 // Reused distributor pages — role-agnostic (RLS scopes the data; admin sees all).
@@ -55,6 +58,14 @@ function AnimatedOutlet() {
           <Route path="employers/:employerId" element={<EmployerDetailMobile />} />
           <Route path="employers" element={<EmployersMobile />} />
           <Route path="access-requests" element={<AdminAccessRequestsMobile />} />
+          <Route path="nav" element={<AdminNavMobile />} />
+          {/* Death-benefit claims from the public /claim form. The desktop
+              equivalent is a context-driven panel the phone shell can't mount,
+              so without this route the queue was desktop-only. */}
+          <Route path="nominee-claims" element={<AdminNomineeClaimsMobile />} />
+          {/* Needs-attention drill-down. Must precede the "*" catch-all below,
+              which would otherwise swallow it back to the home route. */}
+          <Route path="attention/:type" element={<AdminAttentionMobile />} />
           <Route path="network" element={<AdminNetworkMobile />} />
           <Route path="branches/:branchId" element={<BranchDetailMobile />} />
           <Route path="branches" element={<BranchesMobile />} />

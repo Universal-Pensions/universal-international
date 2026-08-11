@@ -144,7 +144,7 @@ export default function HomeMobile({ subscriber: sub }) {
             <small>Invested</small>
           </div>
           <div>
-            <b className={styles.statGrow}>
+            <b className={growth < 0 ? styles.statLoss : styles.statGrow}>
               {growth >= 0 ? '↑' : '↓'} {Math.abs(growthPct).toFixed(1)}%
             </b>
             <small>Growth</small>

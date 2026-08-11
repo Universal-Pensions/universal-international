@@ -6,10 +6,19 @@
 }
 
 @media (min-width: 1024px) {
+  /* Desktop renders the 2-column split (desktopFlow.module.css) on the full
+     .pageWide (1240px) canvas — don't re-cap the width here. A max-width on
+     .page also pins `flow.splitHost`'s size container (it is a CHILD of this
+     element), which made desktopFlow's `@container (max-width: 900px)` collapse
+     rule fire at EVERY viewport: the split never opened and the "Your cover"
+     summary always fell to the bottom of the page. */
   .page {
-    max-width: 640px;
-    margin: 0 auto;
-    padding-bottom: var(--space-8);
+    max-width: none;
+    /* The shell's .viewport already contributes padding-bottom: var(--space-8);
+       adding our own doubled it and was the last 32px standing between this
+       page and fitting a 1024x768 window (whose real viewport is ~625px once
+       browser chrome is subtracted). */
+    padding-bottom: 0;
   }
 }
 
@@ -20,61 +29,61 @@
   padding: var(--space-4) var(--space-4) var(--space-6);
 }
 
+/* NOTE: `.body` is MOBILE-ONLY — the desktop branch renders the split directly
+   under the PageHeader and never mounts it. The desktop cover summary lives in
+   the sticky right column and reuses desktopFlow.module.css's `.card` /
+   `.sumEyebrow` / `.sumBig` / `.sumList` recipe, so the three KPI tiles that
+   used to sit here (.deskSummary / .sumItem / .sumK / .sumV / .sumSub) and the
+   desktop `.body` padding override are both gone. */
+
+/* ── Desktop no-scroll budget ─────────────────────────────────────────────────
+   This page must fit a 1280x800 viewport with no vertical scroll. Measured for
+   a member with one active policy and three nominees, rail expanded:
+
+     PageHeader                                    72
+     cover picker card                            350
+     gap                                           16
+     beneficiaries card (help hidden, 2 rows)     232
+     .page padding-bottom (space-8)                32
+     .viewport padding-bottom (space-8)            32
+     ------------------------------------------------
+                                                  734  < 800
+
+   `align-items: start` on flow.split means the row height is the LEFT column;
+   the right rail peaks around 367px with three policies, well under it.
+   Re-measure if you add a field or a line of copy here. PageHeader is kept
+   deliberately over flow.head — the latter's --text-3xl title plus eyebrow is
+   ~43px taller and this page has no room for it. */
 @media (min-width: 1024px) {
-  /* Desktop now renders a flat page header above (no hero dome), so give the
-     body normal top breathing room. */
-  .body {
-    padding-top: var(--space-5);
+  /* flow.seg carries margin-bottom: var(--space-5) for the Save/Withdraw hubs,
+     where it is the last thing in its card. Here the section's own gap already
+     separates it from the cover readout. */
+  .segTight {
+    margin-bottom: 0;
   }
 
-  /* Cover summary — three KPI tiles mirroring the Home / Policies desktop cards
-     so this page reads as a sibling of the rest of the desktop dashboard. */
-  .deskSummary {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    background: #fff;
-    border: 1px solid var(--color-lavender);
-    border-radius: var(--radius-xl);
-    box-shadow: var(--shadow-sm);
-    padding: var(--space-5) var(--space-6);
-    margin-bottom: var(--space-2);
+  /* The section title and the "N on file" aside already say this; the nominees
+     page repeats the 100% rule where it is actually enforced. */
+  .beneHelp {
+    display: none;
   }
 
-  .sumItem {
+  /* "Manage beneficiaries" + "File a claim" share one row instead of a link and
+     a full-width button stacked (flow.col sets no align-items, so a block-level
+     child stretches edge to edge — which is how the claim button got so big). */
+  .actionRow {
     display: flex;
-    flex-direction: column;
-    gap: 6px;
-    padding: 0 var(--space-6);
-    border-left: 1px solid var(--color-lavender);
-    min-width: 0;
+    align-items: center;
+    gap: var(--space-3);
+    flex-wrap: wrap;
   }
 
-  .sumItem:first-child { padding-left: 0; border-left: none; }
-  .sumItem:last-child { padding-right: 0; }
-
-  .sumK {
-    font-family: var(--font-body);
+  .actionRow .fileClaimBtn {
+    flex: 0 0 auto;
+    width: auto;
+    margin-left: auto;
+    padding: 9px 16px;
     font-size: var(--text-xs);
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.06em;
-    color: var(--color-gray);
-  }
-
-  .sumV {
-    font-family: var(--font-display);
-    font-size: var(--text-xl);
-    font-weight: 800;
-    letter-spacing: -0.02em;
-    line-height: 1.05;
-    color: var(--color-indigo);
-    font-variant-numeric: tabular-nums;
-  }
-
-  .sumSub {
-    font-family: var(--font-body);
-    font-size: var(--text-xs);
-    color: var(--color-gray);
   }
 }
 
@@ -268,68 +277,47 @@
   font-variant-numeric: tabular-nums;
 }
 
-.slider {
-  -webkit-appearance: none;
-  appearance: none;
-  width: 100%;
-  height: 6px;
-  border-radius: var(--radius-full);
-  background: linear-gradient(to right, var(--color-indigo) 0%, var(--color-indigo) var(--pct), var(--color-lavender) var(--pct), var(--color-lavender) 100%);
-  outline: none;
+/* The cover slider + tier marks moved to the shared
+   components/insurance/CoverTierPicker (same rules, verbatim) so the signup
+   step, the schedule editor and this page can't drift apart. */
+
+/* Daily-payout explainer for hospital cash — the cover figure is a 20-day
+   total, so on its own it overstates what lands in the member's hand per night.
+   Tinted like a fact, not a warning. */
+.benefitNote {
+  margin: 0;
+  padding: 0.6rem 0.75rem;
+  background: color-mix(in srgb, var(--color-indigo) 4%, transparent);
+  border: 1px solid var(--color-lavender);
+  border-radius: var(--radius-md);
+  font-family: var(--font-body);
+  font-size: var(--text-xs);
+  line-height: 1.5;
+  color: var(--color-slate);
 }
 
-.slider:focus-visible {
-  outline: 2px solid var(--color-indigo-soft);
-  outline-offset: 4px;
-  border-radius: var(--radius-full);
+.benefitNote strong {
+  font-family: var(--font-display);
+  font-weight: 800;
+  color: var(--color-indigo);
+  font-variant-numeric: tabular-nums;
 }
 
-.slider::-webkit-slider-thumb {
-  -webkit-appearance: none;
-  appearance: none;
-  width: 22px;
-  height: 22px;
-  border-radius: 50%;
-  background: var(--color-white);
-  border: 3px solid var(--color-indigo);
-  cursor: pointer;
-  box-shadow: var(--shadow-sm);
+/* ── Product segment labels (inside desktopFlow's .seg / .segBtn) ─────────── */
+/* Each segment names the product AND shows what that policy covers today, so
+   the member can see at a glance which ones they hold before switching. */
+.segName {
+  display: block;
 }
 
-.slider::-moz-range-thumb {
-  width: 22px;
-  height: 22px;
-  border-radius: 50%;
-  background: var(--color-white);
-  border: 3px solid var(--color-indigo);
-  cursor: pointer;
-}
-
-.tierMarks {
-  display: flex;
-  justify-content: space-between;
-  gap: 4px;
-}
-
-.tierMark {
-  flex: 0 0 auto;
-  display: inline-flex;
-  align-items: center;
-  min-height: 44px;
-  background: transparent;
-  border: none;
-  color: var(--color-indigo-soft);
+.segCover {
+  display: block;
+  margin-top: 2px;
   font-family: var(--font-body);
   font-size: 11px;
-  cursor: pointer;
-  padding: 2px 4px;
-  letter-spacing: 0.02em;
-}
-
-.tierMark[data-active='true'] {
-  color: var(--color-indigo);
-  font-family: var(--font-display);
-  font-weight: 700;
+  font-weight: 600;
+  color: var(--color-gray);
+  font-variant-numeric: tabular-nums;
 }
 
 /* ── Beneficiaries ────────────────────────────────────── */
@@ -499,3 +487,82 @@
   color: var(--color-slate);
 }
 .employerNote strong { color: var(--color-teal-ink, #1F6E7A); font-weight: 700; }
+
+/* ── Build speed (save-to-cover pace) ───────────────────────────────────────
+   Shown only for a BUILDING policy: the share of liquid savings swept toward
+   the premium each period. Mirrors the slider recipe in
+   SubscriberScheduleForm.module.css (where this control used to live) so the
+   two never drift visually. */
+.paceBox {
+  margin-top: var(--space-4);
+  padding: 14px 16px 16px;
+  border-radius: var(--radius-md, 12px);
+  border: 1px solid var(--color-border, rgba(41, 40, 103, 0.12));
+  background: var(--color-white);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.paceHead {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+.paceLabel {
+  font-family: var(--font-body);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--color-slate);
+  line-height: 1.4;
+}
+.paceVal {
+  font-family: var(--font-display);
+  font-size: 1rem;
+  font-weight: 800;
+  color: var(--color-indigo);
+  flex-shrink: 0;
+}
+.paceSlider {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 6px;
+  border-radius: var(--radius-full);
+  background: linear-gradient(
+    to right,
+    var(--color-indigo) 0%, var(--color-indigo) var(--pct),
+    var(--color-teal) var(--pct), var(--color-teal) 100%
+  );
+  outline: none;
+}
+.paceSlider:focus-visible {
+  outline: 2px solid var(--color-indigo-soft);
+  outline-offset: 4px;
+  border-radius: var(--radius-full);
+}
+.paceSlider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--color-white);
+  border: 3px solid var(--color-indigo);
+  cursor: pointer;
+  box-shadow: var(--shadow-sm);
+}
+.paceSlider::-moz-range-thumb {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--color-white);
+  border: 3px solid var(--color-indigo);
+  cursor: pointer;
+}
+.paceNote {
+  margin: 0;
+  font-size: 0.75rem;
+  line-height: 1.5;
+  color: var(--color-gray);
+}

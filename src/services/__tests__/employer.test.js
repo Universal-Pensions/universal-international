@@ -46,7 +46,6 @@ vi.mock('../supabaseClient', () => ({
 
 beforeEach(() => supabaseMock.__reset());
 
-const round = (n) => Math.round(n);
 const CFG = EMPLOYER.defaultContributionConfig;
 const ACTIVE = MEMBERS.filter((m) => m.status === 'active');
 
@@ -571,12 +570,16 @@ describe('employer service — mock-fallback branch (IS_SUPABASE_ENABLED=false)'
     const insuranceLine = memberLines.find((l) => l.type === 'insurance_premium');
     expect(ownLine.amount).toBe(employeeLeg);
     expect(employerLine.amount).toBe(employerLeg);
-    // Each pension leg is split by the member's retirementPct (default 80), rounding ONCE.
-    const retPct = Number(sample.contributionSchedule?.retirementPct ?? 80);
-    expect(ownLine.retirementAmount).toBe(round(employeeLeg * retPct / 100));
-    expect(ownLine.emergencyAmount).toBe(employeeLeg - round(employeeLeg * retPct / 100));
-    expect(employerLine.retirementAmount).toBe(round(employerLeg * retPct / 100));
-    expect(employerLine.emergencyAmount).toBe(employerLeg - round(employerLeg * retPct / 100));
+    // Both pension legs land WHOLLY in retirement (0102 / EMPLOYER_FUNDED_SPLIT).
+    // The member's own retirementPct is deliberately not consulted: it governs
+    // only money they add themselves, never what their employer's settings fund.
+    // Asserted against the member's stored pct so this fails loudly if the split
+    // is ever reconnected — `sample` carries the seed's 80/20.
+    expect(Number(sample.contributionSchedule?.retirementPct)).toBeLessThan(100);
+    expect(ownLine.retirementAmount).toBe(employeeLeg);
+    expect(ownLine.emergencyAmount).toBe(0);
+    expect(employerLine.retirementAmount).toBe(employerLeg);
+    expect(employerLine.emergencyAmount).toBe(0);
     // The insurance leg is employer-funded, flat, and NOT split into ret/emg.
     expect(insuranceLine.amount).toBe(EXPECTED_INSURANCE_LEG);
     expect(insuranceLine.source).toBe('employer');

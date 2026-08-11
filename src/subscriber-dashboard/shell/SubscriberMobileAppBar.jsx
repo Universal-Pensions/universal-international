@@ -30,7 +30,7 @@ const SparkIcon = (
 // actions:false on save/withdraw-form/claim — those screens are focused tasks).
 const FLOW = {
   '/dashboard/save': 'Save',
-  '/dashboard/save/schedule': 'Schedule',
+  '/dashboard/save/schedule': 'Contribution settings',
   '/dashboard/withdraw/savings': 'Withdraw savings',
   '/dashboard/withdraw/claim': 'File a claim',
 };

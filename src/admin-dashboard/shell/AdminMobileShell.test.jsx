@@ -17,6 +17,7 @@ vi.mock('../mobile/EmployerDetailMobile', () => ({ default: () => <div data-test
 vi.mock('../mobile/AdminNetworkMobile', () => ({ default: () => <div data-testid="page-network" /> }));
 vi.mock('../mobile/AdminSettingsMobile', () => ({ default: () => <div data-testid="page-settings" /> }));
 vi.mock('../mobile/AdminHubMobile', () => ({ default: () => <div data-testid="page-hub" /> }));
+vi.mock('../mobile/AdminNavMobile', () => ({ default: () => <div data-testid="page-nav" /> }));
 vi.mock('../../dashboard/mobile/BranchesMobile', () => ({ default: () => <div data-testid="page-branches" /> }));
 vi.mock('../../dashboard/mobile/BranchDetailMobile', () => ({ default: () => <div data-testid="page-branch-detail" /> }));
 vi.mock('../../dashboard/mobile/AgentsMobile', () => ({ default: () => <div data-testid="page-agents" /> }));
@@ -70,5 +71,11 @@ describe('<AdminMobileShell /> (admin phone shell)', () => {
     renderAt('/dashboard/employers/emp-001');
     expect(screen.getByTestId('page-employer-detail')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Back' })).toBeInTheDocument();
+  });
+
+  // The unit-price page hangs off the Menu hub — the five bottom tabs are full.
+  it('routes /dashboard/nav to the unit-price page', () => {
+    renderAt('/dashboard/nav');
+    expect(screen.getByTestId('page-nav')).toBeInTheDocument();
   });
 });

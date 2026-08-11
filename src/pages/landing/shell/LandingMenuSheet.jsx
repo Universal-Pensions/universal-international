@@ -46,6 +46,14 @@ const LINKS = [
     path: '/contact', label: 'Contact',
     icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" /><polyline points="22,6 12,13 2,6" /></svg>,
   },
+  {
+    // NOT optional. The desktop Footer carries the same link, but the footer
+    // doesn't render below 768px — and a grieving relative in Uganda is
+    // overwhelmingly on a phone, so without this row the entry point simply
+    // does not exist for the people who need it most.
+    path: '/claim', label: 'Claim for a loved one',
+    icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 3l7 3v5c0 4.5-3 8-7 10-4-2-7-5.5-7-10V6l7-3z" /><path d="M12 9v3" /><path d="M12 16h.01" /></svg>,
+  },
 ];
 
 const InstallIcon = (

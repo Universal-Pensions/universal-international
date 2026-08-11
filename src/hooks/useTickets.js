@@ -197,6 +197,46 @@ export function useDistributorTicketMetrics(distributorId, filters = {}) {
 }
 
 /**
+ * Platform-wide ticket metrics for the ADMIN — every ticket in the store, in the
+ * shared TicketMetrics shape plus `urgentOpenCount`. Feeds both the admin's
+ * Support panel and the "Pending complaints" row on the Needs-attention card.
+ *
+ * Unlike the sibling metric hooks this takes no id — the admin has no scope
+ * claim and the platform total is always well-defined. It takes `enabled`
+ * instead, because ViewTickets is mounted by both the admin and the distributor
+ * and must call this hook unconditionally while only one of the two role
+ * variants actually fetches.
+ *
+ * @param {boolean} [enabled=true]
+ */
+export function usePlatformTicketMetrics(enabled = true) {
+  return useQuery({
+    queryKey: ['ticketMetrics', 'platform'],
+    queryFn: tickets.getPlatformTicketMetrics,
+    enabled,
+    refetchInterval: POLL_METRICS,
+    refetchIntervalInBackground: false,
+  });
+}
+
+/**
+ * Platform-wide ticket list for the ADMIN, narrowed by `filters`
+ * ({ status?, branchId?, agentId? }). Takes `enabled` for the same reason as
+ * usePlatformTicketMetrics.
+ * @param {{ status?: string, branchId?: string, agentId?: string }} [filters]
+ * @param {boolean} [enabled=true]
+ */
+export function usePlatformTickets(filters = {}, enabled = true) {
+  return useQuery({
+    queryKey: ['tickets', 'platform', filters],
+    queryFn: () => tickets.listTicketsForPlatform(filters),
+    enabled,
+    refetchInterval: POLL_OVERSIGHT,
+    refetchIntervalInBackground: false,
+  });
+}
+
+/**
  * Employer support metrics (Phase 7) — open/closed/unanswered counts + response
  * averages for one employer's employer↔platform tickets. Same TicketMetrics
  * shape as the oversight reads; the employer UI consumes only the scalar counts.

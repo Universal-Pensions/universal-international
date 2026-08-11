@@ -34,6 +34,7 @@ import AdminCountryOverview from './AdminCountryOverview';
 // Admin-exclusive: rich national KPI landing shown in dash mode at country level
 // (the two-mode analogue of the distributor's DistributorOverview).
 import AdminOverview from './overview/AdminOverview';
+import AdminAttentionDesktop from './attention/AdminAttentionDesktop';
 // Admin-exclusive panels.
 import ViewDistributors from './distributors/ViewDistributors';
 import CreateDistributor from './distributors/CreateDistributor';
@@ -41,8 +42,12 @@ import ViewEmployers from './employers/ViewEmployers';
 import CreateEmployer from './employers/CreateEmployer';
 import ViewEmployerDetail from './employers/ViewEmployerDetail';
 import ViewAccessRequests from './access-requests/ViewAccessRequests';
+import ViewNomineeClaims from './nominee-claims/ViewNomineeClaims';
+import AdminNavDesktop from './nav/AdminNavDesktop';
+import NotificationBell from '../components/notifications/NotificationBell';
 // Reuse the distributor shell layout styles for pixel-identical chrome.
 import styles from '../dashboard/DashboardShell.module.css';
+import chrome from './adminChrome.module.css';
 
 const DRAWER_ITEMS = [
   { id: 'overview', label: 'Overview' },
@@ -52,6 +57,7 @@ const DRAWER_ITEMS = [
   { id: 'branches', label: 'View Branches' },
   { id: 'agents', label: 'View Agents' },
   { id: 'subscribers', label: 'Subscribers' },
+  { id: 'nav', label: 'Unit price' },
   { id: 'tickets', label: 'Support' },
   { id: 'reports', label: 'Reports' },
   { id: 'settings', label: 'Settings' },
@@ -109,6 +115,8 @@ function MobileDrawer({ open, onClose }) {
     setViewDistributorsOpen,
     setViewEmployersOpen,
     setViewAccessRequestsOpen,
+    setViewNomineeClaimsOpen,
+    setViewNavOpen,
     closeAllPanels: adminCloseAllPanels,
   } = useAdminPanel();
 
@@ -151,6 +159,12 @@ function MobileDrawer({ open, onClose }) {
         break;
       case 'access-requests':
         setViewAccessRequestsOpen(true);
+        break;
+      case 'nominee-claims':
+        setViewNomineeClaimsOpen(true);
+        break;
+      case 'nav':
+        setViewNavOpen(true);
         break;
       case 'branches':
         setViewBranchesOpen(true);
@@ -274,8 +288,11 @@ function AdminDashboardContent({ mode, mapMounted }) {
     setViewEmployerDetailOpen,
     setDetailEmployerId,
     viewAccessRequestsOpen,
+    viewNomineeClaimsOpen,
+    attentionType,
     copilotOpen,
     setCopilotOpen,
+    viewNavOpen,
   } = useAdminPanel();
   // Open the employer detail panel focused on the clicked employer (from the map
   // district drill-down's Employers tab) — mirrors clicking a branch.
@@ -293,12 +310,15 @@ function AdminDashboardContent({ mode, mapMounted }) {
   // (below), never as the canvas itself. Same open-flag precedence as the
   // sidebar's `active` highlight so the two never disagree.
   const selectedPage =
+    attentionType ? 'attention' :
     viewTicketsOpen ? 'tickets' :
     viewReportsOpen ? 'reports' :
     settingsOpen ? 'settings' :
     viewDistributorsOpen ? 'distributors' :
     viewEmployersOpen ? 'employers' :
     viewAccessRequestsOpen ? 'access-requests' :
+    viewNomineeClaimsOpen ? 'nominee-claims' :
+    viewNavOpen ? 'nav' :
     viewBranchesOpen ? 'branches' :
     viewAgentsOpen ? 'agents' :
     viewSubscribersOpen ? 'subscribers' :
@@ -333,6 +353,8 @@ function AdminDashboardContent({ mode, mapMounted }) {
             {selectedPage === 'distributors' && <ViewDistributors fullPage />}
             {selectedPage === 'employers' && <ViewEmployers fullPage />}
             {selectedPage === 'access-requests' && <ViewAccessRequests fullPage />}
+            {selectedPage === 'nominee-claims' && <ViewNomineeClaims fullPage />}
+            {selectedPage === 'nav' && <AdminNavDesktop fullPage />}
             {/* Key by the drill target so clearing it (a rail click in dash mode)
                 remounts fresh at the LIST — the panels keep an internal detail view
                 that clearing the drill flag alone won't reset. */}
@@ -342,6 +364,10 @@ function AdminDashboardContent({ mode, mapMounted }) {
             {selectedPage === 'reports' && <ViewReports fullPage />}
             {selectedPage === 'settings' && <Settings fullPage />}
             {selectedPage === 'tickets' && <ViewTickets fullPage />}
+            {/* Needs-attention drill-down. Keyed by signal so switching rows
+                remounts at the top with a fresh query rather than showing the
+                previous signal's rows under the new title. */}
+            {selectedPage === 'attention' && <AdminAttentionDesktop key={attentionType} />}
             {/* Country level → the rich national platform dashboard; a deeper drill
                 in dash mode (region/district/branch/agent) falls back to the shared
                 OverlayPanel summary. */}
@@ -362,15 +388,29 @@ function AdminDashboardContent({ mode, mapMounted }) {
       {!dashMode && viewDistributorsOpen && <ViewDistributors />}
       {!dashMode && viewEmployersOpen && <ViewEmployers />}
       {!dashMode && viewAccessRequestsOpen && <ViewAccessRequests />}
+      {!dashMode && viewNomineeClaimsOpen && <ViewNomineeClaims />}
+      {!dashMode && viewNavOpen && <AdminNavDesktop />}
       {!dashMode && viewBranchesOpen && <ViewBranches readOnly />}
       {!dashMode && viewAgentsOpen && <ViewAgents showCommissions={false} />}
       {!dashMode && viewSubscribersOpen && <ViewSubscribers />}
       {!dashMode && viewReportsOpen && <ViewReports />}
       {!dashMode && settingsOpen && <Settings />}
       {!dashMode && viewTicketsOpen && <ViewTickets />}
-      {/* Ask-AI Platform Copilot — additive FAB + slide-in drawer; the map/overlay
-          are untouched. */}
-      <AskAiFab onClick={() => setCopilotOpen(true)} />
+      {/* Top-right chrome cluster: notifications + the Ask-AI Platform Copilot.
+          The bell used to sit in the rail footer, which buried it — it is an
+          alerting affordance and belongs beside the other global action, in the
+          one corner present in BOTH dash and map mode.
+          `.topRight` neutralises AskAiFab's own fixed docking (it positions
+          itself, and is shared with the distributor shell, so it is overridden
+          here by descendant selector rather than changed at source).
+          entityId="*" — ops-queue notifications raised from a Needs-attention
+          drill-down address a QUEUE (ops-treasury, ops-claims, …), not admin-001,
+          so filtering on the caller's own id would show an empty bell. RLS still
+          scopes the read (notifications_select_admin, 0049). */}
+      <div className={chrome.topRight}>
+        <NotificationBell role="admin" entityId="*" align="right" portal />
+        <AskAiFab onClick={() => setCopilotOpen(true)} />
+      </div>
       {copilotOpen && (
         <DataCopilotPanel open scope="admin" onClose={() => setCopilotOpen(false)} />
       )}

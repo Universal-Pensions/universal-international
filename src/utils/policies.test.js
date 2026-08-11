@@ -122,12 +122,12 @@ describe('active-cover helpers', () => {
     expect(activeCoverProductsLabel(withPolicies([
       { type: 'life', cover: 1, status: 'active' },
       { type: 'health', cover: 1, status: 'active' },
-    ]))).toBe('Life & Health');
+    ]))).toBe('Life & Hospital cash');
     expect(activeCoverProductsLabel(withPolicies([
       { type: 'life', cover: 1, status: 'active' },
       { type: 'health', cover: 1, status: 'active' },
       { type: 'funeral', cover: 1, status: 'active' },
-    ]))).toBe('Life, Health & Funeral');
+    ]))).toBe('Life, Hospital cash & Funeral');
   });
 
   it('activeCoverProductsLabel is empty when nothing is active', () => {

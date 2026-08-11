@@ -24,7 +24,7 @@ import { supabase } from './supabaseClient';
 import { IS_SUPABASE_ENABLED } from './api';
 import { normalizeFrequency } from '../utils/finance';
 import { groupInsurancePremiumPerMember } from '../utils/groupInsurance';
-import { deriveContributionLegs } from '../utils/contributionModel';
+import { deriveContributionLegs, splitEmployerLeg } from '../utils/contributionModel';
 import { NUDGE_LATENCY_MS, reachableChannels } from '../constants/nudge';
 import { currentTime } from '../data/mockData';
 import {
@@ -35,8 +35,6 @@ import {
   EMPLOYER_UNIT_PRICE,
   LEADERBOARD_COMPETITORS,
 } from '../data/employerSeed';
-
-const round = (n) => Math.round(n);
 
 /** PostgREST embeds a to-one relation as an object, but can surface a single-
  *  element array depending on FK detection — normalise to the row (or null). */
@@ -229,8 +227,10 @@ function mockRuns() {
  * employee leg; either leg may be 0. The derivation is NOT re-implemented here —
  * a local copy is exactly how the mock, the seed and the RPC drifted apart before.
  * Each leg > 0 posts a transaction (employee leg source:'own', employer leg
- * source:'employer'), split by the member's retirementPct (default 80) rounding
- * ONCE. A member with both legs 0 AND no insurance premium is skipped
+ * source:'employer'), allocated wholly to RETIREMENT via `splitEmployerLeg` —
+ * the member's own `retirementPct` is deliberately NOT read here, because it
+ * governs only money they add themselves (see EMPLOYER_FUNDED_SPLIT).
+ * A member with both legs 0 AND no insurance premium is skipped
  * (`zero_contribution`). `linesCreated` counts DISTINCT funded members;
  * `grandTotal` = employerTotal + employeeTotal + insuranceTotal.
  */
@@ -259,12 +259,10 @@ function _mockSubmitEmployerRun(employerId, { periodLabel, method, nonce } = {})
       continue;
     }
 
-    const retPct = Number(m.contributionSchedule?.retirementPct ?? 80);
     const s = readMemberSession(m.id);
 
     if (employeeLeg > 0) {
-      const retirement = round(employeeLeg * retPct / 100);
-      const emergency = employeeLeg - retirement;
+      const { retirement, emergency } = splitEmployerLeg(employeeLeg);
       s.balanceDelta.retirement += retirement;
       s.balanceDelta.emergency += emergency;
       s.balanceDelta.net += employeeLeg;
@@ -291,8 +289,7 @@ function _mockSubmitEmployerRun(employerId, { periodLabel, method, nonce } = {})
     }
 
     if (employerLeg > 0) {
-      const retirement = round(employerLeg * retPct / 100);
-      const emergency = employerLeg - retirement;
+      const { retirement, emergency } = splitEmployerLeg(employerLeg);
       s.balanceDelta.retirement += retirement;
       s.balanceDelta.emergency += emergency;
       s.balanceDelta.net += employerLeg;
@@ -521,6 +518,54 @@ export async function getEmployeeContributions(employeeId) {
     .order('date', { ascending: false });
   if (error) throw error;
   return (data ?? []).map(mapTxn);
+}
+
+/**
+ * The company's whole pension-contribution history — every payment a run has
+ * posted, across all members and all periods, newest-first. This is the
+ * transaction-level backing of the Overview's two leg tiles: `source:'own'` is
+ * the employee leg, `source:'employer'` the employer leg.
+ *
+ * Deliberately narrow, so the total on screen RECONCILES with those tiles:
+ *   - `type='contribution'` — insurance premiums are a separate run leg and are
+ *     excluded from the contribution totals everywhere else too.
+ *   - `contribution_run_id NOT NULL` — a member's own private top-ups are their
+ *     money, outside the employer's runs, and never counted in a run total. The
+ *     employer can already see them per-member on the member detail page.
+ * Sums over this list therefore equal Σ runs.employeeTotal / Σ runs.employerTotal.
+ *
+ * RLS (`transactions_select_employer`, 0043) scopes the read to this employer's
+ * tagged members, so no employer filter is needed in the query itself.
+ * @param {string} employerId
+ * @returns {Promise<Object[]>} mapTxn shape + `memberName`
+ * @cache ['employerContributions', employerId]
+ */
+export async function getEmployerContributions(employerId) {
+  const newestFirst = (a, b) => String(b.date ?? '').localeCompare(String(a.date ?? ''));
+  if (!IS_SUPABASE_ENABLED) {
+    if (!employerId) return [];
+    const names = new Map(mockMembers().map((m) => [m.id, m.name]));
+    const isRunContribution = (t) =>
+      (t.type ?? 'contribution') === 'contribution' && t.contributionRunId;
+    return [..._mockTxns, ...MEMBER_TRANSACTIONS]
+      .filter(isRunContribution)
+      // Session runs post for the CURRENT roster, so an unknown id here means a
+      // member who has since been removed — keep the money, name it plainly.
+      .map((t) => ({ ...t, memberName: names.get(t.subscriberId) ?? 'Former member' }))
+      .sort(newestFirst);
+  }
+  if (!employerId) return [];
+  const { data, error } = await supabase
+    .from('transactions')
+    .select('*, subscribers(name)')
+    .eq('type', 'contribution')
+    .not('contribution_run_id', 'is', null)
+    .order('date', { ascending: false });
+  if (error) throw error;
+  return (data ?? []).map((t) => ({
+    ...mapTxn(t),
+    memberName: t.subscribers?.name ?? 'Former member',
+  }));
 }
 
 /**

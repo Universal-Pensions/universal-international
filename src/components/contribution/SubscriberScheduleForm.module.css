@@ -415,17 +415,17 @@
 
 .prods { display: flex; flex-direction: column; gap: 8px; }
 
+/* The card is a CONTAINER (frame + selected state); `.prodBtn` inside it is the
+   switch. They were one <button> until per-product cover amounts arrived — a
+   range input can't nest inside a button, so the frame and the control had to
+   separate. Interactive styling lives on `.prodBtn`. */
 .prod {
   display: flex;
-  align-items: center;
-  gap: 12px;
+  flex-direction: column;
   background: transparent;
   border: 1.5px solid var(--color-lavender);
   border-radius: var(--radius-lg);
   padding: 12px 14px;
-  cursor: pointer;
-  text-align: left;
-  touch-action: manipulation;
   transition: border-color 0.15s ease, background 0.15s ease;
   width: 100%;
 }
@@ -435,7 +435,39 @@
   background: color-mix(in srgb, var(--color-indigo) 4%, transparent);
 }
 
-.prod[data-held='true'] { cursor: default; }
+.prodBtn {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  /* The frame owns padding/background/border; the switch is a bare surface so
+     its hit area still spans the whole card row. */
+  margin: -12px -14px;
+  padding: 12px 14px;
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-lg);
+  cursor: pointer;
+  text-align: left;
+  touch-action: manipulation;
+  width: calc(100% + 28px);
+  font: inherit;
+  color: inherit;
+}
+
+.prodBtn:focus-visible {
+  outline: 2px solid var(--color-indigo-soft);
+  outline-offset: -2px;
+}
+
+.prod[data-held='true'] .prodBtn { cursor: default; }
+
+/* Cover-amount ladder for a product being ADDED. Held cover never shows one —
+   its price is already agreed and its policy row already exists. */
+.prodPick {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--color-lavender);
+}
 
 .prodIcon {
   flex: 0 0 auto;

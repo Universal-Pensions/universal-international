@@ -11,6 +11,7 @@ const FULL_FAQS = [
   ['Can I withdraw my savings early?', 'Early withdrawals are possible in specific cases under URBRA rules. Contact support for details.'],
   ['How are my savings invested?', 'Licensed experts invest it carefully under URBRA rules. They spread it across safe options, like government bonds, to protect your money.'],
   ['What happens to my pension if I change jobs?', 'Your account stays with you. Your savings are portable and keep growing, whatever job you do.'],
+  ['Someone in my family has died. How do we claim?', 'Life and Funeral cover pay out to the people the member named, so they make the claim — not the member. No account needed: tap “Claim for a loved one” in the menu, tell us who has died and how to reach you, and we will call within two working days. Hospital cash is different — the member claims that themselves.'],
   ['How do agents help with enrolment?', 'Agents help you register and set up a plan, in person, across every region of Uganda.'],
   ['Is my data safe?', 'Yes. We use strong encryption and follow Uganda’s data protection rules.'],
 ];

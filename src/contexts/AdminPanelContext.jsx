@@ -24,6 +24,12 @@ import { createContext, useContext, useState, useMemo, useCallback } from 'react
  * @property {(id: string|null) => void} setDetailEmployerId
  * @property {boolean} viewAccessRequestsOpen - pending employer/distributor requests
  * @property {(open: boolean) => void} setViewAccessRequestsOpen
+ * @property {boolean} viewNomineeClaimsOpen - life/funeral claims filed by a nominee
+ * @property {(open: boolean) => void} setViewNomineeClaimsOpen
+ * @property {boolean} viewNavOpen - fund unit-price (NAV) register + publish page
+ * @property {(open: boolean) => void} setViewNavOpen
+ * @property {string|null} attentionType - open Needs-attention drill-down, by signal id
+ * @property {(type: string|null) => void} setAttentionType
  * @property {boolean} copilotOpen - Ask-AI "Platform Copilot" drawer
  * @property {(open: boolean) => void} setCopilotOpen
  * @property {() => void} closeAllPanels
@@ -44,6 +50,19 @@ export function AdminPanelProvider({ children }) {
   // Pending employer/distributor access requests (from the public request-access
   // lead form) awaiting admin approval.
   const [viewAccessRequestsOpen, setViewAccessRequestsOpen] = useState(false);
+  // Death-benefit claims filed by nominees through the public /claim form
+  // (migration 0100). Distinct from `claims`, which are the member's own
+  // hospital-cash claims and never need admin triage.
+  const [viewNomineeClaimsOpen, setViewNomineeClaimsOpen] = useState(false);
+  // Fund unit price (NAV) register + publish page (migrations 0103-0105). A
+  // money surface: publishing a price revalues every member's savings.
+  const [viewNavOpen, setViewNavOpen] = useState(false);
+  // Needs-attention drill-down. Holds the SIGNAL ID rather than a boolean,
+  // because one generic page serves all nine drillable signals — the shell reads
+  // `attentionType != null` as "the attention page is open" and the page itself
+  // reads the value to know which list to fetch. Desktop admin has no routes, so
+  // this is the only place that state can live.
+  const [attentionType, setAttentionType] = useState(null);
   // Ask-AI "Platform Copilot" drawer (map-overlay shell FAB).
   const [copilotOpen, setCopilotOpen] = useState(false);
 
@@ -56,6 +75,9 @@ export function AdminPanelProvider({ children }) {
     setCreateEmployerOpen(false);
     setViewEmployerDetailOpen(false);
     setViewAccessRequestsOpen(false);
+    setViewNomineeClaimsOpen(false);
+    setViewNavOpen(false);
+    setAttentionType(null);
     setCopilotOpen(false);
   }, []);
 
@@ -67,6 +89,9 @@ export function AdminPanelProvider({ children }) {
     viewEmployerDetailOpen, setViewEmployerDetailOpen,
     detailEmployerId, setDetailEmployerId,
     viewAccessRequestsOpen, setViewAccessRequestsOpen,
+    viewNomineeClaimsOpen, setViewNomineeClaimsOpen,
+    viewNavOpen, setViewNavOpen,
+    attentionType, setAttentionType,
     copilotOpen, setCopilotOpen,
     closeAllPanels,
   }), [
@@ -74,6 +99,9 @@ export function AdminPanelProvider({ children }) {
     viewEmployersOpen, createEmployerOpen,
     viewEmployerDetailOpen, detailEmployerId,
     viewAccessRequestsOpen,
+    viewNomineeClaimsOpen,
+    viewNavOpen,
+    attentionType,
     copilotOpen,
     closeAllPanels,
   ]);

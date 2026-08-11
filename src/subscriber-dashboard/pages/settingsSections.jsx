@@ -51,7 +51,7 @@ export const SECTIONS = [
         <path d="M3 10h18M8 3v4M16 3v4" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
       </svg>
     ),
-    label: 'Contribution schedule',
+    label: 'Contribution settings',
     helper: 'Frequency, amount, split',
     to: '/dashboard/save/schedule',
   },
@@ -94,19 +94,10 @@ export const SECTIONS = [
     helper: 'FAQs and getting in touch',
     to: '/dashboard/help',
   },
-  {
-    id: 'notifications',
-    icon: (
-      <svg viewBox="0 0 24 24" width="18" height="18" fill="none">
-        <path d="M6 8a6 6 0 1112 0c0 7 3 7 3 9H3c0-2 3-2 3-9z" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round" />
-        <path d="M9 21a3 3 0 006 0" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
-      </svg>
-    ),
-    label: 'Notifications',
-    helper: 'SMS, email, push',
-    to: '/dashboard/settings/notifications',
-    soon: true,
-  },
+  // No Notifications row: it was a permanently-disabled "Soon" tile pointing at
+  // a route that only ever redirected back here (SubscriberDashboardShell
+  // routes /dashboard/settings/notifications to <Navigate>). Contribution
+  // settings took its slot in the list.
   {
     id: 'security',
     icon: (

@@ -8,13 +8,17 @@ import {
   MIN_CONTRIBUTION,
   INSURANCE_PRODUCTS,
   annualPremium,
+  tierForCover,
   tinFillState,
   TIN_LINE_PCT,
   presetsForFrequency,
+  DEFAULT_SCHEDULE_SPLIT,
 } from '../../constants/savings';
+import { resolveCoverMap } from '../../utils/insuranceSelection';
 import SignupTopbar from '../SignupTopbar';
 import { useOnboardAudience } from '../OnboardAudienceContext';
 import { PillChipGroup } from '../../components/PillChip';
+import CoverTierPicker from '../../components/insurance/CoverTierPicker';
 import styles from './ContributionSettings.module.css';
 
 export { MIN_CONTRIBUTION };
@@ -449,10 +453,13 @@ function PaymentMethodPicker({ method, setMethod, momoProvider, setMomoProvider,
  *                                    NOT a canonical +256… number (digitsOnly
  *                                    would truncate it to 10 chars).
  * @param {boolean}  collectSchedule  false → the compact employer-invite
- *                                    `SplitOnlyView`. That branch keeps its own
- *                                    `<main>` + `SignupTopbar` and ignores
- *                                    `embedded`; it is unreachable from the
- *                                    agent path, which always collects.
+ *                                    `EmployerInviteFinishView`, which collects
+ *                                    NOTHING (their employer sets every figure)
+ *                                    and confirms at `DEFAULT_SCHEDULE_SPLIT`.
+ *                                    That branch keeps its own `<main>` +
+ *                                    `SignupTopbar` and ignores `embedded`; it is
+ *                                    unreachable from the agent path, which
+ *                                    always collects.
  * @param {boolean}  embedded         render inside a host that already owns the
  *                                    page chrome and the scrollport: no `<main>`
  *                                    landmark, no `SignupTopbar`, auto height
@@ -473,6 +480,12 @@ export default function ContributionSettings({ initial, dob, phone, collectSched
   // the restored value too (an older schedule may carry a lower share).
   const [retirementPct, setRetirementPct] = useState(() => Math.max(60, initial?.retirementPct ?? 80));
   const [insuranceTypes, setInsuranceTypes] = useState(() => resolveInitialInsurance(initial));
+  // Chosen cover AMOUNT per product id — stored as amounts, not ladder indices,
+  // because cover is the durable business value that reaches the RPC (an index
+  // would silently repoint if a ladder were ever reordered or repriced). Seeded
+  // for ALL products, not just the selected ones, so toggling a product on
+  // always finds a cover and a deselect/reselect keeps the user's choice.
+  const [insuranceCovers, setInsuranceCovers] = useState(() => resolveCoverMap(initial));
   const [indexationPct, setIndexationPct] = useState(initial?.contributionIndexationPct ?? 5);
   const [route, setRoute] = useState(initial?.insuranceFundingMode === 'pay_now' ? 'A' : 'B');
   // % of the take-out (emergency) slice redirected to build cover; the rest stays
@@ -544,9 +557,21 @@ export default function ContributionSettings({ initial, dob, phone, collectSched
   // ── Projections ────────────────────────────────────────────────
   const freqPerYear = periodsPerYear(freq.id);
   const perPeriodPremium = (monthly) => Math.round((monthly * 12) / freqPerYear);
+  // Selected products with their CHOSEN cover tier merged over the catalogue
+  // defaults. Resolving the ladder exactly once here is what keeps every
+  // downstream figure — the annual target, the per-period premium, the cover
+  // payout total, the tin's fill pace, the "you pay today" breakdown — reading
+  // the same numbers the user is looking at.
   const selectedProducts = useMemo(
-    () => ORDERED_INSURANCE.filter((p) => insuranceTypes.includes(p.id)),
-    [insuranceTypes],
+    () => ORDERED_INSURANCE
+      .filter((p) => insuranceTypes.includes(p.id))
+      .map((p) => {
+        const tier = tierForCover(p.id, insuranceCovers[p.id]);
+        return tier
+          ? { ...p, cover: tier.cover, premiumMonthly: tier.premiumMonthly, tierIndex: tier.index }
+          : p;
+      }),
+    [insuranceTypes, insuranceCovers],
   );
   const periodLabel = PERIOD_SUFFIX[freq.id] ?? 'mo';
   // Legacy per-period premium — retained purely for the write payload's
@@ -689,6 +714,12 @@ export default function ContributionSettings({ initial, dob, phone, collectSched
     );
   }
 
+  /** Set the cover amount for one product. The map is pre-seeded for every
+   *  product, so this never has to create a missing entry. */
+  function setProductCover(id, cover) {
+    setInsuranceCovers((prev) => ({ ...prev, [id]: cover }));
+  }
+
   function handlePay() {
     setTouched(true);
     if (!canPay || processing) return;
@@ -711,6 +742,15 @@ export default function ContributionSettings({ initial, dob, phone, collectSched
           emergencyPct,
           includeInsurance: insuranceTypes.length > 0,
           insuranceTypes,
+          // Cover amounts, two ways. `insuranceCovers` is the full per-product
+          // map that restores this step on a back-nav or refresh;
+          // `insuranceSelections` is the already-resolved list the payload
+          // builders consume, so the RPC stores exactly the tiers these totals
+          // were computed from rather than re-resolving the ladder downstream.
+          insuranceCovers,
+          insuranceSelections: selectedProducts.map((p) => ({
+            product: p.id, cover: p.cover, premiumMonthly: p.premiumMonthly,
+          })),
           insurancePremium,
           // save-to-cover + step-up contract (consumed by contributionPayload /
           // _insert_subscriber_chain). Route A → charge the year today; Route B
@@ -743,16 +783,20 @@ export default function ContributionSettings({ initial, dob, phone, collectSched
     handlePay();
   }
 
-  // Employer-only invite: collect ONLY the retirement/emergency split — no
-  // frequency, amount, insurance, or payment. Renders a compact card.
+  // Employer invite: nothing left to collect — no frequency, amount, split,
+  // insurance, or payment. Renders a compact confirm card.
+  //
+  // The schedule row is created at DEFAULT_SCHEDULE_SPLIT (80/20), NOT at
+  // EMPLOYER_FUNDED_SPLIT. Those are different things: where the employer's runs
+  // land is fixed at 100% retirement by the run engine and is none of this
+  // schedule's business, while this row is the member's OWN schedule — dormant at
+  // amount 0 until they choose to set one up, and theirs to re-split whenever
+  // they like. Stamping 100/0 here would silently pre-decide that for them.
   if (!collectSchedule) {
     return (
-      <SplitOnlyView
-        retirementPct={retirementPct}
-        emergencyPct={emergencyPct}
-        setRetirementPct={setRetirementPct}
+      <EmployerInviteFinishView
         onClose={onClose}
-        onConfirm={() => onConfirm({ retirementPct, emergencyPct })}
+        onConfirm={() => onConfirm({ ...DEFAULT_SCHEDULE_SPLIT })}
       />
     );
   }
@@ -1106,30 +1150,53 @@ export default function ContributionSettings({ initial, dob, phone, collectSched
                 05 · Protect {isAgent ? 'their' : 'your'} family
                 <span className={styles.sectionAside}>optional add-ons</span>
               </div>
-              <p className={styles.pageMuted}>Pick {isAgent ? 'their' : 'your'} cover. Pay once a year.</p>
+              <p className={styles.pageMuted}>
+                Pick {isAgent ? 'their' : 'your'} cover and how much it pays. Pay once a year.
+              </p>
 
               <div className={styles.prods} role="group" aria-label={isAgent ? 'Choose their cover' : 'Choose your cover'}>
                 {ORDERED_INSURANCE.map((p) => {
                   const active = insuranceTypes.includes(p.id);
+                  // Selected products show their CHOSEN tier; unselected ones
+                  // preview the entry tier, so a card always quotes a real price.
+                  const shown = selectedProducts.find((s) => s.id === p.id) ?? p;
+                  const short = shortProductName(p.label);
                   return (
-                    <button
-                      key={p.id}
-                      type="button"
-                      role="switch"
-                      aria-checked={active}
-                      className={styles.prod}
-                      data-active={active}
-                      onClick={() => toggleInsurance(p.id)}
-                    >
-                      <span className={styles.prodTick} aria-hidden="true"><IconCheck /></span>
-                      <span className={styles.prodIcon} aria-hidden="true"><ProductIcon id={p.id} /></span>
-                      <span className={styles.prodName}>{shortProductName(p.label)}</span>
-                      <span className={styles.prodBlurb}>{p.blurb}</span>
-                      <span className={styles.prodPrice}>
-                        {formatUGXExact(annualPremium(p))}<small>/year</small>
-                      </span>
-                      <span className={styles.prodCover}>Pays {formatUGXExact(p.cover)}</span>
-                    </button>
+                    // The card is a container, not a control: a range input
+                    // cannot live inside a <button>, so the switch is a child
+                    // and the cover picker its sibling. The switch keeps the
+                    // whole-card accessible name (starting with the short
+                    // product name) that the E2E helper anchors on.
+                    <div key={p.id} className={styles.prod} data-active={active}>
+                      <button
+                        type="button"
+                        role="switch"
+                        aria-checked={active}
+                        className={styles.prodToggle}
+                        onClick={() => toggleInsurance(p.id)}
+                      >
+                        <span className={styles.prodTick} aria-hidden="true"><IconCheck /></span>
+                        <span className={styles.prodIcon} aria-hidden="true"><ProductIcon id={p.id} /></span>
+                        <span className={styles.prodName}>{short}</span>
+                        <span className={styles.prodBlurb}>{p.blurb}</span>
+                        <span className={styles.prodPrice}>
+                          {formatUGXExact(annualPremium(shown))}<small>/year</small>
+                        </span>
+                        <span className={styles.prodCover}>Pays {formatUGXExact(shown.cover)}</span>
+                      </button>
+                      {active && (
+                        <div className={styles.prodPick}>
+                          <CoverTierPicker
+                            variant="card"
+                            productId={p.id}
+                            value={insuranceCovers[p.id]}
+                            label={`${short} cover amount`}
+                            showReadout={false}
+                            onChange={(cover) => setProductCover(p.id, cover)}
+                          />
+                        </div>
+                      )}
+                    </div>
                   );
                 })}
               </div>
@@ -1377,8 +1444,9 @@ export default function ContributionSettings({ initial, dob, phone, collectSched
 }
 
 /**
- * Employer-invite completion — collects ONLY the retirement/emergency split and a
- * "Finish enrolment" action (no frequency/amount/insurance/payment).
+ * Employer-invite completion — a confirmation only: what the member is getting,
+ * and a "Finish enrolment" action. No frequency, amount, split, insurance or
+ * payment is collected.
  *
  * This is the path for EVERY employer invite (migration 0092 sets
  * employer_invites.collect_schedule to a constant false). Under the unified
@@ -1389,10 +1457,18 @@ export default function ContributionSettings({ initial, dob, phone, collectSched
  * here either: group cover is employer-funded via the 0067 fan-out, and 0068
  * blocks a member from re-buying a product their employer already pays for.
  *
- * The retirement/emergency split IS the member's own choice, which is why it is
- * the one thing this screen collects.
+ * This screen USED to ask for the retirement/liquid split, on the reasoning that
+ * it was the one choice still genuinely the member's. It is not: an employer
+ * member states no amount at enrolment, so all the question did was offer to
+ * divert their employer's pension money into a pot they can withdraw at any time.
+ *
+ * The two concerns are now separate. Employer money lands wholly in retirement
+ * (`EMPLOYER_FUNDED_SPLIT`, fixed in the run engine). The member's own schedule
+ * is created dormant here at `DEFAULT_SCHEDULE_SPLIT` (80/20, amount 0) and is
+ * theirs to set up and re-split on the Schedule page whenever they want to save
+ * something of their own.
  */
-function SplitOnlyView({ retirementPct, emergencyPct, setRetirementPct, onClose, onConfirm }) {
+function EmployerInviteFinishView({ onClose, onConfirm }) {
   const [processing, setProcessing] = useState(false);
   const [err, setErr] = useState('');
 
@@ -1421,7 +1497,7 @@ function SplitOnlyView({ retirementPct, emergencyPct, setRetirementPct, onClose,
           <header className={styles.header}>
             <div className={styles.headerText}>
               <span className={styles.eyebrow}>Almost done</span>
-              <h1 id="contrib-title" className={styles.title}>Split your savings</h1>
+              <h1 id="contrib-title" className={styles.title}>Finish setting up</h1>
             </div>
             <button type="button" className={styles.closeBtn} aria-label="Close" onClick={onClose}>
               <svg viewBox="0 0 24 24" width="18" height="18" fill="none" aria-hidden="true">
@@ -1431,40 +1507,25 @@ function SplitOnlyView({ retirementPct, emergencyPct, setRetirementPct, onClose,
           </header>
 
           <p style={{ margin: '0 0 1.25rem', color: 'var(--color-gray)', lineHeight: 1.6 }}>
-            Your pension is paid for through your job — your employer decides what comes out of
-            your pay and what the company adds on top. Choose how your savings are split between
-            long-term retirement and accessible liquid savings.
+            Your pension is paid for through your job. Your employer decides what comes out of
+            your pay and what the company adds on top — so there is nothing here for you to set.
           </p>
 
-          <section className={styles.section} aria-label="Retirement vs liquid savings">
-            <div className={styles.sectionEyebrow}>01 · Retirement vs liquid savings</div>
-            <div className={styles.splitHead}>
-              <div className={styles.splitSide}>
-                <span className={styles.splitLabel}>Retirement</span>
-                <span className={styles.splitPct}>{retirementPct}<em>%</em></span>
-              </div>
-              <div className={styles.splitSide} data-align="right">
-                <span className={styles.splitLabel} data-tone="teal">Liquid savings</span>
-                <span className={styles.splitPct} data-tone="teal">{emergencyPct}<em>%</em></span>
-              </div>
-            </div>
-            <input
-              type="range" min={60} max={100} step={5} value={retirementPct}
-              onChange={(e) => setRetirementPct(Number.parseInt(e.target.value, 10))}
-              aria-label="Retirement savings percentage"
-              className={styles.slider}
-              style={{ '--pct': `${(retirementPct - 60) * 2.5}%` }}
-            />
-            <div className={styles.allocBar} role="img" aria-label={`${retirementPct}% retirement, ${emergencyPct}% liquid savings`}>
-              <span className={styles.allocFillRetirement} style={{ flexBasis: `${retirementPct}%` }} />
-              <span className={styles.allocFillEmergency} style={{ flexBasis: `${emergencyPct}%` }} />
-            </div>
-            <p className={styles.bucketHelp}>
+          <section className={styles.section} aria-label="What happens to your money">
+            <div className={styles.sectionEyebrow}>Your money</div>
+            <p className={styles.inviteFact}>
               <span className={styles.bucketDot} data-tone="retirement" aria-hidden="true" />
-              <strong>Retirement</strong> is locked until retirement age
-              <span className={styles.bucketSep} aria-hidden="true">·</span>
+              <span>
+                Every shilling your employer sends goes into your <strong>retirement</strong>{' '}
+                savings, and stays there until you retire.
+              </span>
+            </p>
+            <p className={styles.inviteFact}>
               <span className={styles.bucketDot} data-tone="emergency" aria-hidden="true" />
-              <strong>Liquid savings</strong> can be taken out any time
+              <span>
+                Want money you can take out any time? Add your own savings from your
+                account once you are signed in.
+              </span>
             </p>
           </section>
 

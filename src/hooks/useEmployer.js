@@ -99,6 +99,22 @@ export function useEmployeeContributions(employeeId) {
 }
 
 /**
+ * Fetch the company's whole run-posted contribution history (every member, every
+ * period, both legs), newest-first. Drives the /dashboard/contributions
+ * drill-down behind the Overview's employee/employer leg tiles.
+ * @param {string} employerId
+ * @returns {import('@tanstack/react-query').UseQueryResult<Object[]>}
+ */
+export function useEmployerContributions(employerId) {
+  return useQuery({
+    queryKey: ['employerContributions', employerId],
+    queryFn: () => employer.getEmployerContributions(employerId),
+    enabled: !!employerId,
+    staleTime: READ_STALE_TIME,
+  });
+}
+
+/**
  * Aggregated metrics for the hero / overview (headcount, balances, YTD, mode
  * split). Threads `employerId` through the queryKey so it invalidates with the
  * roster even though the RPC reads scope from the JWT.
@@ -337,6 +353,8 @@ export function useRunContribution(employerId) {
       queryClient.invalidateQueries({ queryKey: ['employees', employerId] });
       queryClient.invalidateQueries({ queryKey: ['employee'] });
       queryClient.invalidateQueries({ queryKey: ['employeeContributions'] });
+      // The run posts the very rows the company-wide contribution history lists.
+      queryClient.invalidateQueries({ queryKey: ['employerContributions', employerId] });
       queryClient.invalidateQueries({ queryKey: ['contributionRuns', employerId] });
       queryClient.invalidateQueries({ queryKey: ['employerMetrics', employerId] });
       // A run moves the funded totals that drive the leaderboard rank, so
@@ -352,7 +370,7 @@ export function useRunContribution(employerId) {
  * @param {import('@tanstack/react-query').QueryClient} queryClient
  */
 export function invalidateAllEmployer(queryClient) {
-  ['employer', 'employees', 'employee', 'employeeContributions', 'contributionRuns', 'contributionRun', 'employerMetrics']
+  ['employer', 'employees', 'employee', 'employeeContributions', 'employerContributions', 'contributionRuns', 'contributionRun', 'employerMetrics']
     .forEach((key) => queryClient.invalidateQueries({ queryKey: [key] }));
 }
 

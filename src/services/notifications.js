@@ -82,12 +82,19 @@ function _rowToNotification(row) {
  * @returns {Promise<object[]>} Notification[]
  */
 export async function listNotifications({ role, entityId, unreadOnly = false }) {
+  // '*' means "every recipient at this role" — the admin case. Ops-queue
+  // notifications are addressed to a queue (ops-treasury, ops-claims, …) rather
+  // than to a person, so filtering on the caller's own id would return nothing.
+  // Safe because RLS still scopes the read: notifications_select_admin (0049)
+  // only matches when the caller's app_role is 'admin'.
+  const allRecipients = entityId === '*';
+
   if (IS_SUPABASE_ENABLED) {
     let q = supabase
       .from('notifications')
       .select('*')
-      .eq('recipient_role', role)
-      .eq('recipient_id', entityId);
+      .eq('recipient_role', role);
+    if (!allRecipients) q = q.eq('recipient_id', entityId);
     if (unreadOnly) q = q.eq('is_read', false);
     const { data, error } = await q.order('created_at', { ascending: false });
     if (error) throw _rpcError(error, 'listNotifications');
@@ -103,7 +110,7 @@ export async function listNotifications({ role, entityId, unreadOnly = false }) 
     .filter(
       (n) =>
         n.recipientRole === role &&
-        n.recipientId === entityId &&
+        (allRecipients || n.recipientId === entityId) &&
         (!unreadOnly || !n.isRead),
     )
     .sort(byCreatedDesc)
@@ -116,19 +123,24 @@ export async function listNotifications({ role, entityId, unreadOnly = false }) 
  * @returns {Promise<number>}
  */
 export async function getUnreadCount({ role, entityId }) {
+  const allRecipients = entityId === '*';   // see listNotifications
+
   if (IS_SUPABASE_ENABLED) {
-    const { count, error } = await supabase
+    let q = supabase
       .from('notifications')
       .select('*', { count: 'exact', head: true })
       .eq('recipient_role', role)
-      .eq('recipient_id', entityId)
       .eq('is_read', false);
+    if (!allRecipients) q = q.eq('recipient_id', entityId);
+    const { count, error } = await q;
     if (error) throw _rpcError(error, 'getUnreadCount');
     return count ?? 0;
   }
 
   return _store.filter(
-    (n) => n.recipientRole === role && n.recipientId === entityId && !n.isRead,
+    (n) => n.recipientRole === role
+      && (allRecipients || n.recipientId === entityId)
+      && !n.isRead,
   ).length;
 }
 
@@ -242,5 +254,63 @@ export function createCommissionSettledNotifications({ agentId, branchId, amount
 
   // unshift so the freshest notifications lead the newest-first store.
   _store.unshift(...created);
+  return created;
+}
+
+/**
+ * Admin → stakeholder in-app notification, sent from a Needs-attention
+ * drill-down (migration 0097 `admin_notify`).
+ *
+ * Recipients are validated server-side: entity roles must reference a real
+ * agent/branch/distributor/employer row, and `admin` is only accepted with one
+ * of the fixed internal ops-queue ids. `subscriber` is rejected — the subscriber
+ * dashboard reads a different feed component, so such a row would be written but
+ * never seen.
+ *
+ * DEMO SCOPE (CLAUDE.md §10a): this delivers an in-app notification only. There
+ * is no SMS or email provider behind it and none should be added.
+ *
+ * @param {Object} params
+ * @param {'agent'|'branch'|'distributor'|'employer'|'admin'} params.recipientRole
+ * @param {string} params.recipientId Entity id, or an ops-queue id for `admin`.
+ * @param {string} params.type Attention signal id (whitelisted by the RPC).
+ * @param {string} params.title Capped at 200 chars server-side.
+ * @param {string} params.body Capped at 1000 chars server-side.
+ * @param {string} [params.refId] The row this was raised against.
+ * @param {number} [params.amount]
+ * @returns {Promise<object>} The created Notification.
+ */
+export async function sendAdminNotification({
+  recipientRole, recipientId, type, title, body, refId = null, amount = null,
+}) {
+  if (IS_SUPABASE_ENABLED) {
+    const { data, error } = await supabase.rpc('admin_notify', {
+      p_recipient_role: recipientRole,
+      p_recipient_id: recipientId,
+      p_type: type,
+      p_title: title,
+      p_body: body,
+      p_ref_id: refId,
+      p_amount: amount,
+    });
+    if (error) throw _rpcError(error, 'admin_notify');
+    return data;
+  }
+
+  // Rollback path: mirror the RPC's shape into the in-memory store so the bell
+  // and the drill-down behave identically with Supabase disabled.
+  const created = {
+    id: nextNotificationId(),
+    recipientRole,
+    recipientId,
+    type,
+    title: String(title || '').slice(0, 200),
+    body: String(body || '').slice(0, 1000),
+    amount,
+    refId,
+    isRead: false,
+    createdAt: currentTime().toISOString(),
+  };
+  _store.unshift(created);
   return created;
 }

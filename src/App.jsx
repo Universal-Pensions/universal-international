@@ -15,6 +15,7 @@ import Contact from './pages/Contact';
 import About from './pages/About';
 import AdminLogin from './pages/AdminLogin';
 import RequestAccess from './pages/RequestAccess';
+import NomineeClaim from './pages/NomineeClaim';
 import LandingLayout from './pages/landing/shell/LandingLayout';
 
 const DashboardShell = lazy(() => import('./dashboard/DashboardShell'));
@@ -168,6 +169,15 @@ export default function App() {
           {/* Lead-capture for employer/distributor (admin-provisioned, not self-signup). */}
           <Route path="request-access" element={<RequestAccess />} />
         </Route>
+        {/* Public NOMINEE claim intake. Life and funeral cover pay out after
+            the member has died, so the claimant is the person they named — who
+            has no account and never will. Registered OUTSIDE the LandingLayout
+            group on purpose: inside it this would need SCREENS + TITLES +
+            showActionBar entries in LandingMobileShell and a second *Mobile
+            component, and the phone shell's audience action bar ("Start saving")
+            is the wrong thing to put under a bereavement form. One responsive
+            component serves every viewport instead. */}
+        <Route path="/claim" element={<NomineeClaim />} />
         <Route path="/coming-soon" element={<ComingSoon />} />
         {/* /admin is the Administrator landing page (in the LandingLayout group
             above, so the phone shell picks it up) and signs admins in from its

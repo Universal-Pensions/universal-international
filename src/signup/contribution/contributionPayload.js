@@ -6,7 +6,7 @@
 // the agent-side onboardPayload.js, which is likewise extracted + tested).
 
 import { normalizeFrequency } from '../../utils/finance';
-import { INSURANCE_PRODUCTS, INSURANCE_PREMIUM_MONTHLY, INSURANCE_COVER } from '../../constants/savings';
+import { buildInsuranceSplit } from '../../utils/insuranceSelection';
 
 /**
  * Build the payload `create_subscriber_from_signup` expects from the
@@ -14,30 +14,21 @@ import { INSURANCE_PRODUCTS, INSURANCE_PREMIUM_MONTHLY, INSURANCE_COVER } from '
  * forgiving about missing optional fields (it defaults paymentMethod,
  * includeInsurance, etc.) but the required fields must be present.
  *
- * Multi-product insurance mirrors the agent onboarding split (onboardPayload.js):
- * life → `insurancePolicy`, health/funeral → `insuranceProducts[]`. The shared
+ * Multi-product insurance is split by the shared `buildInsuranceSplit`
+ * (utils/insuranceSelection.js), which the agent path uses too: life →
+ * `insurancePolicy`, health/funeral → `insuranceProducts[]`. The shared
  * `_insert_subscriber_chain` (migration 0065) routes `insuranceProducts` into
- * `subscriber_insurance_products`. Legacy single-toggle schedules (no
- * `insuranceTypes`) fall back to the old `includeInsurance` → life-only behaviour.
+ * `subscriber_insurance_products`. Cover/premium come from the tier the user
+ * picked on the wizard's cover step, falling back to each product's entry tier
+ * for legacy single-toggle schedules (no `insuranceTypes`/`insuranceCovers`).
  *
  * @param {object} signup   - SignupContext snapshot
  * @param {object} schedule - the confirmed contribution schedule
  * @param {string} phone    - canonicalised UG phone
  */
 export function buildContributionPayload(signup, schedule, phone) {
-  const types = Array.isArray(schedule.insuranceTypes) ? schedule.insuranceTypes : null;
-  const wantsLife = types ? types.includes('life') : (schedule.includeInsurance ?? false);
-  const includeInsurance = types ? types.length > 0 : (schedule.includeInsurance ?? false);
+  const { includeInsurance, insurancePolicy, insuranceProducts } = buildInsuranceSplit(schedule);
   const insurancePremium = schedule.insurancePremium ?? 0;
-  const insurancePolicy = wantsLife
-    ? { cover: INSURANCE_COVER, premiumMonthly: INSURANCE_PREMIUM_MONTHLY }
-    : null;
-  const insuranceProducts = (types ?? [])
-    .filter((id) => id === 'health' || id === 'funeral')
-    .map((id) => {
-      const product = INSURANCE_PRODUCTS.find((p) => p.id === id);
-      return { product: id, cover: product?.cover ?? 0, premiumMonthly: product?.premiumMonthly ?? 0 };
-    });
   return {
     phone,
     fullName: signup.fullName,
@@ -55,8 +46,13 @@ export function buildContributionPayload(signup, schedule, phone) {
       retirementPct: schedule.retirementPct,
       emergencyPct: schedule.emergencyPct,
       includeInsurance,
+      // Legacy, both inert: `_insert_subscriber_chain` reads neither and
+      // `contribution_schedules` has no matching column. Kept in sync with the
+      // real rows anyway so a schedule that says 1M can't sit next to an
+      // insurance_policies row that says 5M. (onboardPayload emits neither key —
+      // that asymmetry is deliberate, see utils/insuranceSelection.js.)
       insurancePremium,
-      insuranceCover: wantsLife ? INSURANCE_COVER : 0,
+      insuranceCover: insurancePolicy?.cover ?? 0,
       // save-to-cover + indexation (migration 0072). 'pay_now' | 'save_to_cover';
       // target = combined ANNUAL premium of building products; indexation 0..15.
       insuranceFundingMode: schedule.insuranceFundingMode ?? 'pay_now',

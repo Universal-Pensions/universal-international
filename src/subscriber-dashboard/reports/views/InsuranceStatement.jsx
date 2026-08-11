@@ -10,20 +10,12 @@ import ErrorCard from '../../../components/feedback/ErrorCard';
 import ExportButton from '../../../components/reports/ExportButton';
 import SkeletonRow from '../../../components/SkeletonRow';
 import EmptyState from '../../../components/EmptyState';
+import { claimTypeLabel, claimStatusMeta } from '../../../constants/claims';
 import frameStyles from './ReportFrame.module.css';
 
-const CLAIM_TYPES = {
-  medical: 'Medical',
-  accident: 'Accident',
-  hospitalization: 'Hospitalisation',
-  critical_illness: 'Critical illness',
-};
-
-function statusTone(s) {
-  if (s === 'paid' || s === 'approved') return 'ok';
-  if (s === 'rejected') return 'alert';
-  return 'pending';
-}
+// Claim labels + status tones come from src/constants/claims.js. This file used
+// to hold its own copy of the incident-category map — one of three copies, all
+// of which predated the life / hospital-cash / funeral catalogue.
 
 export default function InsuranceStatement() {
   const { data: sub, isLoading, isError, error, refetch } = useCurrentSubscriber();
@@ -67,7 +59,7 @@ export default function InsuranceStatement() {
       key: 'type',
       label: 'Type',
       sortable: true,
-      render: (row) => CLAIM_TYPES[row.type] || row.type,
+      render: (row) => claimTypeLabel(row),
     },
     {
       key: 'incidentDate',
@@ -87,9 +79,9 @@ export default function InsuranceStatement() {
       label: 'Status',
       sortable: true,
       render: (row) => (
-        <span className={frameStyles.pill} data-tone={statusTone(row.status)}>
+        <span className={frameStyles.pill} data-tone={claimStatusMeta(row.status).tone}>
           <span className={frameStyles.pillDot} />
-          {row.status.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())}
+          {claimStatusMeta(row.status).label}
         </span>
       ),
     },
@@ -99,7 +91,7 @@ export default function InsuranceStatement() {
     const headers = ['Filed', 'Type', 'Incident', 'Claimed (UGX)', 'Status', 'Description'];
     const rows = claims.map((c) => [
       c.submittedDate,
-      CLAIM_TYPES[c.type] || c.type,
+      claimTypeLabel(c),
       c.incidentDate,
       c.amount,
       c.status,

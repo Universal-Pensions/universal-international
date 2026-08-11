@@ -809,3 +809,69 @@
     }
   }
 }
+
+/* ── Hospital-cash payout preview ─────────────────────────────────────────────
+   Hospital cash pays per NIGHT, so the cover figure alone tells a member almost
+   nothing about what they'll actually receive. This card answers that question
+   as they type, and is also where the two honest "you can't claim that" cases
+   are said out loud (a same-day stay, and an exhausted policy-year allowance). */
+.payoutCard {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: var(--space-4) var(--space-5);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-lavender);
+  background: color-mix(in srgb, var(--color-indigo) 4%, var(--color-white));
+}
+
+/* Nothing is payable — the member needs to fix something, so drop the
+   money-green confidence and use the warning tint instead. */
+.payoutCard[data-tone='warn'] {
+  background: color-mix(in srgb, var(--color-status-warning) 8%, var(--color-white));
+  border-color: color-mix(in srgb, var(--color-status-warning) 35%, var(--color-lavender));
+}
+
+.payoutEyebrow {
+  font-family: var(--font-display);
+  font-size: var(--text-xs);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--color-gray);
+}
+
+.payoutBig {
+  font-family: var(--font-display);
+  font-size: var(--text-2xl);
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  line-height: 1.05;
+  color: var(--color-indigo);
+  font-variant-numeric: tabular-nums;
+}
+
+.payoutNote {
+  margin: 0;
+  font-family: var(--font-body);
+  font-size: var(--text-xs);
+  line-height: 1.5;
+  color: var(--color-gray);
+  font-variant-numeric: tabular-nums;
+}
+
+.payoutNote strong {
+  font-family: var(--font-display);
+  font-weight: 700;
+  color: var(--color-slate);
+}
+
+/* The stay was longer than the remaining allowance. Said plainly rather than
+   silently paying less than the arithmetic the member just did in their head. */
+.payoutWarn {
+  margin: 4px 0 0;
+  font-family: var(--font-body);
+  font-size: var(--text-xs);
+  line-height: 1.5;
+  color: color-mix(in srgb, var(--color-status-warning) 62%, #000);
+}

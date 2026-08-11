@@ -73,10 +73,13 @@ export function buildPolicyCertificateHtml(data) {
     policyStart,
     renewalDate,
     beneficiaries = [],
-    // Product label drives the certificate title ("Life" | "Health" | …).
-    // Defaults to Life so existing callers (signup) are unchanged.
+    // Product label drives the certificate title ("Life" | "Hospital cash" | …).
+    // The title reads "Certificate of Insurance — <product>" rather than
+    // "Certificate of <product> Insurance" so it stays grammatical for products
+    // whose name isn't an adjective ("…— Hospital cash", not "…Hospital cash
+    // Insurance"). Defaults to Life.
     productLabel = 'Life',
-    // Health insurance has no payout beneficiaries — callers can hide the
+    // Hospital cash has no payout beneficiaries — callers can hide the
     // beneficiaries section for those products.
     showBeneficiaries = true,
   } = data || {};
@@ -99,7 +102,7 @@ export function buildPolicyCertificateHtml(data) {
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Universal Pensions — Certificate of ${product} Insurance</title>
+  <title>Universal Pensions — Certificate of Insurance — ${product}</title>
   <style>
     *, *::before, *::after { box-sizing: border-box; }
     @page { size: A4; margin: 18mm; }
@@ -352,7 +355,7 @@ export function buildPolicyCertificateHtml(data) {
 
     <div class="title-block">
       <div class="eyebrow">Certificate</div>
-      <h1>Certificate of ${product} Insurance</h1>
+      <h1>Certificate of Insurance — ${product}</h1>
     </div>
 
     <section>

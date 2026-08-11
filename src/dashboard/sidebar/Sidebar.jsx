@@ -10,6 +10,7 @@ import { useEntityMetrics } from '../../hooks/useEntity';
 import { useIsMobile } from '../../hooks/useIsMobile';
 import logo from '../../assets/logo.png';
 import styles from './Sidebar.module.css';
+import NotificationBell from '../../components/notifications/NotificationBell';
 
 function formatCount(n) {
   if (!Number.isFinite(n) || n <= 0) return '—';
@@ -217,7 +218,8 @@ const SUBSCRIBER_SUB = [
 export default function Sidebar({ expanded = false, onToggleExpand, mapMode = false, onToggleMapMode }) {
   const [hovered, setHovered] = useState(null);
   const [moreOpen, setMoreOpen] = useState(false);
-  const { logout } = useAuth();
+  const { logout, user } = useAuth();
+  const distributorId = user?.distributorId;
   const navigate = useNavigate();
   // The two-mode flat/single-open nav is a DESKTOP concept. On mobile the rail is
   // hidden and the bottom bar shares this handler, so mobile must keep the exact
@@ -669,6 +671,15 @@ export default function Sidebar({ expanded = false, onToggleExpand, mapMode = fa
 
       {/* Desktop bottom items */}
       <div className={styles.bottomItems}>
+        {/* Notification bell — mounted so the distributor can actually receive
+            the admin's Needs-attention escalations (0097 admin_notify). Without
+            it those notifications are written and never seen. RLS already scoped
+            the distributor feed to its own rows in 0081. */}
+        {distributorId && (
+          <div className={styles.navBtn} data-bell="true">
+            <NotificationBell role="distributor" entityId={distributorId} align="left" portal />
+          </div>
+        )}
         {BOTTOM_ITEMS.map((item) => (
           <button
             key={item.id}

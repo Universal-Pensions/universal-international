@@ -3,6 +3,7 @@ import logo from '../../assets/logo.png';
 import { useAdminAppBar } from './adminAppBarContext';
 // Reuse the distributor app-bar styling verbatim.
 import styles from '../../dashboard/shell/DistributorMobileAppBar.module.css';
+import NotificationBell from '../../components/notifications/NotificationBell';
 
 const BackIcon = (
   <svg viewBox="0 0 24 24" width="19" height="19" fill="none" aria-hidden="true">
@@ -34,6 +35,9 @@ const TAB = {
 const FLOW = {
   '/dashboard/settings': 'Settings',
   '/dashboard/access-requests': 'Access requests',
+  // A task page reached from the Menu hub: back arrow, no actions cluster.
+  '/dashboard/nav': 'Unit price',
+  '/dashboard/nominee-claims': 'Nominee claims',
 };
 
 function resolve(pathname) {
@@ -47,6 +51,9 @@ function resolve(pathname) {
   if (pathname.startsWith('/dashboard/subscribers/')) return { left: 'back', title: 'Subscriber', actions: true };
   if (pathname.startsWith('/dashboard/reports/')) return { left: 'back', title: 'Report', actions: false };
   if (pathname.startsWith('/dashboard/support/')) return { left: 'back', title: 'Support', actions: false };
+  // Needs-attention drill-down. The page renders its own signal-specific title,
+  // so the bar carries only the section name and the back affordance.
+  if (pathname.startsWith('/dashboard/attention/')) return { left: 'back', title: 'Needs attention', actions: true };
   return { left: 'back', title: '', actions: true };
 }
 
@@ -81,6 +88,11 @@ export default function AdminMobileAppBar({ onOpenAI }) {
 
       {meta.actions && (
         <div className={styles.actions}>
+          {/* entityId="*" — ops-queue notifications raised from a Needs-attention
+              drill-down are addressed to a QUEUE (ops-treasury, ops-claims, …),
+              not to admin-001, so a self-id filter would show an empty bell.
+              RLS still scopes the read (notifications_select_admin, 0049). */}
+          <NotificationBell role="admin" entityId="*" align="right" portal />
           <button
             type="button"
             className={styles.iconBtn}

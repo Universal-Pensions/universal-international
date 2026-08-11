@@ -172,10 +172,13 @@ export default function MemberDetailBody({ employeeId }) {
           <Def label="They put in / mo" value={formatUGX(employeeLeg, { compact: false })} />
           <Def label="You add / mo" value={formatUGX(employerLeg, { compact: false })} />
           <Def label="Company funding" value={contributionFundingLabel(employer?.defaultContributionConfig)} />
-          <Def
-            label="Retirement / Emergency"
-            value={`${Number(employee.contributionSchedule?.retirementPct ?? 80)}% / ${Number(employee.contributionSchedule?.emergencyPct ?? 20)}%`}
-          />
+          {/* Was the member's own retirement/emergency percentages. That is now
+              the wrong number to show here twice over: it no longer governs the
+              money YOUR runs send (all of which goes to retirement — see
+              EMPLOYER_FUNDED_SPLIT), and what it does still govern is the
+              member's private saving preference, which this panel deliberately
+              withholds from the employer alongside their balance. */}
+          <Def label="Where it goes" value="Retirement savings" />
         </dl>
       </section>
 

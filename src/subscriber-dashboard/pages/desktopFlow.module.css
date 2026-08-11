@@ -149,6 +149,27 @@
   }
 }
 
+/* Opt-in tighter split, applied ALONGSIDE .split (and only by pages whose two
+   columns still read well when narrow). 900px is the right floor for the flows
+   that carry an amount field and a method list, but it is too conservative for
+   a page like Insurance cover, whose left column is a 4-stop cover slider and
+   whose right column is a short figure list — both fine at ~420px / ~270px.
+   Without this, the 240px sidebar keeps the split closed on every 1024-1204px
+   viewport (container = min(1240, vw - 240) - 64), which is exactly the range
+   most laptops sit in.
+   Must stay AFTER the 900px rules above: .splitTight and .split are equal
+   specificity, so source order is what lets it win. */
+@container (min-width: 680px) {
+  .splitTight {
+    grid-template-columns: minmax(0, 1.55fr) minmax(0, 1fr);
+  }
+
+  .splitTight > .summaryCol {
+    position: sticky;
+    top: var(--space-5);
+  }
+}
+
 /* ── Card ─────────────────────────────────────────────────────────────────── */
 .card {
   background: var(--color-white);

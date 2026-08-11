@@ -1,0 +1,100 @@
+/* ContributionsDesktop — routed contribution-history page (desktop). Leg tabs
+   over a flat newest-first payment table. Back-link, tab and padding recipes
+   match PendingKycDesktop so the two drill-downs off Overview read the same. */
+
+.backRow {
+  margin-top: calc(var(--space-3) * -1);
+}
+
+.backBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 0;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-family: var(--font-body);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--color-indigo);
+}
+
+.backBtn:hover {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.backBtn:focus-visible {
+  outline: 2px solid var(--color-indigo-soft);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
+
+/* ── Leg tabs ─────────────────────────────────────────────────────────────── */
+
+.tablist {
+  display: flex;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  border-radius: var(--radius-full);
+  border: 1px solid var(--color-lavender);
+  background: var(--color-white);
+  cursor: pointer;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: var(--text-sm);
+  color: var(--color-gray);
+  transition: background-color 0.16s ease, color 0.16s ease, border-color 0.16s ease;
+}
+
+.tab[data-active] {
+  background: var(--color-indigo);
+  border-color: var(--color-indigo);
+  color: var(--color-white);
+}
+
+.tab:focus-visible {
+  outline: 2px solid var(--color-indigo-soft);
+  outline-offset: 2px;
+}
+
+.tabCount {
+  font-size: var(--text-xs);
+  padding: 1px 7px;
+  border-radius: var(--radius-full);
+  background: color-mix(in srgb, var(--color-indigo) 8%, transparent);
+  color: inherit;
+  font-variant-numeric: tabular-nums;
+}
+
+.tab[data-active] .tabCount {
+  background: rgba(255, 255, 255, 0.22);
+}
+
+/* ── Table bits ───────────────────────────────────────────────────────────── */
+
+/* Loading / error / empty states sit inside the table card, which has no padding
+   of its own (the table supplies its own cell padding). */
+.pad {
+  padding: var(--space-5);
+}
+
+.muted {
+  font-family: var(--font-body);
+  font-size: var(--text-sm);
+  color: var(--color-gray);
+}
+
+.foot {
+  font-family: var(--font-body);
+  font-size: var(--text-sm);
+  color: var(--color-slate);
+}

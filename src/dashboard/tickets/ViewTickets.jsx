@@ -16,6 +16,8 @@ import { useAllEntities } from '../../hooks/useEntity';
 import {
   useDistributorTickets,
   useDistributorTicketMetrics,
+  usePlatformTickets,
+  usePlatformTicketMetrics,
   useTicketThread,
 } from '../../hooks/useTickets';
 import { TICKET_STATUS } from '../../data/ticketsSeed';
@@ -71,7 +73,15 @@ const STATUS_FILTERS = [
 /* ═══════════════════════════════════════════════════════════════════════════ */
 export default function ViewTickets({ fullPage = false }) {
   const { viewTicketsOpen, setViewTicketsOpen } = useDashboard();
-  const distributorId = useAuth().user?.distributorId ?? 'd-001';
+  // This panel is mounted by BOTH the distributor and the admin shells. The
+  // admin has no `distributorId` claim, so the previous `?? 'd-001'` fallback
+  // read as "the admin is looking at d-001's inbox". It was not actually
+  // mis-scoping anything — listTicketsForDistributor ignores its id and returns
+  // every ticket — but it made a platform-wide view look like a tenant view, and
+  // it would have started mis-scoping the moment tickets gained a real partition.
+  const { user } = useAuth();
+  const isAdmin = user?.role === 'admin';
+  const distributorId = user?.distributorId ?? 'd-001';
 
   // Branch names for the branch rollup filter + ticket subtitles. Same allowed
   // pattern as ViewAgents — an entity read, not a tickets/mockData import.
@@ -97,7 +107,11 @@ export default function ViewTickets({ fullPage = false }) {
 
   // Metrics drive the KPI row + the agent-filter options (byAgent). Unfiltered
   // so the headline numbers describe the whole network.
-  const { data: metrics, isLoading: metricsLoading } = useDistributorTicketMetrics(distributorId);
+  // Both role variants are called unconditionally (hook rules) with only the
+  // active one enabled, then the result is picked.
+  const distributorMetrics = useDistributorTicketMetrics(isAdmin ? null : distributorId);
+  const platformMetrics = usePlatformTicketMetrics(isAdmin);
+  const { data: metrics, isLoading: metricsLoading } = isAdmin ? platformMetrics : distributorMetrics;
 
   // List data, narrowed server-side by the active branch/agent/status filters.
   const listFilters = useMemo(() => {
@@ -108,13 +122,15 @@ export default function ViewTickets({ fullPage = false }) {
     return f;
   }, [statusFilter, branchFilter, agentFilter]);
 
+  const distributorList = useDistributorTickets(isAdmin ? null : distributorId, listFilters);
+  const platformList = usePlatformTickets(listFilters, isAdmin);
   const {
     data: ticketList = [],
     isLoading: listLoading,
     isError: listError,
     error: listErr,
     refetch: refetchList,
-  } = useDistributorTickets(distributorId, listFilters);
+  } = isAdmin ? platformList : distributorList;
 
   // Thread for the selected ticket (read-only — no footer / no headerActions).
   const {

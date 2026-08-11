@@ -89,6 +89,30 @@ const NAV_ITEMS = [
     ),
   },
   {
+    // Life/funeral claims filed by a family member through the public /claim
+    // form. Not the same queue as the member's own hospital-cash claims.
+    id: 'nominee-claims',
+    label: 'Nominee claims',
+    icon: (
+      <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" width="22" height="22">
+        <path d="M12 3l7 3v5c0 4.5-3 8-7 10-4-2-7-5.5-7-10V6l7-3z" stroke="currentColor" strokeWidth="1.75" strokeLinejoin="round"/>
+        <path d="M12 9v3M12 16h.01" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round"/>
+      </svg>
+    ),
+  },
+  {
+    // The fund's unit price. A money surface, not a setting: publishing a price
+    // revalues every member's savings (migrations 0103-0105).
+    id: 'nav',
+    label: 'Unit price',
+    icon: (
+      <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" width="22" height="22">
+        <path d="M3 17l6-6 4 4 7-7" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round"/>
+        <path d="M14 8h6v6" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round"/>
+      </svg>
+    ),
+  },
+  {
     id: 'tickets',
     label: 'Support',
     icon: (
@@ -235,6 +259,8 @@ export default function AdminSidebar({ expanded = false, onToggleExpand, mapMode
     viewDistributorsOpen, setViewDistributorsOpen, createDistributorOpen, setCreateDistributorOpen,
     viewEmployersOpen, setViewEmployersOpen, createEmployerOpen, setCreateEmployerOpen,
     viewAccessRequestsOpen, setViewAccessRequestsOpen,
+    viewNomineeClaimsOpen, setViewNomineeClaimsOpen,
+    viewNavOpen, setViewNavOpen,
     closeAllPanels: adminCloseAllPanels,
   } = useAdminPanel();
 
@@ -250,6 +276,8 @@ export default function AdminSidebar({ expanded = false, onToggleExpand, mapMode
         || createBranchOpen || viewAgentsOpen || networkMenuOpen) return 'distributor-network';
     if (viewEmployersOpen || createEmployerOpen) return 'employers';
     if (viewAccessRequestsOpen) return 'access-requests';
+    if (viewNomineeClaimsOpen) return 'nominee-claims';
+    if (viewNavOpen) return 'nav';
     if (viewTicketsOpen) return 'tickets';
     if (viewReportsOpen) return 'reports';
     if (settingsOpen) return 'settings';
@@ -258,7 +286,7 @@ export default function AdminSidebar({ expanded = false, onToggleExpand, mapMode
   }, [
     viewDistributorsOpen, createDistributorOpen, viewBranchesOpen, createBranchOpen,
     viewAgentsOpen, networkMenuOpen, viewEmployersOpen, createEmployerOpen,
-    viewAccessRequestsOpen,
+    viewAccessRequestsOpen, viewNomineeClaimsOpen, viewNavOpen,
     viewTicketsOpen, viewReportsOpen, settingsOpen, viewSubscribersOpen,
   ]);
 
@@ -340,6 +368,20 @@ export default function AdminSidebar({ expanded = false, onToggleExpand, mapMode
       setViewTicketsOpen(false);
       setSettingsOpen(false);
       setViewAccessRequestsOpen(true);
+      return;
+    }
+    if (id === 'nominee-claims') {
+      setViewReportsOpen(false);
+      setViewTicketsOpen(false);
+      setSettingsOpen(false);
+      setViewNomineeClaimsOpen(true);
+      return;
+    }
+    if (id === 'nav') {
+      setViewReportsOpen(false);
+      setViewTicketsOpen(false);
+      setSettingsOpen(false);
+      setViewNavOpen(true);
       return;
     }
     if (id === 'settings') {

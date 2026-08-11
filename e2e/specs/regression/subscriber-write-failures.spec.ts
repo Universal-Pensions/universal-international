@@ -268,16 +268,26 @@ test.describe('subscriber dashboard → write-failure surfaces', () => {
     //    two-tap downgrade-confirm is out of scope for a toast-wiring
     //    regression. Convert both skips to a single expect.soft acknowledging
     //    the page mounted; the useToast pipeline is shared with Profile Save.
+    // 3) The page is now PER-PRODUCT: a radiogroup picks life/health/funeral and
+    //    the cover ladder below it is a `role="group"` named "<Product> cover
+    //    amount". Scope to that group — a bare `button` + /UGX|cover/i filter
+    //    now also matches the product segments (which carry each policy's
+    //    current cover) and the section copy, so it would pass on the wrong
+    //    elements. The 500 path itself stays feature-gated: only a DOWNGRADE
+    //    writes to insurance_policies over REST, and that needs the member to
+    //    hold above the entry tier, which the seed doesn't guarantee.
     await page.goto('/dashboard/settings/insurance');
     const heading = page.getByRole('heading', { level: 1 }).first();
     await expect(heading).toBeVisible({ timeout: 15_000 });
-    const tierButtons = page.locator('button').filter({ hasText: /UGX|cover/i });
+    const tierMarks = page
+      .getByRole('group', { name: /cover amount$/ })
+      .getByRole('button');
     expect
       .soft(
-        await tierButtons.count(),
-        'InsurancePage must mount and expose cover tiers; the underlying ' +
-          'insurance_policies 500 path is feature-gated by tier-delta + ' +
-          'two-tap downgrade UX (toast wiring covered by Profile Save).',
+        await tierMarks.count(),
+        'InsurancePage must mount and expose a per-product cover ladder; the ' +
+          'underlying insurance_policies 500 path is feature-gated by ' +
+          'tier-delta + two-tap downgrade UX (toast wiring covered by Profile Save).',
       )
       .toBeGreaterThan(0);
   });

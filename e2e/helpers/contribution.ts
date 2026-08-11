@@ -22,7 +22,12 @@
 //     `audience` and let the helper build the regex.
 //   • A cover switch's accessible name is its WHOLE card, beginning with the
 //     `shortProductName()` ("Health Hospital & clinic cover UGX 60,000/year Pays
-//     UGX 3,000,000") — so match start-anchored, not exact.
+//     UGX 3,000,000") — so match start-anchored, not exact. Note the price and
+//     payout in that name now track the CHOSEN cover tier, so never match on
+//     them; anchor on the product name only.
+//
+// Each selected product also exposes its own cover ladder as a `role="group"`
+// named "<Product> cover amount". Pass `covers` to pick a non-default tier.
 
 import { expect, type Page } from '@playwright/test';
 
@@ -43,9 +48,22 @@ export type ContributionWalkConfig = {
    * turns it OFF. Omit to keep the default (life only).
    */
   toggleProducts?: Array<'life' | 'health' | 'funeral'>;
+  /**
+   * Cover AMOUNT per product, in UGX — e.g. `{ life: 5_000_000 }`. Must be a
+   * value on that product's ladder (`coverTiers` in src/constants/savings.js).
+   * Only applies to products that end up SELECTED. Omit to keep each product's
+   * entry tier, which is the cover it had before per-product amounts existed.
+   */
+  covers?: Partial<Record<'life' | 'health' | 'funeral', number>>;
   /** 9-digit local MoMo number. Defaults to a synthetic demo number. */
   momoDigits?: string;
 };
+
+/**
+ * Product NAME as rendered on the card / picker label. Keyed by the stored
+ * product id — 'health' is the DB enum value, 'Hospital cash' is its name.
+ */
+const SHORT: Record<string, string> = { life: 'Life', health: 'Hospital cash', funeral: 'Funeral' };
 
 /** Page-1 → page-2 → payMode, stopping just short of clicking Pay. */
 export async function fillContributionPlan(
@@ -57,6 +75,7 @@ export async function fillContributionPlan(
     presetLabel,
     amount,
     toggleProducts = [],
+    covers = {},
     momoDigits = '700123456',
   } = config;
   const possessive = audience === 'agent' ? 'their' : 'your';
@@ -87,11 +106,26 @@ export async function fillContributionPlan(
   ).toBeVisible({ timeout: 10_000 });
 
   for (const product of toggleProducts) {
-    // The switch's accessible name is the whole card, starting with the SHORT
-    // product name: "Health Hospital & clinic cover UGX 60,000/year Pays UGX
-    // 3,000,000". So anchor at the START only — `^health$` matches nothing, and a
+    // The switch's accessible name is the whole card, starting with the product
+    // NAME: "Hospital cash Hospital & clinic cover UGX 60,000/year Pays UGX
+    // 3,000,000". Anchor at the START only — an exact match hits nothing, and a
     // bare /funeral/i would also hit that card's own "burial costs" blurb text.
-    await page.getByRole('switch', { name: new RegExp(`^${product}\\b`, 'i') }).click();
+    //
+    // Match on SHORT[product], never the raw id: the id is the stored DB enum
+    // ('health') and no longer equals the displayed name ('Hospital cash').
+    await page.getByRole('switch', { name: new RegExp(`^${SHORT[product]}\\b`, 'i') }).click();
+  }
+
+  // Each selected product reveals its own cover ladder inside its card. Match
+  // the tier on the mark's aria-label, which carries the EXACT figure — the
+  // visible text is compacted ("5.0M") to fit the card and would be brittle.
+  for (const [product, cover] of Object.entries(covers)) {
+    const group = page.getByRole('group', { name: `${SHORT[product]} cover amount` });
+    await expect(group).toBeVisible();
+    await group
+      // 'en-UG' mirrors LOCALE in src/utils/currency.js, which formats the label.
+      .getByRole('button', { name: new RegExp(`^UGX ${cover.toLocaleString('en-UG')} cover`) })
+      .click();
   }
 
   // Route A ("Pay now") is not the default — the component defaults to Route B

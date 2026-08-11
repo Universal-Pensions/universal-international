@@ -142,3 +142,99 @@ describe('fundInsuranceProducts — fund_insurance_products RPC (live path)', ()
     ).rejects.toMatchObject({ message: /employer/ });
   });
 });
+
+// ── updateInsuranceCover — the free DOWNGRADE path ──────────────────────────
+// Not an RPC: lowering cover takes no payment, so it writes directly under the
+// subscriber's own *_self RLS. The routing must follow migration 0064's storage
+// split, and health/funeral must UPDATE rather than upsert — upserting would
+// mint a policy nobody paid a premium for.
+describe('updateInsuranceCover — per-product direct write (live path)', () => {
+  let svc;
+  beforeEach(async () => {
+    svc = await import('../subscriber');
+  });
+
+  it('routes life to insurance_policies as an upsert', async () => {
+    supabaseMock.__queueFrom('insurance_policies', {
+      data: {
+        cover: 1_000_000, premium_monthly: 2_000, status: 'active',
+        policy_start: '2026-01-01', renewal_date: '2027-01-01',
+      },
+      error: null,
+    });
+    const res = await svc.updateInsuranceCover('s-1', {
+      product: 'life', cover: 1_000_000, premiumMonthly: 2_000,
+    });
+
+    const call = supabaseMock.__getFromCalls('insurance_policies').at(-1);
+    expect(call.chain.upsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        subscriber_id: 's-1', cover: 1_000_000, premium_monthly: 2_000, status: 'active',
+      }),
+      { onConflict: 'subscriber_id' },
+    );
+    expect(res).toMatchObject({ product: 'life', cover: 1_000_000, premiumMonthly: 2_000 });
+  });
+
+  it('defaults to life when no product is given (back-compat)', async () => {
+    supabaseMock.__queueFrom('insurance_policies', {
+      data: { cover: 2_000_000, premium_monthly: 3_500, status: 'active' },
+      error: null,
+    });
+    await svc.updateInsuranceCover('s-1', { cover: 2_000_000, premiumMonthly: 3_500 });
+    expect(supabaseMock.__getFromCalls('insurance_policies')).toHaveLength(1);
+    expect(supabaseMock.__getFromCalls('subscriber_insurance_products')).toHaveLength(0);
+  });
+
+  it('routes health to subscriber_insurance_products as a scoped UPDATE', async () => {
+    supabaseMock.__queueFrom('subscriber_insurance_products', {
+      data: { cover: 3_000_000, premium_monthly: 5_000, status: 'active' },
+      error: null,
+    });
+    const res = await svc.updateInsuranceCover('s-1', {
+      product: 'health', cover: 3_000_000, premiumMonthly: 5_000,
+    });
+
+    const call = supabaseMock.__getFromCalls('subscriber_insurance_products').at(-1);
+    // UPDATE, never upsert — no free cover for an unheld product.
+    expect(call.chain.update).toHaveBeenCalledWith(
+      expect.objectContaining({ cover: 3_000_000, premium_monthly: 5_000, status: 'active' }),
+    );
+    expect(call.chain.upsert).not.toHaveBeenCalled();
+    expect(call.chain.eq).toHaveBeenCalledWith('subscriber_id', 's-1');
+    expect(call.chain.eq).toHaveBeenCalledWith('product', 'health');
+    expect(supabaseMock.__getFromCalls('insurance_policies')).toHaveLength(0);
+    expect(res).toMatchObject({ product: 'health', cover: 3_000_000 });
+  });
+
+  it('routes funeral to subscriber_insurance_products too', async () => {
+    supabaseMock.__queueFrom('subscriber_insurance_products', {
+      data: { cover: 2_000_000, premium_monthly: 1_500, status: 'active' },
+      error: null,
+    });
+    await svc.updateInsuranceCover('s-1', {
+      product: 'funeral', cover: 2_000_000, premiumMonthly: 1_500,
+    });
+    const call = supabaseMock.__getFromCalls('subscriber_insurance_products').at(-1);
+    expect(call.chain.eq).toHaveBeenCalledWith('product', 'funeral');
+  });
+
+  it('marks zero cover inactive', async () => {
+    supabaseMock.__queueFrom('insurance_policies', {
+      data: { cover: 0, premium_monthly: 0, status: 'inactive' }, error: null,
+    });
+    await svc.updateInsuranceCover('s-1', { product: 'life', cover: 0, premiumMonthly: 0 });
+    const call = supabaseMock.__getFromCalls('insurance_policies').at(-1);
+    expect(call.chain.upsert).toHaveBeenCalledWith(
+      expect.objectContaining({ status: 'inactive' }),
+      expect.anything(),
+    );
+  });
+
+  it('rejects an unknown product BEFORE touching Supabase', async () => {
+    await expect(
+      svc.updateInsuranceCover('s-1', { product: 'motor', cover: 1, premiumMonthly: 1 }),
+    ).rejects.toThrow(/insurance product/i);
+    expect(supabaseMock.__getFromCalls()).toHaveLength(0);
+  });
+});

@@ -19,7 +19,7 @@ const FAQS = [
   {
     id: 'withdraw',
     q: 'How do I withdraw from my Emergency bucket?',
-    a: 'Open Withdraw on your home screen, choose the Emergency bucket, enter the amount, and pick a reason. Funds arrive within 2 business days.',
+    a: 'Open Withdraw on your home screen, choose the Emergency bucket, enter the amount, and pick a reason. Funds arrive within 24 hours.',
   },
   {
     id: 'retirement',

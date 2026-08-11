@@ -118,6 +118,51 @@ export function isLegZero(pct) {
 }
 
 /**
+ * WHERE EMPLOYER-FUNDED MONEY LANDS — 100% retirement, 0% liquid.
+ *
+ * A property of the RUN ENGINE, not of any member. Everything an employer's
+ * contribution settings fund goes to the member's RETIREMENT pot: both pension
+ * legs, including the employee leg (that leg is the member's own money, but the
+ * employer sets its rate and payroll deducts it — the member never chooses it,
+ * so it is not theirs to allocate either).
+ *
+ * ⚠️ THIS IS NOT A SCHEDULE DEFAULT. A member's own `contribution_schedules`
+ * split is a SEPARATE thing they own outright: it starts at
+ * `DEFAULT_SCHEDULE_SPLIT` (80/20, constants/savings.js), they may set it to
+ * 60/40 or 100/0 or anything else, and it governs only money they put in
+ * themselves — their scheduled contribution and Save-page top-ups. The two
+ * numbers must never be substituted for one another; that substitution IS the
+ * coupling this decoupling removed. An employer member on a 60/40 schedule still
+ * has every employer shilling land in retirement, and their own 60/40 still
+ * applies to their own money.
+ *
+ * The old employer-invite completion screen conflated them: it asked a sponsored
+ * member for a "split" that in practice only ever re-routed their employer's
+ * pension contribution, since they state no amount of their own at enrolment.
+ *
+ * ⚠️ PARITY: `submit_employer_contribution_run` (migration 0102) hard-codes this
+ * allocation, and `_mockSubmitEmployerRun` (services/employer.js) mirrors it for
+ * the offline path. No schedule row is ever written from this constant.
+ */
+export const EMPLOYER_FUNDED_SPLIT = Object.freeze({ retirementPct: 100, emergencyPct: 0 });
+
+/**
+ * Split one employer-run leg into its retirement / liquid amounts.
+ *
+ * Exists so the allocation is applied through ONE named function rather than an
+ * inline `× retPct / 100` at each posting site — an inline copy is exactly how
+ * the mock, the seed and the RPC drifted apart before (see the parity note at
+ * the top of this module).
+ *
+ * @param {number} leg whole shillings posted by an employer contribution run
+ * @returns {{retirement:number, emergency:number}}
+ */
+export function splitEmployerLeg(leg) {
+  const amount = Math.round(num(leg));
+  return { retirement: amount, emergency: 0 };
+}
+
+/**
  * Which sides are actually putting money in. Derived from the two percentages —
  * never stored. Drives the employer's "Who contributes?" setting, the funding
  * chip on the staff list, and anything else that branches on the shape of the

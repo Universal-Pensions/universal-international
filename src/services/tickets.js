@@ -22,6 +22,7 @@ import { IS_SUPABASE_ENABLED } from './api';
 import { AGENTS, SUBSCRIBERS } from '../data/mockData';
 import {
   TICKET_STATUS,
+  TICKET_PRIORITY,
   SENDER_ROLE,
   seedTickets,
 } from '../data/ticketsSeed.js';
@@ -239,6 +240,29 @@ export async function listTicketsForEmployer(employerId, { status } = {}) {
 }
 
 /**
+ * Platform-wide inbox for the ADMIN — every ticket from every channel
+ * (subscriber↔agent and employer↔platform), optionally narrowed.
+ *
+ * Distinct from `listTicketsForDistributor` only in intent, not in result: that
+ * function also returns everything, because there is no per-distributor
+ * partition of tickets to scope to. It exists separately because the admin has
+ * no `distributorId` claim, so calling the distributor read forced a `?? 'd-001'`
+ * fallback at the call site — code that reads as "the admin is looking at
+ * d-001's inbox" when it is really looking at all of them.
+ *
+ * @param {{ status?: string, branchId?: string, agentId?: string }} [opts]
+ * @returns {Promise<object[]>} TicketSummary[]
+ */
+export async function listTicketsForPlatform({ status, branchId, agentId } = {}) {
+  return summaries(
+    (t) =>
+      (branchId == null || t.branchId === branchId) &&
+      (agentId == null || t.agentId === agentId) &&
+      matchesStatus(t, status),
+  );
+}
+
+/**
  * Full thread for one ticket, with messages[] oldest → newest. Returns a fresh
  * clone (never the stored reference) or null if the ticket doesn't exist.
  * @param {string} ticketId
@@ -291,6 +315,10 @@ function computeMetrics(tickets) {
   let openCount = 0;
   let closedCount = 0;
   let unansweredCount = 0;
+  // Urgent-and-still-open. Drives the admin Needs-attention card's severity: one
+  // unanswered urgent complaint outranks eight routine ones, so volume alone is
+  // the wrong escalation signal. Additive — existing consumers ignore it.
+  let urgentOpenCount = 0;
 
   const firstResponseHours = [];
   const resolutionHours = [];
@@ -315,6 +343,7 @@ function computeMetrics(tickets) {
     const closed = t.status === TICKET_STATUS.CLOSED;
     if (open) openCount += 1;
     if (closed) closedCount += 1;
+    if (open && t.priority === TICKET_PRIORITY.URGENT) urgentOpenCount += 1;
 
     const unanswered = isUnanswered(t);
     if (unanswered) unansweredCount += 1;
@@ -346,8 +375,27 @@ function computeMetrics(tickets) {
     avgFirstResponseHours: mean(firstResponseHours),
     avgResolutionHours: mean(resolutionHours),
     unansweredCount,
+    urgentOpenCount,
     byAgent: Array.from(agentRows.values()),
   };
+}
+
+/**
+ * Platform-wide ticket metrics for the ADMIN — same TicketMetrics shape as the
+ * other oversight reads, folded over every ticket in the store.
+ *
+ * NOTE ON HONESTY: ticketing has no Supabase tables. This folds the in-memory
+ * session store (seeded from src/data/ticketsSeed.js), so the count is
+ * session-local and identical for every viewer, and resets on refresh. That is
+ * why the admin Needs-attention card labels this row "Open support threads"
+ * rather than making an SLA claim about it. The ACTION on the row is still real:
+ * notifying the assignee writes an actual `notifications` row (0097) keyed to a
+ * real agent or branch.
+ *
+ * @returns {Promise<object>} TicketMetrics (incl. urgentOpenCount)
+ */
+export async function getPlatformTicketMetrics() {
+  return computeMetrics(Array.from(store().values()));
 }
 
 /**

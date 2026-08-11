@@ -238,19 +238,58 @@ describe('finance utils', () => {
       expect(deriveInvestmentGrowth(null)).toEqual({ invested: 0, growth: 0, growthPct: 0 });
     });
 
-    it('discounts the balance so invested < balance and balance === invested + growth', () => {
+    it('reads the REAL cost basis rather than discounting the balance', () => {
       const { invested, growth, growthPct } = deriveInvestmentGrowth({
-        netBalance: 4410000, registeredDate: '2024-08-24', id: 'empe-002',
+        netBalance: 4410000, invested: 3900000,
       });
-      expect(invested).toBeGreaterThan(0);
-      expect(invested).toBeLessThan(4410000);     // there's a real "growth" story to tell
-      expect(invested + growth).toBe(4410000);    // internally coherent with the hero figure
-      expect(growthPct).toBeGreaterThan(0);
+      expect(invested).toBe(3900000);             // straight off the record
+      expect(growth).toBe(510000);
+      expect(invested + growth).toBe(4410000);    // coherent with the hero figure
+      expect(growthPct).toBeCloseTo(13.0769, 3);
     });
 
-    it('is deterministic across calls (no Math.random)', () => {
-      const sub = { netBalance: 2000000, registeredDate: '2025-01-01', id: 'x-1' };
-      expect(deriveInvestmentGrowth(sub)).toEqual(deriveInvestmentGrowth(sub));
+    // THE REPORTED BUG, ENCODED. A member who signed up and paid once has a
+    // balance equal to their basis. The old implementation floored tenure at 3
+    // months and discounted at 10%/yr, which is exactly +2.5% — for someone who
+    // had been invested for a single day. It must now be flat zero.
+    it('reports ZERO growth when nothing has grown yet', () => {
+      const today = new Date().toISOString().slice(0, 10);
+      const { invested, growth, growthPct } = deriveInvestmentGrowth({
+        netBalance: 50000, invested: 50000, registeredDate: today, id: 's-brand-new',
+      });
+      expect(invested).toBe(50000);
+      expect(growth).toBe(0);
+      expect(growthPct).toBe(0);
+    });
+
+    // Unit prices fall as well as rise; a loss must be representable.
+    it('reports a negative growth when the unit price has fallen', () => {
+      const { growth, growthPct } = deriveInvestmentGrowth({
+        netBalance: 95000, invested: 100000,
+      });
+      expect(growth).toBe(-5000);
+      expect(growthPct).toBeCloseTo(-5, 6);
+    });
+
+    // A stale cache or a pre-0103 fixture carries no basis. Report the balance as
+    // entirely principal — never fall back to inventing a growth figure.
+    it('never invents growth when the cost basis is missing or zero', () => {
+      for (const sub of [
+        { netBalance: 2000000 },
+        { netBalance: 2000000, invested: 0 },
+        { netBalance: 2000000, invested: null },
+        { netBalance: 2000000, invested: 'nonsense' },
+      ]) {
+        expect(deriveInvestmentGrowth(sub)).toEqual({
+          invested: 2000000, growth: 0, growthPct: 0,
+        });
+      }
+    });
+
+    it('does not vary with id or registration date (no synthetic tenure)', () => {
+      const a = deriveInvestmentGrowth({ netBalance: 2000000, invested: 1800000, id: 'x-1', registeredDate: '2021-01-01' });
+      const b = deriveInvestmentGrowth({ netBalance: 2000000, invested: 1800000, id: 'z-9', registeredDate: '2026-08-01' });
+      expect(a).toEqual(b);
     });
   });
 

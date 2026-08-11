@@ -1,0 +1,395 @@
+/* Public nominee claim page (/claim).
+ *
+ * Styled as a sibling of RequestAccess.module.css — same two-pane brand-rail +
+ * panel split, same field/input recipe — because they are the same KIND of
+ * surface: a public form from someone with no account.
+ *
+ * IT IS RESPONSIVE ALL THE WAY DOWN, which RequestAccess is not. That page sits
+ * inside LandingLayout and hands off to a separate *Mobile component below
+ * 768px; this route is registered OUTSIDE that group (like /signup), so this one
+ * file serves every viewport. That is deliberate: the audience here is
+ * overwhelmingly on a phone, and a bereavement form is the last place to
+ * maintain two divergent copies of the same eleven fields.
+ *
+ * NOT SET ANYWHERE: `overflow: hidden` on .page. This form is longer than a
+ * viewport by design — it has three grouped sections — so it is meant to
+ * scroll. Clipping it would trap users at 200% zoom or with auto-translate on.
+ */
+
+.page {
+  min-height: 100vh;
+  min-height: 100dvh;
+  background-color: var(--color-cloud);
+  background-image:
+    linear-gradient(to right, rgba(41, 40, 103, 0.045) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(41, 40, 103, 0.045) 1px, transparent 1px);
+  background-size: 54px 54px;
+  display: flex;
+}
+
+.shell {
+  display: grid;
+  grid-template-columns: minmax(300px, 0.8fr) minmax(520px, 1fr);
+  gap: 48px;
+  align-items: start;
+  width: 100%;
+  max-width: 1160px;
+  margin: 0 auto;
+  padding: 40px 24px;
+}
+
+/* ── Brand rail ───────────────────────────────────────────────────────────── */
+.rail {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  padding: 8px 0;
+  /* Sticks while the (long) form scrolls, so "we will call you" stays in view
+     rather than scrolling away from the person who needs the reassurance. */
+  position: sticky;
+  top: 40px;
+}
+
+.brand {
+  display: inline-flex;
+  align-items: center;
+  text-decoration: none;
+  align-self: flex-start;
+}
+.brand img { display: block; height: 34px; width: auto; }
+.brand:focus-visible {
+  outline: 2px solid var(--color-indigo);
+  outline-offset: 4px;
+  border-radius: 6px;
+}
+
+.eyebrow {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-indigo-soft);
+}
+
+.railTitle {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 2rem;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  line-height: 1.15;
+  color: var(--color-indigo);
+}
+
+.lede {
+  margin: 0;
+  font-size: 0.9375rem;
+  line-height: 1.6;
+  color: var(--color-gray);
+  max-width: 42ch;
+}
+
+.steps {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.steps li { display: flex; gap: 12px; align-items: flex-start; }
+
+.stepNum {
+  flex: none;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--color-indigo);
+  background: #fff;
+  border: 1px solid var(--color-lavender);
+}
+
+.stepText { display: flex; flex-direction: column; gap: 1px; }
+.stepText b {
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: var(--color-indigo);
+  line-height: 1.35;
+}
+.stepText span { font-size: 0.8125rem; color: var(--color-gray); line-height: 1.4; }
+
+/* The member's OWN hospital-cash claim is a different flow behind sign-in.
+   Saying so here stops a member landing in the bereavement form by mistake. */
+.railNote {
+  margin: 0;
+  font-size: 0.8125rem;
+  line-height: 1.5;
+  color: var(--color-gray);
+}
+.railNote a { color: var(--color-indigo); font-weight: 600; }
+
+/* ── Form panel ───────────────────────────────────────────────────────────── */
+.panel {
+  background: #fff;
+  border: 1px solid var(--color-lavender);
+  border-radius: 18px;
+  padding: 32px;
+  box-shadow: 0 18px 48px -32px rgba(41, 40, 103, 0.4);
+}
+
+.form { display: flex; flex-direction: column; gap: 26px; }
+
+.group {
+  border: none;
+  margin: 0;
+  padding: 0;
+  min-width: 0;
+}
+.group legend {
+  padding: 0;
+  margin-bottom: 14px;
+  font-family: var(--font-display);
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--color-indigo);
+}
+
+/* ── Product choice ───────────────────────────────────────────────────────── */
+.products {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.product {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  align-items: flex-start;
+  text-align: left;
+  padding: 14px 16px;
+  background: #fff;
+  border: 1.5px solid var(--color-lavender);
+  border-radius: 12px;
+  cursor: pointer;
+  font: inherit;
+  transition: border-color 160ms ease, background-color 160ms ease;
+}
+.product:hover { border-color: var(--color-indigo-soft); }
+.product[data-active='true'] {
+  border-color: var(--color-indigo);
+  background: color-mix(in srgb, var(--color-indigo) 4%, transparent);
+}
+.product:focus-visible {
+  outline: 2px solid var(--color-indigo);
+  outline-offset: 2px;
+}
+.product b {
+  font-family: var(--font-display);
+  font-size: 0.9375rem;
+  font-weight: 700;
+  color: var(--color-indigo);
+}
+.product span { font-size: 0.8125rem; line-height: 1.4; color: var(--color-gray); }
+
+/* ── Fields ───────────────────────────────────────────────────────────────── */
+.grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 18px 18px;
+}
+.wide { grid-column: 1 / -1; }
+
+.field { display: flex; flex-direction: column; min-width: 0; }
+.field label {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--color-indigo);
+  margin-bottom: 6px;
+}
+
+.field input,
+.field select,
+.field textarea {
+  width: 100%;
+  padding: 0 13px;
+  font-family: var(--font-body);
+  font-size: 0.9375rem;
+  color: var(--color-indigo);
+  background: #fff;
+  border: 1px solid var(--color-lavender);
+  border-radius: 10px;
+  transition: border-color 160ms ease, box-shadow 160ms ease;
+}
+.field input,
+.field select { height: 44px; }
+.field textarea {
+  padding: 11px 13px;
+  line-height: 1.5;
+  resize: vertical;
+}
+
+.field input::placeholder,
+.field textarea::placeholder { color: color-mix(in srgb, var(--color-gray) 65%, transparent); }
+
+.field input:focus-visible,
+.field select:focus-visible,
+.field textarea:focus-visible {
+  outline: none; /* replaced by the ring below */
+  border-color: var(--color-indigo);
+  box-shadow: 0 0 0 3px rgba(41, 40, 103, 0.14);
+}
+
+.field input[aria-invalid='true'],
+.field select[aria-invalid='true'],
+.field textarea[aria-invalid='true'] {
+  border-color: var(--color-status-poor, #c0392b);
+}
+.field input[aria-invalid='true']:focus-visible,
+.field select[aria-invalid='true']:focus-visible,
+.field textarea[aria-invalid='true']:focus-visible {
+  box-shadow: 0 0 0 3px rgba(192, 57, 43, 0.16);
+}
+
+.hint, .fieldErr {
+  font-size: 0.75rem;
+  line-height: 1.35;
+  margin-top: 5px;
+}
+.hint { color: var(--color-gray); }
+.fieldErr { color: var(--color-status-poor, #c0392b); font-weight: 500; }
+
+.formErr {
+  margin: 0;
+  padding: 12px 14px;
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--color-status-poor, #c0392b) 8%, transparent);
+  border: 1px solid color-mix(in srgb, var(--color-status-poor, #c0392b) 30%, transparent);
+  font-size: 0.875rem;
+  line-height: 1.5;
+  color: color-mix(in srgb, var(--color-status-poor, #c0392b) 78%, #000);
+}
+
+.submit {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 48px;
+  padding: 0 22px;
+  font-family: var(--font-body);
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: #fff;
+  background: var(--color-indigo);
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: background-color 160ms ease, opacity 160ms ease;
+}
+.submit:hover:not(:disabled) { background: var(--color-indigo-deep); }
+.submit:disabled { opacity: 0.6; cursor: default; }
+.submit:focus-visible { outline: 2px solid var(--color-indigo); outline-offset: 3px; }
+
+.legal {
+  margin: 0;
+  font-size: 0.75rem;
+  line-height: 1.5;
+  color: var(--color-gray);
+}
+
+/* ── Success ──────────────────────────────────────────────────────────────── */
+.done {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 14px;
+}
+.done:focus-visible { outline: none; }
+.done h2 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 1.5rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: var(--color-indigo);
+}
+.done p {
+  margin: 0;
+  font-size: 0.9375rem;
+  line-height: 1.6;
+  color: var(--color-gray);
+}
+.done p b { color: var(--color-indigo); }
+
+.doneIcon {
+  width: 46px;
+  height: 46px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  color: var(--color-green);
+  background: color-mix(in srgb, var(--color-green) 12%, transparent);
+}
+
+/* The one thing they must keep. Given its own block, monospaced and selectable,
+   so it can be read down a phone or copied. */
+.reference {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  width: 100%;
+  padding: 14px 16px;
+  border-radius: 12px;
+  background: var(--color-cloud);
+  border: 1px dashed var(--color-lavender);
+}
+.reference span {
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--color-gray);
+}
+.reference b {
+  font-family: var(--font-display);
+  font-size: 1.375rem;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  color: var(--color-indigo);
+  user-select: all;
+}
+
+.doneNote { font-size: 0.8125rem !important; }
+
+.doneLink {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--color-indigo);
+}
+
+/* ── Narrow ───────────────────────────────────────────────────────────────── */
+@media (max-width: 900px) {
+  .shell {
+    grid-template-columns: 1fr;
+    gap: 28px;
+    padding: 28px 18px;
+  }
+  /* Sticky only makes sense beside the form, not above it. */
+  .rail { position: static; gap: 18px; }
+  .railTitle { font-size: 1.625rem; }
+  /* The three-step strip is reassurance, not instruction — on a phone it pushes
+     the first field below the fold, so the lede carries the message instead. */
+  .steps { display: none; }
+  .panel { padding: 22px 18px; }
+}
+
+@media (max-width: 560px) {
+  .grid { grid-template-columns: 1fr; }
+  .products { grid-template-columns: 1fr; }
+}

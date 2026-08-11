@@ -1,0 +1,134 @@
+/* Notify composer — shared by the desktop <Modal> and the mobile <BottomSheet>
+   wrappers, so it styles only its own contents and never the container. */
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+/* ── Recipient ───────────────────────────────────────────────────────────── */
+.to {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2, 0.5rem);
+  flex-wrap: wrap;
+}
+.toLabel {
+  font-size: var(--text-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-weight: 700;
+  color: var(--color-gray);
+}
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 11px;
+  border-radius: var(--radius-full);
+  background: color-mix(in srgb, var(--color-indigo) 8%, #fff);
+  border: 1px solid var(--color-lavender);
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: var(--text-sm, 14px);
+  color: var(--color-indigo);
+}
+.chipRole {
+  font-family: var(--font-body);
+  font-weight: 600;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--color-gray);
+}
+
+/* What this is about — the row being escalated. */
+.re {
+  font-size: var(--text-sm, 14px);
+  line-height: 1.4;
+  color: var(--color-slate);
+  padding: var(--space-3);
+  background: var(--color-cloud);
+  border-radius: var(--radius-md);
+}
+
+/* ── Message ─────────────────────────────────────────────────────────────── */
+.label {
+  font-size: var(--text-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-weight: 700;
+  color: var(--color-gray);
+}
+.textarea {
+  width: 100%;
+  /* 16px floor: anything smaller triggers iOS Safari's zoom-on-focus. */
+  font: inherit;
+  font-size: 16px;
+  line-height: 1.5;
+  color: var(--color-slate);
+  padding: var(--space-3);
+  border: 1px solid var(--color-lavender);
+  border-radius: var(--radius-md);
+  background: #fff;
+  resize: vertical;
+  min-height: 120px;
+}
+.textarea:focus-visible {
+  outline: 2px solid var(--color-indigo-soft);
+  outline-offset: 1px;
+  border-color: var(--color-indigo-soft);
+}
+
+.note {
+  font-size: var(--text-xs);
+  line-height: 1.4;
+  color: var(--color-gray);
+  margin: 0;
+}
+
+/* ── Actions ─────────────────────────────────────────────────────────────── */
+.actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-3);
+  margin-top: var(--space-2, 0.5rem);
+}
+
+.ghost,
+.primary {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: var(--text-sm, 14px);
+  padding: 10px 18px;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  /* Never `transition: all` (CLAUDE.md §5.4). */
+  transition: background-color 0.15s ease, border-color 0.15s ease, opacity 0.15s ease;
+}
+.ghost {
+  background: transparent;
+  border: 1px solid var(--color-lavender);
+  color: var(--color-slate);
+}
+.ghost:hover:not(:disabled) { background: var(--color-cloud); }
+
+.primary {
+  background: var(--color-indigo);
+  border: 1px solid var(--color-indigo);
+  color: #fff;
+}
+.primary:hover:not(:disabled) { background: var(--color-indigo-soft); border-color: var(--color-indigo-soft); }
+
+.ghost:disabled,
+.primary:disabled { opacity: 0.55; cursor: not-allowed; }
+
+.ghost:focus-visible,
+.primary:focus-visible { outline: 2px solid var(--color-indigo-soft); outline-offset: 2px; }
+
+/* Stack the actions full-width on a phone so both are comfortable thumb targets. */
+@media (max-width: 640px) {
+  .actions { flex-direction: column-reverse; }
+  .ghost, .primary { width: 100%; padding: 13px 18px; }
+}
