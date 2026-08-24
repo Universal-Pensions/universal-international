@@ -545,3 +545,55 @@ Consequently NOT done, and deliberately so:
 | A25-001: treat all 30 e2e failures as product defects | 12 are test brittleness (A10-003) and 1 is a true flake (A25-013). Following it verbatim routes 14 of 30 to the wrong owner. | ledger routing table |
 | A24-001: "drop `noopener`" | `noreferrer` implies noopener per the HTML spec, so the Critical would ship unfixed. The third argument must go entirely. | Phase 1 |
 | A26-013 fix text in `DOC-CORRECTIONS.md` | Predates the endpoint fix and still says "pings /healthz" — applying it verbatim re-introduces A09-001. | commit `37c9303` |
+
+---
+
+# Phase 1 — status (2026-08-25)
+
+All seven agents complete. Full unit suite after integration: **144 files / 2,066 tests, all
+passing.**
+
+| Agent | Findings | Outcome |
+|---|---|---|
+| `P1-settlement-tenancy` | A05-001, A05-011 | 0109 authored + proven under BEGIN/ROLLBACK. Exploit reproduced live then blocked. Down-migration captured from live and byte-verified. **Not yet applied.** |
+| `P1-onboard-nin` | A11-002 | Closed. Verified by two consecutive live onboardings with no DB reset. Closes 1 allowlist row (chromium). |
+| `P1-certificate` | A24-001, A24-007 | Closed. Tests proven to fail on the original bugs by temporary revert. |
+| `P1-cache-bleed` | A22-001 | Closed. Source-order test added because React 18 batching makes the orderings behaviourally identical. |
+| `P1-employer-money` | A14-001 (+ part of A14-003) | Closed. One source across Overview / Runs / Analytics. |
+| `P1-agent-commissions` | A05-002/A11-001, A05-010 | Closed by relabelling; rationale recorded. |
+| `P1-webkit` | 4 unowned allowlist rows | **Diagnosed, not fixed.** All four are test artefacts, no demo impact. See `a25/webkit-diagnosis.md`. |
+
+## Corrections to the audit found in Phase 1
+
+| Claim | Reality |
+|---|---|
+| A24-001: "drop `noopener`" | `noreferrer` implies noopener; the Critical would ship unfixed. Third argument removed entirely. |
+| A05-001 client half: pre-block rows absent from `pendingMap` | `pendingMap` lists only agents with dues *now*, so this refuses a distributor's own already-settled agents. Uses the union with the caller's scoped roster instead. |
+| A14-001: sum `contribution_runs` headers | Header sums do not self-heal after Phase 2 deletes transaction ROWS. Row-level source used instead. |
+| A25-013: `modal-escape` is "the ONLY true flake" | `map-drill:250` is flaky too — chromium fails it 2 of 5 runs with the identical error. Phase 7 scope needs updating. |
+| A25-004: ~19 fire-and-forget deletes | 22. |
+| A05-003: three orphan E2E batches | Five. |
+| A05-008: one mis-stamped seed batch | Both are mis-stamped. |
+
+## Migration numbering — amended
+
+The plan allocated no numbers to Phase 0, but `P0-e2e-fixtures` needs one for A04-010's atomic
+cleanup RPC. It takes **0113**, so **Phase 3 now starts at 0114** (its range had 13 slots for
+~8 migrations, so there is slack).
+
+| Phase | Range |
+|---|---|
+| 1 | `0109` |
+| 2 | `0110`–`0112` |
+| 0 (late) | `0113` |
+| 3 | `0114`–`0125` |
+| 4 | `0126`–`0128` |
+| 6 | `0129`–`0130` |
+
+## Phase 2 — authored, dry-run proven, NOT APPLIED
+
+`0110`, `0111`, `0112` plus `supabase/recovery/0110_unpurge.sql`, all verified end-to-end against
+a scratch PostgreSQL 18 restored from a live dump. On that restore: 0 residue rows, 0 orphan
+batches, reconciliation down to only the 3 intended `t-demo-recon-*` fixtures, 5,059/5,059
+balances satisfying all three live invariants, 0 NaN, 0 negative, 1 live employer invite.
+Purge→unpurge round trip returns AUM to 2,450,226,487 exactly.
