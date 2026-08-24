@@ -72,6 +72,55 @@ ROLLBACK;
 - **`units` is the ledger.** With NAV pricing live, `units` is what the member actually owns.
   NaN units means the member's holding no longer has a value at all.
 
+## ⚠️ CORRECTION (2026-08-25) — the fix this note originally recommended DOES NOT WORK
+
+**This section originally said to use `NOT (p_amount > 0)`, "which rejects NaN where
+`p_amount <= 0` does not". That is FALSE.** `P3-money-validator` caught it while implementing
+`0114`; re-measured against live:
+
+```sql
+select 'NaN'::numeric > 0              as nan_gt_zero,          -- t
+       not('NaN'::numeric > 0)         as the_recommended_guard, -- f   <-- DOES NOT FIRE
+       'NaN'::numeric <= 0             as the_original_bug,      -- f
+       'NaN'::numeric = 'NaN'::numeric as nan_eq_nan_numeric,    -- t   <-- unlike float8 intuition
+       ('NaN'::numeric >= 0 and 'NaN'::numeric < 'Infinity'::numeric) as the_working_form; -- f
+```
+
+Because NaN sorts **above** every numeric, `NaN > 0` is **TRUE**, so `NOT (NaN > 0)` is **FALSE**
+and the guard never fires. It is exactly as broken as the `<= 0` it was meant to replace, just
+spelled differently. Anyone who copied it would have shipped a Critical marked fixed.
+
+The error came from carrying IEEE-754 float intuition into `numeric`. In float8 every NaN
+comparison is false; in `numeric` NaN is ordered, and `NaN = NaN` is **TRUE**.
+
+### What actually works
+
+**In a guard, test explicitly** — do not rely on any inequality:
+
+```sql
+IF p_value = 'NaN'::numeric
+   OR p_value = 'Infinity'::numeric
+   OR p_value = '-Infinity'::numeric THEN
+  RAISE EXCEPTION '% must be a real number (got %)', p_label, p_value;
+END IF;
+```
+
+**In a CHECK constraint, bound it from above** — the upper bound is what rejects NaN, +Inf and
+-Inf in one expression:
+
+```sql
+CHECK (col >= 0 AND col < 'Infinity'::numeric)
+```
+
+**Do NOT use `CHECK (col = col)` as a NaN trap.** A04-001's own suggested_fix proposes it. It
+works for `float8` and is useless for `numeric`, where `NaN = NaN` is TRUE.
+
+`0114` ships this as one shared `public.assert_finite_money(...)` called by
+`make_contribution`, `request_withdrawal` and `submit_employer_contribution_run`, so the three
+cannot drift apart.
+
+---
+
 ## What the fix must handle
 
 A patch that only checks `p_amount <= 0` more carefully is not enough. The guard must
