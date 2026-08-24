@@ -489,3 +489,59 @@ The ledger's evidence column carries the report's literal no-action quote for
 | `A24-008` | info | KEEP | xlsx security assessment — clean (no advisory, integrity-pinned, formula injection on write NOT reachable), with one bounded main-thread DoS caveat |
 | `A24-010` | info | REFUTED | Transient PostgREST 25P02 500s observed mid-audit — hypothesis actively REFUTED, not a product defect |
 
+
+---
+
+# Phase 0 — decision record
+
+Written by the integrator. Dated 2026-08-25.
+
+## Live infrastructure actions taken
+
+| Action | Finding | Result |
+|---|---|---|
+| Paused Supabase project `zengmiugieqjqzaccbqe` ("Uganda dashboard (inactive)", Tokyo) | A09-015 | **DONE.** Verified `status: PAUSING`. Pinned by ref, not name — the live project is confusingly called "Pension dashbaord" (typo) and asserting `target != ilkhfnoyxlxwqadebnkp` was a required pre-check. Last write to the Tokyo project was 2026-06-03, immediately before the 2026-06-05 Singapore cutover, so it held nothing needed. **Paused, not deleted** — the data is retained and the project is restorable. |
+
+## `P0-e2e-detach` — WON'T DO (user decision, 2026-08-25)
+
+The plan called for a dedicated Supabase project so the E2E suite would stop writing to the live
+demo database. **The user decided against creating one**, on the reasoning that E2E is only tests
+and is not required for the platform to function.
+
+This is a defensible call, because **the leak was fixed at its source** rather than merely
+contained:
+
+- `P0-e2e-teardown` fixed the actual ordering bug (A06-002) — cleanup was deleting the
+  `contribution_runs` header before the transactions referencing it, and the FK is
+  `ON DELETE SET NULL`, which is precisely how 1,824 rows became unrecoverable.
+- 22 fire-and-forget deletes now assert, so a failed cleanup fails the run instead of leaking.
+- `P0-e2e-fixtures` adds the `globalTeardown` leak sweep that fails the run on anything the
+  suite leaves behind.
+
+**Residual risk, stated plainly:** the suite still reads and writes the live database during a
+run. It now cleans up after itself correctly and fails loudly if it does not, but a separate
+project would have been the stronger guarantee. Revisit if CI runs ever become frequent.
+
+Consequently NOT done, and deliberately so:
+- no new project, no fixture seeding, no CI secrets rotation
+- the failure allowlist was **not** re-captured against a new project — it stays frozen against
+  the live-backed baseline, which is what `scripts/e2e-delta.mjs` gates on
+
+## Sandbox-blocked
+
+| Item | Status |
+|---|---|
+| `mcp__supabase__confirm_cost` / `create_project` | Blocked by the environment's classifier on both attempts. Moot given the decision above. |
+| Vercel deployment history | Vercel MCP token expired and the `vercel` CLI is not installed, so the plan's "~17 prior production deploys retained" claim could NOT be verified. Recorded as **UNVERIFIED** in `docs/rollback.md` rather than repeated as fact. |
+
+## Corrections to the plan found while executing Phase 0
+
+| Plan said | Reality | Where recorded |
+|---|---|---|
+| Purge residue by joining `contribution_runs` for CI-window provenance | Matches **57 of 1,881** rows. The other 1,824 have a NULL run link — that is what the leak did to them. Use the frozen 33-ref `txn_ref IN (…)` list. | `a04/phase2-emp-predicate.md` |
+| Migrations ≤0028 are forward-only | True as an upper bound, but not of every file in the range — 0016 and 0022–0026 do have downs. 22 files lack one. | `docs/rollback.md` |
+| Restore drill into a Postgres 17 container | Docker unavailable. Used a scratch PostgreSQL 18 cluster; 17→18 restore is forward-compatible. **Also found: a `--schema=public` dump has no `auth` schema, so 108 RLS policies silently fail to restore — a half-restore that looks complete.** | `a25/restore-drill.md` |
+| ~19 fire-and-forget deletes | 22, across the same 8 files. | commit `8c2ddca` |
+| A25-001: treat all 30 e2e failures as product defects | 12 are test brittleness (A10-003) and 1 is a true flake (A25-013). Following it verbatim routes 14 of 30 to the wrong owner. | ledger routing table |
+| A24-001: "drop `noopener`" | `noreferrer` implies noopener per the HTML spec, so the Critical would ship unfixed. The third argument must go entirely. | Phase 1 |
+| A26-013 fix text in `DOC-CORRECTIONS.md` | Predates the endpoint fix and still says "pings /healthz" — applying it verbatim re-introduces A09-001. | commit `37c9303` |
