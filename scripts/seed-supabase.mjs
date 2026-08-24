@@ -1191,8 +1191,15 @@ async function main() {
     // commissions reconcile exactly by construction, whatever the random seed's
     // per-agent commission distribution turns out to be.
     const settlementSeeds = [
-      { id: 'sb-seed-0001', agentId: 'a-001', branchId: 'b-kam-015', txnRef: 'MM-SEED-0001', paidDate: '2026-05-15', targetLines: 9 },
-      { id: 'sb-seed-0002', agentId: 'a-042', branchId: 'b-mba-290', txnRef: 'MM-SEED-0002', paidDate: '2026-05-22', targetLines: 5 },
+      // A05-008: branchId is DERIVED from the agent, never hardcoded. Hardcoding
+      // it stamped both seeded batches with a branch that did not earn them
+      // (sb-seed-0001 -> b-kam-015 when a-001 is in b-bui-001; sb-seed-0002 ->
+      // b-mba-290 when a-042 is in b-buv-007). settlement_batches RLS scopes by
+      // branch_id, so each payout was routed to the wrong branch dashboard and
+      // never reached the right one. The live apply_settlement derives it from
+      // the agent (0032:174); this now matches.
+      { id: 'sb-seed-0001', agentId: 'a-001', txnRef: 'MM-SEED-0001', paidDate: '2026-05-15', targetLines: 9 },
+      { id: 'sb-seed-0002', agentId: 'a-042', txnRef: 'MM-SEED-0002', paidDate: '2026-05-22', targetLines: 5 },
     ];
     // Per-commission paid override, keyed by commission id → { paidDate, txnRef }.
     const settlementFlips = new Map();
@@ -1225,10 +1232,21 @@ async function main() {
         settlementFlips.set(c.id, { paidDate, txnRef: seed.txnRef });
         paidAmount += c.amount ?? 0;
       }
+      // A05-008: derive the branch from the agent, exactly as the live
+      // apply_settlement does (0032:174). Fail loudly rather than seed a
+      // mis-stamped batch — a silently wrong branch is what caused the demo
+      // persona to be shown a payout its own ledger denied.
+      const seedAgent = agents.find((a) => a.id === seed.agentId);
+      if (!seedAgent?.branchId) {
+        throw new Error(
+          `settlementSeeds: agent ${seed.agentId} not found or has no branchId; ` +
+          'cannot derive the settlement batch branch (A05-008).'
+        );
+      }
       seedBatches.push({
         id: seed.id,
         agentId: seed.agentId,
-        branchId: seed.branchId,
+        branchId: seedAgent.branchId,
         // pending_total == paid_amount: the batch settles exactly the lines it
         // flipped (no partial-pay / overpay in the seed).
         pendingTotal: paidAmount,
