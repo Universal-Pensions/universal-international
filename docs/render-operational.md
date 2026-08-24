@@ -2,7 +2,7 @@
 
 # Render Operational Notes
 
-Operational runbook for the `uganda-dashboard-api` service on Render (free tier, Singapore region). Authored during Phase 3 of the Render migration; see `/Users/shubhang/.claude/plans/dynamic-sparking-kite.md` for the full plan and `/Users/shubhang/Desktop/renderaudit-findings.md` for the underlying audit findings (B6, B7, B14, B15, B21, G5, G14, G15, G41, G59, G60, G61, G62, G63, G64, N27).
+Operational runbook for the `uganda-dashboard-api` service on Render (free tier, Singapore region). Authored during Phase 3 of the Render migration. The plan doc and pre-audit findings file this line used to cite (`~/.claude/plans/dynamic-sparking-kite.md`, `~/Desktop/renderaudit-findings.md`) no longer exist on disk (audit A26-013); for current audit records see `docs/audits/2026-08-23/` (`findings.json` plus the long-form `09-infra-deploy.md`, `21-performance.md`, `26-documentation.md`) (B6, B7, B14, B15, B21, G5, G14, G15, G41, G59, G60, G61, G62, G63, G64, N27).
 
 ---
 
@@ -11,7 +11,7 @@ Operational runbook for the `uganda-dashboard-api` service on Render (free tier,
 - **Frontend:** Vercel (Vite + React SPA) — `uganda-dashboard-*.vercel.app`.
 - **Backend:** Render web service (Node 22, Express 5) — `uganda-dashboard-api.onrender.com` (hostname confirmed after service creation).
 - **Database:** Supabase (`ap-southeast-1`, **Singapore** — new project, cutover **2026-06-05**; was `ap-northeast-1` Tokyo before). Render is also in Singapore, so backend and Postgres are now **co-located in the same region** (intra-region RTT, ~1–5ms).
-- **Wake:** GHA cron (14 min) + cron-job.org/UptimeRobot (5 min backup) + frontend `useWarmup()` ping.
+- **Wake:** GHA cron pings `/readyz` every 10 min **as configured** — real-world scheduler jitter widens the *measured* median gap to ~35 min (max observed ~103–114 min); see "Free-tier Resource Caps" below and **open finding A09-007 (unowned)** — + cron-job.org/UptimeRobot (5 min backup) + frontend `useWarmup()` ping.
 
 ---
 
@@ -35,7 +35,7 @@ Before the first post-cutover manual deploy, confirm:
 1. **Render tracks `main` (BL-7).** `render.yaml:19` is now `branch: main` (was `cleanup/post-audit-2026-05-26`). Confirm in the Render dashboard that the service's tracked branch is `main`, otherwise "Deploy latest commit" ships the stale branch. Keep `autoDeployTrigger: off`.
 2. **Live DB schema applied first, ledger NOT pushed blindly (BL-6).** Apply schema to live via the Supabase MCP path (`mcp__supabase__apply_migration` / `execute_sql`), **not** `supabase db push` — the live `schema_migrations` ledger is missing 6 local migrations (`0022`/`0023`/`0024`/`0025`/`0027`/`0028`) whose effects are already applied, and `0003`/`0006`/`0010`/`0025` contain non-idempotent statements that would error on a blind re-push. See `BACKEND.md §16 → "Migration-ledger drift"`. Take and verify a full backup before touching the live ledger (pairs with the lossy `0029.down.sql` gate).
 3. **Sequence:** DB schema apply → verify → Vercel frontend + Render backend deploy (DB contract first).
-4. **Re-enable the gated settlement E2E.** After applying `0032`, remove the `describe.fixme`/`skip` on `e2e/specs/flows/distributor-apply-settlement.spec.ts` (and the per-line 0032-only `test.fixme`s inside) and re-run e2e — the spec is gated until the two-arg `apply_settlement(p_rows, p_nonce)` is live.
+4. **Re-enable the gated settlement E2E — DONE at cutover, one item still open.** The outer `describe.fixme`/`skip` on `e2e/specs/flows/distributor-apply-settlement.spec.ts` was removed once `0032` went live (2026-06-05); that file is the canonical live E2E coverage for the settlement path (audit A26-013 confirmed this against the current tree 2026-08-23). **Open TODO, not migration-gated:** one `test.fixme` still stands at `distributor-apply-settlement.spec.ts:426` — the nonce-idempotency assertion ("re-submitting the same upload nonce records no second batch") has a placeholder body (`expect(true).toBe(true)`) because the UI replay vehicle isn't wired yet, not because `0032` is missing. Enable it once a real replay path exists (a second confirm against a reopened modal carrying the same nonce, or a service-level replay with the captured nonce), asserting `settlement_batches` gains exactly one row across both submits.
 
 ---
 
@@ -53,7 +53,7 @@ Between step 2 and 3 there's a **30–60s window of 502s** as the old container 
 
 ## Free-tier Resource Caps (N27)
 
-- **Instance hours:** 750/month free. The 14-min GHA keepalive keeps the service warm for ~720h/mo — under the cap with headroom.
+- **Instance hours:** 750/month free. The GHA keepalive is **configured** for `*/10 * * * *` (10 min, not 14) — if it fired exactly on schedule that would keep the service continuously warm (~720h/mo, under the cap with headroom). In practice, GitHub Actions cron jitter means the **measured** median gap between runs is ~35 min (max observed ~103–114 min across two audit samples), well past Render's 15-min free-tier spin-down window — yet the service has shown an unbroken memory series with no observed spin-down, so something beyond the GHA cron alone (real demo traffic, the frontend `useWarmup()` ping) appears to be the thing actually keeping it warm. The gap between the configured and measured cadence is tracked as **open finding A09-007 (unowned)** — treat "~720h/mo" as a configured-case estimate, not a verified one.
 - **Memory:** 512MB ceiling. The current handler set + Express + Supabase client stays well under this in normal use; sustained spikes above ~400MB RSS suggest a leak (see "Silent-failure modes" below).
 - **CPU:** shared (0.1 vCPU). Password hashing uses pure-JS **`bcryptjs`** (cost 10) via the async API in `api/auth/_lib/password.ts` — a native `bcrypt` swap was considered (audit B17) but **not adopted**; the event-loop exposure is mitigated by the async hashing + rate limiters on the credential routes rather than a native binding.
 
@@ -172,11 +172,11 @@ The Vercel project no longer holds this secret post-migration; nothing to update
 
 | Metric | Free-tier cap | Actual demo workload | Headroom |
 |---|---|---|---|
-| Instance hours | 750/month | ~720/mo (14-min keepalive + 24/7 wake) | ~30h/mo |
+| Instance hours | 750/month | ~720/mo *configured* (10-min keepalive + 24/7 wake) — measured cadence drifts well past this; see "Free-tier Resource Caps" above and open finding A09-007 | ~30h/mo, **unverified** |
 | Bandwidth | 100 GB/month | ~250KB per demo session × ~1000 demos/mo ≈ 250 MB/mo | ~99.7 GB |
 | Build minutes | 500/month | ~3 min cold deploy, ~2 min cached (N41) | Routine deploys far under cap |
 
-The keepalive is sized to stay just under the 750h cap; the bandwidth cap is effectively unbounded for the demo workload. Build cache (keyed by `package-lock.json` hash) cuts routine deploy time from ~5–7 min cold to ~2–3 min cached (N41).
+The keepalive is **configured** to stay just under the 750h cap; its measured cadence drifts well past that design margin (open finding A09-007, unowned — see "Free-tier Resource Caps" above), so the ~30h/mo instance-hour headroom is a configured-case estimate, not a verified one. The bandwidth cap is effectively unbounded for the demo workload. Build cache (keyed by `package-lock.json` hash) cuts routine deploy time from ~5–7 min cold to ~2–3 min cached (N41).
 
 ---
 
