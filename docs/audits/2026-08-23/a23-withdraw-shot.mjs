@@ -1,0 +1,10 @@
+import { chromium } from '@playwright/test';
+const STATE = '/Users/shubhang/Desktop/Projects/uganda-dashboard/e2e/.auth/subscriber.json';
+const b = await chromium.launch();
+const ctx = await b.newContext({ storageState: STATE, timezoneId: 'Africa/Kampala', viewport: { width: 1440, height: 950 } });
+const p = await ctx.newPage();
+await p.goto('http://localhost:5173/dashboard/withdraw/savings', { waitUntil: 'domcontentloaded' });
+await p.waitForTimeout(7000);
+await p.screenshot({ path: '/Users/shubhang/Desktop/Projects/uganda-dashboard/docs/audits/2026-08-23/a23-withdraw-naming.png' });
+console.log('shot written');
+await b.close();

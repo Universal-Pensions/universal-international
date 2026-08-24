@@ -1,0 +1,17 @@
+{
+  "role": "public",
+  "route": "/employers",
+  "project": "mobile-chromium",
+  "url": "http://localhost:5173/employers",
+  "violations": [
+    {
+      "id": "color-contrast",
+      "impact": "serious",
+      "help": "Elements must meet minimum color contrast ratio thresholds",
+      "nodes": 1,
+      "targets": [
+        "._qav_1wyx1_793"
+      ]
+    }
+  ]
+}

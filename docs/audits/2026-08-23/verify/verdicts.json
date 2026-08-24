@@ -1,0 +1,520 @@
+{
+ "A24-001": {
+  "id": "A24-001",
+  "verdict": "CONFIRMED",
+  "severityWas": "critical",
+  "severityShouldBe": "critical",
+  "reason": "Reproduced from a clean state and end-to-end in the live UI. Root cause is real: src/signup/contribution/insurancePolicyCertificate.js:436 calls window.open('', '_blank', 'noopener,noreferrer') then `if (!win) return false`; per the HTML spec a noopener feature string makes window.open() return null, so openPolicyCertificate() always returns false and never writes the certificate. Both callers (PoliciesPage.jsx:225 toast, ActivatedStep.jsx:65 alert) hit the failure path unconditionally. NOT demo-scope (the certificate is a real client-generated HTML document, not a listed mock; brief says report anything that makes a live demo visibly fail). NOT guarded (both routes demo-reachable for s-0001). A prominent 'Download certificate' button on a headline insurance feature yields a blank tab + a false 'allow pop-ups' error, deterministically on chromium and webkit, every viewport, since 2026-05-25.",
+  "evidence": "$ node docs/audits/2026-08-23/a24-winopen-probe.mjs\nchromium {\"withNoopener\":\"NULL\",\"withoutFeatures\":\"window\",\"sameOriginWrite\":\"OK\",\"popupOrigin\":\"http://localhost:5173\",\"canReadOpenerLocalStorage\":\"yes\"}\nwebkit {\"withNoopener\":\"NULL\",\"withoutFeatures\":\"window\",...}\n\n$ node docs/audits/2026-08-23/a24-cert-e2e.mjs  (subscriber s-0001, /dashboard/policies)\ncertificate buttons found: 3\npopups opened: 1\ntoast present: true -> Please allow pop-ups for this site, then try again to open your certificate.\n\nsrc/.../insurancePolicyCertificate.js:436: const win = window.open('', '_blank', 'noopener,noreferrer'); if (!win) return false;\nsrc/subscriber-dashboard/pages/PoliciesPage.jsx:239: if (!ok) addToast('error', 'Please allow pop-ups...');\nsrc/signup/steps/ActivatedStep.jsx:80: if (!ok) window.alert('Please allow pop-ups...');"
+ },
+ "A24-002": {
+  "id": "A24-002",
+  "verdict": "CONFIRMED",
+  "severityWas": "medium",
+  "severityShouldBe": "low",
+  "reason": "All three technical claims verified: (1) header key is Content-Security-Policy-Report-Only so it blocks nothing; (2) no report-uri/report-to directive so it collects nothing; (3) style-src 'self' 'unsafe-inline' + font-src 'self' + script-src 'self' (no 'unsafe-hashes') all contradict the index.html Google Fonts link (fonts.googleapis.com stylesheet, fonts.gstatic.com faces, inline onload attribute). Facts fully CONFIRMED. Severity is generous: as a report-only header it has zero current user-visible effect (author concedes 'immediate risk is nil'); harm only materialises if someone flips it to enforcing. Reads closer to low than medium, but it is a defensible latent-trap medium; noting severityShouldBe=low as an observation, not a hard downgrade.",
+  "evidence": "$ grep -n 'Content-Security' vercel.json\n11: {\"key\": \"Content-Security-Policy-Report-Only\", \"value\": \"default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; ... font-src 'self'; ...\"}  (no report-uri, no report-to)\n$ sed -n '38p' index.html\n<link href=\"https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans...&family=Inter...\" rel=\"stylesheet\" media=\"print\" onload=\"this.media='all'\" />"
+ },
+ "A24-003": {
+  "id": "A24-003",
+  "verdict": "CONFIRMED",
+  "severityWas": "low",
+  "severityShouldBe": "low",
+  "reason": "Verified anon has no EXECUTE on current_distributor_id() while table-level SELECT is granted to anon on branches/distributors/notifications, so a Postgres OR-evaluation of the permissive SELECT policies hard-errors. Reproduced the live error via BEGIN...ROLLBACK (no commit): anon SELECT on branches errors 'permission denied for function current_distributor_id' while districts returns 136. Correctly rated low (logged-out app makes zero Supabase calls today; latent trap only).",
+  "evidence": "$ psql -At -c \"has_function_privilege ... current_distributor_id() EXECUTE\"\nauthenticated|t\nanon|f\nservice_role|t\n$ psql (BEGIN; SET LOCAL ROLE anon; SELECT count(*) FROM branches; ROLLBACK)\nERROR:  permission denied for function current_distributor_id\n$ ... SELECT count(*) FROM districts;  -> 136"
+ },
+ "A24-011": {
+  "id": "A24-011",
+  "verdict": "CONFIRMED",
+  "severityWas": "low",
+  "severityShouldBe": "low",
+  "reason": "Verified package.json:59 declares xlsx as the cdn.sheetjs.com tarball URL and package-lock.json pins resolved to that same CDN URL with a sha512 integrity hash. Availability (not tampering) concern for every npm ci build/CI/deploy. Accurate; correctly rated low.",
+  "evidence": "$ grep -n '\"xlsx\"' package.json\n59:    \"xlsx\": \"https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz\"\nlock node_modules/xlsx: version 0.20.3, resolved https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz, integrity sha512-oLDq3jw7...=="
+ },
+ "A24-005": {
+  "id": "A24-005",
+  "verdict": "CONFIRMED",
+  "severityWas": "low",
+  "severityShouldBe": "low",
+  "reason": "Verified @sentry/react ^10.57.0 is in devDependencies and absent from dependencies, yet src/main.jsx:6 statically imports it in production runtime code (and ErrorBoundary.jsx:20 dynamic-imports it). Real dependency-classification defect; correctly rated low.",
+  "evidence": "$ python3 (package.json): deps @sentry/react: None ; devDeps @sentry/react: ^10.57.0\n$ grep -rn '@sentry/react' src/main.jsx src/components/ErrorBoundary.jsx\nsrc/main.jsx:6:import * as Sentry from '@sentry/react';\nsrc/components/ErrorBoundary.jsx:20:      import('@sentry/react').then((Sentry) =>"
+ },
+ "A03-001": {
+  "id": "A03-001",
+  "verdict": "CONFIRMED",
+  "reason": "Reproduced end-to-end in a rolled-back transaction. The author's write repro was classifier-blocked (confidence 'plausible'); I executed it and it is deterministic \u2014 confidence should be upgraded to 'confirmed'. Severity high is correct: a write corrupts data across tenant boundaries AND overwrites money. anon has EXECUTE and the function is SECURITY DEFINER owned by postgres, so its internal UPDATE bypasses RLS. The re-tag branch keys entirely on the caller-supplied payload phone; the invite's own intended phone (prefill->>'phone') is never compared. NOT demo-scope (the DO-report list names cross-tenant data mutation and wrong money). Only guard is possession of a valid pending, non-expired invite token; all 4 live invites are currently expired (not exploitable this instant) but any newly minted invite opens a 7-day window \u2014 a real latent authz gap.",
+  "severityWas": "high",
+  "severityShouldBe": "high",
+  "evidence": "psql (read): has_function_privilege('anon',oid,'EXECUTE')=t; args (payload jsonb,p_token text,p_nonce text); prosecdef=t owner=postgres search_path=public,pg_temp. prosrc: (prosrc ~* 'prefill[^;]*phone')::int | regexp_count(prosrc,'prefill') -> 0 | 1. Rolled-back repro (victim s-100117 employer_id NULL comp 0; invite prefill phone 701234567 comp 1000000; caller supplied +256701231323): BEGIN; BEFORE|s-100117||0 ; [flip one invite pending+now()+7d in-txn]; RPC_RETURN|s-100117 ; AFTER|s-100117|emp-001|1000000 ; ROLLBACK; POST_ROLLBACK|s-100117||0. Post-rollback re-read: all 4 invites still pending/expired, no completed/subscriber_id; victim unchanged. Blast radius: count(*) FILTER (WHERE employer_id IS NULL) FROM subscribers WHERE phone<>'' = 5006. Nothing persisted."
+ },
+ "A03-002": {
+  "id": "A03-002",
+  "verdict": "CONFIRMED",
+  "reason": "Spot-check. Code confirmed on both sides: the anon signup RPC accepts a bare 9-digit phone and stores it verbatim, while login always canonicalizes to +256 before the equality lookup, so a non-canonical stored row can never be resolved and falls to the s-0001 default. Correctly scoped low and correctly noted as NOT demo-reachable (ContributionRoute canonicalizes before the RPC).",
+  "severityWas": "low",
+  "severityShouldBe": "low",
+  "evidence": "psql: _validate_signup_payload:32 regex ^(\\+?256)?[0-9]{9}$ ; _insert_subscriber_chain:78 inserts p_payload->>'phone' verbatim. grep: api/auth/verify-password.ts:94 canonicalPhone=toCanonicalUGPhone(phone)||phone ; :152 resolveSubscriber(...,canonicalPhone) ; api/auth/verify-otp.ts:171,182 same ; personas.ts:76 .eq('phone', phone).maybeSingle() ; :118 return {entityId: ROLE_DEFAULTS[role]} (subscriber -> s-0001)."
+ },
+ "A03-003": {
+  "id": "A03-003",
+  "verdict": "CONFIRMED",
+  "reason": "Spot-check. Confirmed: the five subscriber text columns have no length cap and the anon insert chain writes them verbatim. Correctly scoped low (DoS-adjacent, no demo/tenant impact).",
+  "severityWas": "low",
+  "severityShouldBe": "low",
+  "evidence": "psql information_schema.columns WHERE table_name='subscribers' AND column_name IN (name,email,phone,nin,occupation): all data_type=text, character_maximum_length=NULL. _insert_subscriber_chain:78 inserts payload->>'phone' (and fullName/nin) with no length guard."
+ },
+ "A03-004": {
+  "id": "A03-004",
+  "verdict": "CONFIRMED",
+  "reason": "Spot-check (info). Confirmed anon retains USAGE+UPDATE on subscriber_id_seq and commission_id_seq while the *_log sequences are revoked. Correctly scoped info: no reachable path (PostgREST never exposes nextval/setval; nextval runs inside DEFINER functions as owner).",
+  "severityWas": "info",
+  "severityShouldBe": "info",
+  "evidence": "psql: has_sequence_privilege('anon','public.subscriber_id_seq','USAGE'|'UPDATE') = t|t ; commission_id_seq = t|t ; entity_detach_log_id_seq USAGE = f."
+ },
+ "A03-006": {
+  "id": "A03-006",
+  "verdict": "CONFIRMED",
+  "reason": "Spot-check (info). Confirmed 34 anon-SELECT tables are all RLS enabled AND forced, so a dropped policy fails to default-deny (availability), not to leak. Author's impact statement is accurate; correctly scoped info/architectural note.",
+  "severityWas": "info",
+  "severityShouldBe": "info",
+  "evidence": "psql: SELECT relrowsecurity, relforcerowsecurity, count(*) FROM pg_class WHERE relkind='r' AND relnamespace='public'::regnamespace AND has_table_privilege('anon',oid,'SELECT') GROUP BY 1,2 -> t|t|34."
+ },
+ "A02-001": {
+  "id": "A02-001",
+  "verdict": "CONFIRMED",
+  "severityWas": "high",
+  "severityShouldBe": "high",
+  "reason": "Reproduced live (rolled back): a subscriber JWT (SET ROLE authenticated + request.jwt.claims app_role=subscriber, subscriberId=s-0001) INSERTing a type='contribution' row fires trg_transactions_contribution and credits subscriber_balances 1,411,092 -> 1,001,411,092 UGX (units 897.98 -> 637,273). The transactions_insert_self WITH CHECK constrains only WHO (app_role+subscriber_id), never WHAT type. Reachability verified in CODE, not assumed: api/_lib/jwt.ts signs HS256 with SUPABASE_JWT_SECRET (the exact secret PostgREST validates) carrying app_role+subscriberId, and src/services/supabaseClient.js:216-223 fetchWithAuth attaches that JWT as Authorization: Bearer on every postgrest-js request. Not demo-scope: fabricated money rolls into agent/branch/distributor and admin AUM (wrong money shown to other roles). High is correct under this rubric ('a write can corrupt or duplicate data'); author's own note that it is critical-on-prod is accurate.",
+  "evidence": "psql BEGIN; SET LOCAL ROLE authenticated; set_config('request.jwt.claims','{...app_role:subscriber,subscriberId:s-0001}',true); INSERT INTO transactions(...type='contribution',amount=1000000000,source='own',split_retirement=800000000,split_emergency=200000000); => AFTER (as subscriber, own row) || 1001411092 || 801128874 || 200282218 || units 637273.19 ; ROLLBACK; POST-ROLLBACK balance || 1411092 ; POST-ROLLBACK probe txn rows || 0. Policy dump: transactions_insert_self INSERT WITH CHECK ((auth.jwt()->>'app_role')='subscriber' AND subscriber_id=(auth.jwt()->>'subscriberId')). Code: api/_lib/jwt.ts getSecretKey() uses process.env.SUPABASE_JWT_SECRET; supabaseClient.js fetchWithAuth sets headers.set('Authorization','Bearer '+token) with fetch:fetchWithAuth."
+ },
+ "A02-002": {
+  "id": "A02-002",
+  "verdict": "CONFIRMED",
+  "severityWas": "high",
+  "severityShouldBe": "high",
+  "reason": "Reproduced live (rolled back): a subscriber JWT UPDATE on insurance_policies set cover 1,000,000 -> 500,000,000, premium_monthly 2,000 -> 0, status='active', funded_by='self' (1 row), and flipped 2 subscriber_insurance_products rows to status='active'. Confirmed there is NO editable-column trigger on either table (trigger enumeration empty for both), authenticated holds a full table-level UPDATE grant, and insurance_policies_update_self / sip_update_self USING+WITH CHECK pin only subscriber_id. Reachable via the same browser JWT chain as A02-001. Not demo-scope: wrong money in the insurance ledger, falsifies the self-pay premium invariant. High is correct.",
+  "evidence": "psql BEGIN; SET LOCAL ROLE authenticated; jwt app_role=subscriber subscriberId=s-0001; UPDATE insurance_policies SET cover=500000000,premium_monthly=0,status='active',funded_by='self' WHERE subscriber_id='s-0001' => C12-14 rows updated || 1 ; AFTER row (as subscriber) || s-0001 || 500000000 || 0 || active || self ; UPDATE subscriber_insurance_products SET status='active' => C15 sip rows updated || 2 ; ROLLBACK; POST-ROLLBACK || 1000000 || 2000 || active. pg_trigger for insurance_policies/subscriber_insurance_products returned zero rows."
+ },
+ "A02-003": {
+  "id": "A02-003",
+  "verdict": "CONFIRMED",
+  "severityWas": "medium",
+  "severityShouldBe": "medium",
+  "reason": "Spot-check confirmed. authenticated holds UPDATE column privileges on insurance_funding_mode, insurance_premium_accrued, insurance_premium_target, retirement_pct, emergency_pct, insurance_savings_pct, etc. on contribution_schedules, verbatim as reported. The contrast with subscribers (column-locked to consent_at/email/name/occupation/phone) proves the column-scoping pattern was deliberately applied elsewhere but omitted here. Author's bounded-impact caveat (trigger sweep still requires real emergency_balance) is honest. Medium fits.",
+  "evidence": "information_schema.column_privileges (grantee=authenticated, privilege_type=UPDATE) on contribution_schedules returns 15 columns incl. insurance_funding_mode, insurance_premium_accrued, insurance_premium_target, retirement_pct, emergency_pct; same query on subscribers returns only consent_at,email,name,occupation,phone."
+ },
+ "A02-004": {
+  "id": "A02-004",
+  "verdict": "CONFIRMED",
+  "severityWas": "medium",
+  "severityShouldBe": "medium",
+  "reason": "Spot-check confirmed. withdrawals_insert_self (INSERT) and nominees_insert_self/update_self/delete_self policies exist. Reproduced (rolled back): a subscriber JWT INSERTed an own withdrawals row (250,000 UGX, bucket=emergency, status=processing) successfully; 0 rows persisted after ROLLBACK. Bypasses request_withdrawal balance/bucket/nonce checks and lands in the payout queues; tenant-scoped only. Medium fits.",
+  "evidence": "pg_policies: withdrawals_insert_self INSERT; nominees_insert_self/nominees_update_self/nominees_delete_self. psql BEGIN; jwt app_role=subscriber subscriberId=s-0001; INSERT INTO withdrawals(...'s-0001',250000,'emergency',...,'processing',CURRENT_DATE) => R04 own withdrawal insert || 1 ; ROLLBACK; POST-ROLLBACK withdrawal probe rows || 0."
+ },
+ "A02-005": {
+  "id": "A02-005",
+  "verdict": "CONFIRMED",
+  "severityWas": "medium",
+  "severityShouldBe": "medium",
+  "reason": "Spot-check confirmed with a citation caveat. Client write policies do exist on the hierarchy tables (subscribers_insert_agent/update_self, agents_insert_branch/update_branch, branches_insert_distributor/update_distributor, distributors_update_self). Reproduced (rolled back): agent a-001 INSERTed a subscriber under its own agent_id (OK), while the cross-tenant insert under a-042 was correctly DENIED by RLS. So there is NO isolation failure (author states this honestly); the finding's value is the doc-vs-live mismatch plus RPC-validation bypass (skips NIN/phone/district checks; only phone-uniqueness backstops). Caveat: the cited BACKEND.md:46 does NOT support 'clients cannot write these tables' -- it explicitly allows writes that 'pass an explicit policy OR go through a SECURITY DEFINER RPC'. The genuine contradiction is with BACKEND.md:601 and role-permissions.md:250 ('no client write policies'), which are written in the employer-family context. Finding stands; medium is defensible (borderline low given zero isolation impact).",
+  "evidence": "pg_policies write policies on subscribers/agents/branches/distributors as listed. psql BEGIN; jwt app_role=agent agentId=a-001; INSERT INTO subscribers(id,name,phone,agent_id) VALUES('a02v-sub1',...,'a-001') => W09 agent insert OWN subscriber || 1 ; cross-tenant a-042 => NOTICE: W10 cross-tenant insert DENIED (RLS): new row violates row-level security policy for table subscribers ; ROLLBACK; POST-ROLLBACK subscriber probe rows || 0. docs/BACKEND.md:46 = 'must pass an explicit policy or go through a SECURITY DEFINER RPC'; BACKEND.md:601 & role-permissions.md:250 = 'no client write policies' (employer family)."
+ },
+ "A09-001": {
+  "id": "A09-001",
+  "verdict": "CONFIRMED",
+  "severityWas": "high",
+  "reason": "keepalive.yml:21-22 pings /healthz, which server/index.ts:110-116 serves with zero Postgres I/O (comment :95-97 mandates I/O-free). The DB-touching probe /readyz is NOT the one the cron hits, so the 10-min ping generates no DB activity and can neither defer nor detect the Supabase 7-day-idle free-tier pause (baseline \u00a71 records the project auto-paused 2026-08-11..discovered 2026-08-23 and assigns this to A09). Not in the OUT-OF-SCOPE list. A cold demo visibly fails (data-less UI, 503 on /api/*) until manual restore. A case exists for critical (unrecoverable-by-rep full outage on a cold open) but high is defensible given the pause is intermittent and restore ~2 min; left as high.",
+  "severityShouldBe": "high",
+  "evidence": "$ sed -n '110,116p' server/index.ts -> app.get('/healthz', cors(corsOptions), (_req,res)=>{ res.setHeader('Cache-Control','no-store'); res.status(200).json({ok:true}); }) [no DB]. keepalive.yml:22 curls .../healthz. /readyz (the DB-touching probe) is a different route the cron does not call."
+ },
+ "A09-002": {
+  "id": "A09-002",
+  "verdict": "CONFIRMED",
+  "severityWas": "high",
+  "reason": "test.yml e2e job timeout-minutes:20; push path runs full `npx playwright test --workers=1` with retries:1 (playwright.config.ts:51); baseline \u00a710 clocks 24.4 min > ceiling. The HEAD commit itself proves the mechanism: run 31484332571 (headSha bd637f6) e2e job cancelled, full-matrix step 11:00:49->11:19:39 then cancelled, job total 20m16s = the 20-min timeout (bd637f6 is HEAD so no superseding push), \u00a715-M1 assert step SKIPPED, HTML report SKIPPED. main is unprotected (404) with no rulesets ([]). Last 60 test.yml runs: 41/41 push events cancelled, 0 green. Vercel auto-deploys on push regardless, so known-broken specs (baseline \u00a710's 30 deterministic failures) shipped. Not demo-scope.",
+  "severityShouldBe": "high",
+  "evidence": "$ gh api .../actions/runs/31484332571/jobs -> Playwright E2E cancelled, 'Run Playwright full matrix' started 11:00:49 completed 11:19:39 conclusion cancelled, job started 10:59:26 completed 11:19:42 (20m16s), '\u00a715-M1' step skipped, 'Upload HTML report' skipped. $ gh api .../branches/main/protection -> {message:'Branch not protected',status:'404'}. $ gh api .../rulesets -> []. $ gh run list --workflow=test.yml --limit 60 -> ('push','cancelled')=41, no ('push','success')."
+ },
+ "A09-003": {
+  "id": "A09-003",
+  "verdict": "CONFIRMED",
+  "severityWas": "high",
+  "reason": "package.json seed = `dotenv -e .env.local -- node scripts/seed-supabase.mjs`; the script runs TRUNCATE TABLE regions,districts,branches,agents,subscribers,subscriber_balances,transactions,... RESTART IDENTITY CASCADE with no argv/confirm/env/project-ref guard (grep matched only a MOCK_NOW comment at line 161). .env.local's SUPABASE_DB_URL targets the live project ilkhfnoyxlxwqadebnkp (verified host-class, secret not printed); free tier has no restore. Not demo-scope: G4 forbidding the command shows the auditors know it's live-destructive, and the finding is the missing technical guard on an already-realised footgun (prior live wipe per project memory). Manual-only trigger argues medium, but total irreversibility + prior incident keep high defensible. Script read only, never executed (G4).",
+  "severityShouldBe": "high",
+  "evidence": "$ sed -n '359,393p' scripts/seed-supabase.mjs -> `TRUNCATE TABLE regions, districts, ..., subscribers, subscriber_balances, transactions, ... access_requests RESTART IDENTITY CASCADE`. $ grep -nE 'process.argv|readline|--yes|--force|--confirm|project.?ref|assert|localhost|NODE_ENV|ilkhfnoyxlxwqadebnkp' scripts/seed-supabase.mjs -> only line 161 (MOCK_NOW comment). $ source .env.local; python check -> SUPABASE_DB_URL present, targets live project ilkhfnoyxlxwqadebnkp = True."
+ },
+ "A09-004": {
+  "id": "A09-004",
+  "verdict": "CONFIRMED",
+  "severityWas": "medium",
+  "reason": "Spot-check. Live header is content-security-policy-report-only with no report-uri/report-to (collects nothing). style-src omits fonts.googleapis.com, font-src is 'self' (omits fonts.gstatic.com), script-src 'self' would block the index.html:39 inline onload= handler, img-src omits blob: so ReviewStep.jsx:303,309 ID previews (URL.createObjectURL) would blank if enforced. Decorative today; medium apt.",
+  "severityShouldBe": "medium",
+  "evidence": "$ curl -sS -D - -o /dev/null https://uganda-dashboard.vercel.app/ | grep -i content-security -> 'content-security-policy-report-only: default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: <tiles>; ...; font-src 'self'; ...' (no report-uri/report-to). index.html:39 has media='print' onload=\"this.media='all'\"; IdUploadStep.jsx:151 URL.createObjectURL."
+ },
+ "A09-005": {
+  "id": "A09-005",
+  "verdict": "CONFIRMED",
+  "severityWas": "medium",
+  "reason": "Spot-check. Every shipped JS chunk on the live site returns 0 case-insensitive 'sentry' matches; src/main.jsx:5 gates Sentry.init on VITE_SENTRY_DSN which is unset in Vercel, so the branch is dead-code-eliminated and the namespace import tree-shaken. Prod browser crashes are unreported. Medium apt.",
+  "severityShouldBe": "medium",
+  "evidence": "$ for a in index-IM_IiCjH.js vendor-CRnas3xB.js vendor-react-DWMwQj0t.js vendor-motion-... vendor-router-... vendor-tanstack-...; curl live asset | grep -oic sentry -> all 0. src/main.jsx:5 `if (import.meta.env.VITE_SENTRY_DSN) { Sentry.init(...) }`."
+ },
+ "A09-006": {
+  "id": "A09-006",
+  "verdict": "CONFIRMED",
+  "severityWas": "medium",
+  "reason": "Spot-check. Live Render service buildCommand drops the `--include=dev` that render.yaml:23 declares; live buildPlan is 'starter' and cache.profile 'no-cache', neither declared in render.yaml. The blueprint does not describe the running service, so the documented DR path (recreate from render.yaml) would yield a different service. Medium apt.",
+  "severityShouldBe": "medium",
+  "evidence": "$ mcp__render__get_service srv-d8bc20mgvqtc73afh16g -> envSpecificDetails.buildCommand='npm ci && npm run build:api && npm prune --omit=dev', buildPlan='starter', cache={profile:'no-cache'}. render.yaml:23 buildCommand='npm ci --include=dev && npm run build:api && npm prune --omit=dev'; plan: free."
+ },
+ "A09-007": {
+  "id": "A09-007",
+  "verdict": "CONFIRMED",
+  "severityWas": "medium",
+  "reason": "Spot-check. Last 200 keepalive runs all 'success'; measured inter-run gaps min 13.8 / median 33.9 / mean 37.1 / max 114.2 min, 0 gaps <=10 min and only 5/199 <15 min, refuting the workflow's 'two jittered fires stay <15 min apart' rationale (holds ~2.5% of intervals). Monitoring resolution capped ~114 min; does not currently cause Render spin-down. Medium apt.",
+  "severityShouldBe": "medium",
+  "evidence": "$ gh run list --workflow=keepalive.yml --limit 200 --json conclusion,createdAt | python -> runs=200 all success; gaps n=199 min=13.8 med=33.9 mean=37.1 max=114.2; gaps<=10min=0; gaps<15min=5; gaps>15min=194. cron '*/10 * * * *'."
+ },
+ "A22-001": {
+  "id": "A22-001",
+  "verdict": "CONFIRMED",
+  "severityWas": "critical",
+  "reason": "All three lenses hold. REPRODUCE: AuthContext.login (src/contexts/AuthContext.jsx:56-66) sets token+user but never clears the query cache; only logout (:91) calls queryClient.clear(). Both the admin hero (AdminOverview.jsx:127) and the distributor hero (DistributorOverview.jsx:132) call useEntityMetrics('country','ug') -> identical cache key ['entityMetrics','country','ug'], staleTime 5min, refetchOnWindowFocus off, so the distributor mount serves the admin-cached entry with no refetch. WRONG MONEY quantified live: get_entity_metrics_rollup scopes by app_role, admin -> aum 2,450,226,487 / 321 branches / 5001 subs, d-002 -> aum 170,104,155 / 27 branches / 399 subs; a bled hero shows 2.45B/321 instead of 0.17B/27. NOT-GUARDED: /admin/login redirects authed users (AdminLogin.jsx:28) but SignInModal, LandingLoginCard and DistributorsPage carry no isAuthenticated guard, and no dashboard-mount cache reset exists, so an authed admin can browser-back to /distributors and sign in as a distributor via useLoginFlow->login()->navigate('/dashboard') (SPA, no reload). NOT DEMO-SCOPE: the out-of-scope list explicitly says to report wrong money / cross-tenant data.",
+  "evidence": "psql get_entity_metrics_rollup('country',ARRAY['ug']) with request.jwt.claims set (BEGIN/ROLLBACK): admin -> {\"aum\":2450226487,\"totalBranches\":321,\"totalSubscribers\":5001}; distributor d-002 -> {\"aum\":\"170104155\",\"totalBranches\":\"27\",\"totalSubscribers\":\"399\"}; d-001 -> {\"aum\":\"1954892232\",\"totalBranches\":\"291\"}. grep confirmed login() has no queryClient.clear and both heroes call useEntityMetrics('country','ug'). grep of DistributorsPage.jsx shows <LandingLoginCard roles={['distributor','branch','agent']}/> with no auth guard."
+ },
+ "A22-002": {
+  "id": "A22-002",
+  "verdict": "SEVERITY-ADJUST",
+  "severityWas": "high",
+  "severityShouldBe": "medium",
+  "reason": "Defect CONFIRMED verbatim: AdminOverview.jsx:139-148 does platform ?? {} then every field ?? 0 with no isError branch on the mounted hero; formatUGX returns '\u2014' for n<=0 (currency.js:32); scoreQuality(0)='Needs work' (:100); src/main.jsx has no QueryCache.onError. A failed get_platform_overview renders 'Funds under management \u2014', 0 subscribers, 'Health Score 0 Needs work', no message/retry. BUT the severity rubric places 'missing empty/loading/error state' and 'degraded UX' at MEDIUM: this is not a route made unreachable nor a deterministic wrong-money display \u2014 it manifests only on an actual read failure, the output is an unmistakable no-data state ('\u2014'/0/'Needs work') that reads as broken/not-loaded rather than a convincing wrong figure a rep would narrate as real money, and retry:1 absorbs single transient blips. The 'reads as wrong money' framing overstates blast radius. Real and worth fixing, but medium.",
+  "evidence": "sed AdminOverview.jsx:139-148 -> 'const p = platform ?? {}; const c = country ?? {}; ... const aum = p.aum || 0;' with no isError guard. currency.js:32 -> 'if (!Number.isFinite(n) || n <= 0) return \\'\u2014\\';'. AdminOverview.jsx:100 -> scoreQuality returns 'Needs work' for s<45. grep 'QueryCache|onError' src/main.jsx -> none."
+ },
+ "A22-003": {
+  "id": "A22-003",
+  "verdict": "CONFIRMED",
+  "severityWas": "medium",
+  "reason": "Spot-check holds. grep -rn forwardSupabaseAuthError across src (excluding supabaseClient.js definition/comments) returns ZERO callers. fetchWithAuth uses liveToken() which treats an expired JWT as absent and falls back to the anon key, so an expired mid-session downgrades direct-PostgREST reads to anon (zeros) with no logout on that path. Author's medium + demo_visible:false rating is correct \u2014 needs a 24h-old session a fresh demo never has. Not overstated.",
+  "evidence": "grep -rn 'forwardSupabaseAuthError' src --include=*.js --include=*.jsx | grep -v supabaseClient.js -> (empty). supabaseClient.js fetchWithAuth: 'const token = liveToken() || anon;' where liveToken returns null for an expired token (isJwtExpired)."
+ },
+ "A22-004": {
+  "id": "A22-004",
+  "verdict": "CONFIRMED",
+  "severityWas": "medium",
+  "reason": "Spot-check holds. All four cited write sites use addToast('error', err?.message || 'Could not \u2026'): SavePage.jsx:204, WithdrawPage.jsx:142, ProfilePage.jsx:102, runViews.jsx:361. A network drop yields err.message='Failed to fetch' (always populated), so the friendly fallback never runs and a money action can toast 'TypeError: Failed to fetch'. Medium (degraded UX / unprofessional copy visible during a demo) is fair.",
+  "evidence": "sed of the four files: e.g. SavePage.jsx:204 -> \"addToast('error', err?.message || 'Could not complete the top-up.');\"; WithdrawPage.jsx:142, ProfilePage.jsx:102, runViews.jsx:361 identical pattern."
+ },
+ "A22-005": {
+  "id": "A22-005",
+  "verdict": "CONFIRMED",
+  "severityWas": "medium",
+  "reason": "Spot-check holds. useApproveAccessRequest invalidates accessRequests/platformOverview/entities but NOT ['adminAttention']; useDenyAccessRequest invalidates only accessRequests (useAccessRequests.js:19-43). useAdminAttention is keyed ['adminAttention'] with staleTime 5min; live get_admin_attention()->>'pendingAccessRequests' = 4, feeding the admin Needs-attention card. usePublishNav DOES invalidate ['adminAttention'], confirming the inconsistency. Confirmed medium. Minor: author calls the hook 'useRejectAccessRequest'; real name is useDenyAccessRequest \u2014 substance unaffected.",
+  "evidence": "psql (admin claims, BEGIN/ROLLBACK): SELECT get_admin_attention()->>'pendingAccessRequests' -> 4. useAdminAttention.js:20-23 queryKey ['adminAttention'], staleTime 5*60*1000. useAccessRequests.js onSuccess lists show no ['adminAttention'] invalidation; useNav.js:73 includes ['adminAttention'],['adminAttentionRows']."
+ },
+ "A04-001": {
+  "id": "A04-001",
+  "verdict": "CONFIRMED",
+  "severityWas": "high",
+  "reason": "make_contribution's only amount guard (line 19, p_amount <= 0) cannot fire for NaN because Postgres sorts NaN above every numeric. Reproduced through the REAL RPC as a subscriber JWT inside BEGIN...ROLLBACK: all subscriber_balances columns for s-0004 went NaN. Reachability holds: the function is EXECUTE-granted to `authenticated` and the in-body role check only requires app_role='subscriber' (which a subscriber JWT carries), so a crafted PostgREST call {\"p_amount\":\"NaN\"} (text->numeric cast succeeds) is a real vector; the shipped UI can't emit it but that is not a guard. Not demo-scope (input-validation data corruption, not payment rails). Irrecoverable-from-app (publish derives total=units*price so NaN propagates forever) correctly distinguishes it from the recoverable medium A04-005. high stands.",
+  "severityShouldBe": "high",
+  "evidence": "select 'NaN'::numeric <= 0 => f. BEGIN; SET LOCAL request.jwt.claims='{\"app_role\":\"subscriber\",\"subscriberId\":\"s-0004\"}'; SELECT make_contribution('A04V-nan-1','NaN'::numeric,80,'MTN') => settled tx; subscriber_balances s-0004 => NaN|NaN|NaN|NaN|NaN; ROLLBACK; re-read => 671179|536943|134236|427.12170678|609894.31, 0 leftover nonces. Grant check: make_contribution|authenticated (EXECUTE)."
+ },
+ "A04-002": {
+  "id": "A04-002",
+  "verdict": "CONFIRMED",
+  "severityWas": "high",
+  "reason": "request_withdrawal validates only that the two explicit splits SUM to the amount (body lines 65-69); no per-leg sign or bucket check. trg_transactions_withdrawal line 31 does GREATEST(0, retirement_balance - v_ret_take), so a negative v_ret_take ADDS to the retirement bucket. Reproduced through the REAL RPC inside BEGIN...ROLLBACK: retirement rose 536943->636943 (money created), total fell to 571179, buckets stopped summing (break 65764). EXECUTE-granted to `authenticated`; the crafted-splits path is reachable by a direct authenticated RPC call. Violates a LIVE data invariant and corrupts a balance => high per rubric.",
+  "severityShouldBe": "high",
+  "evidence": "BEGIN; SET LOCAL request.jwt.claims subscriber s-0004; SELECT request_withdrawal('A04V-neg-leg',100000,NULL,'verify','MTN',-100000,200000) => accepted 100000; balances => total 571179 | ret 636943 | emg 0 | invariant_break 65764; ROLLBACK; re-read => 671179|536943|134236, 0 leftover nonce."
+ },
+ "A04-003": {
+  "id": "A04-003",
+  "verdict": "CONFIRMED",
+  "severityWas": "high",
+  "reason": "All three seed facts verified in source: UNIT_PRICE=1000 with unitsFromBalance (units=total/1000); nav_snapshots is never truncated or inserted by the seed (grep NO MATCH); the subscriber_balances seed insert writes only 5 columns and the omitted retirement_units/emergency_units/invested all default to 0. publish_nav_snapshot lines 72-79 set retirement_balance=round(retirement_units*price) and emergency=round(units*price)-round(retirement_units*price). Reproduced end-to-end through the REAL publish RPC: seed shape (units=671.18, retirement_units=0, invested=0) then publish 1571.4 gave total 671179->1054692 (+57.1%), retirement 536943->0, emergency 134236->1054692. high (not critical) is correct: it is latent until a reseed, then corrupts every member during 'the live demo moment'.",
+  "severityShouldBe": "high",
+  "evidence": "seed: const UNIT_PRICE=1000; grep nav_snapshot scripts/seed-supabase.mjs => NO MATCH; insert cols = subscriber_id,retirement_balance,emergency_balance,total_balance,units; information_schema: retirement_units|numeric|NO|0, emergency_units|NO|0, invested|NO|0. BEGIN; admin JWT; UPDATE s-0004 to seed shape; SELECT publish_nav_snapshot(CURRENT_DATE,1571.4,'UPU-BAL','A04Verify',true); s-0004 AFTER => 1054692|0|1054692|671.18|0|57.1; ROLLBACK re-read == real pre-state."
+ },
+ "A04-004": {
+  "id": "A04-004",
+  "verdict": "CONFIRMED",
+  "severityWas": "medium",
+  "reason": "Spot-check. request_withdrawal with p_bucket='emergency' routes the full amount to the emergency leg (lines 54-60) with no check against emergency_balance; the trigger clamps the bucket at 0 (GREATEST) but debits total by the full ABS(amount). Reproduced: withdraw 400000 from an emergency bucket holding 134236 left retirement untouched (536943) while total fell to 271179, so buckets sum to 536943 vs total 271179 (break 265764). medium appropriate.",
+  "severityShouldBe": "medium",
+  "evidence": "BEGIN; subscriber s-0004; request_withdrawal('A04V-w5',400000,'emergency','v','MTN',NULL,NULL) => 400000; balances => 271179|536943|0 bucket_sum 536943 invariant_break 265764; ROLLBACK re-read 671179|536943|134236."
+ },
+ "A04-005": {
+  "id": "A04-005",
+  "verdict": "CONFIRMED",
+  "severityWas": "medium",
+  "reason": "Spot-check. publish_nav_snapshot's p_unit_price<=0 guard and the table CHECK both pass NaN (NaN>0 is TRUE). unit_price=0 and -5 are correctly rejected; NaN with confirm=true is accepted and drives all 5060 subscriber_balances rows to NaN with a NaN register price. medium is correct because units/retirement_units survive, so publishing a valid price restores the book (recoverable), and it is admin-gated.",
+  "severityShouldBe": "medium",
+  "evidence": "BEGIN; admin JWT; publish 0 => REJECTED 'unit price must be greater than zero'; publish 'NaN' confirm=true => aum NaN, nan_rows 5060/5060; ROLLBACK => latest_nav 1571.4, 0 NaN rows."
+ },
+ "A04-006": {
+  "id": "A04-006",
+  "verdict": "CONFIRMED",
+  "severityWas": "medium",
+  "reason": "Spot-check (parse-only, G6 respected). Forward path is clean: 0 live functions hardcode v_unit_price:=1000. Each of the four unrelated down-migrations (0042, 0043, 0072, 0089) contains exactly one CREATE OR REPLACE FUNCTION public.trg_transactions_contribution whose body declares v_unit_price NUMERIC := 1000 and credits units as NEW.amount / v_unit_price \u2014 so rolling back any of them silently reverts the money engine to the flat 1,000 price. medium appropriate (rollback-path risk, not currently applied).",
+  "severityShouldBe": "medium",
+  "evidence": "psql: 0 live functions match v_unit_price := 1000. grep: each of 0042/0043/0072/0089 .down.sql has trg_contrib_replace=1. 0089 down body: line 'v_unit_price NUMERIC := 1000;' and 'NEW.amount / v_unit_price'."
+ },
+ "A04-009": {
+  "id": "A04-009",
+  "verdict": "CONFIRMED",
+  "severityWas": "medium",
+  "reason": "Spot-check (read-only). Live transactions carry 33 distinct EMP- txn_refs / 1881 rows / 145,372,000 UGX, split contribution 1254 rows/120,292,000 and insurance_premium 627/25,080,000 \u2014 matches the finding exactly. This is E2E-generated money never paid by any member, inflating live AUM ~4.9%. medium appropriate.",
+  "severityShouldBe": "medium",
+  "evidence": "select count(distinct txn_ref),count(*),sum(amount) from transactions where txn_ref like 'EMP-%' => 33|1881|145372000; by type => contribution 1254|120292000, insurance_premium 627|25080000."
+ },
+ "A04-010": {
+  "id": "A04-010",
+  "verdict": "CONFIRMED",
+  "severityWas": "medium",
+  "reason": "Spot-check (read-only). v_reconciliation_exceptions shows exactly 4 missing_balance rows named TST employer member / TST retag probe / TST tree member x2, and subscribers (5064) minus subscriber_balances (5060) equals that 4-row gap \u2014 the whole of the baseline discrepancy. These surface on the admin Needs Attention panel during a demo. medium appropriate. (Minor: the finding title names only 'tree'/'retag'; the evidence body lists all four correctly, so no defect.)",
+  "severityShouldBe": "medium",
+  "evidence": "select ... from v_reconciliation_exceptions where check_code='missing_balance' => tst-sub-emp/retag/tree/tree (4 rows); select count(*) subscribers=5064, subscriber_balances=5060."
+ },
+ "A06-001": {
+  "id": "A06-001",
+  "verdict": "CONFIRMED",
+  "severityWas": "critical",
+  "reason": "All EMP- residue (1,881 rows) belongs solely to emp-001; contribution legs sum to 120,292,000 fabricated UGX against a 197,491,903 roster balance (60.9%); per-head emp-001 9,404,376 vs ~4.2M next. emp-001 is the default employer persona and each member's transaction list shows the payroll triple repeated ~33x \u2014 a rep scrolling a member history sees obviously duplicated data (visible demo failure). Balances are internally consistent with the (polluted) ledger; 'next employer 3.70M' is emp-002 per-head not emp-004 \u2014 immaterial. Critical stands.",
+  "evidence": "psql: select s.employer_id,count(*) from transactions t join subscribers s on s.id=t.subscriber_id where t.txn_ref like 'EMP-%' group by 1 -> emp-001|1881 (only row). Per-head: emp-001|9404376, emp-004|4229140. contribution residue 60146000+60146000=120292000. AUM 2450226487. empe-001 116 txns / 99 EMP-%."
+ },
+ "A06-002": {
+  "id": "A06-002",
+  "verdict": "CONFIRMED",
+  "severityWas": "high",
+  "reason": "The cleanup comment's premise ('no run_id FK on transactions') is false \u2014 transactions_contribution_run_id_fkey exists with ON DELETE SET NULL, so deleting the run header nulls the only column that could identify the rows. 33 refs / 1,881 rows / only 57 retain contribution_run_id. contribution_run_lines does not exist (0). contribution_run_uploads columns are nonce,result,created_at (no employer_id) and holds 33 monotonically-growing rows. Root cause of A06-001's residue.",
+  "evidence": "pg_constraint: transactions_contribution_run_id_fkey|FOREIGN KEY (contribution_run_id) REFERENCES contribution_runs(id) ON DELETE SET NULL. information_schema.tables contribution_run_lines -> 0. contribution_run_uploads cols -> 'nonce, result, created_at'; count -> 33. EMP-% -> refs 33 / rows 1881 / with_run_id 57."
+ },
+ "A06-003": {
+  "id": "A06-003",
+  "verdict": "CONFIRMED",
+  "severityWas": "high",
+  "reason": "Seed MOCK_NOW=new Date(2026,4,26) (2026-05-26) is stale vs mockData new Date(2026,6,1) (2026-07-01); the seed's own mirror comment is now false. Over-shift lands 4,137 schedules in 2026-09; s-0004 (weekly) due 2026-09-22. Schedule page reads the DB value (subscriber.js:284/1062) so it is demo-visible. Drift between MOCK_NOW copies is explicitly in-scope per baseline. Caveat: the '8 weeks out' repro figure is loose (~4 weeks from wall clock, ~12 from app MOCK_NOW) \u2014 either way implausible for a weekly saver. High sits on the medium boundary but is defensible.",
+  "evidence": "seed-supabase.mjs:169 const MOCK_NOW=new Date(2026,4,26); mockData.js:25 MOCK_NOW=new Date(2026,6,1). schedule dist: 2026-09|4137. s-0004|weekly|2026-09-22|29 days from today|57 from seed run. subscriber.js:284 nextDueDate: sched.next_due_date."
+ },
+ "A06-004": {
+  "id": "A06-004",
+  "verdict": "CONFIRMED",
+  "severityWas": "high",
+  "reason": "Two live code paths disagree: policies.js derivePolicyStatus derives active/expired by date with injected now (subscriber.js:145 = currentTime()/MOCK_NOW 2026-07-01), while agent.js buildAgentPolicies trusts the raw insurance_policies.status flag (agent.js:174 selects status). 1,284 active-flagged policies have renewal_date < 2026-07-01, so the agent shows Active while the member shows Expired for the same row. Demo persona s-0003 affected. Not demo-scope \u2014 the derive comment explicitly treats the stored flag as stale. High borders medium.",
+  "evidence": "insurance_policies where status='active' and renewal_date<'2026-07-01' -> 1284 (vs 1473 wall / 1143 _demo_now / 2730 total active). s-0003 renewal 2026-04-16 status active. policies.js:56-60 derivePolicyStatus by date; agent.js buildAgentPolicies reads lifeIns.status==='active'."
+ },
+ "A06-005": {
+  "id": "A06-005",
+  "verdict": "CONFIRMED",
+  "severityWas": "high",
+  "reason": "register_login_identity returns NULL (writes nothing) when the phone is already bound; create_employer and create_distributor call it via PERFORM (return ignored), while only approve_access_request guards with IF v_bound IS NULL THEN RAISE. create_employer's own comment documents 'create still succeeds' on NULL. Real inconsistency and multi-tenancy risk (new owner falls back to emp-001/d-001). Reachability-limited: no live orphan exists from this path \u2014 Uniclusion used the guarded approve path and is correctly bound; the failure needs a colliding/invalid phone. Confirmed at the RPC layer (rolled back), not observed in live data.",
+  "evidence": "BEGIN; register_login_identity('+256700000031','employer',...) -> '(NULL RETURNED - identity NOT written)'; ROLLBACK. Callers: approve_access_request:: v_bound := ...; create_employer:: PERFORM ...; create_distributor:: PERFORM ...; approve body has IF v_bound IS NULL THEN RAISE EXCEPTION."
+ },
+ "A06-006": {
+  "id": "A06-006",
+  "verdict": "SEVERITY-ADJUST",
+  "severityWas": "high",
+  "severityShouldBe": "medium",
+  "reason": "Reproduction confirmed: 4 TST subscribers with no balance row render on v_reconciliation_exceptions as missing_balance beside 3 deliberate t-demo-recon rows (they are the baseline's 4-row subscribers-vs-balances gap). But blast radius is admin-only demo litter, trivially deletable, no wrong money and no feature break \u2014 the reconciliation view is functioning correctly by surfacing real orphans. The 'invariant violated in live data' high clause is textually satisfied, but impact is medium.",
+  "evidence": "v_reconciliation_exceptions -> 4 user/missing_balance rows (tst-sub-tree/emp/retag-*) + 3 transaction/agent_mismatch (t-demo-recon-*). subscribers LEFT JOIN subscriber_balances IS NULL -> the same 4 tst-* rows, all is_demo_signup=t."
+ },
+ "A06-007": {
+  "id": "A06-007",
+  "verdict": "REFUTED",
+  "severityWas": "high",
+  "reason": "Not reproducible against the live system from a clean state. The A24XSSPROBE rows have been deleted since A06 captured evidence: a full text-column XSS pattern scan now returns 0 hits, the two access_requests and two nominee_claims IDs A06 named no longer exist, and pending access_requests is now 4 (finding claimed 6). The finding was valid when captured (transient probe litter left by A24), and the actual stored-XSS vulnerability is A24's render-side finding \u2014 A06's data-presence claim no longer holds.",
+  "evidence": "access_requests/nominee_claims WHERE ilike '%A24XSS%' -> 0 rows. IDs ar-1787558699527-rmm4, ar-1787558701196-dksm, nc-bbf6090b..., nc-d810114b... -> 0 rows. DO-block scan (<script|onerror|onload|javascript:|<iframe|<svg) over all text cols -> TOTAL flagged column-hits: 0. pending/total access_requests -> 4|5."
+ },
+ "A06-008": {
+  "id": "A06-008",
+  "verdict": "CONFIRMED",
+  "severityWas": "medium",
+  "reason": "Vacuous guard reproduced. Assertion checks next_due_date < '2026-05-26' == 0, but live min is 2026-07-06 (41-day slack); the Supabase .lt filter also excludes the 21 NULL-due rows; and 717 rows are stale vs wall clock while the guard reads 0.",
+  "evidence": "counts: lt_seed(2026-05-26)=0, lt_mockdata(2026-07-01)=0, lt_today=717, null_due=21; min/max next_due 2026-07-06/2026-10-01. invariants.spec.ts:61 MOCK_NOW_ISO='2026-05-26'; :180 .lt('next_due_date', isoDate) expect(count).toBe(0)."
+ },
+ "A06-009": {
+  "id": "A06-009",
+  "verdict": "CONFIRMED",
+  "severityWas": "medium",
+  "reason": "Genuine fifth clock: public._demo_now() is a hardcoded 2026-05-18 23:59:59, 44 days behind the JS MOCK_NOW (2026-07-01) and referenced by four rollup/claim RPCs, so admin/distributor time-window tiles diverge from the JS surfaces. Drift between clock copies is in-scope per baseline.",
+  "evidence": "select _demo_now() -> 2026-05-18 23:59:59+00; prosrc -> SELECT '2026-05-18 23:59:59+00'::timestamptz. Referencing fns: get_employer_activity_rollup, get_entity_metrics_rollup, get_top_branch, submit_hospital_cash_claim."
+ },
+ "A06-011": {
+  "id": "A06-011",
+  "verdict": "CONFIRMED",
+  "severityWas": "medium",
+  "reason": "The only employer created via the live approval path diverges from every seeded employer: empty default_contribution_config {}, NULL/empty payroll_cadence, and district holding the raw ID 'd-budaka' where seeded rows hold human names \u2014 the last renders verbatim wherever employer district is shown. Demo-visible on employer dashboard + admin list.",
+  "evidence": "employers where id='emp-80511f65be7a4656b2bd45b6fad18625' -> Uniclusion Uganda|Fintechj|d-budaka|(empty cadence)|{}"
+ },
+ "A05-001": {
+  "id": "A05-001",
+  "verdict": "CONFIRMED",
+  "severityWas": "critical",
+  "severityShouldBe": "critical",
+  "reason": "Reproduced live under BEGIN..ROLLBACK: a JWT claiming app_role=distributor/distributorId=d-002 settled a-001's commissions, though a-001 is owned by d-001 (branch b-bui-001). apply_settlement's body checks only v_role IN ('distributor','admin') with no predicate tying the agent to the caller's distributor; it is SECURITY DEFINER + GRANT EXECUTE authenticated, and the client (src/services/commissions.js:397) calls supabase.rpc('apply_settlement') directly with no Express gate, and the upload UI never filters agentIds to the caller's roster. The one money-moving write escaped the 0081-0089 read-side tenancy net. Explicitly in-scope per the DO-report list (writes another tenant's data, surfaces fabricated settled money on the victim's dashboards). Rolled back; final sweep found 0 residue.",
+  "evidence": "psql BEGIN; SET LOCAL request.jwt.claims='{\"app_role\":\"distributor\",\"distributorId\":\"d-002\",...}'; SELECT apply_settlement('[{\"agentId\":\"a-001\",\"amountPaid\":12000,\"paymentRef\":\"A05V-XTEN-PROOF\",...}]','a05v-xten-proof') -> {\"skipped\":[],\"totalPaid\":10000,\"linesSettled\":2,\"agentsSettled\":1}; flipped c-00002/c-00003 to paid in branch b-bui-001; a001_owner=d-001; ROLLBACK; post_rollback_flipped=0 post_rollback_batch=0."
+ },
+ "A05-002": {
+  "id": "A05-002",
+  "verdict": "CONFIRMED",
+  "severityWas": "critical",
+  "severityShouldBe": "critical",
+  "reason": "Verified at the data layer that drives the UI. a-001 carries settlement_batches rows with E2E-PARTIAL-.../E2E-FULL-... refs and zero backing paid commissions; the 2026-08-02/03 rows pre-date this audit (genuine persistent residue), and two more dated 2026-08-24 have since appeared (ongoing leak). The agent history table reads settlement_batches so those machine-token refs render as payment history. The partial-settlement banner computes shortfall from the newest batch's pending_total-paid_amount (CommissionsParts.jsx:126) \u2014 currently 15K outstanding from a stale E2E batch \u2014 while the OWED tile reads live due (4 lines/20K): two different outstanding figures on one screen. sb-seed-0001 claims 9 lines/45K while a-001 has only 7 paid/35K (seed-level inconsistency independent of Playwright). Agent a-001 is a documented demo persona; screen shows wrong/contradictory money. Not demo-scope.",
+  "evidence": "psql settlement_batches for a-001: sb-aaa8b14.../E2E-PARTIAL-1785700183410 line_count=1 paid=5000 actual_lines=0 actual_paid=0 (and two more E2E-PARTIAL + new 2026-08-24 E2E-FULL/E2E-PARTIAL). sb-seed-0001 claimed_lines=9 claimed_paid=45000 actual_lines=7 actual_paid=35000. a-001 due=4/20000. SettlementMismatchBanner shortfall=pendingTotal-paidAmount; OWED tile from live due -> contradiction."
+ },
+ "A05-003": {
+  "id": "A05-003",
+  "verdict": "CONFIRMED",
+  "severityWas": "high",
+  "severityShouldBe": "high",
+  "reason": "Live reconciliation confirms settlement_batches do not equal the commission lines they flipped. Gap has grown since A05 (measured 25K/5 lines) to 50K/10 lines unbacked, because more E2E residue accrued. Four+ live batches have zero backing paid commissions for their (txn_ref, agent_id). No constraint or trigger catches it; distributor and agent roles disagree about settled totals. High correct.",
+  "evidence": "psql: SELECT sum(paid_amount) settlement_batches=100000 vs sum(paid_amount) commissions where status=paid=50000; sum(line_count) batches=20 vs count paid commissions=10. Per-batch: E2E-PARTIAL/E2E-FULL rows all actual_lines=0 actual_paid=0; sb-seed-0001 claims 9/45000 but backs 7/35000."
+ },
+ "A05-004": {
+  "id": "A05-004",
+  "verdict": "CONFIRMED",
+  "severityWas": "high",
+  "severityShouldBe": "high",
+  "reason": "Reproduced live under BEGIN..ROLLBACK: same nonce twice is a no-op (idempotent via settlement_uploads), but three calls with new nonces and the same paymentRef settled three separate 5K tranches (15K total, 6 notifications) against one payment reference. Nonce is minted per file-pick (CommissionPanel.jsx:358) and e.target.value='' (:324) lets the identical file be re-selected, so this is UI-reachable; apply_settlement has no txn_ref uniqueness. The only replay test is test.fixme with body expect(true).toBe(true) (spec:426-433). High correct (a write can duplicate/corrupt settlement data).",
+  "evidence": "psql BEGIN as d-001: submit1 {linesSettled:1,totalPaid:5000}; replay_same_nonce {linesSettled:1} but batches_after_same_nonce=1 (no-op); replay_new_nonce2/3 each {linesSettled:1,totalPaid:5000}; three batches sb-... with identical txn_ref A05V-REPLAY, nonces a05v-nonce-1/2/3; lines_settled=3/15000; notifs=6; ROLLBACK; post_rollback=0."
+ },
+ "A05-005": {
+  "id": "A05-005",
+  "verdict": "CONFIRMED",
+  "severityWas": "high",
+  "severityShouldBe": "high",
+  "reason": "Reproduced live under BEGIN..ROLLBACK: one RPC call with a-001 listed twice returned agentsSettled:2/linesSettled:2/totalPaid:10000 and wrote two batches for the same agent. normalizeUploadedRows (src/utils/settlement.js) does not dedupe by agentId and the loop FOR v_row IN SELECT jsonb_array_elements(p_rows) has no per-agent grouping, so a distributor who appends a correction row pays the agent twice; the success toast reads 'Settled 2 agents' for one agent. UI-reachable. High correct.",
+  "evidence": "psql BEGIN as d-001: apply_settlement('[{agentId:a-001,amountPaid:5000,paymentRef:A05V-DUPE},{agentId:a-001,amountPaid:5000,paymentRef:A05V-DUPE}]',NULL) -> {skipped:[],totalPaid:10000,linesSettled:2,agentsSettled:2}; two batches sb-3d6a59.../sb-4a5504... each paid 5000 line_count 1; lines=2/10000; ROLLBACK."
+ },
+ "A05-006": {
+  "id": "A05-006",
+  "verdict": "CONFIRMED",
+  "severityWas": "medium",
+  "severityShouldBe": "medium",
+  "reason": "Spot-check. Reproduced live under BEGIN..ROLLBACK: a payload with no amountPaid key returned linesSettled:4/totalPaid:20000 and zeroed a-001's entire due slice, because EXIT WHEN v_remaining < v_line.amount is skipped when v_remaining is NULL. A05 correctly flags it as not UI-reachable (client filters amount-less rows as no_amount) but directly callable by any authenticated distributor/admin token. Medium is appropriate.",
+  "evidence": "psql BEGIN as d-001: apply_settlement('[{agentId:a-001,paymentRef:A05V-NULLAMT,paymentDate:...}]','a05v-nullamt') -> {linesSettled:4,totalPaid:20000}; due_after=0/0; batch a-001 pending_total=20000 paid_amount=20000 line_count=4; ROLLBACK."
+ },
+ "A05-008": {
+  "id": "A05-008",
+  "verdict": "CONFIRMED",
+  "severityWas": "medium",
+  "severityShouldBe": "medium",
+  "reason": "Spot-check. Live read confirms sb-seed-0001 (a-001) is stamped branch b-kam-015 though the agent's branch is b-bui-001, and sb-seed-0002 (a-042) stamped b-mba-290 vs b-buv-007. b-kam-015 (a documented demo branch persona) has 31 due / 0 paid commissions yet receives a 'UGX 45000 paid for 9 commissions' notification and batch routed by branch_id \u2014 a demo-visible contradiction (bell says 45K settled, its own Commissions page shows 0 paid). Body is unformatted 'UGX 45000' unlike RPC-generated notifications. Medium correct.",
+  "evidence": "psql: settlement_batches where branch_id distinct from agent branch -> sb-seed-0001|a-001|b-kam-015|b-bui-001 and sb-seed-0002|a-042|b-mba-290|b-buv-007. commissions where branch_id=b-kam-015: due|31|155000 (0 paid). notifications ref_id like sb-seed%: branch|b-kam-015|UGX 45000 paid for 9 commissions.|45000|sb-seed-0001."
+ },
+ "A05-009": {
+  "id": "A05-009",
+  "verdict": "CONFIRMED",
+  "severityWas": "medium",
+  "severityShouldBe": "medium",
+  "reason": "Spot-check (parse-only per G6). 0089_per_distributor_commission_rate.down.sql:15 re-CREATE OR REPLACEs trg_transactions_contribution with hardcoded v_unit_price NUMERIC := 1000, while the live function assigns v_unit_price := public.nav_for_date(...) (0104's NAV pricing). Executing the down would silently clobber the 0103-0107 NAV work and re-break unit/AUM figures. Medium (broken/unsafe rollback path) correct.",
+  "evidence": "grep 0089...down.sql: line15 CREATE OR REPLACE FUNCTION trg_transactions_contribution(); line22 v_unit_price NUMERIC := 1000; line58 NEW.amount / v_unit_price. psql pg_get_functiondef(trg_transactions_contribution): v_unit_price := public.nav_for_date(COALESCE(NEW.date::date, CURRENT_DATE)) (0104)."
+ },
+ "A26-001": {
+  "id": "A26-001",
+  "verdict": "CONFIRMED",
+  "severityWas": "high",
+  "severityShouldBe": "high",
+  "reason": "All three factual pillars reproduce. Docs assert RLS blocks direct client writes verbatim (CLAUDE.md:126, :107; api-contracts.md:9; role-permissions.md:250). The shipped frontend writes directly (11 non-rpc .insert/.update/.upsert sites in entities.js and subscriber.js). And RLS explicitly PERMITS those writes: live pg_policies shows transactions_insert_self, insurance_policies_insert_self and insurance_policies_update_self as PERMISSIVE policies, and subscriber.js:1388 even comments 'Direct writes are gated by the subscriber's own *_update_self RLS.' Not demo-scope (CLAUDE.md claims the opposite; the OUT-OF-SCOPE list never sanctions client writes). transactions_insert_self does not restrict type/amount, so the false claim masks a real money-minting surface (A02-001). High defensible for a load-bearing false security claim.",
+  "evidence": "psql pg_policies transactions -> transactions_insert_self|INSERT|PERMISSIVE with_check=(app_role='subscriber' AND subscriber_id=jwt->>'subscriberId'); insurance_policies_insert_self|INSERT|PERMISSIVE, insurance_policies_update_self|UPDATE|PERMISSIVE. grep non-rpc writes -> entities.js:1065/1101/1133/1185/1411, subscriber.js:1049/1212/1219/1399/1403/1411/1463. sed CLAUDE.md:126 -> 'RLS would block it, and the RPCs enforce business invariants atomically.'"
+ },
+ "A26-002": {
+  "id": "A26-002",
+  "verdict": "CONFIRMED",
+  "severityWas": "high",
+  "severityShouldBe": "high",
+  "reason": "api-contracts.md:240 is the corpus's only directive and it instructs applying 0092 'out of band'. Refuted live: _normalize_contribution_config and get_my_employer_funding (both introduced by 0092) are live; zero employers carry the legacy 'mode' key; ledger head is 0108_nominee_claims_seed not 0084; 108 forward files not '0001-0091 live'. Destructive framing verified: 0092 is 6 CREATE OR REPLACE FUNCTIONs, and submit_employer_contribution_run + _normalize_contribution_config were re-replaced by 0093/0094/0099/0102 (incl. 0102 all_retirement). Re-running 0092 would regress those functions by four migrations, undoing the 100%-retirement money rule. Not demo-scope, not guarded.",
+  "evidence": "psql -> _normalize_contribution_config, get_my_employer_funding both present; employers WHERE default_contribution_config ? 'mode' -> 0; ledger head '20260811100047 0108_nominee_claims_seed'. grep 'FUNCTION ...submit_employer_contribution_run' -> 0044,0053,0062,0066,0067,0092,0093,0094,0102; _normalize_contribution_config -> 0092,0093,0099,0102. 0092 file: 6 'create or replace', UPDATE/DELETE only inside function bodies (no employer-row data migration)."
+ },
+ "A26-003": {
+  "id": "A26-003",
+  "verdict": "SEVERITY-ADJUST",
+  "severityWas": "high",
+  "severityShouldBe": "medium",
+  "reason": "Facts all reproduce and it is IN scope (the brief explicitly makes MOCK_NOW drift reportable), so not refuted. Real MOCK_NOW=new Date(2026,6,1) (2026-07-01); seed-supabase.mjs:169=new Date(2026,4,26) under a comment insisting it MUST mirror mockData.js; invariants.spec.ts:52 repeats it; CLAUDE.md:201, BACKEND.md:880, FRONTEND.md:301, FRONTEND.md:1412 all print 2026-05-26; _demo_now()=2026-05-18. But blast radius is smaller than 'high': the three clocks already disagree in the live demo (which works), and the seed drift is latent (G4 forbids re-seeding; even a re-seed only shifts cosmetic demo relative-dates -- no wrong money, no tenant leak, no live-data invariant violation). Documentation drift plus a non-manifesting seed self-contradiction = medium.",
+  "evidence": "grep MOCK_NOW= -> mockData.js:25 'new Date(2026, 6, 1); // 2026-07-01'; seed-supabase.mjs:169 'new Date(2026, 4, 26); // 2026-05-26 - mirror of mockData.MOCK_NOW' under comment 'MOCK_NOW MUST mirror src/data/mockData.js'. psql _demo_now() -> 2026-05-18 23:59:59+00. Docs sed confirms 2026-05-26 at CLAUDE.md:201/BACKEND.md:880/FRONTEND.md:1412; FRONTEND.md:641 correctly reads 'Reminded 1 Jul'."
+ },
+ "A26-004": {
+  "id": "A26-004",
+  "verdict": "CONFIRMED",
+  "severityWas": "high",
+  "severityShouldBe": "high",
+  "reason": "All seven disagreements reproduce against live pg_policies. distributors has only *_select_admin/*_select_self/*_update_self (refutes :349 'distributors_select USING(true)' and the :341-343 'read of the singleton distributors row' for branch/agent/subscriber). contribution_run_lines does not exist (refutes :315; table dropped by 0045). agents/branches carry per-role scoped SELECTs + RESTRICTIVE *_scope_distributor overlay (refutes :60-62 'still platform-wide pending 0084'). :340/:348 'all entities/no scoping' self-contradict :49 'its OWN network only'. :250 'no client write policies' refuted by the same *_insert_self policies as A26-001. Minor author imprecision: two *_select_authenticated policies DO exist (commission_config, demo_personas) but none on agents/branches, so the substance stands. This is the authz contract A02 measured against; errors under-sell scoping and error 7 masks the write hole.",
+  "evidence": "psql distributors policies -> distributors_select_admin, distributors_select_self, distributors_update_self (only). to_regclass('public.contribution_run_lines') -> NULL. agents policies -> agents_scope_distributor(RESTRICTIVE)+select_admin/branch/distributor/self/subscriber+insert_branch/update_branch; branches mirrors. *_select_authenticated count=2 on commission_config+demo_personas only. sed role-permissions.md:49 'its OWN network only' vs :340 'All entities, all levels' vs :348 'No scoping applied - all data visible'."
+ },
+ "A26-005": {
+  "id": "A26-005",
+  "verdict": "CONFIRMED",
+  "severityWas": "medium",
+  "severityShouldBe": "medium",
+  "reason": "Spot-check. Enforcement surface reproduces empty: eslint.config.js rules block has no no-restricted-imports/no-restricted-syntax (only no-console, no-unused-vars, react-refresh, and jsxA11y forced to warn); no stylelint config; no .husky and no husky/lint-staged/pre-commit in package.json; 115 'outline: none' across 72 CSS files; src/test has no auth.uid assertion. Anti-pattern \u00a75.6 (every write through a DEFINER RPC) is already breached by the 11 direct-write sites confirmed in A26-001. Facts hold; medium leans generous for a process-gap but the already-violated \u00a75.6 gives it teeth.",
+  "evidence": "grep eslint.config.js -> rules: {no-console, no-unused-vars, react-refresh/only-export-components}; no restricted-imports/syntax. ls .stylelintrc*/.husky -> none; grep husky|lint-staged|pre-commit package.json -> none. grep outline:none src *.css -> 115 occurrences/72 files. grep auth.uid src/test/*.test.js -> none."
+ },
+ "A26-006": {
+  "id": "A26-006",
+  "verdict": "CONFIRMED",
+  "severityWas": "medium",
+  "severityShouldBe": "medium",
+  "reason": "Spot-check. Live census: 37 tables, 89 fn-names, 70 DEFINER, 109 policies, 10 triggers. Docs are stale everywhere: ARCHITECTURE.md:79 '28 tables \u00b7 5 triggers'; :80 '40 functions (29 DEFINER + 11 INVOKER)'; :81 '~90 RLS policies'; BACKEND.md:37 '29 tables \u00b7 8 triggers'; :38 '53 functions'; :39/:44 '99 RLS policies' -- the last framed as 'Live census (verified 2026-07-08)', reading as current authority while wrong on all five numbers.",
+  "evidence": "psql UNION -> tables|37, fn_names|89, definer|70, policies|109, triggers|10. sed ARCHITECTURE.md:79-81 and BACKEND.md:37-39,44 print the stale boxes verbatim."
+ },
+ "A26-007": {
+  "id": "A26-007",
+  "verdict": "CONFIRMED",
+  "severityWas": "medium",
+  "severityShouldBe": "medium",
+  "reason": "Spot-check. Ledger holds 96 rows and head is 0108_nominee_claims_seed; BACKEND.md:44/:358 (and :1013/:1015/:1019) say head is 0076. render-operational.md:36 frames the drift as 'the live schema_migrations ledger is missing 6 local migrations (0022/0023/0024/0025/0027/0028)', which presupposes a shared key between timestamp-versioned ledger rows and 0001_* filenames -- A00 \u00a77 establishes the two namespaces share no key, so that framing is an artifact, not a fact.",
+  "evidence": "psql count schema_migrations -> 96; head -> '20260811100047 0108_nominee_claims_seed'. grep 0076 BACKEND.md -> :44 'live ledger head is now 0076_subscribers_column_scoped_update', :358 same. sed render-operational.md:36 -> 'ledger is missing 6 local migrations (0022/0023/0024/0025/0027/0028)'."
+ },
+ "A26-008": {
+  "id": "A26-008",
+  "verdict": "CONFIRMED",
+  "severityWas": "medium",
+  "severityShouldBe": "medium",
+  "reason": "Spot-check. qa.md misdescribes its suite: flows/ has 18 specs (qa.md:12 '~78-test baseline'); the branch-create-agent spec listed at qa.md:14 does not exist; no real test.fail( exists anywhere (the only grep hit is a comment 'on test failure'), yet qa.md:14 claims distributor-create-branch is 'marked test.fail'; db/ has 4 specs (qa.md:15 lists 3, omitting deactivate-entities); CreateBranch.jsx handleConfirm (line 257, not 253) DOES call createBranch.mutateAsync (line 260), so bug #2's 'never invokes useCreateBranch' is stale; qa.md:40 '~2 min total' vs measured 24.4 min / 370 cases (A00 \u00a710).",
+  "evidence": "ls e2e/specs/flows | wc -l -> 18; ls db/ -> deactivate-entities, invariants, money-idempotency, rls-isolation (4). find *branch-create-agent* -> (none). grep test.fail e2e/specs -> only empty-states.spec.ts:100 comment 'on test failure'. grep CreateBranch.jsx -> 155 useCreateBranch(), 257 handleConfirm(), 260 createBranch.mutateAsync. sed qa.md:12/:40 print the stale baseline+runtime."
+ },
+ "A25-001": {
+  "id": "A25-001",
+  "verdict": "SEVERITY-ADJUST",
+  "severityWas": "high",
+  "severityShouldBe": "medium",
+  "reason": "The factual core is confirmed: the committed Playwright baseline is genuinely RED (326/30/14, exit 1), the failures are deterministic not flaky, and mobile-chromium DOES run on PRs (test.yml:125-136) so they land on the merge-gating surface. BUT the severity-driving IMPACT \u2014 'subscriber dashboard sub-routes and public landing pages do not render on a phone... real product defects' \u2014 is REFUTED. Every mobile page I inspected renders fully and functionally; the failures are heading selector/level mismatches between the desktop and mobile trees, not broken or unreachable routes. High requires 'a whole feature/route unreachable or broken on a supported viewport', which is not met. A red CI baseline plus a mobile heading-hierarchy a11y inconsistency is medium.",
+  "evidence": "npx playwright test e2e/specs/smoke/landing.spec.ts --project=mobile-chromium --workers=1 -> '3 failed' (FAQ/Contact/About), '1 passed'. error-context DOM for About (mobile): full page content present with 'heading \"About Universal Pensions\" [level=3]'; src/pages/About.jsx:73 is <h1>, src/pages/landing/mobile/AboutMobile.jsx:9 is <h3>; test wants heading level=1 name=/about/i. subscriber-dashboard mobile: Profile renders complete form with h1 'Edit profile' (test wants exact ^profile$); Schedule renders complete contribution form with h1 'Contribution settings' ('Tune your schedule' is a <p>). CI: .github/workflows/test.yml:125-136 runs '--project=chromium --project=mobile-chromium' on PRs."
+ },
+ "A25-004": {
+  "id": "A25-004",
+  "verdict": "CONFIRMED",
+  "severityWas": "high",
+  "reason": "Directly reproduced against the live DB. The E2E suite has leaked fixture rows into the live demo database: 3 branches (incl. two named 'E2E Branch ...' attached to d-001, the primary demo distributor, dated 2026-08-02/03 and thus pre-dating this audit) and 5 test subscribers, 4 of which have no subscriber_balances row. This is exactly the 4-row subscribers(5064) vs subscriber_balances(5060) gap A00 flagged, i.e. a live data-invariant violation (every subscriber must have one balance) -> high per the rubric. Demo-visibility of the E2E branches is plausible but unproven; severity holds on the invariant grounds. No rows purged (report-only).",
+  "evidence": "psql \"$SUPABASE_DB_URL\" -c \"SELECT id,name,distributor_id,created_at FROM branches WHERE id LIKE 'b-new-%' OR name ~* '^(E2E|TST)'\" -> tst-branch-msc7w8vm|TST throwaway branch; b-new-1785700420016|E2E Branch 1785700415857|d-001|2026-08-02; b-new-1785753024670|E2E Branch 1785753020590|d-001|2026-08-03. LEFT JOIN probe -> 4 subscribers with NULL balance (tst-sub-tree/emp/retag-msc7vzsc, tst-sub-tree-msd3855c). Test-id subscriber probe -> 5 rows incl s-e2e-emp-foreign-1785752999757. rerun3-targeted.txt shows the mechanism live: 'branches row inserted: id=b-new-1787560217927 name=E2E Branch 1787560214725'."
+ },
+ "A25-005": {
+  "id": "A25-005",
+  "verdict": "CONFIRMED",
+  "severityWas": "medium",
+  "reason": "Spot-checked. The live money-invariant violations the finding cites are reproduced exactly, and the QA claim (no test reconciles them) is consistent with the repo. Data-defect ownership is A04/A06; A25's unguarded-invariant-class framing is a valid medium test-coverage finding.",
+  "evidence": "psql: subscribers_without_balance -> 4. s-0005 -> units 203.98642, retirement 185.404883, emergency 24.9452911, sum 210.3501741, delta -6.3638. count of balances where round(units,4)<>round(retirement+emergency,4) -> 1."
+ },
+ "A25-011": {
+  "id": "A25-011",
+  "verdict": "CONFIRMED",
+  "severityWas": "medium",
+  "reason": "Spot-checked. The 'db specs actually executed' guard is gated to push-to-main only, while the PR job runs the db specs (each wrapped in test.skip(!hasEnv)) with no such guard. A fork PR or a run during secret rotation would silently skip every cross-tenant/money-idempotency spec and still report green. Real but conditionally reachable -> medium is appropriate.",
+  "evidence": ".github/workflows/test.yml:149 -> \"if: github.event_name == 'push' && github.ref == 'refs/heads/main'\" on the '\u00a715-M1' assert-executed step; the PR step (line 125-136) mounts e2e/specs/db with no executed-not-skipped guard."
+ },
+ "A25-006": {
+  "id": "A25-006",
+  "verdict": "CONFIRMED",
+  "severityWas": "medium",
+  "reason": "Spot-checked. ESLint flat config has no .ts/.tsx block; api/, server/, e2e/ and playwright.config.ts (all TypeScript) are never linted. Confirmed zero .ts files enter the lint run.",
+  "evidence": "eslint.config.js file globs: only 'src/**/*.jsx' (line 20) and '**/*.{js,jsx}' (line 25). npx eslint . --format json ext histogram -> {cjs:3, mjs:112, js:180, jsx:433} \u2014 zero .ts. (mjs is higher than the finding's 68 because docs/ now holds audit scratch .mjs, which also corroborates A25-010.)"
+ },
+ "A25-012": {
+  "id": "A25-012",
+  "verdict": "CONFIRMED",
+  "severityWas": "medium",
+  "reason": "Spot-checked. The coverage gate configures only a statements threshold (23), with no branch/function/line floor and no separate vitest config. Matches the finding.",
+  "evidence": "vite.config.js:68-69 -> thresholds: { statements: 23 } only; no branches/functions/lines keys. `ls vitest.config.*` -> no matches."
+ }
+}

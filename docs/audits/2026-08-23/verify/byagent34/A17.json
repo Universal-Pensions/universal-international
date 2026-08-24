@@ -1,0 +1,208 @@
+[
+ {
+  "id": "A17-001",
+  "title": "Circular avatars violate the standing \"no circular avatars\" house rule and are internally inconsistent",
+  "severity": "medium",
+  "confidence": "confirmed",
+  "category": "design-system-house-rule",
+  "surface": "all roles (subscriber/agent/employer/distributor/branch avatars)",
+  "location": "src/subscriber-dashboard/pages/NomineesPage.module.css (.avatar border-radius:50%) + 12 more files",
+  "evidence": "grep of 13 CSS modules defines `border-radius:50%`/`var(--radius-full)` on `.avatar`: agent-dashboard/pages/{SubscribersPage,InsuredMembersPage,MessageLauncher,OnboardedThisMonthPage,ContributionsThisMonthPage}.module.css, subscriber-dashboard/pages/{NomineesPage,SettingsPage,SettingsDesktop}.module.css, dashboard/settings/Settings.module.css, employer-dashboard/desktop/ui.module.css, components/{tickets/TicketListRow,Trust,SkeletonRow}.module.css. Confirmed demo-visible: screenshots/subscriber/settings-nominees-d.png renders circular 'RK'/'LN' nominee avatars. Contrast: dashboard/overview/DistributorOverview.module.css uses --radius-sm, agent-dashboard/pages/SettingsPage.module.css uses --radius-md, subscriber-dashboard/pages/AgentPage.module.css uses --radius-xl (rounded squares).",
+  "impact": "Breaks the user's standing visual taste (feedback_uganda_visual_taste: 'no circular avatars') on screens a rep would show (nominees, member lists, tickets), and the app is self-inconsistent \u2014 some avatars circular, others rounded squares.",
+  "suggested_fix": "Standardise .avatar/.avatarInitials on var(--radius-md) (or --radius-sm); remove the 50%/--radius-full avatar rules from all 13 files.",
+  "demo_visible": true,
+  "roles_affected": [
+   "subscriber",
+   "agent",
+   "employer",
+   "distributor",
+   "branch"
+  ],
+  "effort": "M",
+  "repro": [
+   "Open subscriber dashboard > Account settings > Nominees",
+   "Observe the RK/LN nominee avatars render as circles"
+  ],
+  "agent": "A17"
+ },
+ {
+  "id": "A17-002",
+  "title": "Type scale is bypassed: 76 distinct ad-hoc font sizes, 519 of them below the smallest token (sub-12px)",
+  "severity": "medium",
+  "confidence": "confirmed",
+  "category": "design-system-type-scale",
+  "surface": "all dashboards (dense screens)",
+  "location": "src (229 .module.css) vs src/index.css --text-* scale",
+  "evidence": "grep of module CSS: 1172 literal `font-size` declarations vs 1330 tokenised (52.7% adherence) across 76 DISTINCT literal values. Distribution skews below --text-xs (0.75rem=12px): 164x 11px, 103x 12px, 87x 10px, 79x 13px, 73x 10.5px, 71x 11.5px, 27x 9px, plus 97 sub-0.75rem rem values. Total sub-12px declarations = 519 (422 px + 97 rem).",
+  "impact": "The 11-step --text-* scale is effectively decorative; 9-11.5px body/label text is a legibility risk for the low-literacy Ugandan audience (feedback_plain_language_uganda) and renders on nearly every dense list/detail screen.",
+  "suggested_fix": "Map font-sizes to --text-* tokens; set a floor of --text-xs (12px) for anything not a decorative micro-label; collapse the 76 distinct values onto the scale and add a lint rule.",
+  "demo_visible": true,
+  "roles_affected": [
+   "subscriber",
+   "agent",
+   "branch",
+   "distributor",
+   "employer",
+   "admin"
+  ],
+  "effort": "L",
+  "agent": "A17"
+ },
+ {
+  "id": "A17-003",
+  "title": "Four dashboard BottomSheets declare aria-modal but implement no focus trap \u2014 behavioural divergence from the hardened landing copy",
+  "severity": "medium",
+  "confidence": "confirmed",
+  "category": "component-divergence-a11y",
+  "surface": "mobile bottom sheets (agent/branch/subscriber/employer)",
+  "location": "src/agent-dashboard/shell/BottomSheet.jsx (+ branch/subscriber/employer copies)",
+  "evidence": "The 4 dashboard BottomSheet.jsx copies are byte-identical in code (diff shows comment-only differences) and their .module.css are byte-identical (agent vs subscriber/branch/employer diff exit 0). All 4 render `role=\"dialog\" aria-modal=\"true\"` (grep) but `grep -lE 'inert|FOCUSABLE|focusablesIn'` across the 4 returns nothing \u2014 only Escape + scrim-click handlers. The 5th copy src/pages/landing/shell/BottomSheet.jsx (154 lines vs 87) implements a full focus trap (FOCUSABLE/focusablesIn Tab-cycling), sets inert on #root, and returns focus to the trigger. A00 confirmed the repo has no focus-trap utility (0 files).",
+  "impact": "aria-modal=\"true\" without a focus trap is a false a11y promise on 4 authenticated mobile surfaces (Ask AI / Notifications / Help sheets): keyboard/SR focus escapes into the live background. Also 5-way copy-paste of one primitive with only one copy hardened.",
+  "suggested_fix": "Promote the hardened landing BottomSheet to a single shared primitive; delete the 4 shell copies (or import the shared one).",
+  "demo_visible": false,
+  "roles_affected": [
+   "agent",
+   "branch",
+   "subscriber",
+   "employer"
+  ],
+  "effort": "M",
+  "agent": "A17"
+ },
+ {
+  "id": "A17-004",
+  "title": "280 hardcoded hex literals re-declare an existing token value (23x the brand indigo)",
+  "severity": "low",
+  "confidence": "confirmed",
+  "category": "token-coverage-color",
+  "surface": "all roles (CSS modules)",
+  "location": "src/employer-dashboard/employees/OnboardStaffPanel.module.css (hardcodes #292867 x20) + others",
+  "evidence": "grep of module CSS: 280 hex literals equal a defined token value: 23x #292867 (--color-indigo), 11x #2E8B57 (--color-green), 6x #1B1A4A, 5x #2F8F9D, 4x #5E63A8, 2x #2F3550. Worst file OnboardStaffPanel.module.css hardcodes the brand indigo 20 times. Color token coverage overall 89.6% (5838 var / 678 literal).",
+  "impact": "CLAUDE.md \u00a76 names #292867 the identity anchor; a brand shift would silently skip these 23+ hardcoded sites. Discipline debt, not a visible defect.",
+  "suggested_fix": "Replace token-valued hex literals with var(--color-*); start with OnboardStaffPanel (20 sites).",
+  "demo_visible": false,
+  "roles_affected": [
+   "employer",
+   "agent",
+   "subscriber",
+   "distributor",
+   "branch",
+   "admin"
+  ],
+  "effort": "M",
+  "agent": "A17"
+ },
+ {
+  "id": "A17-005",
+  "title": "Cross-role inconsistency: the \"Ask AI\" affordance is styled two different ways",
+  "severity": "low",
+  "confidence": "confirmed",
+  "category": "cross-role-consistency",
+  "surface": "top-bar Ask AI button, all roles",
+  "location": "src/agent-dashboard/shell/AgentDesktopShell.module.css:79-87 (.askAi background:var(--color-white)) vs src/subscriber-dashboard/shell/SubscriberDesktopShell.module.css (.ask... background:var(--color-indigo-deep))",
+  "evidence": "Agent .askAi { border:1px solid var(--color-lavender); background:var(--color-white) } (indigo only when .askAiActive). Subscriber/admin/employer/distributor/branch shells use a solid dark-indigo pill at rest. Screenshots: subscriber/index-d, admin/desktop-overview-1440, employer/profile-1440, distributor/home-1440, branch/d-overview-1440 (all solid dark indigo) vs agent/home-1440, agent/profile-1440, agent/subscribers-1440 (white/lavender outline).",
+  "impact": "Same primary AI affordance reads as two different buttons across the 6 role dashboards. Aside (check 3): the 5 solid variants place two solid-indigo buttons on one screen (Ask AI + primary CTA e.g. subscriber 'Pay UGX 500,000'), brushing the '<=1 solid CTA per screen' rule; agent's white treatment is the more rule-compliant one.",
+  "suggested_fix": "Pick one Ask AI treatment across roles; the agent white-at-rest style better honours the 'less solid indigo' house rule.",
+  "demo_visible": true,
+  "roles_affected": [
+   "agent",
+   "subscriber",
+   "employer",
+   "distributor",
+   "branch",
+   "admin"
+  ],
+  "effort": "S",
+  "agent": "A17"
+ },
+ {
+  "id": "A17-006",
+  "title": "Cross-role inconsistency: KPI tiles use two different patterns (left accent border vs flat)",
+  "severity": "low",
+  "confidence": "confirmed",
+  "category": "cross-role-consistency",
+  "surface": "overview/home KPI tile row, all roles",
+  "location": "subscriber/employer/branch overview CSS (left accent border) vs agent/distributor/admin overview CSS (flat)",
+  "evidence": "Screenshots: subscriber/index-d, employer/profile-1440 (overview), branch/d-overview-1440 show KPI tiles with a left colored accent border; agent/home-1440, distributor/home-1440, admin/desktop-overview-1440 show flat borderless KPI tiles. Icon chips, label casing and number weight are otherwise identical.",
+  "impact": "The 'KPI tile' concept splits 3/3 across the 6 roles \u2014 reads as unfinished convergence. Low unless two roles are shown side by side. (Status pills and the 78-score health ring ARE consistent across roles \u2014 those sub-checks pass.)",
+  "suggested_fix": "Converge on one KPI tile treatment (accent-border or flat) across all six dashboards.",
+  "demo_visible": true,
+  "roles_affected": [
+   "subscriber",
+   "employer",
+   "branch",
+   "agent",
+   "distributor",
+   "admin"
+  ],
+  "effort": "M",
+  "agent": "A17"
+ },
+ {
+  "id": "A17-007",
+  "title": "Spacing token coverage is 40% \u2014 the --space scale is mixed with ad-hoc px throughout",
+  "severity": "low",
+  "confidence": "confirmed",
+  "category": "token-coverage-spacing",
+  "surface": "all roles (CSS modules)",
+  "location": "src/pages/landing/landing.module.css (203 px spacing) + mobile/signup/contribution modules",
+  "evidence": "Scripted coverage over module CSS: overall token coverage 67.9% (10768 var / 5090 literal); spacing only 40.3% (1856 var(--space) / 2745 px+rem literal); radius 76.4%; font 52.7%; shadow 84.7%. Worst files by tokenisable-literal count: pages/landing/landing.module.css, pages/landing/mobile/landingMobile.module.css, employer-dashboard/mobile/employerMobile.module.css, dashboard/mobile/distributorMobile.module.css, branch-dashboard/mobile/branchMobile.module.css, signup/contribution/ContributionSettings.module.css, components/contribution/SubscriberScheduleForm.module.css.",
+  "impact": "Padding/margin/gap are set in ad-hoc px against a rem --space scale, so spacing drifts and cannot be retuned centrally. Discipline debt, not a visible defect.",
+  "suggested_fix": "Migrate padding/margin/gap to --space-*; add a lint rule to block bare px on spacing properties.",
+  "demo_visible": false,
+  "roles_affected": [
+   "subscriber",
+   "agent",
+   "branch",
+   "distributor",
+   "employer",
+   "admin"
+  ],
+  "effort": "L",
+  "agent": "A17"
+ },
+ {
+  "id": "A17-008",
+  "title": "Decorative CSS keyframe animations ignore prefers-reduced-motion",
+  "severity": "low",
+  "confidence": "confirmed",
+  "category": "motion-reduced-motion",
+  "surface": "landing hero/CTA, distributor map, savings calculator",
+  "location": "src/components/Hero.module.css (pulse, scrollPulse), src/components/CTA.module.css (pulse), src/dashboard/map/UgandaMap.module.css (glowPulse), src/components/SavingsCalculator.module.css (shimmer)",
+  "evidence": "14 CSS modules run @keyframes without a prefers-reduced-motion guard; ~5 are decorative infinite loops (Hero pulse 2.5s + scrollPulse 2s, CTA pulse, UgandaMap glowPulse 5s, SavingsCalculator shimmer 5s). 66 other modules DO guard their motion, and framer-motion is globally covered by <MotionConfig reducedMotion=\"user\"> at src/main.jsx:97 \u2014 but MotionConfig does not govern CSS keyframes. Remaining ~9 unguarded keyframe files are loading spinners (conventionally exempt).",
+  "impact": "Users with prefers-reduced-motion still get infinite decorative animation on the public landing and distributor map \u2014 inconsistent with the otherwise-disciplined motion system.",
+  "suggested_fix": "Wrap decorative keyframes in @media (prefers-reduced-motion: reduce){ animation: none }.",
+  "demo_visible": false,
+  "roles_affected": [
+   "public",
+   "distributor",
+   "subscriber"
+  ],
+  "effort": "S",
+  "agent": "A17"
+ },
+ {
+  "id": "A17-009",
+  "title": "Web fonts load async (FOUT/CLS on cold load)",
+  "severity": "info",
+  "confidence": "confirmed",
+  "category": "typography-loading",
+  "surface": "every page (first load)",
+  "location": "index.html:39",
+  "evidence": "index.html:39 loads Google Fonts via media=\"print\" onload=\"this.media='all'\" + display=swap, with preconnect but no preload of the woff2 files. Fallbacks --font-display/--font-body end in generic 'sans-serif' with no size-adjust/font-size-adjust. No @font-face/self-hosting (grep of src/index.css and modules).",
+  "impact": "Cold demo first-paints in system sans-serif then swaps to Plus Jakarta Sans/Inter \u2014 a brief FOUT and possible CLS, and a CDN dependency that matters on poor Ugandan connectivity. One-time, non-blocking.",
+  "suggested_fix": "Preload the two woff2 subsets (or self-host), or accept as demo-scope.",
+  "demo_visible": true,
+  "roles_affected": [
+   "public",
+   "subscriber",
+   "agent",
+   "branch",
+   "distributor",
+   "employer",
+   "admin"
+  ],
+  "effort": "S",
+  "agent": "A17"
+ }
+]

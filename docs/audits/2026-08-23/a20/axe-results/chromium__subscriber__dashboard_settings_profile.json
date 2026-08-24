@@ -1,0 +1,7 @@
+{
+  "role": "subscriber",
+  "route": "/dashboard/settings/profile",
+  "project": "chromium",
+  "url": "http://localhost:5173/dashboard/settings/profile",
+  "violations": []
+}

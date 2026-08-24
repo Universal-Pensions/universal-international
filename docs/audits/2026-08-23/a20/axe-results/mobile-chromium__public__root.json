@@ -1,0 +1,27 @@
+{
+  "role": "public",
+  "route": "/",
+  "project": "mobile-chromium",
+  "url": "http://localhost:5173/",
+  "violations": [
+    {
+      "id": "color-contrast",
+      "impact": "serious",
+      "help": "Elements must meet minimum color contrast ratio thresholds",
+      "nodes": 2,
+      "targets": [
+        "._quote_1wyx1_762:nth-child(2) > ._qby_1wyx1_787 > ._qav_1wyx1_793",
+        "._quote_1wyx1_762:nth-child(3) > ._qby_1wyx1_787 > ._qav_1wyx1_793"
+      ]
+    },
+    {
+      "id": "scrollable-region-focusable",
+      "impact": "serious",
+      "help": "Scrollable region must have keyboard access",
+      "nodes": 1,
+      "targets": [
+        "._quotesScroll_1wyx1_820"
+      ]
+    }
+  ]
+}

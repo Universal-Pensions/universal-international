@@ -1,0 +1,294 @@
+[
+  {
+    "rpc": "get_agent_commission_list",
+    "file": "src/services/commissions.js",
+    "offsetLine": 241,
+    "liveKeys": [
+      "agent_id",
+      "agent_name",
+      "employee_id",
+      "branch_id",
+      "branch_name",
+      "total_commissions",
+      "total_paid",
+      "total_due",
+      "subscribers_onboarded",
+      "active_subscribers",
+      "filtered_amount",
+      "filtered_count"
+    ],
+    "derefNotInPayload": [
+      "totalCommissions",
+      "totalPaid",
+      "totalDue"
+    ]
+  },
+  {
+    "rpc": "get_agent_commission_list",
+    "file": "src/services/commissions.js",
+    "offsetLine": 244,
+    "liveKeys": [
+      "agent_id",
+      "agent_name",
+      "employee_id",
+      "branch_id",
+      "branch_name",
+      "total_commissions",
+      "total_paid",
+      "total_due",
+      "subscribers_onboarded",
+      "active_subscribers",
+      "filtered_amount",
+      "filtered_count"
+    ],
+    "derefNotInPayload": [
+      "totalCommissions",
+      "totalPaid",
+      "totalDue"
+    ]
+  },
+  {
+    "rpc": "get_all_employers_metrics",
+    "file": "src/services/employer.js",
+    "offsetLine": 667,
+    "liveKeys": [
+      "id",
+      "name",
+      "sector",
+      "status",
+      "district",
+      "createdAt",
+      "headcount",
+      "activeCount",
+      "insuredCount",
+      "totalBalance",
+      "payrollCadence",
+      "totalContributions",
+      "employerContributions"
+    ],
+    "derefNotInPayload": [
+      "monthlyTotal"
+    ]
+  },
+  {
+    "rpc": "get_branch_pending_contributions",
+    "file": "src/services/entities.js",
+    "offsetLine": 1013,
+    "liveKeys": [
+      "agent_id",
+      "agent_name",
+      "total",
+      "pending"
+    ],
+    "derefNotInPayload": [
+      "id"
+    ]
+  },
+  {
+    "rpc": "get_commission_summary",
+    "file": "src/services/commissions.js",
+    "offsetLine": 176,
+    "liveKeys": [
+      "countDue",
+      "totalDue",
+      "countPaid",
+      "totalPaid",
+      "countTotal",
+      "totalCommissions"
+    ],
+    "derefNotInPayload": [
+      "total",
+      "settlementRate"
+    ]
+  },
+  {
+    "rpc": "get_commission_summary",
+    "file": "src/services/commissions.js",
+    "offsetLine": 179,
+    "liveKeys": [
+      "countDue",
+      "totalDue",
+      "countPaid",
+      "totalPaid",
+      "countTotal",
+      "totalCommissions"
+    ],
+    "derefNotInPayload": [
+      "total",
+      "settlementRate"
+    ]
+  },
+  {
+    "rpc": "get_distributor_rollup",
+    "file": "src/services/entities.js",
+    "offsetLine": 917,
+    "liveKeys": [
+      "distributor_id",
+      "branches",
+      "agents",
+      "subscribers",
+      "active_subscribers",
+      "aum"
+    ],
+    "derefNotInPayload": [
+      "id",
+      "parentId",
+      "managerName",
+      "metrics",
+      "m",
+      "parent_id",
+      "parent_name",
+      "manager_name",
+      "total_subscribers",
+      "active_rate",
+      "total_contributions"
+    ]
+  },
+  {
+    "rpc": "get_employer_activity_rollup",
+    "file": "src/services/entities.js",
+    "offsetLine": 1379,
+    "liveKeys": [
+      "topEmployer",
+      "dailyWithdrawals",
+      "weeklyWithdrawals",
+      "dailyContributions",
+      "monthlyWithdrawals",
+      "newSubscribersToday",
+      "weeklyContributions",
+      "monthlyContributions",
+      "prevDailyWithdrawals",
+      "prevWeeklyWithdrawals",
+      "newSubscribersThisWeek",
+      "prevDailyContributions",
+      "prevMonthlyWithdrawals",
+      "newSubscribersThisMonth",
+      "prevNewSubscribersToday",
+      "prevWeeklyContributions",
+      "prevNewSubscribersThisWeek",
+      "prevNewSubscribersThisMonth"
+    ],
+    "derefNotInPayload": [
+      "branchId"
+    ]
+  },
+  {
+    "rpc": "get_nav_overview",
+    "file": "src/services/nav.js",
+    "offsetLine": 86,
+    "liveKeys": [
+      "aum",
+      "series",
+      "fundCode",
+      "changeAbs",
+      "changePct",
+      "growthPct",
+      "currentNav",
+      "pendingDays",
+      "previousNav",
+      "totalGrowth",
+      "avgGrowthPct",
+      "firstNavDate",
+      "unitsInIssue",
+      "membersPriced",
+      "totalInvested",
+      "currentNavDate",
+      "publishedCount",
+      "membersUnpriced",
+      "previousNavDate",
+      "membersWithBasis",
+      "lastPublishedDaysAgo"
+    ],
+    "derefNotInPayload": [
+      "rows",
+      "total"
+    ]
+  },
+  {
+    "rpc": "get_nav_overview",
+    "file": "src/services/nav.js",
+    "offsetLine": 87,
+    "liveKeys": [
+      "aum",
+      "series",
+      "fundCode",
+      "changeAbs",
+      "changePct",
+      "growthPct",
+      "currentNav",
+      "pendingDays",
+      "previousNav",
+      "totalGrowth",
+      "avgGrowthPct",
+      "firstNavDate",
+      "unitsInIssue",
+      "membersPriced",
+      "totalInvested",
+      "currentNavDate",
+      "publishedCount",
+      "membersUnpriced",
+      "previousNavDate",
+      "membersWithBasis",
+      "lastPublishedDaysAgo"
+    ],
+    "derefNotInPayload": [
+      "rows",
+      "total"
+    ]
+  },
+  {
+    "rpc": "get_pending_dues_by_branch",
+    "file": "src/services/commissions.js",
+    "offsetLine": 356,
+    "liveKeys": [
+      "branch_id",
+      "branch_name",
+      "pending_amount",
+      "pending_count",
+      "agent_count"
+    ],
+    "derefNotInPayload": [
+      "paymentDate"
+    ]
+  },
+  {
+    "rpc": "get_pending_dues_by_branch",
+    "file": "src/services/commissions.js",
+    "offsetLine": 357,
+    "liveKeys": [
+      "branch_id",
+      "branch_name",
+      "pending_amount",
+      "pending_count",
+      "agent_count"
+    ],
+    "derefNotInPayload": [
+      "paymentDate"
+    ]
+  },
+  {
+    "rpc": "get_top_entities",
+    "file": "src/services/entities.js",
+    "offsetLine": 961,
+    "liveKeys": [
+      "id",
+      "name",
+      "parent_id",
+      "parent_name",
+      "manager_name",
+      "status",
+      "total_subscribers",
+      "active_rate",
+      "aum",
+      "total_contributions"
+    ],
+    "derefNotInPayload": [
+      "metrics",
+      "m",
+      "pending",
+      "agent_id",
+      "agent_name",
+      "total"
+    ]
+  }
+]

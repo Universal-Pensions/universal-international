@@ -1,0 +1,17 @@
+{
+  "role": "branch",
+  "route": "/dashboard/support",
+  "project": "chromium",
+  "url": "http://localhost:5173/dashboard/support",
+  "violations": [
+    {
+      "id": "color-contrast",
+      "impact": "serious",
+      "help": "Elements must meet minimum color contrast ratio thresholds",
+      "nodes": 1,
+      "targets": [
+        "button[aria-label=\"Updating my phone number\"] > ._trailing_f9tg1_100 > ._markers_f9tg1_120 > ._badge_16y8v_7[data-tone=\"closed\"][data-size=\"md\"]"
+      ]
+    }
+  ]
+}

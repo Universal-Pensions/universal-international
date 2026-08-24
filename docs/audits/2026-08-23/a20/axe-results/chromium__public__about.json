@@ -1,0 +1,20 @@
+{
+  "role": "public",
+  "route": "/about",
+  "project": "chromium",
+  "url": "http://localhost:5173/about",
+  "violations": [
+    {
+      "id": "color-contrast",
+      "impact": "serious",
+      "help": "Elements must meet minimum color contrast ratio thresholds",
+      "nodes": 11,
+      "targets": [
+        "._step_1civi_63:nth-child(1) > ._stepNum_1civi_80",
+        "._step_1civi_63:nth-child(2) > ._stepNum_1civi_80",
+        "._step_1civi_63:nth-child(3) > ._stepNum_1civi_80",
+        "._regulatory_1tlk9_35"
+      ]
+    }
+  ]
+}

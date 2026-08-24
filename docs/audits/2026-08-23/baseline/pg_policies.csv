@@ -1,0 +1,159 @@
+schemaname,tablename,policyname,permissive,roles,cmd,qual,with_check
+public,access_requests,access_requests_select_admin,PERMISSIVE,{public},SELECT,((( SELECT auth.jwt() AS jwt) ->> 'app_role'::text) = 'admin'::text),""
+public,agent_referrals,agent_referrals_select_admin,PERMISSIVE,{public},SELECT,((( SELECT auth.jwt() AS jwt) ->> 'app_role'::text) = 'admin'::text),""
+public,agents,agents_insert_branch,PERMISSIVE,{public},INSERT,"",(((( SELECT auth.jwt() AS jwt) ->> 'app_role'::text) = 'branch'::text) AND (branch_id = (( SELECT auth.jwt() AS jwt) ->> 'branchId'::text)))
+public,agents,agents_scope_distributor,RESTRICTIVE,{public},SELECT,"((COALESCE((( SELECT auth.jwt() AS jwt) ->> 'app_role'::text), ''::text) <> 'distributor'::text) OR (branch_id IN ( SELECT distributor_branch_ids() AS distributor_branch_ids)))",""
+public,agents,agents_select_admin,PERMISSIVE,{public},SELECT,((( SELECT auth.jwt() AS jwt) ->> 'app_role'::text) = 'admin'::text),""
+public,agents,agents_select_branch,PERMISSIVE,{public},SELECT,(((( SELECT auth.jwt() AS jwt) ->> 'app_role'::text) = 'branch'::text) AND (branch_id = (( SELECT auth.jwt() AS jwt) ->> 'branchId'::text))),""
+public,agents,agents_select_distributor,PERMISSIVE,{public},SELECT,(((( SELECT auth.jwt() AS jwt) ->> 'app_role'::text) = 'distributor'::text) AND (branch_id IN ( SELECT distributor_branch_ids() AS distributor_branch_ids))),""
+public,agents,agents_select_self,PERMISSIVE,{public},SELECT,(((( SELECT auth.jwt() AS jwt) ->> 'app_role'::text) = 'agent'::text) AND (id = (( SELECT auth.jwt() AS jwt) ->> 'agentId'::text))),""
+public,agents,agents_select_subscriber,PERMISSIVE,{public},SELECT,(((( SELECT auth.jwt() AS jwt) ->> 'app_role'::text) = 'subscriber'::text) AND (id = subscriber_agent_id())),""
+public,agents,agents_update_branch,PERMISSIVE,{public},UPDATE,(((( SELECT auth.jwt() AS jwt) ->> 'app_role'::text) = 'branch'::text) AND (branch_id = (( SELECT auth.jwt() AS jwt) ->> 'branchId'::text))),(((( SELECT auth.jwt() AS jwt) ->> 'app_role'::text) = 'branch'::text) AND (branch_id = (( SELECT auth.jwt() AS jwt) ->> 'branchId'::text)))
+public,branches,branches_insert_distributor,PERMISSIVE,{public},INSERT,"",(((( SELECT auth.jwt() AS jwt) ->> 'app_role'::text) = 'distributor'::text) AND (distributor_id = current_distributor_id()))
+public,branches,branches_scope_distributor,RESTRICTIVE,{public},SELECT,"((COALESCE((( SELECT auth.jwt() AS jwt) ->> 'app_role'::text), ''::text) <> 'distributor'::text) OR (distributor_id = current_distributor_id()))",""
+public,branches,branches_select_admin,PERMISSIVE,{public},SELECT,((( SELECT auth.jwt() AS jwt) ->> 'app_role'::text) = 'admin'::text),""
+public,branches,branches_select_agent,PERMISSIVE,{public},SELECT,(((( SELECT auth.jwt() AS jwt) ->> 'app_role'::text) = 'agent'::text) AND (id = agent_branch_id())),""
+public,branches,branches_select_distributor,PERMISSIVE,{public},SELECT,(((( SELECT auth.jwt() AS jwt) ->> 'app_role'::text) = 'distributor'::text) AND (distributor_id = current_distributor_id())),""
+public,branches,branches_select_self,PERMISSIVE,{public},SELECT,(((( SELECT auth.jwt() AS jwt) ->> 'app_role'::text) = 'branch'::text) AND (id = (( SELECT auth.jwt() AS jwt) ->> 'branchId'::text))),""
+public,branches,branches_select_subscriber,PERMISSIVE,{public},SELECT,(((( SELECT auth.jwt() AS jwt) ->> 'app_role'::text) = 'subscriber'::text) AND (id = subscriber_branch_id())),""
+public,branches,branches_update_distributor,PERMISSIVE,{public},UPDATE,(((( SELECT auth.jwt() AS jwt) ->> 'app_role'::text) = 'distributor'::text) AND (distributor_id = current_distributor_id())),(((( SELECT auth.jwt() AS jwt) ->> 'app_role'::text) = 'distributor'::text) AND (distributor_id = current_distributor_id()))
+public,claims,claims_select_admin,PERMISSIVE,{public},SELECT,((( SELECT auth.jwt() AS jwt) ->> 'app_role'::text) = 'admin'::text),""
+public,claims,claims_select_agent,PERMISSIVE,{public},SELECT,"(((( SELECT auth.jwt() AS jwt) ->> 'app_role'::text) = 'agent'::text) AND (EXISTS ( SELECT 1
+   FROM subscribers s
+  WHERE ((s.id = claims.subscriber_id) AND (s.agent_id = (( SELECT auth.jwt() AS jwt) ->> 'agentId'::text))))))",""
+public,claims,claims_select_branch,PERMISSIVE,{public},SELECT,"(((( SELECT auth.jwt() AS jwt) ->> 'app_role'::text) = 'branch'::text) AND (EXISTS ( SELECT 1
+   FROM (subscribers s
+     JOIN agents a ON ((a.id = s.agent_id)))
+  WHERE ((s.id = claims.subscriber_id) AND (a.branch_id = (( SELECT auth.jwt() AS jwt) ->> 'branchId'::text))))))",""
+public,claims,claims_select_distributor,PERMISSIVE,{public},SELECT,(((( SELECT auth.jwt() AS jwt) ->> 'app_role'::text) = 'distributor'::text) AND (subscriber_id IN ( SELECT distributor_subscriber_ids() AS distributor_subscriber_ids))),""
+public,claims,claims_select_self,PERMISSIVE,{public},SELECT,(((( SELECT auth.jwt() AS jwt) ->> 'app_role'::text) = 'subscriber'::text) AND (subscriber_id = (( SELECT auth.jwt() AS jwt) ->> 'subscriberId'::text))),""
+public,commission_config,commission_config_select_authenticated,PERMISSIVE,{public},SELECT,"(((( SELECT auth.jwt() AS jwt) ->> 'app_role'::text) IS NOT NULL) AND ((distributor_id IS NULL) OR ((( SELECT auth.jwt() AS jwt) ->> 'app_role'::text) = 'admin'::text) OR (distributor_id = NULLIF((( SELECT auth.jwt() AS jwt) ->> 'distributorId'::text), ''::text))))",""
+public,commissions,commissions_select_admin,PERMISSIVE,{public},SELECT,((( SELECT auth.jwt() AS jwt) ->> 'app_role'::text) = 'admin'::text),""
+public,commissions,commissions_select_agent,PERMISSIVE,{public},SELECT,(((( SELECT auth.jwt() AS jwt) ->> 'app_role'::text) = 'agent'::text) AND (agent_id = (( SELECT auth.jwt() AS jwt) ->> 'agentId'::text))),""
+public,commissions,commissions_select_branch,PERMISSIVE,{public},SELECT,(((( SELECT auth.jwt() AS jwt) ->> 'app_role'::text) = 'branch'::text) AND (branch_id = (( SELECT auth.jwt() AS jwt) ->> 'branchId'::text))),""
+public,commissions,commissions_select_distributor,PERMISSIVE,{public},SELECT,(((( SELECT auth.jwt() AS jwt) ->> 'app_role'::text) = 'distributor'::text) AND (branch_id IN ( SELECT distributor_branch_ids() AS distributor_branch_ids))),""
+public,contact_submissions,contact_submissions_select_admin,PERMISSIVE,{public},SELECT,((( SELECT auth.jwt() AS jwt) ->> 'app_role'::text) = 'admin'::text),""
+public,contribution_runs,contribution_runs_by_employer_select,PERMISSIVE,{public},SELECT,(((( SELECT auth.jwt() AS jwt) ->> 'app_role'::text) = 'employer'::text) AND (employer_id = (( SELECT auth.jwt() AS jwt) ->> 'employerId'::text))),""
+public,contribution_runs,contribution_runs_select_admin,PERMISSIVE,{public},SELECT,((( SELECT auth.jwt() AS jwt) ->> 'app_role'::text) = 'admin'::text),""
+public,contribution_schedules,contribution_schedules_select_admin,PERMISSIVE,{public},SELECT,((( SELECT auth.jwt() AS jwt) ->> 'app_role'::text) = 'admin'::text),""
+public,contribution_schedules,contribution_schedules_select_agent,PERMISSIVE,{public},SELECT,"(((( SELECT auth.jwt() AS jwt) ->> 'app_role'::text) = 'agent'::text) AND (EXISTS ( SELECT 1
+   FROM subscribers s
+  WHERE ((s.id = contribution_schedules.subscriber_id) AND (s.agent_id = (( SELECT auth.jwt() AS jwt) ->> 'agentId'::text))))))",""
+public,contribution_schedules,contribution_schedules_select_branch,PERMISSIVE,{public},SELECT,"(((( SELECT auth.jwt() AS jwt) ->> 'app_role'::text) = 'branch'::text) AND (EXISTS ( SELECT 1
+   FROM (subscribers s
+     JOIN agents a ON ((a.id = s.agent_id)))
+  WHERE ((s.id = contribution_schedules.subscriber_id) AND (a.branch_id = (( SELECT auth.jwt() AS jwt) ->> 'branchId'::text))))))",""
+public,contribution_schedules,contribution_schedules_select_distributor,PERMISSIVE,{public},SELECT,(((( SELECT auth.jwt() AS jwt) ->> 'app_role'::text) = 'distributor'::text) AND (subscriber_id IN ( SELECT distributor_subscriber_ids() AS distributor_subscriber_ids))),""
+public,contribution_schedules,contribution_schedules_select_employer,PERMISSIVE,{public},SELECT,"(((( SELECT auth.jwt() AS jwt) ->> 'app_role'::text) = 'employer'::text) AND (EXISTS ( SELECT 1
+   FROM subscribers s
+  WHERE ((s.id = contribution_schedules.subscriber_id) AND (s.employer_id = (( SELECT auth.jwt() AS jwt) ->> 'employerId'::text))))))",""
+public,contribution_schedules,contribution_schedules_select_self,PERMISSIVE,{public},SELECT,(((( SELECT auth.jwt() AS jwt) ->> 'app_role'::text) = 'subscriber'::text) AND (subscriber_id = (( SELECT auth.jwt() AS jwt) ->> 'subscriberId'::text))),""
+public,contribution_schedules,contribution_schedules_update_self,PERMISSIVE,{public},UPDATE,(((( SELECT auth.jwt() AS jwt) ->> 'app_role'::text) = 'subscriber'::text) AND (subscriber_id = (( SELECT auth.jwt() AS jwt) ->> 'subscriberId'::text))),(((( SELECT auth.jwt() AS jwt) ->> 'app_role'::text) = 'subscriber'::text) AND (subscriber_id = (( SELECT auth.jwt() AS jwt) ->> 'subscriberId'::text)))
+public,custody_transfers,custody_transfers_select_admin,PERMISSIVE,{public},SELECT,((( SELECT auth.jwt() AS jwt) ->> 'app_role'::text) = 'admin'::text),""
+public,demo_personas,demo_personas_select_authenticated,PERMISSIVE,{public},SELECT,((( SELECT auth.jwt() AS jwt) ->> 'app_role'::text) IS NOT NULL),""
+public,distributors,distributors_select_admin,PERMISSIVE,{public},SELECT,((( SELECT auth.jwt() AS jwt) ->> 'app_role'::text) = 'admin'::text),""
+public,distributors,distributors_select_self,PERMISSIVE,{public},SELECT,(((( SELECT auth.jwt() AS jwt) ->> 'app_role'::text) = 'distributor'::text) AND (id = current_distributor_id())),""
+public,distributors,distributors_update_self,PERMISSIVE,{public},UPDATE,(((( SELECT auth.jwt() AS jwt) ->> 'app_role'::text) = 'distributor'::text) AND (id = (( SELECT auth.jwt() AS jwt) ->> 'distributorId'::text))),(((( SELECT auth.jwt() AS jwt) ->> 'app_role'::text) = 'distributor'::text) AND (id = (( SELECT auth.jwt() AS jwt) ->> 'distributorId'::text)))
+public,districts,districts_select_public,PERMISSIVE,{public},SELECT,true,""
+public,employer_invites,employer_invites_select_admin,PERMISSIVE,{public},SELECT,((( SELECT auth.jwt() AS jwt) ->> 'app_role'::text) = 'admin'::text),""
+public,employer_invites,employer_invites_select_employer,PERMISSIVE,{public},SELECT,(((( SELECT auth.jwt() AS jwt) ->> 'app_role'::text) = 'employer'::text) AND (employer_id = (( SELECT auth.jwt() AS jwt) ->> 'employerId'::text))),""
+public,employers,employer_self_select,PERMISSIVE,{public},SELECT,(((( SELECT auth.jwt() AS jwt) ->> 'app_role'::text) = 'employer'::text) AND (id = (( SELECT auth.jwt() AS jwt) ->> 'employerId'::text))),""
+public,employers,employers_select_admin,PERMISSIVE,{public},SELECT,((( SELECT auth.jwt() AS jwt) ->> 'app_role'::text) = 'admin'::text),""
+public,insurance_policies,insurance_policies_insert_self,PERMISSIVE,{public},INSERT,"",(((( SELECT auth.jwt() AS jwt) ->> 'app_role'::text) = 'subscriber'::text) AND (subscriber_id = (( SELECT auth.jwt() AS jwt) ->> 'subscriberId'::text)))
+public,insurance_policies,insurance_policies_select_admin,PERMISSIVE,{public},SELECT,((( SELECT auth.jwt() AS jwt) ->> 'app_role'::text) = 'admin'::text),""
+public,insurance_policies,insurance_policies_select_agent,PERMISSIVE,{public},SELECT,"(((( SELECT auth.jwt() AS jwt) ->> 'app_role'::text) = 'agent'::text) AND (EXISTS ( SELECT 1
+   FROM subscribers s
+  WHERE ((s.id = insurance_policies.subscriber_id) AND (s.agent_id = (( SELECT auth.jwt() AS jwt) ->> 'agentId'::text))))))",""
+public,insurance_policies,insurance_policies_select_branch,PERMISSIVE,{public},SELECT,"(((( SELECT auth.jwt() AS jwt) ->> 'app_role'::text) = 'branch'::text) AND (EXISTS ( SELECT 1
+   FROM (subscribers s
+     JOIN agents a ON ((a.id = s.agent_id)))
+  WHERE ((s.id = insurance_policies.subscriber_id) AND (a.branch_id = (( SELECT auth.jwt() AS jwt) ->> 'branchId'::text))))))",""
+public,insurance_policies,insurance_policies_select_distributor,PERMISSIVE,{public},SELECT,(((( SELECT auth.jwt() AS jwt) ->> 'app_role'::text) = 'distributor'::text) AND (subscriber_id IN ( SELECT distributor_subscriber_ids() AS distributor_subscriber_ids))),""
+public,insurance_policies,insurance_policies_select_employer,PERMISSIVE,{public},SELECT,"(((( SELECT auth.jwt() AS jwt) ->> 'app_role'::text) = 'employer'::text) AND (EXISTS ( SELECT 1
+   FROM subscribers s
+  WHERE ((s.id = insurance_policies.subscriber_id) AND (s.employer_id = (( SELECT auth.jwt() AS jwt) ->> 'employerId'::text))))))",""
+public,insurance_policies,insurance_policies_select_self,PERMISSIVE,{public},SELECT,(((( SELECT auth.jwt() AS jwt) ->> 'app_role'::text) = 'subscriber'::text) AND (subscriber_id = (( SELECT auth.jwt() AS jwt) ->> 'subscriberId'::text))),""
+public,insurance_policies,insurance_policies_update_self,PERMISSIVE,{public},UPDATE,(((( SELECT auth.jwt() AS jwt) ->> 'app_role'::text) = 'subscriber'::text) AND (subscriber_id = (( SELECT auth.jwt() AS jwt) ->> 'subscriberId'::text))),(((( SELECT auth.jwt() AS jwt) ->> 'app_role'::text) = 'subscriber'::text) AND (subscriber_id = (( SELECT auth.jwt() AS jwt) ->> 'subscriberId'::text)))
+public,nav_snapshots,nav_snapshots_select_admin,PERMISSIVE,{public},SELECT,((( SELECT auth.jwt() AS jwt) ->> 'app_role'::text) = 'admin'::text),""
+public,nominee_claims,nominee_claims_select_admin,PERMISSIVE,{public},SELECT,((( SELECT auth.jwt() AS jwt) ->> 'app_role'::text) = 'admin'::text),""
+public,nominees,nominees_delete_self,PERMISSIVE,{public},DELETE,(((( SELECT auth.jwt() AS jwt) ->> 'app_role'::text) = 'subscriber'::text) AND (subscriber_id = (( SELECT auth.jwt() AS jwt) ->> 'subscriberId'::text))),""
+public,nominees,nominees_insert_self,PERMISSIVE,{public},INSERT,"",(((( SELECT auth.jwt() AS jwt) ->> 'app_role'::text) = 'subscriber'::text) AND (subscriber_id = (( SELECT auth.jwt() AS jwt) ->> 'subscriberId'::text)))
+public,nominees,nominees_select_admin,PERMISSIVE,{public},SELECT,((( SELECT auth.jwt() AS jwt) ->> 'app_role'::text) = 'admin'::text),""
+public,nominees,nominees_select_agent,PERMISSIVE,{public},SELECT,"(((( SELECT auth.jwt() AS jwt) ->> 'app_role'::text) = 'agent'::text) AND (EXISTS ( SELECT 1
+   FROM subscribers s
+  WHERE ((s.id = nominees.subscriber_id) AND (s.agent_id = (( SELECT auth.jwt() AS jwt) ->> 'agentId'::text))))))",""
+public,nominees,nominees_select_branch,PERMISSIVE,{public},SELECT,"(((( SELECT auth.jwt() AS jwt) ->> 'app_role'::text) = 'branch'::text) AND (EXISTS ( SELECT 1
+   FROM (subscribers s
+     JOIN agents a ON ((a.id = s.agent_id)))
+  WHERE ((s.id = nominees.subscriber_id) AND (a.branch_id = (( SELECT auth.jwt() AS jwt) ->> 'branchId'::text))))))",""
+public,nominees,nominees_select_distributor,PERMISSIVE,{public},SELECT,(((( SELECT auth.jwt() AS jwt) ->> 'app_role'::text) = 'distributor'::text) AND (subscriber_id IN ( SELECT distributor_subscriber_ids() AS distributor_subscriber_ids))),""
+public,nominees,nominees_select_employer,PERMISSIVE,{public},SELECT,"(((( SELECT auth.jwt() AS jwt) ->> 'app_role'::text) = 'employer'::text) AND (EXISTS ( SELECT 1
+   FROM subscribers s
+  WHERE ((s.id = nominees.subscriber_id) AND (s.employer_id = (( SELECT auth.jwt() AS jwt) ->> 'employerId'::text))))))",""
+public,nominees,nominees_select_self,PERMISSIVE,{public},SELECT,(((( SELECT auth.jwt() AS jwt) ->> 'app_role'::text) = 'subscriber'::text) AND (subscriber_id = (( SELECT auth.jwt() AS jwt) ->> 'subscriberId'::text))),""
+public,nominees,nominees_update_self,PERMISSIVE,{public},UPDATE,(((( SELECT auth.jwt() AS jwt) ->> 'app_role'::text) = 'subscriber'::text) AND (subscriber_id = (( SELECT auth.jwt() AS jwt) ->> 'subscriberId'::text))),(((( SELECT auth.jwt() AS jwt) ->> 'app_role'::text) = 'subscriber'::text) AND (subscriber_id = (( SELECT auth.jwt() AS jwt) ->> 'subscriberId'::text)))
+public,notifications,notifications_select_admin,PERMISSIVE,{public},SELECT,((( SELECT auth.jwt() AS jwt) ->> 'app_role'::text) = 'admin'::text),""
+public,notifications,notifications_select_agent,PERMISSIVE,{public},SELECT,(((( SELECT auth.jwt() AS jwt) ->> 'app_role'::text) = 'agent'::text) AND (recipient_role = 'agent'::text) AND (recipient_id = (( SELECT auth.jwt() AS jwt) ->> 'agentId'::text))),""
+public,notifications,notifications_select_branch,PERMISSIVE,{public},SELECT,(((( SELECT auth.jwt() AS jwt) ->> 'app_role'::text) = 'branch'::text) AND (recipient_role = 'branch'::text) AND (recipient_id = (( SELECT auth.jwt() AS jwt) ->> 'branchId'::text))),""
+public,notifications,notifications_select_distributor,PERMISSIVE,{public},SELECT,(((( SELECT auth.jwt() AS jwt) ->> 'app_role'::text) = 'distributor'::text) AND (recipient_role = 'distributor'::text) AND (recipient_id = current_distributor_id())),""
+public,notifications,notifications_select_employer,PERMISSIVE,{public},SELECT,(((( SELECT auth.jwt() AS jwt) ->> 'app_role'::text) = 'employer'::text) AND (recipient_role = 'employer'::text) AND (recipient_id = (( SELECT auth.jwt() AS jwt) ->> 'employerId'::text))),""
+public,regions,regions_select_public,PERMISSIVE,{public},SELECT,true,""
+public,settlement_batches,settlement_batches_select_admin,PERMISSIVE,{public},SELECT,((( SELECT auth.jwt() AS jwt) ->> 'app_role'::text) = 'admin'::text),""
+public,settlement_batches,settlement_batches_select_agent,PERMISSIVE,{public},SELECT,(((( SELECT auth.jwt() AS jwt) ->> 'app_role'::text) = 'agent'::text) AND (agent_id = (( SELECT auth.jwt() AS jwt) ->> 'agentId'::text))),""
+public,settlement_batches,settlement_batches_select_branch,PERMISSIVE,{public},SELECT,(((( SELECT auth.jwt() AS jwt) ->> 'app_role'::text) = 'branch'::text) AND (branch_id = (( SELECT auth.jwt() AS jwt) ->> 'branchId'::text))),""
+public,settlement_batches,settlement_batches_select_distributor,PERMISSIVE,{public},SELECT,(((( SELECT auth.jwt() AS jwt) ->> 'app_role'::text) = 'distributor'::text) AND (branch_id IN ( SELECT distributor_branch_ids() AS distributor_branch_ids))),""
+public,subscriber_balances,subscriber_balances_select_admin,PERMISSIVE,{public},SELECT,((( SELECT auth.jwt() AS jwt) ->> 'app_role'::text) = 'admin'::text),""
+public,subscriber_balances,subscriber_balances_select_agent,PERMISSIVE,{public},SELECT,"(((( SELECT auth.jwt() AS jwt) ->> 'app_role'::text) = 'agent'::text) AND (EXISTS ( SELECT 1
+   FROM subscribers s
+  WHERE ((s.id = subscriber_balances.subscriber_id) AND (s.agent_id = (( SELECT auth.jwt() AS jwt) ->> 'agentId'::text))))))",""
+public,subscriber_balances,subscriber_balances_select_branch,PERMISSIVE,{public},SELECT,"(((( SELECT auth.jwt() AS jwt) ->> 'app_role'::text) = 'branch'::text) AND (EXISTS ( SELECT 1
+   FROM (subscribers s
+     JOIN agents a ON ((a.id = s.agent_id)))
+  WHERE ((s.id = subscriber_balances.subscriber_id) AND (a.branch_id = (( SELECT auth.jwt() AS jwt) ->> 'branchId'::text))))))",""
+public,subscriber_balances,subscriber_balances_select_distributor,PERMISSIVE,{public},SELECT,(((( SELECT auth.jwt() AS jwt) ->> 'app_role'::text) = 'distributor'::text) AND (subscriber_id IN ( SELECT distributor_subscriber_ids() AS distributor_subscriber_ids))),""
+public,subscriber_balances,subscriber_balances_select_employer,PERMISSIVE,{public},SELECT,"(((( SELECT auth.jwt() AS jwt) ->> 'app_role'::text) = 'employer'::text) AND (EXISTS ( SELECT 1
+   FROM subscribers s
+  WHERE ((s.id = subscriber_balances.subscriber_id) AND (s.employer_id = (( SELECT auth.jwt() AS jwt) ->> 'employerId'::text))))))",""
+public,subscriber_balances,subscriber_balances_select_self,PERMISSIVE,{public},SELECT,(((( SELECT auth.jwt() AS jwt) ->> 'app_role'::text) = 'subscriber'::text) AND (subscriber_id = (( SELECT auth.jwt() AS jwt) ->> 'subscriberId'::text))),""
+public,subscriber_insurance_products,sip_insert_self,PERMISSIVE,{public},INSERT,"",(((( SELECT auth.jwt() AS jwt) ->> 'app_role'::text) = 'subscriber'::text) AND (subscriber_id = (( SELECT auth.jwt() AS jwt) ->> 'subscriberId'::text)))
+public,subscriber_insurance_products,sip_select_agent,PERMISSIVE,{public},SELECT,"(((( SELECT auth.jwt() AS jwt) ->> 'app_role'::text) = 'agent'::text) AND (EXISTS ( SELECT 1
+   FROM subscribers s
+  WHERE ((s.id = subscriber_insurance_products.subscriber_id) AND (s.agent_id = (( SELECT auth.jwt() AS jwt) ->> 'agentId'::text))))))",""
+public,subscriber_insurance_products,sip_select_self,PERMISSIVE,{public},SELECT,(((( SELECT auth.jwt() AS jwt) ->> 'app_role'::text) = 'subscriber'::text) AND (subscriber_id = (( SELECT auth.jwt() AS jwt) ->> 'subscriberId'::text))),""
+public,subscriber_insurance_products,sip_update_self,PERMISSIVE,{public},UPDATE,(((( SELECT auth.jwt() AS jwt) ->> 'app_role'::text) = 'subscriber'::text) AND (subscriber_id = (( SELECT auth.jwt() AS jwt) ->> 'subscriberId'::text))),(((( SELECT auth.jwt() AS jwt) ->> 'app_role'::text) = 'subscriber'::text) AND (subscriber_id = (( SELECT auth.jwt() AS jwt) ->> 'subscriberId'::text)))
+public,subscribers,subscribers_insert_agent,PERMISSIVE,{public},INSERT,"",(((( SELECT auth.jwt() AS jwt) ->> 'app_role'::text) = 'agent'::text) AND (agent_id = (( SELECT auth.jwt() AS jwt) ->> 'agentId'::text)))
+public,subscribers,subscribers_select_admin,PERMISSIVE,{public},SELECT,((( SELECT auth.jwt() AS jwt) ->> 'app_role'::text) = 'admin'::text),""
+public,subscribers,subscribers_select_agent,PERMISSIVE,{public},SELECT,(((( SELECT auth.jwt() AS jwt) ->> 'app_role'::text) = 'agent'::text) AND (agent_id = (( SELECT auth.jwt() AS jwt) ->> 'agentId'::text))),""
+public,subscribers,subscribers_select_branch,PERMISSIVE,{public},SELECT,"(((( SELECT auth.jwt() AS jwt) ->> 'app_role'::text) = 'branch'::text) AND (EXISTS ( SELECT 1
+   FROM agents a
+  WHERE ((a.id = subscribers.agent_id) AND (a.branch_id = (( SELECT auth.jwt() AS jwt) ->> 'branchId'::text))))))",""
+public,subscribers,subscribers_select_distributor,PERMISSIVE,{public},SELECT,(((( SELECT auth.jwt() AS jwt) ->> 'app_role'::text) = 'distributor'::text) AND (agent_id IN ( SELECT distributor_agent_ids() AS distributor_agent_ids))),""
+public,subscribers,subscribers_select_employer,PERMISSIVE,{public},SELECT,(((( SELECT auth.jwt() AS jwt) ->> 'app_role'::text) = 'employer'::text) AND (employer_id = (( SELECT auth.jwt() AS jwt) ->> 'employerId'::text))),""
+public,subscribers,subscribers_select_self,PERMISSIVE,{public},SELECT,(((( SELECT auth.jwt() AS jwt) ->> 'app_role'::text) = 'subscriber'::text) AND (id = (( SELECT auth.jwt() AS jwt) ->> 'subscriberId'::text))),""
+public,subscribers,subscribers_update_self,PERMISSIVE,{public},UPDATE,(((( SELECT auth.jwt() AS jwt) ->> 'app_role'::text) = 'subscriber'::text) AND (id = (( SELECT auth.jwt() AS jwt) ->> 'subscriberId'::text))),(((( SELECT auth.jwt() AS jwt) ->> 'app_role'::text) = 'subscriber'::text) AND (id = (( SELECT auth.jwt() AS jwt) ->> 'subscriberId'::text)))
+public,transactions,transactions_insert_self,PERMISSIVE,{public},INSERT,"",(((( SELECT auth.jwt() AS jwt) ->> 'app_role'::text) = 'subscriber'::text) AND (subscriber_id = (( SELECT auth.jwt() AS jwt) ->> 'subscriberId'::text)))
+public,transactions,transactions_select_admin,PERMISSIVE,{public},SELECT,((( SELECT auth.jwt() AS jwt) ->> 'app_role'::text) = 'admin'::text),""
+public,transactions,transactions_select_agent,PERMISSIVE,{public},SELECT,"(((( SELECT auth.jwt() AS jwt) ->> 'app_role'::text) = 'agent'::text) AND (EXISTS ( SELECT 1
+   FROM subscribers s
+  WHERE ((s.id = transactions.subscriber_id) AND (s.agent_id = (( SELECT auth.jwt() AS jwt) ->> 'agentId'::text))))))",""
+public,transactions,transactions_select_branch,PERMISSIVE,{public},SELECT,"(((( SELECT auth.jwt() AS jwt) ->> 'app_role'::text) = 'branch'::text) AND (EXISTS ( SELECT 1
+   FROM (subscribers s
+     JOIN agents a ON ((a.id = s.agent_id)))
+  WHERE ((s.id = transactions.subscriber_id) AND (a.branch_id = (( SELECT auth.jwt() AS jwt) ->> 'branchId'::text))))))",""
+public,transactions,transactions_select_distributor,PERMISSIVE,{public},SELECT,(((( SELECT auth.jwt() AS jwt) ->> 'app_role'::text) = 'distributor'::text) AND (subscriber_id IN ( SELECT distributor_subscriber_ids() AS distributor_subscriber_ids))),""
+public,transactions,transactions_select_employer,PERMISSIVE,{public},SELECT,"(((( SELECT auth.jwt() AS jwt) ->> 'app_role'::text) = 'employer'::text) AND (EXISTS ( SELECT 1
+   FROM subscribers s
+  WHERE ((s.id = transactions.subscriber_id) AND (s.employer_id = (( SELECT auth.jwt() AS jwt) ->> 'employerId'::text))))))",""
+public,transactions,transactions_select_self,PERMISSIVE,{public},SELECT,(((( SELECT auth.jwt() AS jwt) ->> 'app_role'::text) = 'subscriber'::text) AND (subscriber_id = (( SELECT auth.jwt() AS jwt) ->> 'subscriberId'::text))),""
+public,users,users_select_admin,PERMISSIVE,{public},SELECT,((( SELECT auth.jwt() AS jwt) ->> 'app_role'::text) = 'admin'::text),""
+public,withdrawals,withdrawals_insert_self,PERMISSIVE,{public},INSERT,"",(((( SELECT auth.jwt() AS jwt) ->> 'app_role'::text) = 'subscriber'::text) AND (subscriber_id = (( SELECT auth.jwt() AS jwt) ->> 'subscriberId'::text)))
+public,withdrawals,withdrawals_select_admin,PERMISSIVE,{public},SELECT,((( SELECT auth.jwt() AS jwt) ->> 'app_role'::text) = 'admin'::text),""
+public,withdrawals,withdrawals_select_agent,PERMISSIVE,{public},SELECT,"(((( SELECT auth.jwt() AS jwt) ->> 'app_role'::text) = 'agent'::text) AND (EXISTS ( SELECT 1
+   FROM subscribers s
+  WHERE ((s.id = withdrawals.subscriber_id) AND (s.agent_id = (( SELECT auth.jwt() AS jwt) ->> 'agentId'::text))))))",""
+public,withdrawals,withdrawals_select_branch,PERMISSIVE,{public},SELECT,"(((( SELECT auth.jwt() AS jwt) ->> 'app_role'::text) = 'branch'::text) AND (EXISTS ( SELECT 1
+   FROM (subscribers s
+     JOIN agents a ON ((a.id = s.agent_id)))
+  WHERE ((s.id = withdrawals.subscriber_id) AND (a.branch_id = (( SELECT auth.jwt() AS jwt) ->> 'branchId'::text))))))",""
+public,withdrawals,withdrawals_select_distributor,PERMISSIVE,{public},SELECT,(((( SELECT auth.jwt() AS jwt) ->> 'app_role'::text) = 'distributor'::text) AND (subscriber_id IN ( SELECT distributor_subscriber_ids() AS distributor_subscriber_ids))),""
+public,withdrawals,withdrawals_select_self,PERMISSIVE,{public},SELECT,(((( SELECT auth.jwt() AS jwt) ->> 'app_role'::text) = 'subscriber'::text) AND (subscriber_id = (( SELECT auth.jwt() AS jwt) ->> 'subscriberId'::text))),""

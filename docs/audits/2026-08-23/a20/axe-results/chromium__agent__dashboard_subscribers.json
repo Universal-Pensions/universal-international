@@ -1,0 +1,20 @@
+{
+  "role": "agent",
+  "route": "/dashboard/subscribers",
+  "project": "chromium",
+  "url": "http://localhost:5173/dashboard/subscribers",
+  "violations": [
+    {
+      "id": "color-contrast",
+      "impact": "serious",
+      "help": "Elements must meet minimum color contrast ratio thresholds",
+      "nodes": 10,
+      "targets": [
+        "._tr_puzil_119[data-clickable=\"true\"]:nth-child(1) > ._td_puzil_135[data-align=\"left\"]:nth-child(4) > ._statusPill_1vplw_75[data-tone=\"active\"]",
+        "._tr_puzil_119[data-clickable=\"true\"]:nth-child(2) > ._td_puzil_135[data-align=\"left\"]:nth-child(4) > ._statusPill_1vplw_75[data-tone=\"active\"]",
+        "._tr_puzil_119[data-clickable=\"true\"]:nth-child(3) > ._td_puzil_135[data-align=\"left\"]:nth-child(4) > ._statusPill_1vplw_75[data-tone=\"active\"]",
+        "._tr_puzil_119[data-clickable=\"true\"]:nth-child(4) > ._td_puzil_135[data-align=\"left\"]:nth-child(4) > ._statusPill_1vplw_75[data-tone=\"active\"]"
+      ]
+    }
+  ]
+}

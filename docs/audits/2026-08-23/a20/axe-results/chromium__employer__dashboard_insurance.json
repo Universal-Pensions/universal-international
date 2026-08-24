@@ -1,0 +1,7 @@
+{
+  "role": "employer",
+  "route": "/dashboard/insurance",
+  "project": "chromium",
+  "url": "http://localhost:5173/dashboard/insurance",
+  "violations": []
+}

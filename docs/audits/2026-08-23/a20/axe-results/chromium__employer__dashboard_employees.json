@@ -1,0 +1,17 @@
+{
+  "role": "employer",
+  "route": "/dashboard/employees",
+  "project": "chromium",
+  "url": "http://localhost:5173/dashboard/employees",
+  "violations": [
+    {
+      "id": "color-contrast",
+      "impact": "serious",
+      "help": "Elements must meet minimum color contrast ratio thresholds",
+      "nodes": 1,
+      "targets": [
+        "._noteCta_i6n8f_11"
+      ]
+    }
+  ]
+}

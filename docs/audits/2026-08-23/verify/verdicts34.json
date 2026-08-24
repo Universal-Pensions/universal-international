@@ -1,0 +1,42 @@
+{
+ "A10-001": [
+  "CONFIRMED",
+  "high",
+  "getCurrentSubscriber .select omits transactions; s-0001 has 11 txns \u2192 reports read empty"
+ ],
+ "A11-001": [
+  "CONFIRMED",
+  "critical",
+  "corroborates A05-002 (CONFIRMED Wave C); settlement residue on agent screen"
+ ],
+ "A11-002": [
+  "CONFIRMED",
+  "critical",
+  "id-ocr.ts:47 hardcodes nin CF92018AB3CD45; ux_subscribers_nin unique; 1 subscriber already holds it \u2192 2nd onboard 409s. This is the deterministic agent-onboard test failure."
+ ],
+ "A11-005": [
+  "CONFIRMED",
+  "high",
+  "corroborates A06-004 (CONFIRMED Wave C) on agent surface"
+ ],
+ "A13-001": [
+  "CONFIRMED",
+  "high",
+  "DashboardNavContext.jsx:92 exactly as pre-registered in 00b; distributor arm has no !isDesktop guard"
+ ],
+ "A14-002": [
+  "CONFIRMED",
+  "critical",
+  "reproduces A06-001 (CONFIRMED Wave C) on employer surface; emp-001 61% EMP-% residue"
+ ],
+ "A14-001": [
+  "CONFIRMED",
+  "high",
+  "get_employer_metrics 182,689,000 vs run-linked 15,734,000 = 11.6x gap on one screen, both sums verified by psql"
+ ],
+ "A15-001": [
+  "CONFIRMED",
+  "high",
+  "SubscriberDetailMobile reads sub.totalContributions; getEntity SELECT * (entities.js:235) no balance join; empe-001 really holds 24,471,589 \u2192 shows \u2014"
+ ]
+}

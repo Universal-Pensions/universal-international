@@ -1,0 +1,27 @@
+{
+  "role": "admin",
+  "route": "/dashboard/nominee-claims",
+  "project": "chromium",
+  "url": "http://localhost:5173/dashboard/nominee-claims",
+  "violations": [
+    {
+      "id": "color-contrast",
+      "impact": "serious",
+      "help": "Elements must meet minimum color contrast ratio thresholds",
+      "nodes": 2,
+      "targets": [
+        "._tileSub_cw1sl_104 > ._chg_cw1sl_177[data-dir=\"up\"]",
+        "span[data-tone=\"active\"]"
+      ]
+    },
+    {
+      "id": "scrollable-region-focusable",
+      "impact": "serious",
+      "help": "Scrollable region must have keyboard access",
+      "nodes": 1,
+      "targets": [
+        "._tableScroll_cw1sl_198"
+      ]
+    }
+  ]
+}

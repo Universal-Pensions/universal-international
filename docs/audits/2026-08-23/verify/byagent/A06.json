@@ -1,0 +1,416 @@
+[
+ {
+  "id": "A06-001",
+  "title": "61% of the default employer persona's roster balance is uncleaned E2E test money",
+  "severity": "critical",
+  "confidence": "confirmed",
+  "category": "data-integrity",
+  "surface": "employer dashboard (emp-001 / Nile Breweries Demo), subscriber transaction history for empe-* members, platform AUM",
+  "location": "public.transactions (txn_ref LIKE 'EMP-%'), public.subscriber_balances for employer_id='emp-001'",
+  "evidence": "$ psql \"$SUPABASE_DB_URL\" -X -q -At -F'|' -c \"select type, source, count(*), sum(amount)::bigint from public.transactions where txn_ref like 'EMP-%' and created_at > timestamptz '2026-07-27 14:26:07+00' group by 1,2 order by 1,2;\"\ncontribution|employer|627|60146000\ncontribution|own|627|60146000\ninsurance_premium|employer|627|25080000\n\n$ psql ... -c \"select s.employer_id, count(*), sum(b.total_balance)::bigint from public.subscribers s join public.subscriber_balances b on b.subscriber_id=s.id where s.employer_id is not null group by 1 order by 3 desc;\"\nemp-001|21|197491903\nemp-004|8|33833117\nemp-002|7|25926552\nemp-003|6|18524479\nemp-006|6|18267018\nemp-007|5|16490925\nemp-005|5|14696106\n\n$ psql ... -c \"select count(*), count(*) filter (where txn_ref like 'EMP-%'), sum(amount)::bigint from public.transactions where subscriber_id='empe-001';\"\n116|99|23780000\n\n$ psql ... -c \"select id, type, amount, date::date, source, txn_ref from public.transactions where subscriber_id='empe-001' and created_at > timestamptz '2026-07-27 14:26:07+00' order by created_at limit 12;\"\nt-ef9695a778eb4aafaadc428fd63f81c5|contribution|210000|2026-07-30|own|EMP-d7980790\nt-1eb55d0d2541425ab3bb1fac54864176|contribution|105000|2026-07-30|employer|EMP-d7980790\nt-4407d3f297964f89a4b58e57d6b3aaf3|insurance_premium|40000|2026-07-30|employer|EMP-d7980790\nt-e91c861032714d90bcb5ccdd543e80a2|contribution|105000|2026-07-30|employer|EMP-32ef1f4a\nt-ce3e9f2a7d5342eeaaa4f798ee7e0dd0|insurance_premium|40000|2026-07-30|employer|EMP-32ef1f4a\nt-a88048fb8b594ca58b8a54c10aca0cb3|contribution|210000|2026-07-30|own|EMP-32ef1f4a\nt-6a852a90b4b243ed8c935f64d4b29d9c|contribution|105000|2026-07-30|employer|EMP-2ed0f1dd\nt-d7d66b4b38784814aed79df996f740a8|contribution|210000|2026-07-30|own|EMP-2ed0f1dd\nt-971a7efd56484dc78500a314765b2b90|insurance_premium|40000|2026-07-30|employer|EMP-2ed0f1dd\n... (identical July payroll triple repeated 4x on one date)\n\n$ psql ... -c \"select sum(amount) from public.transactions where created_at > timestamptz '2026-07-27 14:26:07+00' and type='contribution';\" -> 121567000\n$ psql ... -c \"select sum(total_balance)::bigint from public.subscriber_balances;\" -> 2450226487",
+  "impact": "emp-001 is Nile Breweries Demo Ltd: the default employer persona (dp-e-001 / +256700000031) AND ROLE_DEFAULTS.employer, i.e. the employer every rep demos and every unrecognised employer login falls back into. 120,292,000 of its 197,491,903 UGX roster balance (60.9%) is fabricated by 33 uncleaned E2E contribution runs. Per-head it holds 9.40M UGX against 3.70M for the next employer. Every one of its 19 members shows the SAME payroll run repeated 33 times in their transaction list, with four identical 210,000/105,000/40,000 triples on 2026-07-30 alone. Platform-wide, 121,567,000 UGX (5.0% of the 2,450,226,487 UGX AUM) is test residue, growing by ~3.6M UGX per suite run. This is wrong money on the headline demo screen.",
+  "suggested_fix": "Delete the E2E residue: DELETE FROM public.transactions WHERE txn_ref LIKE 'EMP-%' AND created_at > '2026-07-27 14:26:07+00' (1,881 rows), then rebuild subscriber_balances for the emp-001 roster from the surviving ledger (or reseed the 21 empe-* members). Fix the leak first (A06-002) or it returns on the next suite run. Consider pointing the E2E employer-run spec at a dedicated throwaway employer instead of emp-001.",
+  "repro": [
+   "Log in as employer +256700000031 / Demo1234 (emp-001, Nile Breweries Demo)",
+   "Open any member (e.g. empe-001) and scroll their transaction history",
+   "Observe the same employer payroll triple (own 210,000 / employer 105,000 / insurance 40,000) repeated on 2026-07-30, 2026-07-31, 2026-08-01\u2026",
+   "Compare the employer's total AUM tile against any other employer's per-member average"
+  ],
+  "roles_affected": [
+   "employer",
+   "admin",
+   "distributor",
+   "subscriber"
+  ],
+  "demo_visible": true,
+  "effort": "M",
+  "agent": "A06"
+ },
+ {
+  "id": "A06-002",
+  "title": "E2E contribution-run cleanup orphans 1,824 transactions on a premise the schema refutes",
+  "severity": "high",
+  "confidence": "confirmed",
+  "category": "test-hygiene",
+  "surface": "e2e suite / live database",
+  "location": "e2e/specs/flows/employer-contribution-run.spec.ts:55-81",
+  "evidence": "e2e/specs/flows/employer-contribution-run.spec.ts:66-71 (verbatim):\n      // Employer-source transactions stamped by this run carry source='employer';\n      // there is no run_id FK on transactions, so we scope by the run's window is\n      // not reliable \u2014 instead delete the run rows + their lines (the ledger rows\n      // are demo-scope residue, consistent with the settlement spec's discipline).\n      await supabaseAdmin.from('contribution_runs').delete().in('id', runIds);\n\nThe premise is false:\n$ psql \"$SUPABASE_DB_URL\" -X -q -At -F'|' -c \"select conname, pg_get_constraintdef(oid) from pg_constraint where conrelid='public.transactions'::regclass;\"\ntransactions_agent_id_fkey|FOREIGN KEY (agent_id) REFERENCES agents(id) ON DELETE SET NULL\ntransactions_contribution_run_id_fkey|FOREIGN KEY (contribution_run_id) REFERENCES contribution_runs(id) ON DELETE SET NULL\ntransactions_pkey|PRIMARY KEY (id)\ntransactions_source_check|CHECK ((source = ANY (ARRAY['own'::text, 'employer'::text])))\ntransactions_subscriber_id_fkey|FOREIGN KEY (subscriber_id) REFERENCES subscribers(id) ON DELETE CASCADE\n\nResult:\n$ psql ... -c \"select count(distinct txn_ref) refs, count(*) rows, count(*) filter (where contribution_run_id is not null) with_run_id from public.transactions where txn_ref like 'EMP-%';\"\n33|1881|57\n\n$ psql ... -c \"select date_trunc('day',created_at)::date, count(distinct txn_ref), count(*) from public.transactions where txn_ref like 'EMP-%' group by 1 order by 1;\"\n2026-07-30|4|228\n2026-07-31|3|171\n2026-08-01|6|342\n2026-08-02|12|684\n2026-08-03|3|171\n2026-08-23|2|114\n2026-08-24|3|171\n\nTwo further defects in the same afterEach:\n$ psql ... -c \"select count(*) from information_schema.tables where table_schema='public' and table_name='contribution_run_lines';\"\n0        <- the table the cleanup deletes from does not exist\n$ psql ... -c \"select string_agg(column_name,', ' order by ordinal_position) from information_schema.columns where table_schema='public' and table_name='contribution_run_uploads';\"\nnonce, result, created_at        <- cleanup filters .eq('employer_id', EMPLOYER_ID); no such column; error swallowed by .then(()=>undefined,()=>undefined)\n$ psql ... -c \"select count(*) from public.contribution_run_uploads;\" -> 33",
+  "impact": "33 employer contribution runs have been executed against live; only 1 contribution_runs header survives and only 57 of 1,881 transactions still carry a contribution_run_id. Deleting the header triggers ON DELETE SET NULL, which erases the exact column that would have identified the rows for cleanup \u2014 so 1,824 transactions are now permanently unattributable and cannot be removed by any query the test could run. Each suite run adds ~57 more rows and ~3.6M UGX of fake AUM (see A06-001). The nonce ledger has grown to 33 rows because its cleanup targets a non-existent column and swallows the error; settlement_uploads (153) and subscriber_signup_uploads (98) show the same pattern.",
+  "suggested_fix": "In the afterEach, delete transactions BEFORE the run header, scoped by the FK that exists: await supabaseAdmin.from('transactions').delete().in('contribution_run_id', runIds). Drop the contribution_run_lines delete (dead table). Clean contribution_run_uploads by the nonce actually returned by the run submission, not by a non-existent employer_id column, and stop swallowing the error \u2014 assert it. Add an assertNoRunResidue() post-suite probe alongside assertNoSubscriberOrphans.",
+  "repro": [
+   "npx playwright test e2e/specs/flows/employer-contribution-run.spec.ts",
+   "psql: select count(*) from public.transactions where txn_ref like 'EMP-%'  -- grows by 57 each run",
+   "psql: select count(*) from public.contribution_run_uploads  -- grows by 1 each run, never shrinks"
+  ],
+  "roles_affected": [
+   "employer",
+   "admin",
+   "distributor"
+  ],
+  "demo_visible": true,
+  "effort": "S",
+  "agent": "A06"
+ },
+ {
+  "id": "A06-003",
+  "title": "Seed's stale MOCK_NOW mirror pushes every contribution schedule 36 days too far out; weekly savers are next due in 8 weeks",
+  "severity": "high",
+  "confidence": "confirmed",
+  "category": "clock-drift",
+  "surface": "subscriber Schedule page (/dashboard/save/schedule), branch-admin overdue backlog, agent member detail",
+  "location": "scripts/seed-supabase.mjs:166-177 (comment + const MOCK_NOW) vs src/data/mockData.js:25",
+  "evidence": "The seed's comment is now false.\nscripts/seed-supabase.mjs:166-169 (verbatim):\n  // MOCK_NOW MUST mirror src/data/mockData.js (`new Date(2026, 4, 26)` = 2026-05-26).\n  // If that constant moves, update this to match (kept in sync deliberately \u2014 the\n  // seed can't import a live binding without re-evaluating the whole mock module).\n  const MOCK_NOW = new Date(2026, 4, 26); // 2026-05-26 \u2014 mirror of mockData.MOCK_NOW\nsrc/data/mockData.js:21-25 (verbatim):\n  // Rolled forward 2026-07-01 (per ADR-006 and CLAUDE.md \u00a710b \u2014 slide forward\n  // when relative dates start looking stale; previous anchor 2026-05-26 was ~5\n  // weeks stale). ...\n  export const MOCK_NOW = new Date(2026, 6, 1); // 2026-07-01\n\nArithmetic: mockData.js:357-361 -> nextDueOffsetDays = randInt(1,30); nextDue = MOCK_NOW + offset = 2026-07-02..2026-07-31. seed-supabase.mjs:174-177 -> DATE_SHIFT_DAYS = SEED_TODAY - 2026-05-26 = 2026-07-27 - 2026-05-26 = 62. reanchorDateStr (line 696) -> 2026-09-02..2026-10-01. With a correct mirror the shift would be 26 days -> 2026-07-28..2026-08-26 (the stated intent).\n\nLive matches the prediction exactly:\n$ psql \"$SUPABASE_DB_URL\" -X -q -At -F'|' -c \"select to_char(next_due_date,'YYYY-MM'), count(*) from public.contribution_schedules group by 1 order by 1;\"\n2026-07|716\n2026-08|1\n2026-09|4137\n2026-10|147\n|21\n\n$ psql ... -c \"select subscriber_id, frequency, amount::bigint, next_due_date, (next_due_date - current_date) days_from_today, (next_due_date - date '2026-07-27') days_from_seed_run from public.contribution_schedules where subscriber_id in ('s-0001','s-0002','s-0003','s-0004','s-0005') order by 1;\"\ns-0001|annually|500000|2026-09-29|36|64\ns-0002|monthly|13000|2026-09-09|16|44\ns-0003|annually|348000|2026-09-20|27|55\ns-0004|weekly|10000|2026-09-22|29|57\ns-0005|quarterly|57000|2026-09-29|36|64\n\n$ psql ... -c \"select count(*) from public.contribution_schedules where frequency='weekly' and next_due_date > current_date + 7;\"\n610      (of 701 weekly savers; max 38 days out)\n$ psql ... -c \"select count(*) from public.contribution_schedules where frequency='monthly' and next_due_date > current_date + 31;\"\n391      (of 2102 monthly savers)",
+  "impact": "The over-shift breaks each schedule's own frequency, which is visible on the first screen a subscriber demo opens. s-0004 is a WEEKLY saver whose next payment is 57 days after the seed ran; s-0002 (the save-to-cover demo persona) is a MONTHLY saver next due in 44 days. 610 of 701 weekly savers and 391 of 2,102 monthly savers are due further out than their frequency allows. The same over-shift lands on seed-supabase.mjs:751-752, which writes every one of the 1,473 subscriber_insurance_products rows with policy_start 2026-03-04 / renewal 2027-03-04 instead of the intended 2026-01-27 / 2027-01-27.",
+  "suggested_fix": "Set scripts/seed-supabase.mjs:169 to new Date(2026, 6, 1) and update the comment, OR (better) remove the duplicated constant entirely: export MOCK_NOW from a tiny dateless module that both mockData.js and the seed import, so it cannot drift again. Then reseed. Add a unit assertion that the seed's anchor === mockData's anchor so the next roll-forward fails loudly.",
+  "repro": [
+   "Log in as subscriber +256711000004 (s-0004, a weekly saver)",
+   "Open /dashboard/save/schedule",
+   "Read 'Weekly' next to a next-due date of 22 Sep 2026 \u2014 8 weeks out"
+  ],
+  "roles_affected": [
+   "subscriber",
+   "agent",
+   "branch"
+  ],
+  "demo_visible": true,
+  "effort": "S",
+  "agent": "A06"
+ },
+ {
+  "id": "A06-004",
+  "title": "Agent and subscriber surfaces disagree on 1,284 members' policy status (Active vs Expired)",
+  "severity": "high",
+  "confidence": "confirmed",
+  "category": "correctness",
+  "surface": "agent member detail vs subscriber Policies page",
+  "location": "src/services/agent.js:26-35 (buildAgentPolicies) vs src/utils/policies.js:56-60 (derivePolicyStatus)",
+  "evidence": "Two code paths derive 'is this cover active?' from the same rows and disagree.\n\nsrc/utils/policies.js:56-60 (subscriber's own Policies page) derives BY DATE:\n  export function derivePolicyStatus({ renewalDate }, now) {\n    const renew = toDate(renewalDate);\n    if (!renew) return 'active';\n    return renew.getTime() >= now.getTime() ? 'active' : 'expired';\n  }\n...with `now` supplied by src/services/subscriber.js:145 as currentTime() = MOCK_NOW = 2026-07-01.\n\nsrc/services/agent.js:26-35 (agent member detail) reads the STORED FLAG:\n  function buildAgentPolicies(lifeIns, productRows) {\n    const out = [];\n    if (lifeIns && lifeIns.status === 'active' && Number(lifeIns.cover) > 0) {\n      out.push({ product: 'life', status: 'active' });\n    }\n...and src/services/agent.js:174 selects 'insurance_policies(cover, premium_monthly, status)'.\n\n$ psql \"$SUPABASE_DB_URL\" -X -q -At <<'SQL'\nselect count(*) from public.insurance_policies where status='active' and renewal_date < date '2026-07-01';\nselect count(*) from public.insurance_policies where status='active' and renewal_date < current_date;\nselect count(*) from public.insurance_policies where status='active' and renewal_date < date '2026-05-18';\nselect count(*) from public.insurance_policies where status='active';\nSQL\n1284       <- 'expired' per the subscriber page (MOCK_NOW 2026-07-01)\n1473       <- 'expired' per the wall clock\n1143       <- 'expired' per _demo_now() 2026-05-18\n2730       <- 'active' per the agent page (raw stored flag)\n\nDemo persona s-0003 is affected:\n$ psql ... -c \"select subscriber_id, cover::bigint, premium_monthly::bigint, policy_start, renewal_date, status, funded_by from public.insurance_policies where subscriber_id in ('s-0001','s-0002','s-0003') order by 1;\"\ns-0001|1000000|2000|2026-02-24|2027-02-24|active|self\ns-0002|1000000|2000|2024-11-04|2025-11-04|building|self\ns-0003|1000000|2000|2025-04-16|2026-04-16|active|self",
+  "impact": "For 1,284 members (47% of the seeded population) an agent sees 'Life cover \u00b7 Active' while the member's own dashboard says 'Life cover \u00b7 Expired', on the same day, from the same row. A rep who demos the agent view and then the member view of the same person shows two contradictory answers. Because the count depends on which of the three live clocks a surface reads, the number of disagreeing members is itself clock-dependent (1,143 / 1,284 / 1,473).",
+  "suggested_fix": "Make buildAgentPolicies call derivePolicyStatus from src/utils/policies.js with the same injected `now` the subscriber path uses, instead of trusting insurance_policies.status. Alternatively add a DB sweep that flips status to 'expired' when renewal_date passes (the codebase already has such a sweep for the 'building' state per migration 0072) \u2014 but the shared-derivation fix removes the clock dependency entirely.",
+  "repro": [
+   "Log in as agent +256700000001 (a-001) and open a member whose life renewal_date < 2026-07-01 (e.g. s-0003)",
+   "Note 'Life cover \u00b7 Active' in the held-cover panel",
+   "Log in as that member (subscriber) and open Policies",
+   "Note 'Life cover \u00b7 Expired' for the same policy row"
+  ],
+  "roles_affected": [
+   "agent",
+   "subscriber"
+  ],
+  "demo_visible": true,
+  "effort": "S",
+  "agent": "A06"
+ },
+ {
+  "id": "A06-005",
+  "title": "create_employer / create_distributor ignore the identity-write failure, so a new tenant's owner signs in to Nile Breweries",
+  "severity": "high",
+  "confidence": "confirmed",
+  "category": "multi-tenancy",
+  "surface": "admin '+ New Employer' / '+ New Distributor' doors; sign-in",
+  "location": "public.create_employer / public.create_distributor (PERFORM public.register_login_identity(...))",
+  "evidence": "register_login_identity returns NULL and writes NOTHING when (phone, role) is already bound elsewhere:\n$ psql \"$SUPABASE_DB_URL\" -X -q -At -F'|' -v ON_ERROR_STOP=0 <<'SQL'\nBEGIN;\nselect id, phone, role, entity_id from public.demo_personas where phone='+256700000031' and role='employer';\nselect coalesce(public.register_login_identity('+256700000031','employer','emp-A06-PROBE','Probe Co',null), '(NULL RETURNED \u2014 identity NOT written)');\nROLLBACK;\nSQL\ndp-e-001|+256700000031|employer|emp-001\n(NULL RETURNED \u2014 identity NOT written)\n\nOnly one of the three callers checks the return:\n$ psql ... -c \"select p.proname||' :: '||l from pg_proc p join pg_namespace n on n.oid=p.pronamespace, lateral unnest(string_to_array(p.prosrc, E'\\n')) l where n.nspname='public' and l ilike '%register_login_identity%' and p.proname<>'register_login_identity';\"\napprove_access_request :: v_bound := public.register_login_identity(\ncreate_employer        :: PERFORM public.register_login_identity(\ncreate_distributor     :: PERFORM public.register_login_identity(\n(approve_access_request then does: IF v_bound IS NULL THEN RAISE EXCEPTION 'Cannot approve %: failed to register % as the sign-in for %.')\n\nReproduced end-to-end through the admin door, inside a rolled-back transaction:\n$ psql ... -v ON_ERROR_STOP=0 <<'SQL'\nBEGIN;\nselect set_config('request.jwt.claims','{\"app_role\":\"admin\",\"adminId\":\"admin-001\",\"role\":\"authenticated\"}', true);\nselect public.create_employer('A06 Probe Co','Agriculture','A06-REG-1','Probe Owner','+256700000031','probe@a06.test','d-kampala','monthly','{}'::jsonb);\nselect (select count(*) from public.demo_personas p where p.entity_id in (select id from public.employers where name='A06 Probe Co')),\n       (select count(*) from public.users u where u.entity_id in (select id from public.employers where name='A06 Probe Co'));\nselect entity_id from public.demo_personas where phone='+256700000031' and role='employer';\nROLLBACK;\nselect (select count(*) from public.employers), (select count(*) from public.demo_personas), (select count(*) from public.users), (select count(*) from public.employers where name='A06 Probe Co');\nSQL\n{\"id\": \"emp-b78ccd0755cf4b59a8fca5678f143cfc\", \"name\": \"A06 Probe Co\", ... \"status\": \"active\" ...}\n0|0                <- ZERO demo_personas rows, ZERO users rows bind the new employer\nemp-001            <- the owner's phone STILL resolves to Nile Breweries\n8|9|54|0           <- post-ROLLBACK verify: nothing committed\n\napi/auth/_lib/personas.ts:96-110 resolveDemoPersona: on a miss it returns ROLE_DEFAULTS[role]; ROLE_DEFAULTS.employer = 'emp-001', ROLE_DEFAULTS.distributor = 'd-001'.",
+  "impact": "The admin '+ New Employer' / '+ New Distributor' forms return success while silently creating an entity with no sign-in binding. Its owner then signs in and lands inside emp-001 (Nile Breweries) or d-001 with write access to that tenant's roster, and nothing errors anywhere \u2014 the exact failure mode the codebase's own login-identity-contract test header describes as having 'shipped to production twice' (0079/0090, 0095/0101). The 0101 fix moved the write into register_login_identity but did not make the two admin callers check its result. src/test/login-identity-contract.test.js cannot catch this: it only greps the newest migration definition for the string 'register_login_identity', never that the caller inspects the return value. approve_access_request IS protected.",
+  "suggested_fix": "Change create_employer and create_distributor from PERFORM to `v_bound := public.register_login_identity(...); IF v_bound IS NULL THEN RAISE EXCEPTION ... USING ERRCODE='P0001'; END IF;` (same shape approve_access_request already uses). Then extend src/test/login-identity-contract.test.js with an assertion that each provisioning function's body contains an IS NULL guard on the call's result, not just the call.",
+  "repro": [
+   "Sign in as admin +256700000099 / Demo1234",
+   "Admin -> Employers -> '+ New Employer'; enter contact phone +256700000031 (already emp-001's owner phone)",
+   "Save \u2014 the form reports success and a new employer appears in the list",
+   "psql: select count(*) from public.demo_personas where entity_id = '<new id>'  -- 0",
+   "Sign in as employer on +256700000031 \u2014 you land in Nile Breweries Demo, not the new employer"
+  ],
+  "roles_affected": [
+   "admin",
+   "employer",
+   "distributor"
+  ],
+  "demo_visible": true,
+  "effort": "S",
+  "agent": "A06"
+ },
+ {
+  "id": "A06-006",
+  "title": "Four abandoned E2E fixtures are 4 of the 7 rows on the Admin Reconciliation screen",
+  "severity": "high",
+  "confidence": "confirmed",
+  "category": "data-integrity",
+  "surface": "admin Reconciliation screen (public.v_reconciliation_exceptions)",
+  "location": "public.subscribers ids tst-sub-tree-msc7vzsc, tst-sub-emp-msc7vzsc, tst-sub-retag-msc7vzsc, tst-sub-tree-msd3855c",
+  "evidence": "This is the 4-row gap the baseline flagged (subscribers 5064 vs subscriber_balances 5060).\n$ psql \"$SUPABASE_DB_URL\" -X -q -At -F'|' -c \"select s.id, s.name, s.phone, s.agent_id, s.employer_id, s.district_id, s.is_demo_signup, s.created_at from public.subscribers s left join public.subscriber_balances b on b.subscriber_id=s.id where b.subscriber_id is null order by s.created_at;\"\ntst-sub-tree-msc7vzsc|TST tree member|+25679sc7vzsc|||||t|2026-08-02 19:53:06.406768+00\ntst-sub-emp-msc7vzsc|TST employer member|+25678sc7vzsc|||||t|2026-08-02 19:53:08.307374+00\ntst-sub-retag-msc7vzsc|TST retag probe|+25677sc7vzsc|||||t|2026-08-03 10:29:56.575797+00\ntst-sub-tree-msd3855c|TST tree member|+25679sd3855c|||||t|2026-08-03 10:29:56.575797+00\n\nProvenance: is_demo_signup=true, tst-<purpose>-<base36 ms> id shape, and the suffixes msc7vzsc / msd3855c match entity_status_log scope ids from the same minutes (tst-dist-msc7vzsc at 2026-08-02 19:53, tst-dist-msd33rbr/msd3855c-era at 2026-08-03 10:26-10:29). They carry ZERO child rows in all 12 subscriber-FK tables.\n\nThey surface directly on a demo screen:\n$ psql ... -c \"select kind, check_code, issue, ref_id, who from public.v_reconciliation_exceptions order by check_code, ref_id;\"\ntransaction|agent_mismatch|Transaction credited to an agent who does not own this member|t-demo-recon-1|Denis Byaruhanga\ntransaction|agent_mismatch|Transaction credited to an agent who does not own this member|t-demo-recon-2|Grace Asiimwe\ntransaction|agent_mismatch|Transaction credited to an agent who does not own this member|t-demo-recon-3|Denis Byaruhanga\nuser|missing_balance|Member has no balance record|tst-sub-emp-msc7vzsc|TST employer member\nuser|missing_balance|Member has no balance record|tst-sub-retag-msc7vzsc|TST retag probe\nuser|missing_balance|Member has no balance record|tst-sub-tree-msc7vzsc|TST tree member\nuser|missing_balance|Member has no balance record|tst-sub-tree-msd3855c|TST tree member\n\nThe view's first UNION arm is literally SELECT ... 'missing_balance', 'Member has no balance record' FROM subscribers s LEFT JOIN subscriber_balances b ... WHERE b.subscriber_id IS NULL.",
+  "impact": "A rep opening Admin -> Reconciliation sees 7 exceptions, 4 of which are named 'TST tree member', 'TST employer member' and 'TST retag probe' \u2014 obvious test litter sitting beside the 3 deliberate t-demo-recon-* fixtures that tell the intended story. The reconciliation screen is a credibility feature; showing internal test names on it undermines exactly the point it is meant to make.",
+  "suggested_fix": "DELETE FROM public.subscribers WHERE id LIKE 'tst-sub-%' (4 rows; they have no child rows, so no cascade concerns). Also delete the sibling litter: s-e2e-emp-foreign-1785752999757 and branches row tst-branch-msc7w8vm. Then fix the fixture leak: the RLS/tree specs create subscribers directly (not via create_subscriber_from_signup, which writes a balance row) and never remove them \u2014 add them to the afterEach that already calls cleanupSubscriberByPhone.",
+  "repro": [
+   "Sign in as admin +256700000099 / Demo1234",
+   "Open Admin -> Reconciliation",
+   "Read rows 4-7: 'TST employer member', 'TST retag probe', 'TST tree member' x2"
+  ],
+  "roles_affected": [
+   "admin"
+  ],
+  "demo_visible": true,
+  "effort": "S",
+  "agent": "A06"
+ },
+ {
+  "id": "A06-007",
+  "title": "Live stored XSS payloads sit at the top of two admin queues",
+  "severity": "high",
+  "confidence": "confirmed",
+  "category": "data-integrity",
+  "surface": "admin Access requests queue, admin Nominee claims queue, admin 'Needs attention' card",
+  "location": "public.access_requests ids ar-1787558699527-rmm4, ar-1787558701196-dksm; public.nominee_claims ids nc-bbf6090b4d1d48e991f65357be9e62f1, nc-d810114b14304a0f85c0337cdfa21ac3",
+  "evidence": "I scanned EVERY text/varchar column of EVERY base table for <script, onerror=, onload=, javascript:, <img..src=, <svg, <iframe, {{, ${, SQL metacharacters and trailing --:\n$ psql \"$SUPABASE_DB_URL\" -X -q -At -F'|' <<'SQL'\nDO $$ DECLARE r record; n bigint; total bigint := 0; BEGIN\n  FOR r IN SELECT c.table_name, c.column_name FROM information_schema.columns c JOIN information_schema.tables t ON t.table_schema=c.table_schema AND t.table_name=c.table_name AND t.table_type='BASE TABLE' WHERE c.table_schema='public' AND c.data_type IN ('text','character varying') ORDER BY 1,2 LOOP\n    EXECUTE format('SELECT count(*) FROM public.%I WHERE %I ~* %L', r.table_name, r.column_name, '(<\\s*script|onerror\\s*=|onload\\s*=|javascript:|<\\s*img[^>]*src\\s*=|<\\s*svg|<\\s*iframe|\\{\\{|\\$\\{|'';\\s*(drop|delete|update|insert)\\s|--\\s*$|<\\s*/?\\s*b\\s*>)') INTO n;\n    IF n > 0 THEN RAISE NOTICE 'HIT % . % => % row(s)', r.table_name, r.column_name, n; total := total + n; END IF;\n  END LOOP; RAISE NOTICE 'TOTAL flagged column-hits: %', total; END $$;\nSQL\nNOTICE:  HIT access_requests . contact_email => 1 row(s)\nNOTICE:  HIT access_requests . contact_name => 2 row(s)\nNOTICE:  HIT access_requests . district => 1 row(s)\nNOTICE:  HIT access_requests . message => 1 row(s)\nNOTICE:  HIT access_requests . org_name => 2 row(s)\nNOTICE:  HIT access_requests . registration_no => 1 row(s)\nNOTICE:  HIT access_requests . sector => 1 row(s)\nNOTICE:  HIT nominee_claims . claimant_name => 2 row(s)\nNOTICE:  HIT nominee_claims . deceased_name => 2 row(s)\nNOTICE:  HIT nominee_claims . deceased_nin => 1 row(s)\nNOTICE:  HIT nominee_claims . district => 1 row(s)\nNOTICE:  HIT nominee_claims . notes => 1 row(s)\nNOTICE:  HIT nominee_claims . relationship => 1 row(s)\nNOTICE:  TOTAL flagged column-hits: 17\n\nEvery hit belongs to 4 rows, all created 2026-08-24 08:04:59-08:05:03 (the A24 probe), all still present:\nar-1787558699527-rmm4|employer|A24XSSPROBE <img src=x onerror=\"window.__A24_XSS_ORG=1\">|A24XSSPROBE<svg/onload=window.__A24_XSS_NAME=1>|\"><script>window.__A24_XSS_EMAIL=1</script>@a24probe.test|+256770000191|A24XSSPROBE\"><img src=x onerror=window.__A24_XSS_SECTOR=1>|A24XSSPROBE<iframe src=\"javascript:window.__A24_XSS_DISTRICT=1\"></iframe>|A24XSSPROBE<script>window.__A24_XSS_REG=1</script>|pending||2026-08-24 08:04:59.700516+00|A24XSSPROBE <script>window.__A24_XSS_MSG=1</script>\nar-1787558701196-dksm|distributor|A24XSSPROBE \"><script>window.__A24_XSS_ORG2=1</script>|...|pending\nnc-bbf6090b...|NC-BB9B0A6D|life|A24XSSPROBE <img src=x onerror=\"window.__A24_XSS_DEC=1\">|...|pending\nnc-d810114b...|NC-E40BFC56|funeral|A24XSSPROBE2 \"><script>window.__A24_XSS_DEC2=1</script>|...|pending\n\n$ psql ... -c \"select count(*) filter (where status='pending'), count(*) from public.access_requests;\"\n6|7        <- the admin 'pendingAccessRequests' signal reads 6, not 4",
+  "impact": "All 4 rows are status='pending' and are the newest in their tables, so they render at the TOP of the admin Access-requests and Nominee-claims queues, and they inflate the admin 'Needs attention' pending-access-requests count from 4 to 6. A rep opening either queue today sees 'A24XSSPROBE <img src=x onerror=...>' as the first row. Separately, if any of those admin surfaces renders the field unescaped (dangerouslySetInnerHTML, v-html-equivalent, or an unescaped CSV/PDF export), this is a live stored XSS \u2014 A24 owns the render-side confirmation; this finding establishes that the payloads ARE stored and ARE reachable. No pre-existing junk exists anywhere in the schema: these 4 rows are the entire hit set.",
+  "suggested_fix": "Delete the 4 probe rows before any demo: DELETE FROM public.access_requests WHERE id IN ('ar-1787558699527-rmm4','ar-1787558701196-dksm'); DELETE FROM public.nominee_claims WHERE id IN ('nc-bbf6090b4d1d48e991f65357be9e62f1','nc-d810114b14304a0f85c0337cdfa21ac3'); \u2014 after A24 has finished its render-side verification. Longer term, add server-side length + character validation on the public request-access and nominee-claim forms (both are unauthenticated write paths with no bound on content).",
+  "repro": [
+   "Sign in as admin +256700000099 / Demo1234",
+   "Open Admin -> Access requests \u2014 the first two rows are A24XSSPROBE payloads",
+   "Open Admin -> Nominee claims \u2014 the first two rows are A24XSSPROBE payloads",
+   "Check the 'Needs attention' card: pending access requests reads 6 (4 genuine demo rows + 2 probes)"
+  ],
+  "roles_affected": [
+   "admin"
+  ],
+  "demo_visible": true,
+  "effort": "S",
+  "agent": "A06"
+ },
+ {
+  "id": "A06-008",
+  "title": "DB invariant #5 is vacuous by 41 days and blind to 21 NULL rows",
+  "severity": "medium",
+  "confidence": "confirmed",
+  "category": "test-coverage",
+  "surface": "e2e DB invariants guard",
+  "location": "e2e/specs/db/invariants.spec.ts:61 (MOCK_NOW_ISO) and :168-186 (the assertion)",
+  "evidence": "The assertion: expect(count from contribution_schedules where next_due_date < '2026-05-26').toBe(0)\n\n$ psql \"$SUPABASE_DB_URL\" -X -q -At -F'|' -c \"select min(next_due_date), max(next_due_date), count(*) from public.contribution_schedules;\"\n2026-07-06|2026-10-01|5022\n\n$ psql ... -c \"select count(*) filter (where next_due_date < date '2026-05-26') lt_seed_anchor, count(*) filter (where next_due_date < date '2026-07-01') lt_mockdata, count(*) filter (where next_due_date < current_date) lt_today, count(*) filter (where next_due_date is null) null_due from public.contribution_schedules;\"\n0|0|717|21\n\n$ psql ... -c \"select min(current_date - next_due_date), max(current_date - next_due_date), count(*) from public.contribution_schedules where next_due_date < current_date;\"\n10|49|717",
+  "impact": "Three independent reasons the guard cannot fail. (1) 41 days of slack: the live minimum is 2026-07-06 against a threshold of 2026-05-26, so a regression would have to move next_due_date back more than six weeks before the test notices. (2) It reports 0 while 717 schedules ARE stale \u2014 between 10 and 49 days overdue against the wall clock \u2014 so the invariant's stated purpose ('every schedule row has a non-stale next_due_date') is unmet in live data and the guard is green. (3) The Supabase .lt('next_due_date', isoDate) filter is SQL '<', so the 21 rows with a NULL next_due_date (empe-001..empe-021) are silently excluded \u2014 a schedule with no due date at all is the most stale state possible and the assertion cannot see it. Note the drift between the spec's anchor and mockData's does NOT change the verdict (lt_mockdata is also 0); the vacuity is caused by the 36-day over-shift in A06-003.",
+  "suggested_fix": "Import the single shared MOCK_NOW (see A06-003 fix) instead of the local literal. Add a second assertion that catches NULL: expect(count where next_due_date IS NULL).toBe(0) \u2014 or make it explicit which rows are legitimately exempt. Tighten the freshness check to assert next_due_date lies within one frequency period of the anchor (a weekly schedule due 57 days out should fail), which is the property the seed actually promises.",
+  "roles_affected": [],
+  "demo_visible": false,
+  "effort": "S",
+  "agent": "A06"
+ },
+ {
+  "id": "A06-009",
+  "title": "A fifth clock, public._demo_now() = 2026-05-18, is live in SQL and 44 days behind the JS anchor",
+  "severity": "medium",
+  "confidence": "confirmed",
+  "category": "clock-drift",
+  "surface": "admin/distributor/branch metric tiles (today / this week / this month), employer activity rollup, hospital-cash claim submission",
+  "location": "public._demo_now()",
+  "evidence": "$ psql \"$SUPABASE_DB_URL\" -X -q -At -c \"select public._demo_now();\"\n2026-05-18 23:59:59+00\n$ psql ... -c \"select prosrc from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname='public' and p.proname='_demo_now';\"\n SELECT '2026-05-18 23:59:59+00'::timestamptz \n$ psql ... -c \"select p.proname from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname='public' and p.prosrc ilike '%_demo_now%' and p.proname<>'_demo_now' order by 1;\"\nget_employer_activity_rollup\nget_entity_metrics_rollup\nget_top_branch\nsubmit_hospital_cash_claim\n\nSame window, three clocks:\n$ psql ... <<'SQL'\nwith d as (select public._demo_now() n)\nselect (select count(*) from public.transactions t, d where t.type='contribution' and t.date >= date_trunc('day', d.n) and t.date < date_trunc('day', d.n)+interval '1 day') today,\n       (select count(*) from public.transactions t, d where t.type='contribution' and t.date >= date_trunc('week', d.n) and t.date < date_trunc('week', d.n)+interval '1 week') this_week,\n       (select count(*) from public.transactions t, d where t.type='contribution' and t.date >= date_trunc('month', d.n) and t.date < date_trunc('month', d.n)+interval '1 month') this_month;\nSQL\n28|29|5408          <- _demo_now = 2026-05-18\n114|114|998         <- wall clock 2026-08-24\n844|2524|1110       <- JS MOCK_NOW 2026-07-01\n\nsrc/admin-dashboard/overview/adminAttentionDerive.js:11-16 documents only three clocks: 'There are three different \"now\"s in this codebase \u2014 public._demo_now() (2026-05-18, ...), JS MOCK_NOW (2026-05-26) and the real wall clock'. Its MOCK_NOW value is also stale (see A06-017).",
+  "impact": "_demo_now() still lands inside the seeded data mass (2026-05 is the peak contribution month at 5,408 rows), so admin/distributor 'this month' tiles are not empty \u2014 the anchor was well chosen for the pre-roll-forward seed. But 'today' and 'this week' now read 28 and 29 against 844 and 2,524 for the same labels computed off the same rows by the JS surfaces: a 30x divergence in what two roles are told 'today' means on the same day. Any future roll-forward of mockData.js widens the gap silently, because nothing ties the SQL constant to the JS one.",
+  "suggested_fix": "Either move _demo_now() forward in lockstep with mockData's MOCK_NOW (a one-line migration each roll-forward, with a test asserting the two agree), or \u2014 better \u2014 replace both with a single anchor read from one place and add a check to the invariants spec that public._demo_now()::date equals the JS MOCK_NOW date. At minimum, update adminAttentionDerive.js:11-16 to name all five clocks and their current values.",
+  "roles_affected": [
+   "admin",
+   "distributor",
+   "branch",
+   "employer"
+  ],
+  "demo_visible": true,
+  "effort": "M",
+  "agent": "A06"
+ },
+ {
+  "id": "A06-010",
+  "title": "SUBSCRIBER_CHILD_TABLES misses three subscriber-FK tables; two of them have no FK at all",
+  "severity": "medium",
+  "confidence": "confirmed",
+  "category": "test-coverage",
+  "surface": "e2e cleanup contract (cleanupSubscriberByPhone / assertNoSubscriberOrphans)",
+  "location": "e2e/fixtures/db.ts:83-94",
+  "evidence": "$ psql \"$SUPABASE_DB_URL\" -X -q -At -c \"select table_name from information_schema.columns where table_schema='public' and column_name='subscriber_id' and table_name not in ('transactions','nominees','subscriber_balances','contribution_schedules','insurance_policies','subscriber_insurance_products','claims','withdrawals','commissions') order by 1;\"\nemployer_invites\nentity_detach_log\nmoney_nonces\nsubscriber_balances_pre_nav\nv_reconciliation_exceptions\n\n$ psql ... -c \"select c.relname, con.conname, pg_get_constraintdef(con.oid) from pg_constraint con join pg_class c on c.oid=con.conrelid join pg_namespace n on n.oid=c.relnamespace where n.nspname='public' and c.relname in ('money_nonces','subscriber_balances_pre_nav','subscribers_unit_value_pre_nav','employer_invites','entity_detach_log') and con.contype='f' order by 1;\"\nemployer_invites|employer_invites_employer_id_fkey|FOREIGN KEY (employer_id) REFERENCES employers(id) ON DELETE CASCADE\nemployer_invites|employer_invites_subscriber_id_fkey|FOREIGN KEY (subscriber_id) REFERENCES subscribers(id) ON DELETE SET NULL\nentity_detach_log|entity_detach_log_subscriber_id_fkey|FOREIGN KEY (subscriber_id) REFERENCES subscribers(id) ON DELETE CASCADE\nmoney_nonces|money_nonces_subscriber_id_fkey|FOREIGN KEY (subscriber_id) REFERENCES subscribers(id) ON DELETE CASCADE\n(no rows for subscriber_balances_pre_nav or subscribers_unit_value_pre_nav \u2014 they have NO foreign key)\n\nOrphan sweep is currently clean across all of them:\nmoney_nonces|0  employer_invites|0  entity_detach_log|0  subscriber_balances_pre_nav|0  subscribers_unit_value_pre_nav|0",
+  "impact": "e2e/fixtures/db.ts:99-105 states the list's purpose verbatim: 'Delete child rows first to respect FK constraints AND to guarantee no orphans linger if cascades are removed on a future migration. Every subscriber-FK child table from the schema appears in SUBSCRIBER_CHILD_TABLES \u2014 keep that list authoritative.' That claim is false for three tables. Two of them \u2014 subscriber_balances_pre_nav (5,060 rows) and subscribers_unit_value_pre_nav (5,064 rows) \u2014 have no FK to subscribers at all, so nothing removes their rows on delete and nothing in the cleanup targets them. Live orphan count is 0 only because no seeded subscriber has been deleted since the NAV cutover; the first such delete leaves permanent orphans, and assertNoSubscriberOrphans (which walks the same 9 tables) will not report them.",
+  "suggested_fix": "Add money_nonces, subscriber_balances_pre_nav and employer_invites to SUBSCRIBER_CHILD_TABLES (and subscribers_unit_value_pre_nav, keyed on `id` not `subscriber_id`). Better: replace the hand-maintained list with a query over information_schema.columns for column_name='subscriber_id', so it cannot drift again. Consider adding FKs to the two pre_nav snapshot tables.",
+  "roles_affected": [],
+  "demo_visible": false,
+  "effort": "S",
+  "agent": "A06"
+ },
+ {
+  "id": "A06-011",
+  "title": "The only employer created through the live approval path has an empty config, NULL cadence and a district ID in the district-name field",
+  "severity": "medium",
+  "confidence": "confirmed",
+  "category": "data-integrity",
+  "surface": "employer dashboard for a newly approved employer; admin employer list",
+  "location": "public.employers id emp-80511f65be7a4656b2bd45b6fad18625 (Uniclusion Uganda)",
+  "evidence": "$ psql \"$SUPABASE_DB_URL\" -X -q -At -F'|' -c \"select id, name, sector, registration_no, contact_name, contact_phone, contact_email, district, payroll_cadence, status, created_at from public.employers order by created_at;\"\nemp-001|Nile Breweries Demo Ltd|Manufacturing|UG-REG-2019-04412|Patience Namaganda|+256700000031|hr@nilebreweries.demo|Kampala|monthly|active|2026-07-27 14:26:06.958998+00\nemp-003|Gulu Traders Union|Wholesale & Retail|UG-REG-2021-003|Christine Lamwaka|+256700000033|hr@gulutraders.demo|Gulu|monthly|active|...\nemp-004|Jinja Steel Mills|...|Jinja|monthly|active|...\nemp-005|Mbale Coffee Collective|...|Mbale|monthly|active|...\nemp-006|Wakiso Agro Ltd|...|Wakiso|monthly|active|...\nemp-007|Lira Cotton Ginnery|...|Lira|monthly|active|...\nemp-002|Mbarara Dairy Co-op|...|Mbarara|monthly|active|...\nemp-80511f65be7a4656b2bd45b6fad18625|Uniclusion Uganda|Fintechj|2828282828282|Abc|+256701232323|achint@universalpensions.com|d-budaka||active|2026-08-07 11:57:13.526822+00\n\n$ psql ... -c \"select id, coalesce(default_contribution_config::text,'(null)') from public.employers order by id;\"\nemp-001|{\"employeePct\": 5, \"employerPct\": 10, \"groupCoverAmount\": 15000000, \"insuranceEnabled\": true, \"groupInsuranceProducts\": {...}}\nemp-002 .. emp-007|{\"employeePct\": 10, \"employerPct\": 5, \"insuranceEnabled\": false}\nemp-80511f65be7a4656b2bd45b6fad18625|{}\n\nNo guard catches it \u2014 the shape validator returns early on absent keys:\n$ psql ... -c \"DO \\$\\$ DECLARE r record; bad int := 0; BEGIN FOR r IN select id, default_contribution_config from public.employers LOOP BEGIN PERFORM public._assert_contribution_config_shape(r.default_contribution_config); EXCEPTION WHEN others THEN bad := bad+1; RAISE NOTICE 'FAIL % : %', r.id, sqlerrm; END; END LOOP; RAISE NOTICE 'employers failing config shape: %', bad; END \\$\\$;\"\nNOTICE:  employers failing config shape: 0",
+  "impact": "This is the exact row a rep produces when demoing 'approve an access request -> a new employer appears'. It diverges from every seeded employer in three ways at once: an empty default_contribution_config (no employeePct/employerPct, so the funding setup screen has nothing to show and any contribution run computes zero legs), a NULL payroll_cadence where every other employer is 'monthly', and district holding the district ID 'd-budaka' where every seeded row holds a human name ('Kampala', 'Gulu'). The last one renders 'd-budaka' verbatim wherever employer district is displayed. _assert_contribution_config_shape passes {} because it returns early on absent keys, so nothing flags it.",
+  "suggested_fix": "Have create_employer default default_contribution_config to the standard {\"employeePct\":10,\"employerPct\":5,\"insuranceEnabled\":false} and payroll_cadence to 'monthly' when the caller omits them, and normalise district to the same representation the seed uses (resolve d-<slug> to districts.name, or migrate the seeded rows to IDs \u2014 one or the other, consistently). Tighten _assert_contribution_config_shape to require both percentage keys when the object is non-null.",
+  "roles_affected": [
+   "employer",
+   "admin"
+  ],
+  "demo_visible": true,
+  "effort": "S",
+  "agent": "A06"
+ },
+ {
+  "id": "A06-012",
+  "title": "Six of eight employers and distributor d-003 have no sign-in path",
+  "severity": "low",
+  "confidence": "confirmed",
+  "category": "data-integrity",
+  "surface": "sign-in / demo_personas",
+  "location": "public.demo_personas vs public.employers, public.distributors",
+  "evidence": "$ psql \"$SUPABASE_DB_URL\" -X -q -At -F'|' -c \"select 'employer', e.id, e.name from public.employers e where not exists (select 1 from public.demo_personas p where p.role='employer' and p.entity_id=e.id) union all select 'distributor', d.id, d.name from public.distributors d where not exists (select 1 from public.demo_personas p where p.role='distributor' and p.entity_id=d.id);\"\nemployer|emp-002|Mbarara Dairy Co-op\nemployer|emp-003|Gulu Traders Union\nemployer|emp-004|Jinja Steel Mills\nemployer|emp-005|Mbale Coffee Collective\nemployer|emp-006|Wakiso Agro Ltd\nemployer|emp-007|Lira Cotton Ginnery\ndistributor|d-003|Karamoja Pilot Network\n\n$ psql ... -c \"select id, phone, role, entity_id, label from public.demo_personas order by role, id;\"\ndp-a-001|+256700000001|agent|a-001|Default agent (Kampala)\ndp-a-002|+256700000002|agent|a-042|Northern region agent\ndp-a-003|+256700000003|agent|a-118|Western region agent\ndp-b-001|+256700000011|branch|b-kam-015|Default branch (Kampala Central)\ndp-b-002|+256700000012|branch|b-mba-290|Mbarara branch\ndp-d-001|+256700000021|distributor|d-001|Default distributor\ndp-d-002|+256700000022|distributor|d-002|Secondary distributor\ndp-3b45c63154f64e28afa20cf69bf0f5b2|+256701232323|employer|emp-80511f65be7a4656b2bd45b6fad18625|Uniclusion Uganda\ndp-e-001|+256700000031|employer|emp-001|Default employer (Nile Breweries Demo)",
+  "impact": "Each of those employers has a real contact_phone in the employers table (+256700000032..37), so a rep who reads the phone off the admin employer list and tries to sign in as that employer lands on emp-001 (Nile Breweries) via ROLE_DEFAULTS, silently, inside the wrong tenant. Same for d-003 -> d-001. This is the documented demo fallback rather than a regression, but it means the ROLE_DEFAULTS path is the NORMAL path for six of eight employers, which is precisely the condition A06-005 exploits.",
+  "suggested_fix": "Seed a demo_personas row for every employer and distributor the seed creates (the seed already knows their contact phones), so 'sign in as this employer' works for any row the admin list shows. If some are deliberately login-less, mark them in the admin UI so a rep does not try.",
+  "roles_affected": [
+   "employer",
+   "distributor",
+   "admin"
+  ],
+  "demo_visible": true,
+  "effort": "S",
+  "agent": "A06"
+ },
+ {
+  "id": "A06-013",
+  "title": "39 of 54 users rows carry no entity_id",
+  "severity": "low",
+  "confidence": "confirmed",
+  "category": "data-hygiene",
+  "surface": "public.users",
+  "location": "api/auth/verify-otp.ts:67-99 (upsertUser)",
+  "evidence": "$ psql \"$SUPABASE_DB_URL\" -X -q -At -F'|' -c \"select role, count(*) from public.users where entity_id is null group by 1 order by 2 desc;\"\nsubscriber|13\nadmin|12\ndistributor|6\nemployer|4\nbranch|2\nagent|2\n\nCause \u2014 api/auth/verify-otp.ts:67-99 upserts a users(phone, role) row on EVERY sign-in with no entity_id:\n  .from('users').upsert(patch, { onConflict: 'phone,role' })\n\nThey are inert: subscriber logins resolve via subscribers.phone (api/auth/_lib/personas.ts:76-88), non-subscriber logins via demo_personas (ibid. :96-110); neither reads users.entity_id.\n\nNo dangling references:\n$ psql ... -c \"select u.id, u.role, u.entity_id from public.users u where u.entity_id is not null and ((u.role='agent' and not exists (select 1 from public.agents a where a.id=u.entity_id)) or (u.role='branch' and not exists (select 1 from public.branches b where b.id=u.entity_id)) or (u.role='distributor' and not exists (select 1 from public.distributors d where d.id=u.entity_id)) or (u.role='employer' and not exists (select 1 from public.employers e where e.id=u.entity_id)) or (u.role='subscriber' and not exists (select 1 from public.subscribers s where s.id=u.entity_id)));\"\n(no rows)\n\nOne collision worth flagging: distributor:+256700000011 was created 2026-08-24 07:44:10 by an audit agent on the phone dp-b-001 uses for the b-kam-015 branch persona. It has no demo_personas counterpart, so signing in as distributor on that phone falls back to d-001.",
+  "impact": "Not a functional defect \u2014 these are login breadcrumbs, not broken provisioning, and the 0101 identity contract holds live (approve_access_request / create_employer / create_distributor all call register_login_identity; the one approved access_request has matching users AND demo_personas rows with the correct entity_id; all 9 demo_personas have a matching users row; zero dangling entity_id). But the table is now 72% noise, which makes any future audit of sign-in identity harder to read and hides real anomalies like the +256700000011 collision.",
+  "suggested_fix": "Prune users rows with NULL entity_id that carry no password_hash and have never been used for a real persona, or stop writing the row until an entity is resolved. If the row is needed for password storage, at least stamp the resolved entity_id from the same resolution the JWT uses.",
+  "roles_affected": [
+   "admin"
+  ],
+  "demo_visible": false,
+  "effort": "S",
+  "agent": "A06"
+ },
+ {
+  "id": "A06-014",
+  "title": "request_withdrawal writes a positive amount against a negative seed convention",
+  "severity": "low",
+  "confidence": "confirmed",
+  "category": "data-integrity",
+  "surface": "transactions ledger",
+  "location": "public.request_withdrawal (INSERT INTO public.transactions ... 'withdrawal', p_amount, ...)",
+  "evidence": "$ psql \"$SUPABASE_DB_URL\" -X -q -At -c \"select count(*) from public.transactions where type='withdrawal' and amount > 0;\"\n1\n$ psql ... -c \"select id, subscriber_id, amount, date, status, method, bucket, txn_ref, created_at from public.transactions where type='withdrawal' and amount>0;\"\ntx-s-100117-wd-9d3276ed45564b3caead81d55fca579b|s-100117|5000|2026-08-07 11:46:10.825511+00|processing|Airtel Money|emergency|WD-965239|2026-08-07 11:46:10.825511+00\n(all 4,936 seeded withdrawal rows are negative; src/data/employerSeed.js:284 writes `amount: -Math.abs(amount)`)\n\nThe RPC body (pg_proc.prosrc, verbatim):\n  INSERT INTO public.transactions (\n    id, subscriber_id, type, amount, date, status, method,\n    txn_ref, bucket, split_retirement, split_emergency, source\n  ) VALUES (\n    v_tx_id, v_subscriber_id, 'withdrawal', p_amount, now(), 'processing', p_method,\n    v_ref, p_bucket, v_split_ret, v_split_emg, 'own'\n  );\n\nEvery consumer I could find is defensive, which is why this is Low not High:\n  public.trg_transactions_withdrawal: v_amount NUMERIC := ABS(NEW.amount);  -- defensive: treat as magnitude\n  src/services/subscriber.js:339: const amount = row.type === 'withdrawal' ? -Math.abs(Number(row.amount)) : Number(row.amount);\n  src/utils/finance.js txDisplayAmount handles both signs (unit-tested at src/utils/__tests__/finance.test.js:372-373)\n  src/subscriber-dashboard/reports/views/AnnualStatement.jsx:66: withdrawals += Math.abs(t.amount)\n$ psql ... -c \"select p.proname||' :: '||l from pg_proc p join pg_namespace n on n.oid=p.pronamespace, lateral unnest(string_to_array(p.prosrc, E'\\n')) l where n.nspname='public' and l ilike '%withdrawal%' and (l ilike '%sum%' or l ilike '%amount%');\"\n  -> get_entity_metrics_rollup, get_employer_activity_rollup and get_platform_overview all use SUM(ABS(amount)) FILTER (WHERE type='withdrawal')",
+  "impact": "Every live demo withdrawal writes a row whose sign contradicts the 4,936 seeded rows. Balances stay correct (the trigger uses ABS) and every known reader normalises, so nothing is currently wrong on screen \u2014 but any future consumer that does a plain SUM(amount) over the ledger will count a withdrawal as an inflow, and the mixed convention makes hand-inspection of the ledger misleading.",
+  "suggested_fix": "Insert -p_amount (or -ABS(p_amount)) in request_withdrawal so runtime rows match the seed, and keep the ABS defences in place. Add an invariant to e2e/specs/db/invariants.spec.ts: zero withdrawal transactions with amount > 0, zero contribution transactions with amount <= 0.",
+  "roles_affected": [
+   "subscriber"
+  ],
+  "demo_visible": false,
+  "effort": "S",
+  "agent": "A06"
+ },
+ {
+  "id": "A06-015",
+  "title": "21 employer-member contribution schedules have amount = 0 and a NULL next_due_date",
+  "severity": "low",
+  "confidence": "confirmed",
+  "category": "data-integrity",
+  "surface": "subscriber Schedule page for employer-channel members",
+  "location": "public.contribution_schedules for empe-001 .. empe-021",
+  "evidence": "$ psql \"$SUPABASE_DB_URL\" -X -q -At -F'|' -c \"select count(*) filter (where retirement_pct + emergency_pct <> 100) bad_split, count(*) filter (where amount is null) null_amt, count(*) filter (where amount <= 0) nonpos_amt, count(*) filter (where next_due_date is null) null_due, count(*) from public.contribution_schedules;\"\n0|0|21|21|5022\n\n$ psql ... -c \"select subscriber_id, frequency, amount, retirement_pct, emergency_pct, include_insurance, insurance_choice_made, next_due_date, insurance_funding_mode, updated_at from public.contribution_schedules where next_due_date is null order by subscriber_id;\"\nempe-001|monthly|0|80|20|f|f||pay_now|2026-07-27 14:26:06.958998+00\nempe-002|monthly|0|80|20|f|f||pay_now|2026-07-27 14:26:06.958998+00\n... (empe-003 .. empe-021, identical)\n\nThese are exactly the 21 rows invariant #5 cannot see (see A06-008), and exactly the 21 employer-roster members of emp-001.",
+  "impact": "An employer-channel member's Schedule screen has a 0 UGX amount and no next due date, because their money arrives through the employer payroll run rather than a personal schedule. That is arguably correct domain-wise, but the row exists and renders, so the member sees an empty/zero schedule rather than an explanatory employer-funded state. It also makes these 21 rows invisible to the only guard that checks schedule freshness.",
+  "suggested_fix": "Either do not create a contribution_schedules row for employer-funded members (and have the Schedule page render an 'Your employer pays on your behalf' state when none exists), or populate next_due_date from the employer's payroll_cadence so the screen shows the real next payroll date. Whichever is chosen, make invariant #5 assert the NULL count explicitly.",
+  "roles_affected": [
+   "subscriber",
+   "employer"
+  ],
+  "demo_visible": true,
+  "effort": "S",
+  "agent": "A06"
+ },
+ {
+  "id": "A06-016",
+  "title": "Mass-detach guard passes 50-row batches unjournalled",
+  "severity": "low",
+  "confidence": "confirmed",
+  "category": "correctness",
+  "surface": "public.subscribers UPDATE path",
+  "location": "public.guard_mass_subscriber_detach (v_threshold constant integer := 50)",
+  "evidence": "The guard DOES fire on both legs (this is the good news, tested and rolled back):\n$ psql \"$SUPABASE_DB_URL\" -X -q -At -c \"select count(*) from public.subscribers where agent_id is not null;\"\n5001\n$ psql ... -v ON_ERROR_STOP=0 <<'SQL'\nBEGIN;\nUPDATE public.subscribers SET agent_id = NULL WHERE id IN (SELECT id FROM public.subscribers WHERE agent_id IS NOT NULL ORDER BY id LIMIT 60);\nROLLBACK;\nSQL\nERROR:  mass agent detach blocked: 60 of 60 rows unjournalled \u2014 use set_distributor_status()\nCONTEXT:  PL/pgSQL function guard_mass_subscriber_detach() line 20 at RAISE\n$ psql ... -c \"select count(*) from public.subscribers where agent_id is not null;\"\n5001\n\nEmployer leg too:\nBEGIN; UPDATE public.subscribers SET employer_id = NULL WHERE employer_id IS NOT NULL; ROLLBACK;\nERROR:  mass employer detach blocked: 58 of 58 rows unjournalled \u2014 use set_employer_status()\nCONTEXT:  PL/pgSQL function guard_mass_subscriber_detach() line 38 at RAISE\n\nThe blind spot \u2014 a 50-row statement passes silently:\nBEGIN;\nUPDATE public.subscribers SET agent_id = NULL WHERE id IN (SELECT id FROM public.subscribers WHERE agent_id IS NOT NULL ORDER BY id LIMIT 50);\nSELECT 'rows now unattached: '||count(*) FROM public.subscribers WHERE agent_id IS NULL;\nROLLBACK;\nrows now unattached: 113        <- 63 legitimately NULL + 50 just detached, NO error raised\n\nPost-probe verification (agent-linked | employer-linked | total): 5001|58|5064 \u2014 unchanged.\nAlso: entity_detach_log is EMPTY (0 rows) \u2014 no recurrence of the 2026-07-27 mass detach.",
+  "impact": "The trigger is AFTER UPDATE ... FOR EACH STATEMENT with threshold '> 50', so 101 statements of 50 rows each would detach all 5,001 subscriber->agent links without tripping it. The 0060 incident was a single 5,003-row statement, so the guard does close the observed hole; this is a documented limitation rather than a regression, but it is worth recording that the protection is per-statement, not cumulative.",
+  "suggested_fix": "Optionally add a cumulative check: if the count of unjournalled detaches within a short window (say entity_detach_log-less agent_id nulls in the last 5 minutes) exceeds a budget, raise. Lower-cost alternative: document the per-statement scope in the trigger comment so a future reader does not assume cumulative protection.",
+  "roles_affected": [
+   "admin",
+   "distributor"
+  ],
+  "demo_visible": false,
+  "effort": "M",
+  "agent": "A06"
+ },
+ {
+  "id": "A06-017",
+  "title": "E2E entity residue across six tables, including a branch invisible to every distributor",
+  "severity": "low",
+  "confidence": "confirmed",
+  "category": "data-hygiene",
+  "surface": "admin branch list, admin subscriber list, entity status log",
+  "location": "public.branches tst-branch-msc7w8vm; public.subscribers s-e2e-emp-foreign-1785752999757; public.entity_status_log; public.contribution_run_uploads / settlement_uploads / subscriber_signup_uploads",
+  "evidence": "$ psql \"$SUPABASE_DB_URL\" -X -q -At -F'|' -c \"select b.id, b.name, b.district_id, b.status, b.created_at, b.distributor_id, (select count(*) from public.agents a where a.branch_id=b.id) agents from public.branches b where b.distributor_id is null;\"\ntst-branch-msc7w8vm|TST throwaway branch|d-buikwe|active|2026-08-02 19:53:04.628663+00||0\n\n$ psql ... -c \"select id,name,phone,agent_id,employer_id,district_id,kyc_status,is_active,is_demo_signup,created_at from public.subscribers where id like 's-e2%';\"\ns-e2e-emp-foreign-1785752999757|E2E Foreign Member (RLS probe)|+2567000099907|||||complete|t|f|2026-08-03 10:30:00.004968+00\n\n$ psql ... -c \"select 'subscribers', count(*) from public.subscribers where id like 'tst-%' or id like 's-e2e%' union all select 'branches', count(*) from public.branches where id like 'tst-%' union all select 'entity_status_log', count(*) from public.entity_status_log where scope_id like 'tst-%' union all select 'contribution_run_uploads', count(*) from public.contribution_run_uploads union all select 'settlement_uploads', count(*) from public.settlement_uploads union all select 'money_nonces', count(*) from public.money_nonces union all select 'subscriber_signup_uploads', count(*) from public.subscriber_signup_uploads;\"\nsubscribers|5\nbranches|1\nentity_status_log|64\ncontribution_run_uploads|33\nsettlement_uploads|153\nmoney_nonces|10\nsubscriber_signup_uploads|98\n\n$ psql ... -c \"select id, entity_kind, entity_id, prior_status, scope_id, changed_at, restored_at from public.entity_status_log order by changed_at desc limit 4;\"\n2423|agent|tst-agent-mt6y5z5h|active|tst-dist-mt6y5z5h|2026-08-24 08:01:24.047395+00|2026-08-24 08:01:24.968979+00\n2422|branch|tst-branch-mt6y5z5h|active|tst-dist-mt6y5z5h|2026-08-24 08:01:24.047395+00|2026-08-24 08:01:24.968979+00\n2421|agent|tst-agent-mt6xva17|active|tst-dist-mt6xva17|2026-08-24 07:53:05.114865+00|2026-08-24 07:53:05.913601+00\n2420|branch|tst-branch-mt6xva17|active|tst-dist-mt6xva17|2026-08-24 07:53:05.114865+00|2026-08-24 07:53:05.913601+00\n(rows 2400/2401, tst-*-msby5a2i, have restored_at NULL \u2014 a deactivation never restored)",
+  "impact": "Test litter is visible on admin surfaces: 'TST throwaway branch' appears in the branch list with a NULL distributor_id, making it the one branch of 321 that belongs to no distributor and is therefore invisible to every distributor-scoped rollup while still counting in country totals. 'E2E Foreign Member (RLS probe)' appears in unscoped subscriber lists. entity_status_log is 100% E2E rows (64 of 64), one pair never restored. Three idempotency-nonce ledgers grow monotonically (33 / 153 / 98) because none of them is ever cleaned.",
+  "suggested_fix": "DELETE the tst-* branch and the s-e2e-* subscriber (both have no dependent rows). Add nonce-ledger and entity_status_log cleanup to the relevant afterEach blocks (the deactivate-entities spec already knows the scope_id it created). Consider a scheduled purge of rows older than N days in the three *_uploads tables.",
+  "roles_affected": [
+   "admin",
+   "distributor"
+  ],
+  "demo_visible": true,
+  "effort": "S",
+  "agent": "A06"
+ },
+ {
+  "id": "A06-018",
+  "title": "The insurance-premium invariant is violated in live data by three deliberate demo fixtures",
+  "severity": "info",
+  "confidence": "confirmed",
+  "category": "data-integrity",
+  "surface": "subscriber transaction history for s-0701/s-0702/s-0703; admin Reconciliation",
+  "location": "public.transactions ids t-demo-recon-1, t-demo-recon-2, t-demo-recon-3",
+  "evidence": "The invariant (src/data/__tests__/insurance-premium-invariant.test.js) is asserted only against the in-memory mockData population, never against live. Run against live it fails:\n$ psql \"$SUPABASE_DB_URL\" -X -q -At -F'|' -c \"select count(*) from (select subscriber_id, count(*) n from public.transactions where type='premium' group by 1 having count(*)>1) t;\"\n2\n$ psql ... -c \"select subscriber_id, count(*) n, sum(amount) from public.transactions where type='premium' group by 1 having count(*)>1 order by 2 desc;\"\ns-0701|2|69000\ns-0703|2|62000\n$ psql ... -c \"select amount, count(*) from public.transactions where type='premium' group by 1 order by 2 desc;\"\n24000|2708\n62000|1\n45000|1\n38000|1\n$ psql ... -c \"select id, subscriber_id, type, amount, date, status, method, txn_ref, source, created_at from public.transactions where type='premium' and amount<>24000 order by subscriber_id;\"\nt-demo-recon-1|s-0701|premium|45000|2026-07-25|settled|Bank transfer|RECON-DEMO-001|own|2026-08-08 10:51:52.204167+00\nt-demo-recon-2|s-0702|premium|62000|2026-07-21|settled|Bank transfer|RECON-DEMO-002|own|2026-08-08 10:51:52.204167+00\nt-demo-recon-3|s-0703|premium|38000|2026-07-17|settled|Bank transfer|RECON-DEMO-003|own|2026-08-08 10:51:52.204167+00\n\nThey are intentional \u2014 same created_at as the ar-demo-*/d-003/run-demo-* demo set, and they are what populates the agent_mismatch arm of the reconciliation view:\n$ psql ... -c \"select check_code, count(*) from public.v_reconciliation_exceptions group by 1;\"\nmissing_balance|4\nagent_mismatch|3\n\nThe other two premium invariants pass live: 0 rows use method='Auto-debit'; 0 insurance_premium rows on a non-employer source; s-0002 (the save-to-cover demo) has 0 premium rows.",
+  "impact": "No user-visible defect \u2014 the three rows are demo fixtures that make the Reconciliation screen tell a story. Recorded because they mean the ANNUAL-only self-pay invariant is NOT true of live data, so anyone porting that assertion from the mock test to a DB guard must exempt txn_ref LIKE 'RECON-DEMO-%' or the guard fails on a clean database.",
+  "suggested_fix": "If the invariant is promoted to a DB guard, exclude txn_ref LIKE 'RECON-DEMO-%'. Otherwise no action.",
+  "roles_affected": [
+   "admin",
+   "subscriber"
+  ],
+  "demo_visible": false,
+  "effort": "S",
+  "agent": "A06"
+ },
+ {
+  "id": "A06-019",
+  "title": "The duplicate-NIN invariant covers 22 of 5,064 subscriber rows",
+  "severity": "info",
+  "confidence": "confirmed",
+  "category": "test-coverage",
+  "surface": "e2e DB invariants guard",
+  "location": "e2e/specs/db/invariants.spec.ts (test 'no duplicate subscriber NIns')",
+  "evidence": "$ psql \"$SUPABASE_DB_URL\" -X -q -At -F'|' -c \"select count(*) filter (where nin is null), count(*) filter (where nin=''), count(*) from public.subscribers;\"\n5042|0|5064\n\nThe assertion filters .not('nin','is',null), so it evaluates 22 rows. The 0017 UNIQUE INDEX it guards is a PARTIAL index and therefore also only constrains those 22.",
+  "impact": "No defect \u2014 the seed simply does not populate NIN for the bulk population (only real signups and KYC-completed members carry one). Recorded so nobody reads 'no duplicate subscriber NIns: 0' as evidence that 5,064 identities are unique; it is evidence that 22 are.",
+  "suggested_fix": "None required. If NIN uniqueness matters for the demo story, have the seed populate it; otherwise note the coverage in the test's comment block.",
+  "roles_affected": [],
+  "demo_visible": false,
+  "effort": "S",
+  "agent": "A06"
+ },
+ {
+  "id": "A06-020",
+  "title": "Four stale pending NAV snapshots sit behind a later published price",
+  "severity": "info",
+  "confidence": "confirmed",
+  "category": "data-hygiene",
+  "surface": "admin NAV screen",
+  "location": "public.nav_snapshots (status='pending')",
+  "evidence": "$ psql \"$SUPABASE_DB_URL\" -X -q -At -F'|' -c \"select status, count(*), min(nav_date), max(nav_date), min(unit_price), max(unit_price) from public.nav_snapshots group by 1;\"\npublished|1242|2021-11-01|2026-08-08|996.38|1580.72\npending|4|2026-08-04|2026-08-07|1000.00|1000.00\n$ psql ... -c \"select public.latest_nav();\"\n1571.4",
+  "impact": "Four draft NAV rows dated 2026-08-04..2026-08-07 remain 'pending' while a later price for 2026-08-08 is already published, and all four carry the retired hardcoded 1,000.00 unit price rather than a real NAV. On the admin NAV screen they read as 'awaiting approval' for dates that are already priced. No money is affected \u2014 latest_nav() correctly returns 1571.4 from the published series.",
+  "suggested_fix": "Delete or mark-superseded any pending nav_snapshots whose nav_date is earlier than the latest published nav_date. A04 owns the NAV pipeline; flagged here as data residue found during the table sweep.",
+  "roles_affected": [
+   "admin"
+  ],
+  "demo_visible": true,
+  "effort": "S",
+  "agent": "A06"
+ }
+]

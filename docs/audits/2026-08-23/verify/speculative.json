@@ -1,0 +1,31 @@
+[
+ {
+  "id": "A06-007",
+  "title": "Live stored XSS payloads sit at the top of two admin queues",
+  "severity": "high",
+  "confidence": "confirmed",
+  "category": "data-integrity",
+  "surface": "admin Access requests queue, admin Nominee claims queue, admin 'Needs attention' card",
+  "location": "public.access_requests ids ar-1787558699527-rmm4, ar-1787558701196-dksm; public.nominee_claims ids nc-bbf6090b4d1d48e991f65357be9e62f1, nc-d810114b14304a0f85c0337cdfa21ac3",
+  "evidence": "I scanned EVERY text/varchar column of EVERY base table for <script, onerror=, onload=, javascript:, <img..src=, <svg, <iframe, {{, ${, SQL metacharacters and trailing --:\n$ psql \"$SUPABASE_DB_URL\" -X -q -At -F'|' <<'SQL'\nDO $$ DECLARE r record; n bigint; total bigint := 0; BEGIN\n  FOR r IN SELECT c.table_name, c.column_name FROM information_schema.columns c JOIN information_schema.tables t ON t.table_schema=c.table_schema AND t.table_name=c.table_name AND t.table_type='BASE TABLE' WHERE c.table_schema='public' AND c.data_type IN ('text','character varying') ORDER BY 1,2 LOOP\n    EXECUTE format('SELECT count(*) FROM public.%I WHERE %I ~* %L', r.table_name, r.column_name, '(<\\s*script|onerror\\s*=|onload\\s*=|javascript:|<\\s*img[^>]*src\\s*=|<\\s*svg|<\\s*iframe|\\{\\{|\\$\\{|'';\\s*(drop|delete|update|insert)\\s|--\\s*$|<\\s*/?\\s*b\\s*>)') INTO n;\n    IF n > 0 THEN RAISE NOTICE 'HIT % . % => % row(s)', r.table_name, r.column_name, n; total := total + n; END IF;\n  END LOOP; RAISE NOTICE 'TOTAL flagged column-hits: %', total; END $$;\nSQL\nNOTICE:  HIT access_requests . contact_email => 1 row(s)\nNOTICE:  HIT access_requests . contact_name => 2 row(s)\nNOTICE:  HIT access_requests . district => 1 row(s)\nNOTICE:  HIT access_requests . message => 1 row(s)\nNOTICE:  HIT access_requests . org_name => 2 row(s)\nNOTICE:  HIT access_requests . registration_no => 1 row(s)\nNOTICE:  HIT access_requests . sector => 1 row(s)\nNOTICE:  HIT nominee_claims . claimant_name => 2 row(s)\nNOTICE:  HIT nominee_claims . deceased_name => 2 row(s)\nNOTICE:  HIT nominee_claims . deceased_nin => 1 row(s)\nNOTICE:  HIT nominee_claims . district => 1 row(s)\nNOTICE:  HIT nominee_claims . notes => 1 row(s)\nNOTICE:  HIT nominee_claims . relationship => 1 row(s)\nNOTICE:  TOTAL flagged column-hits: 17\n\nEvery hit belongs to 4 rows, all created 2026-08-24 08:04:59-08:05:03 (the A24 probe), all still present:\nar-1787558699527-rmm4|employer|A24XSSPROBE <img src=x onerror=\"window.__A24_XSS_ORG=1\">|A24XSSPROBE<svg/onload=window.__A24_XSS_NAME=1>|\"><script>window.__A24_XSS_EMAIL=1</script>@a24probe.test|+256770000191|A24XSSPROBE\"><img src=x onerror=window.__A24_XSS_SECTOR=1>|A24XSSPROBE<iframe src=\"javascript:window.__A24_XSS_DISTRICT=1\"></iframe>|A24XSSPROBE<script>window.__A24_XSS_REG=1</script>|pending||2026-08-24 08:04:59.700516+00|A24XSSPROBE <script>window.__A24_XSS_MSG=1</script>\nar-1787558701196-dksm|distributor|A24XSSPROBE \"><script>window.__A24_XSS_ORG2=1</script>|...|pending\nnc-bbf6090b...|NC-BB9B0A6D|life|A24XSSPROBE <img src=x onerror=\"window.__A24_XSS_DEC=1\">|...|pending\nnc-d810114b...|NC-E40BFC56|funeral|A24XSSPROBE2 \"><script>window.__A24_XSS_DEC2=1</script>|...|pending\n\n$ psql ... -c \"select count(*) filter (where status='pending'), count(*) from public.access_requests;\"\n6|7        <- the admin 'pendingAccessRequests' signal reads 6, not 4",
+  "impact": "All 4 rows are status='pending' and are the newest in their tables, so they render at the TOP of the admin Access-requests and Nominee-claims queues, and they inflate the admin 'Needs attention' pending-access-requests count from 4 to 6. A rep opening either queue today sees 'A24XSSPROBE <img src=x onerror=...>' as the first row. Separately, if any of those admin surfaces renders the field unescaped (dangerouslySetInnerHTML, v-html-equivalent, or an unescaped CSV/PDF export), this is a live stored XSS \u2014 A24 owns the render-side confirmation; this finding establishes that the payloads ARE stored and ARE reachable. No pre-existing junk exists anywhere in the schema: these 4 rows are the entire hit set.",
+  "suggested_fix": "Delete the 4 probe rows before any demo: DELETE FROM public.access_requests WHERE id IN ('ar-1787558699527-rmm4','ar-1787558701196-dksm'); DELETE FROM public.nominee_claims WHERE id IN ('nc-bbf6090b4d1d48e991f65357be9e62f1','nc-d810114b14304a0f85c0337cdfa21ac3'); \u2014 after A24 has finished its render-side verification. Longer term, add server-side length + character validation on the public request-access and nominee-claim forms (both are unauthenticated write paths with no bound on content).",
+  "repro": [
+   "Sign in as admin +256700000099 / Demo1234",
+   "Open Admin -> Access requests \u2014 the first two rows are A24XSSPROBE payloads",
+   "Open Admin -> Nominee claims \u2014 the first two rows are A24XSSPROBE payloads",
+   "Check the 'Needs attention' card: pending access requests reads 6 (4 genuine demo rows + 2 probes)"
+  ],
+  "roles_affected": [
+   "admin"
+  ],
+  "demo_visible": true,
+  "effort": "S",
+  "agent": "A06",
+  "verification": {
+   "verdict": "REFUTED",
+   "reason": "Not reproducible against the live system from a clean state. The A24XSSPROBE rows have been deleted since A06 captured evidence: a full text-column XSS pattern scan now returns 0 hits, the two access_requests and two nominee_claims IDs A06 named no longer exist, and pending access_requests is now 4 (finding claimed 6). The finding was valid when captured (transient probe litter left by A24), and the actual stored-XSS vulnerability is A24's render-side finding \u2014 A06's data-presence claim no longer holds.",
+   "evidence": "access_requests/nominee_claims WHERE ilike '%A24XSS%' -> 0 rows. IDs ar-1787558699527-rmm4, ar-1787558701196-dksm, nc-bbf6090b..., nc-d810114b... -> 0 rows. DO-block scan (<script|onerror|onload|javascript:|<iframe|<svg) over all text cols -> TOTAL flagged column-hits: 0. pending/total access_requests -> 4|5."
+  }
+ }
+]

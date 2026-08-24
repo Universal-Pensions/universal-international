@@ -1,0 +1,2900 @@
+[
+  {
+    "file": "src/services/accessRequests.js",
+    "fn": "listAccessRequests",
+    "mockKinds": [
+      "array-empty"
+    ],
+    "liveKinds": [
+      "opaque"
+    ],
+    "mockKeys": [],
+    "liveKeys": [],
+    "onlyMock": [],
+    "onlyLive": [],
+    "resolvable": false,
+    "verdict": "UNRESOLVED"
+  },
+  {
+    "file": "src/services/accessRequests.js",
+    "fn": "approveAccessRequest",
+    "mockKinds": [
+      "object"
+    ],
+    "liveKinds": [
+      "opaque"
+    ],
+    "mockKeys": [
+      "id",
+      "status"
+    ],
+    "liveKeys": [],
+    "onlyMock": [
+      "id",
+      "status"
+    ],
+    "onlyLive": [],
+    "resolvable": false,
+    "verdict": "UNRESOLVED"
+  },
+  {
+    "file": "src/services/accessRequests.js",
+    "fn": "denyAccessRequest",
+    "mockKinds": [
+      "object"
+    ],
+    "liveKinds": [
+      "opaque"
+    ],
+    "mockKeys": [
+      "id",
+      "status"
+    ],
+    "liveKeys": [],
+    "onlyMock": [
+      "id",
+      "status"
+    ],
+    "onlyLive": [],
+    "resolvable": false,
+    "verdict": "UNRESOLVED"
+  },
+  {
+    "file": "src/services/adminAttention.js",
+    "fn": "getAdminAttention",
+    "mockKinds": [
+      "object"
+    ],
+    "liveKinds": [
+      "object"
+    ],
+    "mockKeys": [
+      "...EMPTY_ATTENTION"
+    ],
+    "liveKeys": [
+      "...EMPTY_ATTENTION",
+      "...(data ?? {})"
+    ],
+    "onlyMock": [],
+    "onlyLive": [],
+    "resolvable": true,
+    "verdict": "MATCH"
+  },
+  {
+    "file": "src/services/adminAttention.js",
+    "fn": "getAdminAttentionRows",
+    "mockKinds": [
+      "array-empty"
+    ],
+    "liveKinds": [
+      "opaque"
+    ],
+    "mockKeys": [],
+    "liveKeys": [],
+    "onlyMock": [],
+    "onlyLive": [],
+    "resolvable": false,
+    "verdict": "UNRESOLVED"
+  },
+  {
+    "file": "src/services/agent.js",
+    "fn": "getAgentSubscriberList",
+    "mockKinds": [
+      "opaque",
+      "object"
+    ],
+    "liveKinds": [
+      "array-empty",
+      "array-of"
+    ],
+    "mockKeys": [
+      "id",
+      "name",
+      "phone",
+      "email",
+      "gender",
+      "age",
+      "kycStatus",
+      "isActive",
+      "registeredDate",
+      "lastContributionDate",
+      "totalContributions",
+      "totalWithdrawals",
+      "lastContribution",
+      "productsHeld",
+      "contributionSchedule",
+      "netBalance",
+      "insurance",
+      "policies"
+    ],
+    "liveKeys": [
+      "id",
+      "name",
+      "phone",
+      "email",
+      "gender",
+      "age",
+      "kycStatus",
+      "isActive",
+      "registeredDate",
+      "lastContributionDate",
+      "productsHeld",
+      "contributionHistory",
+      "lastContribution",
+      "contributionSchedule",
+      "netBalance",
+      "retirementBalance",
+      "emergencyBalance",
+      "totalContributions",
+      "totalWithdrawals",
+      "insurance",
+      "policies"
+    ],
+    "onlyMock": [],
+    "onlyLive": [
+      "contributionHistory",
+      "retirementBalance",
+      "emergencyBalance"
+    ],
+    "resolvable": true,
+    "verdict": "SHAPE-DIFF"
+  },
+  {
+    "file": "src/services/agent.js",
+    "fn": "getAgentContributions",
+    "mockKinds": [
+      "opaque"
+    ],
+    "liveKinds": [
+      "array-empty",
+      "array-of-literal"
+    ],
+    "mockKeys": [],
+    "liveKeys": [
+      "id",
+      "subscriberId",
+      "subscriberName",
+      "amount",
+      "date",
+      "method"
+    ],
+    "onlyMock": [],
+    "onlyLive": [
+      "id",
+      "subscriberId",
+      "subscriberName",
+      "amount",
+      "date",
+      "method"
+    ],
+    "resolvable": false,
+    "verdict": "UNRESOLVED"
+  },
+  {
+    "file": "src/services/chat.js",
+    "fn": "getChatResponse",
+    "mockKinds": [
+      "call:mockChatResponse"
+    ],
+    "liveKinds": [
+      "call:postChat"
+    ],
+    "mockKeys": [],
+    "liveKeys": [],
+    "onlyMock": [],
+    "onlyLive": [],
+    "resolvable": false,
+    "verdict": "UNRESOLVED"
+  },
+  {
+    "file": "src/services/chat.js",
+    "fn": "getAgentReply",
+    "mockKinds": [
+      "call:mockAgentReply"
+    ],
+    "liveKinds": [
+      "call:postChat"
+    ],
+    "mockKeys": [],
+    "liveKeys": [],
+    "onlyMock": [],
+    "onlyLive": [],
+    "resolvable": false,
+    "verdict": "UNRESOLVED"
+  },
+  {
+    "file": "src/services/chat.js",
+    "fn": "getSubscriberChatResponse",
+    "mockKinds": [
+      "call:mockSubscriberChatResponse"
+    ],
+    "liveKinds": [
+      "call:postChat"
+    ],
+    "mockKeys": [],
+    "liveKeys": [],
+    "onlyMock": [],
+    "onlyLive": [],
+    "resolvable": false,
+    "verdict": "UNRESOLVED"
+  },
+  {
+    "file": "src/services/commissions.js",
+    "fn": "getCommissionRate",
+    "mockKinds": [
+      "call:_legacy_mock_getCommissionRate"
+    ],
+    "liveKinds": [
+      "opaque"
+    ],
+    "mockKeys": [],
+    "liveKeys": [],
+    "onlyMock": [],
+    "onlyLive": [],
+    "resolvable": false,
+    "verdict": "UNRESOLVED"
+  },
+  {
+    "file": "src/services/commissions.js",
+    "fn": "setCommissionRate",
+    "mockKinds": [
+      "call:_legacy_mock_setCommissionRate"
+    ],
+    "liveKinds": [
+      "opaque"
+    ],
+    "mockKeys": [],
+    "liveKeys": [],
+    "onlyMock": [],
+    "onlyLive": [],
+    "resolvable": false,
+    "verdict": "UNRESOLVED"
+  },
+  {
+    "file": "src/services/commissions.js",
+    "fn": "getCommissionSummary",
+    "mockKinds": [
+      "call:_legacy_mock_getCommissionSummary"
+    ],
+    "liveKinds": [
+      "object"
+    ],
+    "mockKeys": [],
+    "liveKeys": [
+      "totalCommissions",
+      "totalPaid",
+      "totalDue",
+      "countTotal",
+      "countPaid",
+      "countDue"
+    ],
+    "onlyMock": [],
+    "onlyLive": [
+      "totalCommissions",
+      "totalPaid",
+      "totalDue",
+      "countTotal",
+      "countPaid",
+      "countDue"
+    ],
+    "resolvable": false,
+    "verdict": "UNRESOLVED"
+  },
+  {
+    "file": "src/services/commissions.js",
+    "fn": "getEntityCommissionSummary",
+    "mockKinds": [
+      "call:_legacy_mock_getEntityCommissionSummary"
+    ],
+    "liveKinds": [
+      "object"
+    ],
+    "mockKeys": [],
+    "liveKeys": [
+      "totalPaid",
+      "totalDue",
+      "countPaid",
+      "countDue",
+      "total",
+      "countTotal",
+      "settlementRate"
+    ],
+    "onlyMock": [],
+    "onlyLive": [
+      "totalPaid",
+      "totalDue",
+      "countPaid",
+      "countDue",
+      "total",
+      "countTotal",
+      "settlementRate"
+    ],
+    "resolvable": false,
+    "verdict": "UNRESOLVED"
+  },
+  {
+    "file": "src/services/commissions.js",
+    "fn": "getAgentCommissionList",
+    "mockKinds": [
+      "call:_legacy_mock_getAgentCommissionList"
+    ],
+    "liveKinds": [
+      "array-of"
+    ],
+    "mockKeys": [
+      "agentId",
+      "agentName",
+      "employeeId",
+      "branchId",
+      "branchName",
+      "totalCommissions",
+      "totalPaid",
+      "totalDue",
+      "subscribersOnboarded",
+      "activeSubscribers",
+      "filteredAmount",
+      "filteredCount"
+    ],
+    "liveKeys": [
+      "agentId",
+      "agentName",
+      "employeeId",
+      "branchId",
+      "branchName",
+      "totalCommissions",
+      "totalPaid",
+      "totalDue",
+      "subscribersOnboarded",
+      "activeSubscribers",
+      "filteredAmount",
+      "filteredCount"
+    ],
+    "onlyMock": [],
+    "onlyLive": [],
+    "resolvable": true,
+    "verdict": "MATCH"
+  },
+  {
+    "file": "src/services/commissions.js",
+    "fn": "getAgentCommissionDetail",
+    "mockKinds": [
+      "call:_legacy_mock_getAgentCommissionDetail"
+    ],
+    "liveKinds": [
+      "null",
+      "object"
+    ],
+    "mockKeys": [
+      "id",
+      "transactionDate",
+      "amount",
+      "paidAmount",
+      "status",
+      "txnRef",
+      "subscriberId",
+      "subscriberName",
+      "dueDate",
+      "daysToDate",
+      "branchId",
+      "branchName"
+    ],
+    "liveKeys": [
+      "...data",
+      "totalCommissions",
+      "totalPaid",
+      "totalDue"
+    ],
+    "onlyMock": [
+      "id",
+      "transactionDate",
+      "amount",
+      "paidAmount",
+      "status",
+      "txnRef",
+      "subscriberId",
+      "subscriberName",
+      "dueDate",
+      "daysToDate",
+      "branchId",
+      "branchName"
+    ],
+    "onlyLive": [
+      "totalCommissions",
+      "totalPaid",
+      "totalDue"
+    ],
+    "resolvable": true,
+    "verdict": "SHAPE-DIFF"
+  },
+  {
+    "file": "src/services/commissions.js",
+    "fn": "getCommissionSubscribers",
+    "mockKinds": [
+      "call:_legacy_mock_getCommissionSubscribers"
+    ],
+    "liveKinds": [
+      "opaque",
+      "object"
+    ],
+    "mockKeys": [
+      "subscriberId",
+      "subscriberName",
+      "registeredDate",
+      "lastContribution",
+      "lastContributionDate",
+      "totalContributions",
+      "isActive"
+    ],
+    "liveKeys": [
+      "subscriberId",
+      "subscriberName",
+      "registeredDate",
+      "lastContribution",
+      "lastContributionDate",
+      "totalContributions",
+      "isActive"
+    ],
+    "onlyMock": [],
+    "onlyLive": [],
+    "resolvable": true,
+    "verdict": "MATCH"
+  },
+  {
+    "file": "src/services/commissions.js",
+    "fn": "getPendingDuesByAgent",
+    "mockKinds": [
+      "call:_legacy_mock_getPendingDuesByAgent"
+    ],
+    "liveKinds": [
+      "array-of"
+    ],
+    "mockKeys": [],
+    "liveKeys": [
+      "agentId",
+      "agentName",
+      "employeeId",
+      "branchId",
+      "branchName",
+      "pendingAmount",
+      "pendingCount"
+    ],
+    "onlyMock": [],
+    "onlyLive": [
+      "agentId",
+      "agentName",
+      "employeeId",
+      "branchId",
+      "branchName",
+      "pendingAmount",
+      "pendingCount"
+    ],
+    "resolvable": false,
+    "verdict": "UNRESOLVED"
+  },
+  {
+    "file": "src/services/commissions.js",
+    "fn": "getPendingDuesByBranch",
+    "mockKinds": [
+      "call:_legacy_mock_getPendingDuesByBranch"
+    ],
+    "liveKinds": [
+      "array-of"
+    ],
+    "mockKeys": [],
+    "liveKeys": [
+      "branchId",
+      "branchName",
+      "pendingAmount",
+      "pendingCount",
+      "agentCount"
+    ],
+    "onlyMock": [],
+    "onlyLive": [
+      "branchId",
+      "branchName",
+      "pendingAmount",
+      "pendingCount",
+      "agentCount"
+    ],
+    "resolvable": false,
+    "verdict": "UNRESOLVED"
+  },
+  {
+    "file": "src/services/commissions.js",
+    "fn": "applySettlementUpload",
+    "mockKinds": [
+      "call:_legacy_mock_applySettlementUpload"
+    ],
+    "liveKinds": [
+      "opaque"
+    ],
+    "mockKeys": [],
+    "liveKeys": [],
+    "onlyMock": [],
+    "onlyLive": [],
+    "resolvable": false,
+    "verdict": "UNRESOLVED"
+  },
+  {
+    "file": "src/services/commissions.js",
+    "fn": "listSettlements",
+    "mockKinds": [
+      "call:_legacy_mock_listSettlements"
+    ],
+    "liveKinds": [
+      "array-empty",
+      "array-of-literal"
+    ],
+    "mockKeys": [
+      "id",
+      "agentId",
+      "agentName",
+      "branchId",
+      "branchName",
+      "pendingTotal",
+      "paidAmount",
+      "txnRef",
+      "paidDate",
+      "lineCount",
+      "createdAt"
+    ],
+    "liveKeys": [
+      "id",
+      "agentId",
+      "agentName",
+      "branchId",
+      "branchName",
+      "pendingTotal",
+      "paidAmount",
+      "txnRef",
+      "paidDate",
+      "lineCount",
+      "createdAt"
+    ],
+    "onlyMock": [],
+    "onlyLive": [],
+    "resolvable": true,
+    "verdict": "MATCH"
+  },
+  {
+    "file": "src/services/contact.js",
+    "fn": "submitContactForm",
+    "mockKinds": [
+      "call:mockSubmit"
+    ],
+    "liveKinds": [
+      "object",
+      "call:mockSubmit"
+    ],
+    "mockKeys": [
+      "ok",
+      "demo"
+    ],
+    "liveKeys": [
+      "ok",
+      "demo",
+      "id"
+    ],
+    "onlyMock": [],
+    "onlyLive": [
+      "id"
+    ],
+    "resolvable": true,
+    "verdict": "SHAPE-DIFF"
+  },
+  {
+    "file": "src/services/employer.js",
+    "fn": "getEmployer",
+    "mockKinds": [
+      "null",
+      "object"
+    ],
+    "liveKinds": [
+      "null",
+      "call:mapEmployer"
+    ],
+    "mockKeys": [
+      "...EMPLOYER",
+      "...(_mockEmployerOverride ?? {})"
+    ],
+    "liveKeys": [
+      "id",
+      "name",
+      "sector",
+      "registrationNo",
+      "contactName",
+      "contactPhone",
+      "contactEmail",
+      "district",
+      "status",
+      "payrollCadence",
+      "defaultContributionConfig",
+      "createdAt",
+      "updatedAt"
+    ],
+    "onlyMock": [],
+    "onlyLive": [
+      "id",
+      "name",
+      "sector",
+      "registrationNo",
+      "contactName",
+      "contactPhone",
+      "contactEmail",
+      "district",
+      "status",
+      "payrollCadence",
+      "defaultContributionConfig",
+      "createdAt",
+      "updatedAt"
+    ],
+    "resolvable": true,
+    "verdict": "SHAPE-DIFF"
+  },
+  {
+    "file": "src/services/employer.js",
+    "fn": "getEmployees",
+    "mockKinds": [
+      "call:mockMembers",
+      "call:mockMembers"
+    ],
+    "liveKinds": [
+      "array-empty",
+      "array-of"
+    ],
+    "mockKeys": [],
+    "liveKeys": [
+      "id",
+      "employerId",
+      "name",
+      "phone",
+      "email",
+      "gender",
+      "age",
+      "nin",
+      "occupation",
+      "kycStatus",
+      "isActive",
+      "status",
+      "joinedDate",
+      "compensation",
+      "monthlyContribution",
+      "contributionSchedule",
+      "retirementBalance",
+      "emergencyBalance",
+      "netBalance",
+      "unitsHeld",
+      "insuranceCover",
+      "insurancePremiumMonthly",
+      "insuranceStatus",
+      "insuranceRenewalDate",
+      "nominees"
+    ],
+    "onlyMock": [],
+    "onlyLive": [
+      "id",
+      "employerId",
+      "name",
+      "phone",
+      "email",
+      "gender",
+      "age",
+      "nin",
+      "occupation",
+      "kycStatus",
+      "isActive",
+      "status",
+      "joinedDate",
+      "compensation",
+      "monthlyContribution",
+      "contributionSchedule",
+      "retirementBalance",
+      "emergencyBalance",
+      "netBalance",
+      "unitsHeld",
+      "insuranceCover",
+      "insurancePremiumMonthly",
+      "insuranceStatus",
+      "insuranceRenewalDate",
+      "nominees"
+    ],
+    "resolvable": false,
+    "verdict": "UNRESOLVED"
+  },
+  {
+    "file": "src/services/employer.js",
+    "fn": "getEmployee",
+    "mockKinds": [
+      "null",
+      "opaque"
+    ],
+    "liveKinds": [
+      "null",
+      "null",
+      "null",
+      "object"
+    ],
+    "mockKeys": [],
+    "liveKeys": [
+      "...member",
+      "...breakdown"
+    ],
+    "onlyMock": [],
+    "onlyLive": [],
+    "resolvable": false,
+    "verdict": "UNRESOLVED"
+  },
+  {
+    "file": "src/services/employer.js",
+    "fn": "getContributionRuns",
+    "mockKinds": [
+      "call:mockRuns",
+      "call:mockRuns"
+    ],
+    "liveKinds": [
+      "array-empty",
+      "array-of"
+    ],
+    "mockKeys": [],
+    "liveKeys": [
+      "id",
+      "employerId",
+      "periodLabel",
+      "status",
+      "employerTotal",
+      "employeeTotal",
+      "insuranceTotal",
+      "grandTotal",
+      "runAt",
+      "createdAt"
+    ],
+    "onlyMock": [],
+    "onlyLive": [
+      "id",
+      "employerId",
+      "periodLabel",
+      "status",
+      "employerTotal",
+      "employeeTotal",
+      "insuranceTotal",
+      "grandTotal",
+      "runAt",
+      "createdAt"
+    ],
+    "resolvable": false,
+    "verdict": "UNRESOLVED"
+  },
+  {
+    "file": "src/services/employer.js",
+    "fn": "getContributionRun",
+    "mockKinds": [
+      "null",
+      "null",
+      "object"
+    ],
+    "liveKinds": [
+      "null",
+      "null",
+      "null",
+      "object"
+    ],
+    "mockKeys": [
+      "run",
+      "lines"
+    ],
+    "liveKeys": [
+      "run",
+      "lines"
+    ],
+    "onlyMock": [],
+    "onlyLive": [],
+    "resolvable": true,
+    "verdict": "MATCH"
+  },
+  {
+    "file": "src/services/employer.js",
+    "fn": "getEmployeeContributions",
+    "mockKinds": [
+      "array-empty",
+      "opaque"
+    ],
+    "liveKinds": [
+      "array-empty",
+      "array-of"
+    ],
+    "mockKeys": [],
+    "liveKeys": [
+      "id",
+      "subscriberId",
+      "type",
+      "source",
+      "amount",
+      "date",
+      "method",
+      "retirementAmount",
+      "emergencyAmount",
+      "contributionRunId"
+    ],
+    "onlyMock": [],
+    "onlyLive": [
+      "id",
+      "subscriberId",
+      "type",
+      "source",
+      "amount",
+      "date",
+      "method",
+      "retirementAmount",
+      "emergencyAmount",
+      "contributionRunId"
+    ],
+    "resolvable": false,
+    "verdict": "UNRESOLVED"
+  },
+  {
+    "file": "src/services/employer.js",
+    "fn": "getEmployerContributions",
+    "mockKinds": [
+      "array-empty",
+      "opaque"
+    ],
+    "liveKinds": [
+      "array-empty",
+      "array-of-literal"
+    ],
+    "mockKeys": [],
+    "liveKeys": [
+      "...mapTxn(t)",
+      "memberName"
+    ],
+    "onlyMock": [],
+    "onlyLive": [
+      "memberName"
+    ],
+    "resolvable": false,
+    "verdict": "UNRESOLVED"
+  },
+  {
+    "file": "src/services/employer.js",
+    "fn": "getEmployerMetrics",
+    "mockKinds": [
+      "object"
+    ],
+    "liveKinds": [
+      "opaque"
+    ],
+    "mockKeys": [
+      "headcount",
+      "active",
+      "suspended",
+      "totalBalance",
+      "totalContributions",
+      "ownContributions",
+      "employerContributions",
+      "insuredCount",
+      "employerYtd",
+      "employeeYtd"
+    ],
+    "liveKeys": [],
+    "onlyMock": [
+      "headcount",
+      "active",
+      "suspended",
+      "totalBalance",
+      "totalContributions",
+      "ownContributions",
+      "employerContributions",
+      "insuredCount",
+      "employerYtd",
+      "employeeYtd"
+    ],
+    "onlyLive": [],
+    "resolvable": false,
+    "verdict": "UNRESOLVED"
+  },
+  {
+    "file": "src/services/employer.js",
+    "fn": "createEmployer",
+    "mockKinds": [
+      "call:mapEmployer"
+    ],
+    "liveKinds": [
+      "call:mapEmployer"
+    ],
+    "mockKeys": [
+      "id",
+      "name",
+      "sector",
+      "registrationNo",
+      "contactName",
+      "contactPhone",
+      "contactEmail",
+      "district",
+      "status",
+      "payrollCadence",
+      "defaultContributionConfig",
+      "createdAt",
+      "updatedAt"
+    ],
+    "liveKeys": [
+      "id",
+      "name",
+      "sector",
+      "registrationNo",
+      "contactName",
+      "contactPhone",
+      "contactEmail",
+      "district",
+      "status",
+      "payrollCadence",
+      "defaultContributionConfig",
+      "createdAt",
+      "updatedAt"
+    ],
+    "onlyMock": [],
+    "onlyLive": [],
+    "resolvable": true,
+    "verdict": "MATCH"
+  },
+  {
+    "file": "src/services/employer.js",
+    "fn": "getAllEmployersMetrics",
+    "mockKinds": [
+      "opaque"
+    ],
+    "liveKinds": [
+      "opaque"
+    ],
+    "mockKeys": [],
+    "liveKeys": [],
+    "onlyMock": [],
+    "onlyLive": [],
+    "resolvable": false,
+    "verdict": "UNRESOLVED"
+  },
+  {
+    "file": "src/services/employer.js",
+    "fn": "createSubscriberFromEmployerOnboard",
+    "mockKinds": [
+      "object"
+    ],
+    "liveKinds": [
+      "object"
+    ],
+    "mockKeys": [
+      "subscriberId"
+    ],
+    "liveKeys": [
+      "subscriberId"
+    ],
+    "onlyMock": [],
+    "onlyLive": [],
+    "resolvable": true,
+    "verdict": "MATCH"
+  },
+  {
+    "file": "src/services/employer.js",
+    "fn": "submitContributionRun",
+    "mockKinds": [
+      "call:_mockSubmitEmployerRun"
+    ],
+    "liveKinds": [
+      "opaque"
+    ],
+    "mockKeys": [],
+    "liveKeys": [],
+    "onlyMock": [],
+    "onlyLive": [],
+    "resolvable": false,
+    "verdict": "UNRESOLVED"
+  },
+  {
+    "file": "src/services/employer.js",
+    "fn": "applyGroupInsurance",
+    "mockKinds": [
+      "object"
+    ],
+    "liveKinds": [
+      "opaque"
+    ],
+    "mockKeys": [
+      "updated",
+      "cover"
+    ],
+    "liveKeys": [],
+    "onlyMock": [
+      "updated",
+      "cover"
+    ],
+    "onlyLive": [],
+    "resolvable": false,
+    "verdict": "UNRESOLVED"
+  },
+  {
+    "file": "src/services/employer.js",
+    "fn": "removeEmployee",
+    "mockKinds": [
+      "object"
+    ],
+    "liveKinds": [
+      "opaque"
+    ],
+    "mockKeys": [
+      "id",
+      "removed"
+    ],
+    "liveKeys": [],
+    "onlyMock": [
+      "id",
+      "removed"
+    ],
+    "onlyLive": [],
+    "resolvable": false,
+    "verdict": "UNRESOLVED"
+  },
+  {
+    "file": "src/services/employer.js",
+    "fn": "updateMemberCompensation",
+    "mockKinds": [
+      "object"
+    ],
+    "liveKinds": [
+      "opaque"
+    ],
+    "mockKeys": [
+      "id",
+      "compensation",
+      "updated"
+    ],
+    "liveKeys": [],
+    "onlyMock": [
+      "id",
+      "compensation",
+      "updated"
+    ],
+    "onlyLive": [],
+    "resolvable": false,
+    "verdict": "UNRESOLVED"
+  },
+  {
+    "file": "src/services/employer.js",
+    "fn": "setEmployerStatus",
+    "mockKinds": [
+      "object"
+    ],
+    "liveKinds": [
+      "opaque"
+    ],
+    "mockKeys": [
+      "id",
+      "status",
+      "membersDetached"
+    ],
+    "liveKeys": [],
+    "onlyMock": [
+      "id",
+      "status",
+      "membersDetached"
+    ],
+    "onlyLive": [],
+    "resolvable": false,
+    "verdict": "UNRESOLVED"
+  },
+  {
+    "file": "src/services/employer.js",
+    "fn": "updateEmployerProfile",
+    "mockKinds": [
+      "object"
+    ],
+    "liveKinds": [
+      "call:mapEmployer"
+    ],
+    "mockKeys": [
+      "...EMPLOYER",
+      "..._mockEmployerOverride"
+    ],
+    "liveKeys": [
+      "id",
+      "name",
+      "sector",
+      "registrationNo",
+      "contactName",
+      "contactPhone",
+      "contactEmail",
+      "district",
+      "status",
+      "payrollCadence",
+      "defaultContributionConfig",
+      "createdAt",
+      "updatedAt"
+    ],
+    "onlyMock": [],
+    "onlyLive": [
+      "id",
+      "name",
+      "sector",
+      "registrationNo",
+      "contactName",
+      "contactPhone",
+      "contactEmail",
+      "district",
+      "status",
+      "payrollCadence",
+      "defaultContributionConfig",
+      "createdAt",
+      "updatedAt"
+    ],
+    "resolvable": true,
+    "verdict": "SHAPE-DIFF"
+  },
+  {
+    "file": "src/services/employer.js",
+    "fn": "createEmployerInvite",
+    "mockKinds": [
+      "object"
+    ],
+    "liveKinds": [
+      "opaque"
+    ],
+    "mockKeys": [
+      "token",
+      "collectSchedule"
+    ],
+    "liveKeys": [],
+    "onlyMock": [
+      "token",
+      "collectSchedule"
+    ],
+    "onlyLive": [],
+    "resolvable": false,
+    "verdict": "UNRESOLVED"
+  },
+  {
+    "file": "src/services/employer.js",
+    "fn": "listPendingInvites",
+    "mockKinds": [
+      "opaque"
+    ],
+    "liveKinds": [
+      "array-empty",
+      "array-of"
+    ],
+    "mockKeys": [],
+    "liveKeys": [
+      "...invite",
+      "lastNudge"
+    ],
+    "onlyMock": [],
+    "onlyLive": [
+      "lastNudge"
+    ],
+    "resolvable": false,
+    "verdict": "UNRESOLVED"
+  },
+  {
+    "file": "src/services/employer.js",
+    "fn": "cancelEmployerInvite",
+    "mockKinds": [
+      "void"
+    ],
+    "liveKinds": [],
+    "mockKeys": [],
+    "liveKeys": [],
+    "onlyMock": [],
+    "onlyLive": [],
+    "resolvable": false,
+    "verdict": "UNRESOLVED"
+  },
+  {
+    "file": "src/services/entities.js",
+    "fn": "getEntity",
+    "mockKinds": [
+      "opaque"
+    ],
+    "liveKinds": [
+      "call:getCountry",
+      "null",
+      "null",
+      "opaque"
+    ],
+    "mockKeys": [],
+    "liveKeys": [],
+    "onlyMock": [],
+    "onlyLive": [],
+    "resolvable": false,
+    "verdict": "UNRESOLVED"
+  },
+  {
+    "file": "src/services/entities.js",
+    "fn": "getChildren",
+    "mockKinds": [
+      "opaque",
+      "opaque"
+    ],
+    "liveKinds": [
+      "array-empty",
+      "array-empty",
+      "opaque"
+    ],
+    "mockKeys": [],
+    "liveKeys": [],
+    "onlyMock": [],
+    "onlyLive": [],
+    "resolvable": false,
+    "verdict": "UNRESOLVED"
+  },
+  {
+    "file": "src/services/entities.js",
+    "fn": "getAllAtLevel",
+    "mockKinds": [
+      "call:filterByScope"
+    ],
+    "liveKinds": [
+      "array-empty",
+      "opaque",
+      "opaque",
+      "opaque",
+      "opaque",
+      "opaque"
+    ],
+    "mockKeys": [],
+    "liveKeys": [],
+    "onlyMock": [],
+    "onlyLive": [],
+    "resolvable": false,
+    "verdict": "UNRESOLVED"
+  },
+  {
+    "file": "src/services/entities.js",
+    "fn": "getEntityPage",
+    "mockKinds": [
+      "opaque",
+      "opaque",
+      "opaque",
+      "opaque",
+      "object"
+    ],
+    "liveKinds": [
+      "object",
+      "opaque",
+      "opaque",
+      "object"
+    ],
+    "mockKeys": [
+      "rows",
+      "total",
+      "hasMore"
+    ],
+    "liveKeys": [
+      "rows",
+      "total",
+      "hasMore"
+    ],
+    "onlyMock": [],
+    "onlyLive": [],
+    "resolvable": true,
+    "verdict": "MATCH"
+  },
+  {
+    "file": "src/services/entities.js",
+    "fn": "getSubscribersForBranch",
+    "mockKinds": [
+      "opaque"
+    ],
+    "liveKinds": [
+      "array-empty",
+      "array-empty",
+      "opaque"
+    ],
+    "mockKeys": [],
+    "liveKeys": [],
+    "onlyMock": [],
+    "onlyLive": [],
+    "resolvable": false,
+    "verdict": "UNRESOLVED"
+  },
+  {
+    "file": "src/services/entities.js",
+    "fn": "getParent",
+    "mockKinds": [
+      "opaque"
+    ],
+    "liveKinds": [
+      "null",
+      "opaque",
+      "call:getEntity"
+    ],
+    "mockKeys": [],
+    "liveKeys": [],
+    "onlyMock": [],
+    "onlyLive": [],
+    "resolvable": false,
+    "verdict": "UNRESOLVED"
+  },
+  {
+    "file": "src/services/entities.js",
+    "fn": "getTopPerformingBranch",
+    "mockKinds": [
+      "opaque"
+    ],
+    "liveKinds": [
+      "opaque"
+    ],
+    "mockKeys": [],
+    "liveKeys": [],
+    "onlyMock": [],
+    "onlyLive": [],
+    "resolvable": false,
+    "verdict": "UNRESOLVED"
+  },
+  {
+    "file": "src/services/entities.js",
+    "fn": "getBreadcrumb",
+    "mockKinds": [
+      "opaque"
+    ],
+    "liveKinds": [
+      "opaque"
+    ],
+    "mockKeys": [],
+    "liveKeys": [],
+    "onlyMock": [],
+    "onlyLive": [],
+    "resolvable": false,
+    "verdict": "UNRESOLVED"
+  },
+  {
+    "file": "src/services/entities.js",
+    "fn": "getEntitySync",
+    "mockKinds": [
+      "opaque"
+    ],
+    "liveKinds": [
+      "opaque",
+      "opaque"
+    ],
+    "mockKeys": [],
+    "liveKeys": [],
+    "onlyMock": [],
+    "onlyLive": [],
+    "resolvable": false,
+    "verdict": "UNRESOLVED"
+  },
+  {
+    "file": "src/services/entities.js",
+    "fn": "getEntityMetricsRollup",
+    "mockKinds": [
+      "opaque"
+    ],
+    "liveKinds": [
+      "object",
+      "opaque"
+    ],
+    "mockKeys": [],
+    "liveKeys": [],
+    "onlyMock": [],
+    "onlyLive": [],
+    "resolvable": false,
+    "verdict": "UNRESOLVED"
+  },
+  {
+    "file": "src/services/entities.js",
+    "fn": "getDistributorRollup",
+    "mockKinds": [
+      "object"
+    ],
+    "liveKinds": [
+      "opaque"
+    ],
+    "mockKeys": [],
+    "liveKeys": [],
+    "onlyMock": [],
+    "onlyLive": [],
+    "resolvable": false,
+    "verdict": "UNRESOLVED"
+  },
+  {
+    "file": "src/services/entities.js",
+    "fn": "getTopEntities",
+    "mockKinds": [
+      "opaque"
+    ],
+    "liveKinds": [
+      "array-of-literal"
+    ],
+    "mockKeys": [],
+    "liveKeys": [
+      "id",
+      "name",
+      "parentId",
+      "parentName",
+      "managerName",
+      "status",
+      "m"
+    ],
+    "onlyMock": [],
+    "onlyLive": [
+      "id",
+      "name",
+      "parentId",
+      "parentName",
+      "managerName",
+      "status",
+      "m"
+    ],
+    "resolvable": false,
+    "verdict": "UNRESOLVED"
+  },
+  {
+    "file": "src/services/entities.js",
+    "fn": "getBranchPendingContributions",
+    "mockKinds": [
+      "object",
+      "object"
+    ],
+    "liveKinds": [
+      "object",
+      "object"
+    ],
+    "mockKeys": [
+      "agentId",
+      "agentName",
+      "total",
+      "pending",
+      "byAgent"
+    ],
+    "liveKeys": [
+      "total",
+      "byAgent"
+    ],
+    "onlyMock": [
+      "agentId",
+      "agentName",
+      "pending"
+    ],
+    "onlyLive": [],
+    "resolvable": true,
+    "verdict": "SHAPE-DIFF"
+  },
+  {
+    "file": "src/services/entities.js",
+    "fn": "createBranch",
+    "mockKinds": [
+      "call:mockCreateBranch"
+    ],
+    "liveKinds": [
+      "opaque"
+    ],
+    "mockKeys": [
+      "id",
+      "...data",
+      "status",
+      "metrics"
+    ],
+    "liveKeys": [],
+    "onlyMock": [
+      "id",
+      "status",
+      "metrics"
+    ],
+    "onlyLive": [],
+    "resolvable": false,
+    "verdict": "UNRESOLVED"
+  },
+  {
+    "file": "src/services/entities.js",
+    "fn": "createAgent",
+    "mockKinds": [
+      "call:mockCreateAgent"
+    ],
+    "liveKinds": [
+      "opaque"
+    ],
+    "mockKeys": [
+      "id",
+      "parentId",
+      "...data",
+      "status",
+      "metrics"
+    ],
+    "liveKeys": [],
+    "onlyMock": [
+      "id",
+      "parentId",
+      "status",
+      "metrics"
+    ],
+    "onlyLive": [],
+    "resolvable": false,
+    "verdict": "UNRESOLVED"
+  },
+  {
+    "file": "src/services/entities.js",
+    "fn": "updateBranch",
+    "mockKinds": [
+      "call:mockUpdateBranch"
+    ],
+    "liveKinds": [
+      "opaque"
+    ],
+    "mockKeys": [],
+    "liveKeys": [],
+    "onlyMock": [],
+    "onlyLive": [],
+    "resolvable": false,
+    "verdict": "UNRESOLVED"
+  },
+  {
+    "file": "src/services/entities.js",
+    "fn": "updateDistributor",
+    "mockKinds": [
+      "opaque"
+    ],
+    "liveKinds": [
+      "call:getEntity",
+      "opaque"
+    ],
+    "mockKeys": [],
+    "liveKeys": [],
+    "onlyMock": [],
+    "onlyLive": [],
+    "resolvable": false,
+    "verdict": "UNRESOLVED"
+  },
+  {
+    "file": "src/services/entities.js",
+    "fn": "createDistributor",
+    "mockKinds": [
+      "call:mapDistributor"
+    ],
+    "liveKinds": [
+      "opaque"
+    ],
+    "mockKeys": [
+      "id",
+      "name",
+      "parentId",
+      "managerName",
+      "managerPhone",
+      "managerEmail",
+      "registrationNo",
+      "status",
+      "createdAt",
+      "metrics"
+    ],
+    "liveKeys": [],
+    "onlyMock": [
+      "id",
+      "name",
+      "parentId",
+      "managerName",
+      "managerPhone",
+      "managerEmail",
+      "registrationNo",
+      "status",
+      "createdAt",
+      "metrics"
+    ],
+    "onlyLive": [],
+    "resolvable": false,
+    "verdict": "UNRESOLVED"
+  },
+  {
+    "file": "src/services/entities.js",
+    "fn": "setDistributorStatus",
+    "mockKinds": [
+      "object"
+    ],
+    "liveKinds": [
+      "opaque"
+    ],
+    "mockKeys": [
+      "id",
+      "status",
+      "branchesUpdated",
+      "agentsUpdated",
+      "subscribersDetached"
+    ],
+    "liveKeys": [],
+    "onlyMock": [
+      "id",
+      "status",
+      "branchesUpdated",
+      "agentsUpdated",
+      "subscribersDetached"
+    ],
+    "onlyLive": [],
+    "resolvable": false,
+    "verdict": "UNRESOLVED"
+  },
+  {
+    "file": "src/services/entities.js",
+    "fn": "getPlatformOverview",
+    "mockKinds": [
+      "object"
+    ],
+    "liveKinds": [
+      "opaque"
+    ],
+    "mockKeys": [
+      "totalSubscribers",
+      "subscribersViaDistributor",
+      "subscribersViaEmployer",
+      "subscribersDirect",
+      "activeSubscribers",
+      "inactiveSubscribers",
+      "distributors",
+      "employers",
+      "branches",
+      "agents",
+      "aum",
+      "totalContributions",
+      "totalWithdrawals",
+      "byChannel"
+    ],
+    "liveKeys": [],
+    "onlyMock": [
+      "totalSubscribers",
+      "subscribersViaDistributor",
+      "subscribersViaEmployer",
+      "subscribersDirect",
+      "activeSubscribers",
+      "inactiveSubscribers",
+      "distributors",
+      "employers",
+      "branches",
+      "agents",
+      "aum",
+      "totalContributions",
+      "totalWithdrawals",
+      "byChannel"
+    ],
+    "onlyLive": [],
+    "resolvable": false,
+    "verdict": "UNRESOLVED"
+  },
+  {
+    "file": "src/services/entities.js",
+    "fn": "getEmployerGeoRollup",
+    "mockKinds": [
+      "object"
+    ],
+    "liveKinds": [
+      "opaque"
+    ],
+    "mockKeys": [
+      "byRegion",
+      "byDistrict"
+    ],
+    "liveKeys": [],
+    "onlyMock": [
+      "byRegion",
+      "byDistrict"
+    ],
+    "onlyLive": [],
+    "resolvable": false,
+    "verdict": "UNRESOLVED"
+  },
+  {
+    "file": "src/services/entities.js",
+    "fn": "getEmployerActivityRollup",
+    "mockKinds": [
+      "object"
+    ],
+    "liveKinds": [
+      "opaque"
+    ],
+    "mockKeys": [
+      "...EMPTY_EMPLOYER_ACTIVITY"
+    ],
+    "liveKeys": [],
+    "onlyMock": [],
+    "onlyLive": [],
+    "resolvable": false,
+    "verdict": "UNRESOLVED"
+  },
+  {
+    "file": "src/services/entities.js",
+    "fn": "setAgentStatus",
+    "mockKinds": [
+      "call:mockSetAgentStatus"
+    ],
+    "liveKinds": [
+      "opaque"
+    ],
+    "mockKeys": [],
+    "liveKeys": [],
+    "onlyMock": [],
+    "onlyLive": [],
+    "resolvable": false,
+    "verdict": "UNRESOLVED"
+  },
+  {
+    "file": "src/services/kyc.js",
+    "fn": "assessImageQuality",
+    "mockKinds": [
+      "call:mockAssessImageQuality"
+    ],
+    "liveKinds": [
+      "call:buildQuality",
+      "opaque"
+    ],
+    "mockKeys": [
+      "blur",
+      "corners",
+      "glare",
+      "pass",
+      "score"
+    ],
+    "liveKeys": [
+      "blur",
+      "corners",
+      "glare",
+      "pass",
+      "score"
+    ],
+    "onlyMock": [],
+    "onlyLive": [],
+    "resolvable": true,
+    "verdict": "MATCH"
+  },
+  {
+    "file": "src/services/kyc.js",
+    "fn": "extractIdFields",
+    "mockKinds": [
+      "call:mockExtractIdFields"
+    ],
+    "liveKinds": [
+      "opaque"
+    ],
+    "mockKeys": [
+      "fullName",
+      "nin",
+      "cardNumber",
+      "dob",
+      "gender",
+      "barcodeRaw",
+      "confidence"
+    ],
+    "liveKeys": [],
+    "onlyMock": [
+      "fullName",
+      "nin",
+      "cardNumber",
+      "dob",
+      "gender",
+      "barcodeRaw",
+      "confidence"
+    ],
+    "onlyLive": [],
+    "resolvable": false,
+    "verdict": "UNRESOLVED"
+  },
+  {
+    "file": "src/services/kyc.js",
+    "fn": "verifyNira",
+    "mockKinds": [
+      "call:mockVerifyNira"
+    ],
+    "liveKinds": [
+      "opaque"
+    ],
+    "mockKeys": [
+      "result",
+      "mismatchedFields",
+      "reason",
+      "trackingId"
+    ],
+    "liveKeys": [],
+    "onlyMock": [
+      "result",
+      "mismatchedFields",
+      "reason",
+      "trackingId"
+    ],
+    "onlyLive": [],
+    "resolvable": false,
+    "verdict": "UNRESOLVED"
+  },
+  {
+    "file": "src/services/kyc.js",
+    "fn": "sendOtp",
+    "mockKinds": [
+      "call:mockSendOtp"
+    ],
+    "liveKinds": [
+      "opaque"
+    ],
+    "mockKeys": [
+      "success",
+      "expiresIn"
+    ],
+    "liveKeys": [],
+    "onlyMock": [
+      "success",
+      "expiresIn"
+    ],
+    "onlyLive": [],
+    "resolvable": false,
+    "verdict": "UNRESOLVED"
+  },
+  {
+    "file": "src/services/kyc.js",
+    "fn": "verifyOtp",
+    "mockKinds": [
+      "call:mockVerifyOtp"
+    ],
+    "liveKinds": [
+      "opaque"
+    ],
+    "mockKeys": [
+      "verified"
+    ],
+    "liveKeys": [],
+    "onlyMock": [
+      "verified"
+    ],
+    "onlyLive": [],
+    "resolvable": false,
+    "verdict": "UNRESOLVED"
+  },
+  {
+    "file": "src/services/kyc.js",
+    "fn": "faceMatch",
+    "mockKinds": [
+      "call:mockFaceMatch"
+    ],
+    "liveKinds": [
+      "opaque"
+    ],
+    "mockKeys": [
+      "match",
+      "liveness",
+      "matchScore",
+      "outcome",
+      "trackingId"
+    ],
+    "liveKeys": [],
+    "onlyMock": [
+      "match",
+      "liveness",
+      "matchScore",
+      "outcome",
+      "trackingId"
+    ],
+    "onlyLive": [],
+    "resolvable": false,
+    "verdict": "UNRESOLVED"
+  },
+  {
+    "file": "src/services/kyc.js",
+    "fn": "screenAml",
+    "mockKinds": [
+      "call:mockScreenAml"
+    ],
+    "liveKinds": [
+      "opaque"
+    ],
+    "mockKeys": [
+      "outcome",
+      "trackingId"
+    ],
+    "liveKeys": [],
+    "onlyMock": [
+      "outcome",
+      "trackingId"
+    ],
+    "onlyLive": [],
+    "resolvable": false,
+    "verdict": "UNRESOLVED"
+  },
+  {
+    "file": "src/services/kyc.js",
+    "fn": "referToAgent",
+    "mockKinds": [
+      "call:mockReferToAgent"
+    ],
+    "liveKinds": [
+      "opaque"
+    ],
+    "mockKeys": [
+      "ticketId",
+      "eta"
+    ],
+    "liveKeys": [],
+    "onlyMock": [
+      "ticketId",
+      "eta"
+    ],
+    "onlyLive": [],
+    "resolvable": false,
+    "verdict": "UNRESOLVED"
+  },
+  {
+    "file": "src/services/nav.js",
+    "fn": "getNavOverview",
+    "mockKinds": [
+      "object"
+    ],
+    "liveKinds": [
+      "object"
+    ],
+    "mockKeys": [
+      "...EMPTY_NAV_OVERVIEW",
+      "currentNav",
+      "fundCode"
+    ],
+    "liveKeys": [
+      "...EMPTY_NAV_OVERVIEW",
+      "...(data ?? {})"
+    ],
+    "onlyMock": [
+      "currentNav",
+      "fundCode"
+    ],
+    "onlyLive": [],
+    "resolvable": true,
+    "verdict": "SHAPE-DIFF"
+  },
+  {
+    "file": "src/services/nav.js",
+    "fn": "listNavSnapshots",
+    "mockKinds": [
+      "object"
+    ],
+    "liveKinds": [
+      "object"
+    ],
+    "mockKeys": [
+      "rows",
+      "total"
+    ],
+    "liveKeys": [
+      "rows",
+      "total"
+    ],
+    "onlyMock": [],
+    "onlyLive": [],
+    "resolvable": true,
+    "verdict": "MATCH"
+  },
+  {
+    "file": "src/services/nav.js",
+    "fn": "publishNavSnapshot",
+    "mockKinds": [
+      "object"
+    ],
+    "liveKinds": [
+      "opaque"
+    ],
+    "mockKeys": [
+      "id",
+      "fundCode",
+      "navDate",
+      "unitPrice",
+      "previousUnitPrice",
+      "changePct",
+      "revalued",
+      "unitsInIssue",
+      "aum",
+      "membersPriced"
+    ],
+    "liveKeys": [],
+    "onlyMock": [
+      "id",
+      "fundCode",
+      "navDate",
+      "unitPrice",
+      "previousUnitPrice",
+      "changePct",
+      "revalued",
+      "unitsInIssue",
+      "aum",
+      "membersPriced"
+    ],
+    "onlyLive": [],
+    "resolvable": false,
+    "verdict": "UNRESOLVED"
+  },
+  {
+    "file": "src/services/nomineeClaim.js",
+    "fn": "submitNomineeClaim",
+    "mockKinds": [
+      "call:mockSubmit"
+    ],
+    "liveKinds": [
+      "object",
+      "call:mockSubmit"
+    ],
+    "mockKeys": [
+      "ok",
+      "demo",
+      "reference"
+    ],
+    "liveKeys": [
+      "ok",
+      "demo",
+      "id",
+      "reference"
+    ],
+    "onlyMock": [],
+    "onlyLive": [
+      "id"
+    ],
+    "resolvable": true,
+    "verdict": "SHAPE-DIFF"
+  },
+  {
+    "file": "src/services/nomineeClaims.js",
+    "fn": "listNomineeClaims",
+    "mockKinds": [
+      "array-empty"
+    ],
+    "liveKinds": [
+      "opaque"
+    ],
+    "mockKeys": [],
+    "liveKeys": [],
+    "onlyMock": [],
+    "onlyLive": [],
+    "resolvable": false,
+    "verdict": "UNRESOLVED"
+  },
+  {
+    "file": "src/services/nomineeClaims.js",
+    "fn": "reviewNomineeClaim",
+    "mockKinds": [
+      "object"
+    ],
+    "liveKinds": [
+      "opaque"
+    ],
+    "mockKeys": [
+      "id",
+      "status"
+    ],
+    "liveKeys": [],
+    "onlyMock": [
+      "id",
+      "status"
+    ],
+    "onlyLive": [],
+    "resolvable": false,
+    "verdict": "UNRESOLVED"
+  },
+  {
+    "file": "src/services/requestAccess.js",
+    "fn": "submitAccessRequest",
+    "mockKinds": [
+      "call:mockSubmit"
+    ],
+    "liveKinds": [
+      "object",
+      "call:mockSubmit"
+    ],
+    "mockKeys": [
+      "ok",
+      "demo"
+    ],
+    "liveKeys": [
+      "ok",
+      "demo",
+      "id"
+    ],
+    "onlyMock": [],
+    "onlyLive": [
+      "id"
+    ],
+    "resolvable": true,
+    "verdict": "SHAPE-DIFF"
+  },
+  {
+    "file": "src/services/search.js",
+    "fn": "searchEntities",
+    "mockKinds": [
+      "call:mockSearch"
+    ],
+    "liveKinds": [
+      "array-empty",
+      "array-of-literal"
+    ],
+    "mockKeys": [],
+    "liveKeys": [
+      "id",
+      "name",
+      "level",
+      "label",
+      "parentId"
+    ],
+    "onlyMock": [],
+    "onlyLive": [
+      "id",
+      "name",
+      "level",
+      "label",
+      "parentId"
+    ],
+    "resolvable": false,
+    "verdict": "UNRESOLVED"
+  },
+  {
+    "file": "src/services/subscriber.js",
+    "fn": "getCurrentSubscriber",
+    "mockKinds": [
+      "null",
+      "call:attachPolicies",
+      "call:attachPolicies"
+    ],
+    "liveKinds": [
+      "null",
+      "call:attachPolicies"
+    ],
+    "mockKeys": [
+      "...sub",
+      "policies"
+    ],
+    "liveKeys": [
+      "...sub",
+      "policies"
+    ],
+    "onlyMock": [],
+    "onlyLive": [],
+    "resolvable": true,
+    "verdict": "MATCH"
+  },
+  {
+    "file": "src/services/subscriber.js",
+    "fn": "getSubscriberTransactions",
+    "mockKinds": [
+      "array-empty",
+      "opaque"
+    ],
+    "liveKinds": [
+      "array-empty",
+      "array-of"
+    ],
+    "mockKeys": [],
+    "liveKeys": [
+      "id",
+      "subscriberId",
+      "agentId",
+      "type",
+      "source",
+      "amount",
+      "date",
+      "status",
+      "method",
+      "reference",
+      "bucket",
+      "splitRetirement",
+      "splitEmergency",
+      "contributionRunId"
+    ],
+    "onlyMock": [],
+    "onlyLive": [
+      "id",
+      "subscriberId",
+      "agentId",
+      "type",
+      "source",
+      "amount",
+      "date",
+      "status",
+      "method",
+      "reference",
+      "bucket",
+      "splitRetirement",
+      "splitEmergency",
+      "contributionRunId"
+    ],
+    "resolvable": false,
+    "verdict": "UNRESOLVED"
+  },
+  {
+    "file": "src/services/subscriber.js",
+    "fn": "getContributionBreakdown",
+    "mockKinds": [
+      "object"
+    ],
+    "liveKinds": [
+      "object",
+      "object"
+    ],
+    "mockKeys": [
+      "own",
+      "employer",
+      "total"
+    ],
+    "liveKeys": [
+      "own",
+      "employer",
+      "total"
+    ],
+    "onlyMock": [],
+    "onlyLive": [],
+    "resolvable": true,
+    "verdict": "MATCH"
+  },
+  {
+    "file": "src/services/subscriber.js",
+    "fn": "getMyEmployerFunding",
+    "mockKinds": [
+      "null",
+      "object"
+    ],
+    "liveKinds": [
+      "opaque"
+    ],
+    "mockKeys": [
+      "employerName",
+      "...normalizeContributionConfig(EMPLOYER.defaultContributionConfig)",
+      "compensation"
+    ],
+    "liveKeys": [],
+    "onlyMock": [
+      "employerName",
+      "compensation"
+    ],
+    "onlyLive": [],
+    "resolvable": false,
+    "verdict": "UNRESOLVED"
+  },
+  {
+    "file": "src/services/subscriber.js",
+    "fn": "getSubscriberClaims",
+    "mockKinds": [
+      "array-empty",
+      "call:applyMutations"
+    ],
+    "liveKinds": [
+      "array-empty",
+      "array-of"
+    ],
+    "mockKeys": [
+      "...sub",
+      "...(m.profileOverride ?? null)",
+      "contributionSchedule",
+      "nominees",
+      "insurance",
+      "insuranceProducts",
+      "claims",
+      "withdrawals",
+      "transactions",
+      "netBalance",
+      "retirementBalance",
+      "emergencyBalance",
+      "unitsHeld",
+      "invested",
+      "totalContributions"
+    ],
+    "liveKeys": [
+      "id",
+      "subscriberId",
+      "product",
+      "type",
+      "status",
+      "amount",
+      "incidentDate",
+      "dischargeDate",
+      "nights",
+      "provider",
+      "dailyBenefit",
+      "submittedDate",
+      "description"
+    ],
+    "onlyMock": [
+      "contributionSchedule",
+      "nominees",
+      "insurance",
+      "insuranceProducts",
+      "claims",
+      "withdrawals",
+      "transactions",
+      "netBalance",
+      "retirementBalance",
+      "emergencyBalance",
+      "unitsHeld",
+      "invested",
+      "totalContributions"
+    ],
+    "onlyLive": [
+      "id",
+      "subscriberId",
+      "product",
+      "type",
+      "status",
+      "amount",
+      "incidentDate",
+      "dischargeDate",
+      "nights",
+      "provider",
+      "dailyBenefit",
+      "submittedDate",
+      "description"
+    ],
+    "resolvable": true,
+    "verdict": "SHAPE-DIFF"
+  },
+  {
+    "file": "src/services/subscriber.js",
+    "fn": "getSubscriberWithdrawals",
+    "mockKinds": [
+      "array-empty",
+      "call:applyMutations"
+    ],
+    "liveKinds": [
+      "array-empty",
+      "array-of"
+    ],
+    "mockKeys": [
+      "...sub",
+      "...(m.profileOverride ?? null)",
+      "contributionSchedule",
+      "nominees",
+      "insurance",
+      "insuranceProducts",
+      "claims",
+      "withdrawals",
+      "transactions",
+      "netBalance",
+      "retirementBalance",
+      "emergencyBalance",
+      "unitsHeld",
+      "invested",
+      "totalContributions"
+    ],
+    "liveKeys": [
+      "id",
+      "subscriberId",
+      "amount",
+      "bucket",
+      "reason",
+      "method",
+      "status",
+      "date",
+      "reference"
+    ],
+    "onlyMock": [
+      "contributionSchedule",
+      "nominees",
+      "insurance",
+      "insuranceProducts",
+      "claims",
+      "withdrawals",
+      "transactions",
+      "netBalance",
+      "retirementBalance",
+      "emergencyBalance",
+      "unitsHeld",
+      "invested",
+      "totalContributions"
+    ],
+    "onlyLive": [
+      "id",
+      "subscriberId",
+      "amount",
+      "bucket",
+      "reason",
+      "method",
+      "status",
+      "date",
+      "reference"
+    ],
+    "resolvable": true,
+    "verdict": "SHAPE-DIFF"
+  },
+  {
+    "file": "src/services/subscriber.js",
+    "fn": "getSubscriberNominees",
+    "mockKinds": [
+      "object",
+      "call:applyMutations"
+    ],
+    "liveKinds": [
+      "object",
+      "object"
+    ],
+    "mockKeys": [
+      "pension",
+      "insurance",
+      "...sub",
+      "...(m.profileOverride ?? null)",
+      "contributionSchedule",
+      "nominees",
+      "insuranceProducts",
+      "claims",
+      "withdrawals",
+      "transactions",
+      "netBalance",
+      "retirementBalance",
+      "emergencyBalance",
+      "unitsHeld",
+      "invested",
+      "totalContributions"
+    ],
+    "liveKeys": [
+      "pension",
+      "insurance"
+    ],
+    "onlyMock": [
+      "contributionSchedule",
+      "nominees",
+      "insuranceProducts",
+      "claims",
+      "withdrawals",
+      "transactions",
+      "netBalance",
+      "retirementBalance",
+      "emergencyBalance",
+      "unitsHeld",
+      "invested",
+      "totalContributions"
+    ],
+    "onlyLive": [],
+    "resolvable": true,
+    "verdict": "SHAPE-DIFF"
+  },
+  {
+    "file": "src/services/subscriber.js",
+    "fn": "getSubscriberAgent",
+    "mockKinds": [
+      "null",
+      "null",
+      "object"
+    ],
+    "liveKinds": [
+      "null",
+      "null",
+      "null",
+      "call:mapAgentRow"
+    ],
+    "mockKeys": [
+      "...agent",
+      "branchName"
+    ],
+    "liveKeys": [
+      "id",
+      "name",
+      "gender",
+      "employeeId",
+      "parentId",
+      "branchId",
+      "branchName",
+      "phone",
+      "email",
+      "rating",
+      "performance",
+      "status",
+      "languages",
+      "specialties",
+      "tenureMonths",
+      "joinedDate"
+    ],
+    "onlyMock": [],
+    "onlyLive": [
+      "id",
+      "name",
+      "gender",
+      "employeeId",
+      "parentId",
+      "branchId",
+      "phone",
+      "email",
+      "rating",
+      "performance",
+      "status",
+      "languages",
+      "specialties",
+      "tenureMonths",
+      "joinedDate"
+    ],
+    "resolvable": true,
+    "verdict": "SHAPE-DIFF"
+  },
+  {
+    "file": "src/services/subscriber.js",
+    "fn": "makeAdHocContribution",
+    "mockKinds": [
+      "opaque"
+    ],
+    "liveKinds": [
+      "opaque"
+    ],
+    "mockKeys": [],
+    "liveKeys": [],
+    "onlyMock": [],
+    "onlyLive": [],
+    "resolvable": false,
+    "verdict": "UNRESOLVED"
+  },
+  {
+    "file": "src/services/subscriber.js",
+    "fn": "requestWithdrawal",
+    "mockKinds": [
+      "opaque"
+    ],
+    "liveKinds": [
+      "opaque"
+    ],
+    "mockKeys": [],
+    "liveKeys": [],
+    "onlyMock": [],
+    "onlyLive": [],
+    "resolvable": false,
+    "verdict": "UNRESOLVED"
+  },
+  {
+    "file": "src/services/subscriber.js",
+    "fn": "submitClaim",
+    "mockKinds": [
+      "opaque"
+    ],
+    "liveKinds": [
+      "opaque"
+    ],
+    "mockKeys": [],
+    "liveKeys": [],
+    "onlyMock": [],
+    "onlyLive": [],
+    "resolvable": false,
+    "verdict": "UNRESOLVED"
+  },
+  {
+    "file": "src/services/subscriber.js",
+    "fn": "updateContributionSchedule",
+    "mockKinds": [
+      "opaque"
+    ],
+    "liveKinds": [
+      "object"
+    ],
+    "mockKeys": [],
+    "liveKeys": [
+      "frequency",
+      "amount",
+      "retirementPct",
+      "emergencyPct",
+      "includeInsurance",
+      "insuranceChoiceMade",
+      "insuranceTypes",
+      "nextDueDate",
+      "contributionIndexationPct"
+    ],
+    "onlyMock": [],
+    "onlyLive": [
+      "frequency",
+      "amount",
+      "retirementPct",
+      "emergencyPct",
+      "includeInsurance",
+      "insuranceChoiceMade",
+      "insuranceTypes",
+      "nextDueDate",
+      "contributionIndexationPct"
+    ],
+    "resolvable": false,
+    "verdict": "UNRESOLVED"
+  },
+  {
+    "file": "src/services/subscriber.js",
+    "fn": "updateNominees",
+    "mockKinds": [
+      "opaque"
+    ],
+    "liveKinds": [
+      "opaque",
+      "call:getSubscriberNominees"
+    ],
+    "mockKeys": [],
+    "liveKeys": [
+      "pension",
+      "insurance",
+      "...sub",
+      "...(m.profileOverride ?? null)",
+      "contributionSchedule",
+      "nominees",
+      "insuranceProducts",
+      "claims",
+      "withdrawals",
+      "transactions",
+      "netBalance",
+      "retirementBalance",
+      "emergencyBalance",
+      "unitsHeld",
+      "invested",
+      "totalContributions"
+    ],
+    "onlyMock": [],
+    "onlyLive": [
+      "pension",
+      "insurance",
+      "contributionSchedule",
+      "nominees",
+      "insuranceProducts",
+      "claims",
+      "withdrawals",
+      "transactions",
+      "netBalance",
+      "retirementBalance",
+      "emergencyBalance",
+      "unitsHeld",
+      "invested",
+      "totalContributions"
+    ],
+    "resolvable": false,
+    "verdict": "UNRESOLVED"
+  },
+  {
+    "file": "src/services/subscriber.js",
+    "fn": "updateInsuranceCover",
+    "mockKinds": [
+      "opaque"
+    ],
+    "liveKinds": [
+      "object"
+    ],
+    "mockKeys": [],
+    "liveKeys": [
+      "product",
+      "cover",
+      "premiumMonthly",
+      "policyStart",
+      "renewalDate",
+      "status"
+    ],
+    "onlyMock": [],
+    "onlyLive": [
+      "product",
+      "cover",
+      "premiumMonthly",
+      "policyStart",
+      "renewalDate",
+      "status"
+    ],
+    "resolvable": false,
+    "verdict": "UNRESOLVED"
+  },
+  {
+    "file": "src/services/subscriber.js",
+    "fn": "fundInsuranceProducts",
+    "mockKinds": [
+      "object"
+    ],
+    "liveKinds": [
+      "opaque"
+    ],
+    "mockKeys": [
+      "fundingMode",
+      "annualTotal",
+      "charged",
+      "status"
+    ],
+    "liveKeys": [],
+    "onlyMock": [
+      "fundingMode",
+      "annualTotal",
+      "charged",
+      "status"
+    ],
+    "onlyLive": [],
+    "resolvable": false,
+    "verdict": "UNRESOLVED"
+  },
+  {
+    "file": "src/services/subscriber.js",
+    "fn": "renewPolicy",
+    "mockKinds": [],
+    "liveKinds": [
+      "object"
+    ],
+    "mockKeys": [],
+    "liveKeys": [
+      "policy",
+      "reference"
+    ],
+    "onlyMock": [],
+    "onlyLive": [
+      "policy",
+      "reference"
+    ],
+    "resolvable": false,
+    "verdict": "UNRESOLVED"
+  },
+  {
+    "file": "src/services/subscriber.js",
+    "fn": "updateProfile",
+    "mockKinds": [
+      "opaque"
+    ],
+    "liveKinds": [
+      "call:mapSubscriberRow",
+      "call:mapSubscriberRow"
+    ],
+    "mockKeys": [],
+    "liveKeys": [
+      "id",
+      "name",
+      "email",
+      "phone",
+      "gender",
+      "age",
+      "dob",
+      "nin",
+      "occupation",
+      "parentId",
+      "agentId",
+      "employerId",
+      "districtId",
+      "kycStatus",
+      "isActive",
+      "registeredDate",
+      "consentAt",
+      "lastContributionDate",
+      "contributionHistory",
+      "productsHeld",
+      "currentUnitValue",
+      "unitValueAsOf",
+      "insuranceSameAsPension",
+      "netBalance",
+      "retirementBalance",
+      "emergencyBalance",
+      "unitsHeld",
+      "retirementUnits",
+      "emergencyUnits",
+      "invested",
+      "navAsOf",
+      "totalContributions",
+      "totalWithdrawals",
+      "contributionSchedule",
+      "insurance",
+      "insuranceProducts"
+    ],
+    "onlyMock": [],
+    "onlyLive": [
+      "id",
+      "name",
+      "email",
+      "phone",
+      "gender",
+      "age",
+      "dob",
+      "nin",
+      "occupation",
+      "parentId",
+      "agentId",
+      "employerId",
+      "districtId",
+      "kycStatus",
+      "isActive",
+      "registeredDate",
+      "consentAt",
+      "lastContributionDate",
+      "contributionHistory",
+      "productsHeld",
+      "currentUnitValue",
+      "unitValueAsOf",
+      "insuranceSameAsPension",
+      "netBalance",
+      "retirementBalance",
+      "emergencyBalance",
+      "unitsHeld",
+      "retirementUnits",
+      "emergencyUnits",
+      "invested",
+      "navAsOf",
+      "totalContributions",
+      "totalWithdrawals",
+      "contributionSchedule",
+      "insurance",
+      "insuranceProducts"
+    ],
+    "resolvable": false,
+    "verdict": "UNRESOLVED"
+  },
+  {
+    "file": "src/services/subscriber.js",
+    "fn": "createFromSignup",
+    "mockKinds": [
+      "object"
+    ],
+    "liveKinds": [
+      "object"
+    ],
+    "mockKeys": [
+      "subscriberId"
+    ],
+    "liveKeys": [
+      "subscriberId"
+    ],
+    "onlyMock": [],
+    "onlyLive": [],
+    "resolvable": true,
+    "verdict": "MATCH"
+  },
+  {
+    "file": "src/services/subscriber.js",
+    "fn": "getEmployerInvite",
+    "mockKinds": [
+      "object"
+    ],
+    "liveKinds": [
+      "opaque"
+    ],
+    "mockKeys": [
+      "employerId",
+      "employerName",
+      "prefill",
+      "collectSchedule"
+    ],
+    "liveKeys": [],
+    "onlyMock": [
+      "employerId",
+      "employerName",
+      "prefill",
+      "collectSchedule"
+    ],
+    "onlyLive": [],
+    "resolvable": false,
+    "verdict": "UNRESOLVED"
+  },
+  {
+    "file": "src/services/subscriber.js",
+    "fn": "createFromEmployerInvite",
+    "mockKinds": [
+      "object"
+    ],
+    "liveKinds": [
+      "object"
+    ],
+    "mockKeys": [
+      "subscriberId"
+    ],
+    "liveKeys": [
+      "subscriberId"
+    ],
+    "onlyMock": [],
+    "onlyLive": [],
+    "resolvable": true,
+    "verdict": "MATCH"
+  },
+  {
+    "file": "src/services/subscriber.js",
+    "fn": "createFromAgentOnboard",
+    "mockKinds": [
+      "object"
+    ],
+    "liveKinds": [
+      "object"
+    ],
+    "mockKeys": [
+      "subscriberId"
+    ],
+    "liveKeys": [
+      "subscriberId"
+    ],
+    "onlyMock": [],
+    "onlyLive": [],
+    "resolvable": true,
+    "verdict": "MATCH"
+  }
+]

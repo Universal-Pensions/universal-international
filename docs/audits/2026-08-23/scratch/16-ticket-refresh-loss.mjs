@@ -1,0 +1,12 @@
+import { chromium } from 'playwright';
+import { signIn } from './lib.mjs';
+const b = await chromium.launch();
+const p = await (await b.newContext()).newPage();
+await signIn(p, { landingPath: '/', phone: '+256711000001' });
+await p.goto('http://localhost:5173/dashboard/agent', { waitUntil: 'domcontentloaded' });
+await p.waitForTimeout(7000);
+console.log('URL', p.url());
+console.log((await p.evaluate(()=>document.body.innerText)).replace(/\s+/g,' ').slice(0,900));
+console.log('--- controls ---');
+console.log((await p.evaluate(() => [...document.querySelectorAll('button,input,textarea')].filter(e=>e.offsetParent!==null).map(e=>`${e.tagName} ${(e.getAttribute('aria-label')||e.innerText||e.placeholder||'').trim().replace(/\s+/g,' ').slice(0,45)}`))).join('\n'));
+await b.close(); process.exit(0);

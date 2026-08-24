@@ -1,0 +1,19 @@
+{
+  "role": "subscriber",
+  "route": "/dashboard/withdraw/savings",
+  "project": "chromium",
+  "url": "http://localhost:5173/dashboard/withdraw/savings",
+  "violations": [
+    {
+      "id": "color-contrast",
+      "impact": "serious",
+      "help": "Elements must meet minimum color contrast ratio thresholds",
+      "nodes": 3,
+      "targets": [
+        "button[data-active=\"false\"] > ._bucketName_uby5p_288",
+        "._lockPill_uby5p_320",
+        "._sumValPos_31alo_547"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,40 @@
+import { chromium } from 'playwright';
+import { signIn } from './lib.mjs';
+const b = await chromium.launch();
+const p = await (await b.newContext()).newPage();
+let hits = 0;
+await p.route('**/rest/v1/rpc/set_distributor_status*', async (route) => {
+  hits++;
+  console.log('  >> BLOCKED set_distributor_status (never reaches DB). body=', route.request().postData());
+  await route.fulfill({ status: 500, contentType: 'application/json', body: JSON.stringify({ code: 'PGRST000', message: 'injected failure (audit A22)' }) });
+});
+await signIn(p, { landingPath: '/admin', phone: '+256700000041' });
+await p.waitForTimeout(4000);
+await p.getByRole('button', { name: /^Distributor Network$/ }).first().click();
+await p.waitForTimeout(1200);
+await p.getByRole('button', { name: /^Distributors Network operators/ }).first().click();
+await p.waitForTimeout(9000);
+const statusOf = async () => (await p.evaluate(() => {
+  const t = document.body.innerText.replace(/\s+/g, ' ');
+  const m = t.match(/Karamoja Pilot Network[^|]{0,80}?(ACTIVE|INACTIVE)/);
+  return m ? m[1] : 'not-found';
+}));
+console.log('Karamoja status BEFORE:', await statusOf());
+const deact = p.getByRole('button', { name: /^Deactivate$/ });
+await deact.nth(2).click();
+await p.waitForTimeout(800);
+const modalTxt = (await p.evaluate(() => document.body.innerText)).replace(/\s+/g,' ');
+console.log('after click (confirm dialog?):', /confirm|are you sure|deactivate/i.test(modalTxt));
+const confirmBtns = await p.evaluate(() => [...document.querySelectorAll('button')].filter(e=>e.offsetParent!==null).map(e=>(e.innerText||'').trim().replace(/\s+/g,' ').slice(0,40)));
+console.log('visible buttons now:', JSON.stringify(confirmBtns.slice(-8)));
+// confirm
+const confirm = p.getByRole('button', { name: /^(Deactivate|Yes.*|Confirm.*)$/ }).last();
+await confirm.click().catch(()=>{});
+await p.waitForTimeout(400);
+console.log('status DURING flight:', await statusOf());
+await p.waitForTimeout(1500);
+console.log('intercepts:', hits);
+console.log('status AFTER failure:', await statusOf());
+console.log('alerts:', JSON.stringify(await p.locator('[role="alert"], [role="status"]').allInnerTexts().catch(()=>[])));
+await p.screenshot({ path: 'docs/audits/2026-08-23/scratch/rollback-distributor-status.png', fullPage: true });
+await b.close(); process.exit(0);

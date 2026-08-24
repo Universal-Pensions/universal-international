@@ -1,0 +1,80 @@
+baseline failures: 30   rerun failures: 47
+
+### REPRODUCED in both runs  → deterministic defect (28)
+  chromium         e2e/specs/flows/agent-onboard-subscriber.spec.ts:109:3
+  mobile-chromium  e2e/specs/flows/distributor-exports-csv.spec.ts:141:3
+  mobile-chromium  e2e/specs/flows/distributor-exports-csv.spec.ts:37:3
+  mobile-chromium  e2e/specs/smoke/landing.spec.ts:20:3
+  mobile-chromium  e2e/specs/smoke/landing.spec.ts:27:3
+  mobile-chromium  e2e/specs/smoke/landing.spec.ts:34:3
+  mobile-chromium  e2e/specs/smoke/subscriber-dashboard.spec.ts:109:3
+  mobile-chromium  e2e/specs/smoke/subscriber-dashboard.spec.ts:115:3
+  mobile-chromium  e2e/specs/smoke/subscriber-dashboard.spec.ts:124:3
+  mobile-chromium  e2e/specs/smoke/subscriber-dashboard.spec.ts:173:3
+  mobile-chromium  e2e/specs/smoke/subscriber-dashboard.spec.ts:43:3
+  mobile-chromium  e2e/specs/smoke/subscriber-dashboard.spec.ts:54:3
+  mobile-webkit    e2e/specs/flows/distributor-exports-csv.spec.ts:141:3
+  mobile-webkit    e2e/specs/flows/distributor-exports-csv.spec.ts:37:3
+  mobile-webkit    e2e/specs/smoke/landing.spec.ts:20:3
+  mobile-webkit    e2e/specs/smoke/landing.spec.ts:27:3
+  mobile-webkit    e2e/specs/smoke/landing.spec.ts:34:3
+  mobile-webkit    e2e/specs/smoke/subscriber-dashboard.spec.ts:109:3
+  mobile-webkit    e2e/specs/smoke/subscriber-dashboard.spec.ts:115:3
+  mobile-webkit    e2e/specs/smoke/subscriber-dashboard.spec.ts:124:3
+  mobile-webkit    e2e/specs/smoke/subscriber-dashboard.spec.ts:173:3
+  mobile-webkit    e2e/specs/smoke/subscriber-dashboard.spec.ts:43:3
+  mobile-webkit    e2e/specs/smoke/subscriber-dashboard.spec.ts:54:3
+  webkit           e2e/specs/flows/agent-onboard-subscriber.spec.ts:109:3
+  webkit           e2e/specs/flows/subscriber-signin-with-password.spec.ts:78:3
+  webkit           e2e/specs/flows/subscriber-signup-to-contribute.spec.ts:116:3
+  webkit           e2e/specs/regression/map-drill.spec.ts:250:5
+  webkit           e2e/specs/regression/map-drill.spec.ts:250:5
+
+### BASELINE ONLY (passed on re-run) → flaky (2)
+  chromium         e2e/specs/regression/modal-escape.spec.ts:224:5
+  webkit           e2e/specs/regression/modal-escape.spec.ts:224:5
+
+### RE-RUN ONLY (passed in baseline) → flaky (19)
+  chromium         e2e/specs/regression/subscriber-write-failures.spec.ts:217:3
+  chromium         e2e/specs/regression/subscriber-write-failures.spec.ts:77:3
+  chromium         e2e/specs/smoke/branch-dashboard.spec.ts:39:3
+  webkit           e2e/specs/db/deactivate-entities.spec.ts:172:3
+  webkit           e2e/specs/db/invariants.spec.ts:137:3
+  webkit           e2e/specs/db/money-idempotency.spec.ts:132:3
+  webkit           e2e/specs/db/money-idempotency.spec.ts:182:3
+  webkit           e2e/specs/db/rls-isolation.spec.ts:134:3
+  webkit           e2e/specs/flows/agent-dashboard-drill-to-subscriber.spec.ts:102:3
+  webkit           e2e/specs/flows/agent-dashboard-drill-to-subscriber.spec.ts:54:3
+  webkit           e2e/specs/flows/branch-dashboard-drill-to-subscriber.spec.ts:122:3
+  webkit           e2e/specs/flows/distributor-apply-settlement.spec.ts:116:3
+  webkit           e2e/specs/flows/distributor-commission-drill-subscribers.spec.ts:94:3
+  webkit           e2e/specs/flows/distributor-create-branch.spec.ts:48:3
+  webkit           e2e/specs/flows/distributor-renders-data.spec.ts:163:3
+  webkit           e2e/specs/flows/settings-change-password.spec.ts:88:3
+  webkit           e2e/specs/regression/subscriber-write-failures.spec.ts:217:3
+  webkit           e2e/specs/regression/subscriber-write-failures.spec.ts:77:3
+  webkit           e2e/specs/smoke/branch-dashboard.spec.ts:39:3
+
+### per-spec rollup
+spec                                                 repro base-only rerun-only
+e2e/specs/db/deactivate-entities.spec.ts             0     0         1
+e2e/specs/db/invariants.spec.ts                      0     0         1
+e2e/specs/db/money-idempotency.spec.ts               0     0         2
+e2e/specs/db/rls-isolation.spec.ts                   0     0         1
+e2e/specs/flows/agent-dashboard-drill-to-subscriber.spec.ts 0     0         2
+e2e/specs/flows/agent-onboard-subscriber.spec.ts     2     0         0
+e2e/specs/flows/branch-dashboard-drill-to-subscriber.spec.ts 0     0         1
+e2e/specs/flows/distributor-apply-settlement.spec.ts 0     0         1
+e2e/specs/flows/distributor-commission-drill-subscribers.spec.ts 0     0         1
+e2e/specs/flows/distributor-create-branch.spec.ts    0     0         1
+e2e/specs/flows/distributor-exports-csv.spec.ts      4     0         0
+e2e/specs/flows/distributor-renders-data.spec.ts     0     0         1
+e2e/specs/flows/settings-change-password.spec.ts     0     0         1
+e2e/specs/flows/subscriber-signin-with-password.spec.ts 1     0         0
+e2e/specs/flows/subscriber-signup-to-contribute.spec.ts 1     0         0
+e2e/specs/regression/map-drill.spec.ts               2     0         0
+e2e/specs/regression/modal-escape.spec.ts            0     2         0
+e2e/specs/regression/subscriber-write-failures.spec.ts 0     0         4
+e2e/specs/smoke/branch-dashboard.spec.ts             0     0         2
+e2e/specs/smoke/landing.spec.ts                      6     0         0
+e2e/specs/smoke/subscriber-dashboard.spec.ts         12    0         0

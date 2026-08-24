@@ -1,0 +1,28 @@
+{
+  "role": "distributor",
+  "route": "/dashboard/settings",
+  "project": "chromium",
+  "url": "http://localhost:5173/dashboard/settings",
+  "violations": [
+    {
+      "id": "color-contrast",
+      "impact": "serious",
+      "help": "Elements must meet minimum color contrast ratio thresholds",
+      "nodes": 3,
+      "targets": [
+        "._tileSub_cw1sl_104 > ._chg_cw1sl_177[data-dir=\"up\"]",
+        "span[data-tone=\"active\"]",
+        "._trendTop_cw1sl_175 > ._chg_cw1sl_177[data-dir=\"up\"]"
+      ]
+    },
+    {
+      "id": "scrollable-region-focusable",
+      "impact": "serious",
+      "help": "Scrollable region must have keyboard access",
+      "nodes": 1,
+      "targets": [
+        "._col_cw1sl_117:nth-child(1) > ._tableCard_cw1sl_120 > ._tableScroll_cw1sl_198"
+      ]
+    }
+  ]
+}

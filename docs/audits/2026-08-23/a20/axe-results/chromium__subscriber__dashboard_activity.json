@@ -1,0 +1,20 @@
+{
+  "role": "subscriber",
+  "route": "/dashboard/activity",
+  "project": "chromium",
+  "url": "http://localhost:5173/dashboard/activity",
+  "violations": [
+    {
+      "id": "color-contrast",
+      "impact": "serious",
+      "help": "Elements must meet minimum color contrast ratio thresholds",
+      "nodes": 16,
+      "targets": [
+        "._statRow_ht6rz_171 > span:nth-child(1)",
+        "span:nth-child(1) > strong",
+        "._row_109v1_168:nth-child(1) > ._main_109v1_186 > ._label_109v1_193[data-tone=\"in\"]",
+        "._row_109v1_168:nth-child(1) > ._figures_109v1_219 > ._amount_109v1_228[data-tone=\"in\"]"
+      ]
+    }
+  ]
+}

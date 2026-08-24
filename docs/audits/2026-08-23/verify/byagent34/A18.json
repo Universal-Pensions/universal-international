@@ -1,0 +1,209 @@
+[
+ {
+  "id": "A18-001",
+  "title": "iOS Safari zoom-on-focus: dashboard/search/payment inputs render below 16px",
+  "severity": "medium",
+  "confidence": "confirmed",
+  "category": "responsive-mobile",
+  "surface": "all role dashboards (mobile) + card payment flow",
+  "location": "src/index.css:282 (.input primitive = 14px) + 14 further rules incl. src/components/payment/PaymentMethodPicker.module.css:221",
+  "evidence": "grep -n '--text-' src/index.css shows --text-sm:0.875rem (14px); sed -n '282,285p' src/index.css shows global .input { font-size: var(--text-sm) }. A python parse of src/**/*.module.css found 15 input-element rules < 16px: global .input 14px; PaymentMethodPicker card no./expiry/CVC/name .input 14px; OverlayPanel .searchBarInput 10px; agent/branch/employer/subscriber sheet .input 13px; NomineesPage .input,.select 13px; distributor/branch/employer .search input 14px; branch/distributor .field input 15px; branch .select 12.5px; employer .composer input 13px. MONEY-ENTRY amount heroes are SAFE at 20px (SavePage.module.css:171 .amountInput = var(--text-xl)); sign-in inputs SAFE (PhoneEntry .input=--text-xl, OtpVerify .otpInput=--text-2xl, PasswordEntry .input=--text-base=16px).",
+  "impact": "On iPhone Safari every text input with computed font-size < 16px triggers automatic zoom-on-focus, so the viewport jerks/zooms each time a rep taps a search box, a sheet form field, or the card-payment fields during a phone demo. Amount-entry and sign-in are unaffected.",
+  "suggested_fix": "Add a @media (max-width:1023px) bump forcing font-size:16px on the global .input primitive and on .field input / .search input / .composer input / PaymentMethodPicker .input; desktop can keep 14px.",
+  "demo_visible": true,
+  "roles_affected": [
+   "subscriber",
+   "agent",
+   "branch",
+   "distributor",
+   "employer",
+   "admin"
+  ],
+  "effort": "S",
+  "repro": [
+   "Open any dashboard on an iPhone (or Safari responsive mode < 1024px)",
+   "Tap a search box, a sheet form field, or the card-number field in the Pay flow",
+   "Observe the viewport auto-zoom on focus"
+  ],
+  "agent": "A18"
+ },
+ {
+  "id": "A18-002",
+  "title": "769-1023px dead band renders a stretched phone shell (iPad-portrait width) for all 6 roles",
+  "severity": "medium",
+  "confidence": "confirmed",
+  "category": "responsive-mobile",
+  "surface": "all 6 role dashboard shells",
+  "location": "src/hooks/useIsDesktop.js:3 (min-width:1024) vs src/hooks/useIsMobile.js:3 (max-width:768); every role shell keys on useIsDesktop()",
+  "evidence": "deadband-capture.mjs + admin-capture.mjs captured 15 screenshots. Overflow probe: subscriber/distributor/employer/agent @768/1023/1024 and admin/branch @820/1023/1024 all overflowX=false. distributor-1023.png shows a centered ~520-600px phone column with large empty side gutters + full-width bottom tab bar; distributor-1024.png shows the full desktop sidebar-rail layout \u2014 a hard jump at the 1024 boundary. admin-820.png, subscriber-1023.png, employer-1023.png confirm the identical gutter pattern for every role. Histogram: shell CSS uses min-width:1024 (aligned to JS) but 51 component-level max-width:768 rules and 16 useIsMobile(768) sites exist under 1024-keyed shells.",
+  "impact": "iPad portrait (820/834px, also 810/768) falls in this band, so a rep demoing on an iPad in portrait gets a phone UI stretched across the screen with wasted horizontal space and a stretched bottom tab bar. No breakage/overflow, but a visible degradation on a viewport reps use.",
+  "suggested_fix": "Either add a tablet layout for 769-1023px, or drop the shell breakpoint to min-width:768px so desktop chrome takes over at 768 (matching useIsMobile), collapsing the dead band.",
+  "demo_visible": true,
+  "roles_affected": [
+   "subscriber",
+   "agent",
+   "branch",
+   "distributor",
+   "employer",
+   "admin"
+  ],
+  "effort": "M",
+  "repro": [
+   "Sign in as any role",
+   "Resize the browser to any width 769-1023 (e.g. 820px, iPad portrait)",
+   "Observe a centered phone column with large empty side gutters and a full-width bottom tab bar"
+  ],
+  "agent": "A18"
+ },
+ {
+  "id": "A18-003",
+  "title": "Bottom sheets and PaySheet do not lock body scroll; page scrolls behind an open sheet on mobile",
+  "severity": "medium",
+  "confidence": "confirmed",
+  "category": "responsive-mobile",
+  "surface": "mobile app-bar sheets (Help/Notifications/Ask AI) for all roles + PaySheet money flow",
+  "location": "src/subscriber-dashboard/shell/BottomSheet.jsx (+ agent/branch/employer/landing copies) and src/components/PaySheet.jsx",
+  "evidence": "grep for body.style|overflow|touch-action|overscroll in BottomSheet.jsx returns no matches (no scroll lock). BottomSheet.module.css:1-6 .scrim { position:fixed; inset:0; ... } has no touch-action. By contrast Modal.jsx:117-118 sets document.body.style.overflow='hidden' (restored at :163). grep body.style src/components/PaySheet.jsx returns nothing \u2014 PaySheet also lacks the lock. The sheet body has overscroll-behavior:contain (BottomSheet.module.css:90) which only prevents chaining out of the sheet, not background scroll behind the scrim.",
+  "impact": "On mobile, touch-dragging on the scrim or sheet edges scrolls the page behind an open Help/Notifications/Ask AI/Pay sheet \u2014 a jarring, broken-looking effect during a demo. Inconsistent with Modal.jsx which locks scroll.",
+  "suggested_fix": "Apply the Modal.jsx body-scroll-lock pattern (or a shared useBodyScrollLock hook) to the shared BottomSheet and PaySheet primitives, plus touch-action:none on the scrim.",
+  "demo_visible": true,
+  "roles_affected": [
+   "subscriber",
+   "agent",
+   "branch",
+   "distributor",
+   "employer",
+   "admin"
+  ],
+  "effort": "S",
+  "repro": [
+   "On a phone, open the Notifications or Ask AI sheet from a dashboard app bar",
+   "Touch-drag on the dimmed scrim area",
+   "Observe the underlying page scrolling behind the sheet"
+  ],
+  "agent": "A18"
+ },
+ {
+  "id": "A18-004",
+  "title": "Public landing pages About/Contact/FAQ render no h1 on mobile (heading-hierarchy a11y gap)",
+  "severity": "low",
+  "confidence": "confirmed",
+  "category": "accessibility",
+  "surface": "public landing (mobile) /about /contact /faq",
+  "location": "src/pages/landing/mobile/AboutMobile.jsx:9 (<h3>), ContactMobile.jsx:70 (<h2>), FAQMobile.jsx:26 (<h2>)",
+  "evidence": "grep '<h1|<h2|<h3' src/pages/landing/mobile/*.jsx: AboutMobile.jsx:9 <h3>About Universal Pensions</h3>; ContactMobile.jsx:70 <h2>Contact us.</h2>; FAQMobile.jsx:26 <h2>Frequently asked questions.</h2> \u2014 while AdminMobile.jsx:10 and DistributorsMobile.jsx:10 DO have <h1>. Desktop About.jsx:73 uses <h1>. Reproduced: npx playwright test landing.spec.ts --project=mobile-chromium -g 'FAQ|Contact|About' = 3 failed, 'getByRole(heading,{level:1}) element(s) not found'. About-page screenshot shows a fully-rendered, polished mobile page (usable, just no h1).",
+  "impact": "Three public marketing pages start their heading hierarchy at h2/h3 with no h1 on mobile \u2014 a WCAG heading-order issue for screen-reader users, and the sole real cause of 3 mobile Playwright smoke failures. Pages are otherwise fully usable.",
+  "suggested_fix": "Promote each mobile landing page's top visible title (About Universal Pensions / Contact us / Frequently asked questions) to an <h1>.",
+  "demo_visible": false,
+  "roles_affected": [
+   "public"
+  ],
+  "effort": "S",
+  "agent": "A18"
+ },
+ {
+  "id": "A18-005",
+  "title": "Touch targets below 44x44: app-bar back/icon buttons (40px), copilot close (32px)",
+  "severity": "low",
+  "confidence": "confirmed",
+  "category": "accessibility",
+  "surface": "mobile app bars (all roles) + copilot panels + PageHeader",
+  "location": "src/subscriber-dashboard/shell/SubscriberMobileAppBar.module.css:17 (.backBtn 40x40), :60 (.iconBtn 40x40) \u2014 replicated in agent/branch/distributor/employer app bars and src/components/PageHeader.module.css:7; copilot .close 32x32",
+  "evidence": "python parse of shell/component CSS for btn/icon/close with height|width < 44: SubscriberMobileAppBar.module.css:17 .backBtn 40x40, :60 .iconBtn 40x40 (x5 role app bars + PageHeader.module.css:7); {Subscriber,Agent,Branch,Employer}CopilotPanel.module.css:58/61 .close 32x32; BottomSheet .close 40x40. The bottom tab bar (primary nav) is fine \u2014 each tab is a full-height 64px slot; only the 22px glyph is small.",
+  "impact": "The persistent mobile back/help/notification buttons (40px) and copilot close (32px) are under Apple's 44px HIG minimum, making them slightly hard to hit; passes WCAG 2.5.8 AA (24px) so this is polish, not a blocker.",
+  "suggested_fix": "Bump .backBtn/.iconBtn to 44x44 and copilot .close to at least 40x40 on mobile.",
+  "demo_visible": false,
+  "roles_affected": [
+   "subscriber",
+   "agent",
+   "branch",
+   "distributor",
+   "employer",
+   "admin"
+  ],
+  "effort": "S",
+  "agent": "A18"
+ },
+ {
+  "id": "A18-006",
+  "title": "Two distinct subscriber report routes share the generic app-bar title 'Analytics' on mobile",
+  "severity": "low",
+  "confidence": "confirmed",
+  "category": "responsive-mobile",
+  "surface": "subscriber dashboard (mobile) /dashboard/reports/*",
+  "location": "src/subscriber-dashboard/shell/SubscriberMobileAppBar.jsx:59",
+  "evidence": "sed -n '54,60p' SubscriberMobileAppBar.jsx: resolve() has `if (!title && pathname.startsWith('/dashboard/reports/')) title = 'Analytics';`. The routed page title is suppressed on mobile (ReportsPage.jsx:98 `if (!isDesktop) return null` in ReportsHeader). Screenshot of /dashboard/reports/all-transactions on mobile-chromium shows the app-bar h1 reading 'Analytics' (not 'All Transactions'); /contributions-summary shows the same 'Analytics'.",
+  "impact": "On mobile, /dashboard/reports/all-transactions and /dashboard/reports/contributions-summary both display 'Analytics' as the page heading \u2014 a wayfinding imprecision (two pages, same title). Also a contributor to the subscriber-dashboard mobile smoke failures.",
+  "suggested_fix": "Add distinct titles per report route in resolve()/SECONDARY (e.g. 'All transactions', 'Contributions summary').",
+  "demo_visible": true,
+  "roles_affected": [
+   "subscriber"
+  ],
+  "effort": "S",
+  "agent": "A18"
+ },
+ {
+  "id": "A18-007",
+  "title": "PWA manifest is minimal: no shortcuts/screenshots/share_target/protocol_handlers, single maskable icon",
+  "severity": "info",
+  "confidence": "confirmed",
+  "category": "pwa-manifest",
+  "surface": "PWA install",
+  "location": "public/manifest.webmanifest",
+  "evidence": "cat public/manifest.webmanifest: has name, short_name, description, id, start_url, scope=/, display=standalone, orientation=portrait, theme/background #292867, lang en-UG, categories [finance], 3 icons (icon-192 any, icon-512 any, icon-maskable-512). Missing: shortcuts, screenshots, share_target, protocol_handlers, maskable-192, monochrome/badge icon. ls public/icons/ confirms icon-192/512/maskable-512/apple-touch-icon-180 present.",
+  "impact": "No user-visible effect for the demo; the manifest is valid and installable. Missing enhancements would improve Android install UI and quick actions.",
+  "suggested_fix": "Optionally add shortcuts, screenshots, a maskable-192 and a monochrome icon if richer install UX is wanted.",
+  "demo_visible": false,
+  "roles_affected": [
+   "subscriber"
+  ],
+  "effort": "S",
+  "agent": "A18"
+ },
+ {
+  "id": "A18-008",
+  "title": "No offline data mode (no navigator.onLine, no write queue); failures surface as toasts, not silent",
+  "severity": "info",
+  "confidence": "confirmed",
+  "category": "offline",
+  "surface": "all roles (mobile/desktop)",
+  "location": "src/ (no navigator.onLine anywhere); src/subscriber-dashboard/pages/SavePage.jsx:204; public/sw.js:64-73",
+  "evidence": "grep -rn navigator.onLine|addEventListener('online'|'offline' src returns only an unrelated agent-status label. No offline write queue exists. The SW serves the cached SPA shell for navigations, but the prod API is cross-origin and never cached, so offline every fetch/mutation fails. SavePage.jsx:204 shows addToast('error', ... 'Could not complete the top-up.') and TanStack mutations use retry:0 \u2014 so loss is NOT silent (spec's 'silent data loss = High' does not fire). Note: offline.html is effectively dead code \u2014 index.html is always precached so sw.js:71 returns it before offline.html.",
+  "impact": "Acceptable demo scope for an always-online sales tool: offline the app boots but shows error toasts on any data action rather than an offline mode. No silent data loss.",
+  "suggested_fix": "None required for the demo. If real offline support is ever wanted, add navigator.onLine detection + an outbox queue and surface an offline banner.",
+  "demo_visible": false,
+  "roles_affected": [
+   "subscriber",
+   "agent",
+   "branch",
+   "distributor",
+   "employer",
+   "admin"
+  ],
+  "effort": "L",
+  "agent": "A18"
+ },
+ {
+  "id": "A18-009",
+  "title": "No in-dashboard install affordance for any of the 6 roles (landing-mobile only)",
+  "severity": "info",
+  "confidence": "confirmed",
+  "category": "pwa-install",
+  "surface": "6 role dashboards vs mobile landing",
+  "location": "src/pages/landing/shell/LandingMobileShell.jsx (InstallPromptProvider + InstallBanner + LandingInstallSheet); src/pages/landing/shell/installPrompt.jsx",
+  "evidence": "grep -rn 'InstallPromptProvider|<InstallBanner|<LandingInstallSheet' src: all hits under pages/landing/shell/ only. installPrompt.jsx reviewed: beforeinstallprompt preventDefault+defer (68-71), promptInstall (84-97), appinstalled (72-75), detectStandalone via display-mode + navigator.standalone (43-50), localStorage dismissal DISMISS_KEY (52-58,99-106) \u2014 all correct, but scoped to the landing.",
+  "impact": "None beyond expectations \u2014 the spec explicitly notes this as expected. Dashboard users on mobile web have no prompt to install the PWA; they must use the browser's own install menu.",
+  "suggested_fix": "Optionally surface the existing install affordance inside the mobile dashboards for subscribers.",
+  "demo_visible": false,
+  "roles_affected": [
+   "subscriber",
+   "agent",
+   "branch",
+   "distributor",
+   "employer",
+   "admin"
+  ],
+  "effort": "M",
+  "agent": "A18"
+ }
+]

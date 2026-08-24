@@ -1,0 +1,7 @@
+{
+  "role": "subscriber",
+  "route": "/dashboard/help",
+  "project": "chromium",
+  "url": "http://localhost:5173/dashboard/help",
+  "violations": []
+}

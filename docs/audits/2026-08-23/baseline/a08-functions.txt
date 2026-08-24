@@ -1,0 +1,89 @@
+_admin_attention_thresholds|||jsonb|f|f|t|t
+_assert_contribution_config_shape|p_config jsonb|p_config jsonb|void|f|f|t|t
+_canonical_ug_phone|raw text|raw text|text|f|f|t|t
+_demo_now|||timestamp with time zone|f|f|t|t
+_employer_grace_days|p_cadence text|p_cadence text|integer|f|f|t|t
+_hospital_cash_days|||integer|f|f|t|t
+_insert_subscriber_chain|p_payload jsonb, p_calling_agent_id text, p_amount_override numeric, p_skip_deposit boolean|p_payload jsonb, p_calling_agent_id text, p_amount_override numeric DEFAULT NULL::numeric, p_skip_deposit boolean DEFAULT false|text|f|f|t|t
+_normalize_contribution_config|p_config jsonb|p_config jsonb|jsonb|f|f|t|t
+_resync_bucket_units|p_subscriber_id text|p_subscriber_id text|void|t|f|f|t
+_validate_signup_payload|p_payload jsonb|p_payload jsonb|void|f|f|t|t
+admin_notify|p_recipient_role text, p_recipient_id text, p_type text, p_title text, p_body text, p_ref_id text, p_amount numeric|p_recipient_role text, p_recipient_id text, p_type text, p_title text, p_body text, p_ref_id text DEFAULT NULL::text, p_amount numeric DEFAULT NULL::numeric|jsonb|t|f|t|t
+agent_branch_id|||text|t|f|t|t
+apply_group_insurance|p_cover numeric|p_cover numeric|jsonb|t|f|t|t
+apply_settlement|p_rows jsonb, p_nonce text|p_rows jsonb, p_nonce text DEFAULT NULL::text|jsonb|t|f|t|t
+approve_access_request|p_id text|p_id text|jsonb|t|f|t|t
+block_inactive_employer_run|||trigger|t|t|t|t
+block_inactive_employer_subscriber|||trigger|t|t|t|t
+block_inactive_employer_subscriber_update|||trigger|t|t|t|t
+cancel_employer_invite|p_token text|p_token text|void|t|f|t|t
+canonical_ug_phone|p_raw text|p_raw text|text|f|f|t|t
+commission_rate_for_branch|p_branch_id text|p_branch_id text|numeric|t|f|t|t
+create_distributor|p_name text, p_manager_name text, p_manager_phone text, p_manager_email text, p_parent_id text, p_registration_no text|p_name text, p_manager_name text DEFAULT NULL::text, p_manager_phone text DEFAULT NULL::text, p_manager_email text DEFAULT NULL::text, p_parent_id text DEFAULT 'ug'::text, p_registration_no text DEFAULT NULL::text|jsonb|t|f|t|t
+create_employer|p_name text, p_sector text, p_registration_no text, p_contact_name text, p_contact_phone text, p_contact_email text, p_district text, p_payroll_cadence text, p_default_contribution_config jsonb|p_name text, p_sector text DEFAULT NULL::text, p_registration_no text DEFAULT NULL::text, p_contact_name text DEFAULT NULL::text, p_contact_phone text DEFAULT NULL::text, p_contact_email text DEFAULT NULL::text, p_district text DEFAULT NULL::text, p_payroll_cadence text DEFAULT NULL::text, p_default_contribution_config jsonb DEFAULT '{}'::jsonb|jsonb|t|f|t|t
+create_employer_invite|p_prefill jsonb|p_prefill jsonb|jsonb|t|f|t|t
+create_subscriber_from_agent_onboard|payload jsonb, calling_agent_id text, p_nonce text|payload jsonb, calling_agent_id text, p_nonce text DEFAULT NULL::text|text|t|f|t|t
+create_subscriber_from_employer_invite|payload jsonb, p_token text, p_nonce text|payload jsonb, p_token text, p_nonce text DEFAULT NULL::text|text|t|t|t|t
+create_subscriber_from_employer_onboard|payload jsonb, calling_employer_id text, p_nonce text|payload jsonb, calling_employer_id text, p_nonce text DEFAULT NULL::text|text|t|f|t|t
+create_subscriber_from_signup|payload jsonb, p_nonce text|payload jsonb, p_nonce text DEFAULT NULL::text|text|t|t|t|t
+current_distributor_id|||text|f|f|t|t
+deny_access_request|p_id text|p_id text|jsonb|t|f|t|t
+distributor_agent_ids|||SETOF text|t|f|t|t
+distributor_branch_ids|||SETOF text|t|f|t|t
+distributor_subscriber_ids|||SETOF text|t|f|t|t
+fund_insurance_products|p_nonce text, p_funding_mode text, p_products jsonb, p_savings_pct numeric, p_method text|p_nonce text, p_funding_mode text, p_products jsonb, p_savings_pct numeric DEFAULT 100, p_method text DEFAULT 'MTN Mobile Money'::text|jsonb|t|f|t|t
+get_admin_attention|||jsonb|t|f|t|t
+get_admin_attention_rows|p_type text, p_limit integer|p_type text, p_limit integer DEFAULT 50|jsonb|t|f|t|t
+get_agent_commission_detail|p_agent_id text|p_agent_id text|jsonb|f|f|t|t
+get_agent_commission_list|p_status_focus text|p_status_focus text DEFAULT NULL::text|TABLE(agent_id text, agent_name text, employee_id text, branch_id text, branch_name text, total_commissions numeric, total_paid numeric, total_due numeric, subscribers_onboarded bigint, active_subscribers bigint, filtered_amount numeric, filtered_count bigint)|t|f|t|t
+get_all_employers_metrics|||jsonb|t|f|t|t
+get_branch_pending_contributions|p_branch_id text|p_branch_id text|TABLE(agent_id text, agent_name text, total bigint, pending bigint)|t|f|t|t
+get_breadcrumb|p_level text, p_ids jsonb|p_level text, p_ids jsonb|jsonb|f|f|t|t
+get_commission_rate|||numeric|t|f|t|t
+get_commission_summary|p_branch_id text|p_branch_id text DEFAULT NULL::text|jsonb|f|f|t|t
+get_distributor_rollup|||TABLE(distributor_id text, branches bigint, agents bigint, subscribers bigint, active_subscribers bigint, aum numeric)|t|f|t|t
+get_employer_activity_rollup|||jsonb|t|f|t|t
+get_employer_geo_rollup|||jsonb|t|f|t|t
+get_employer_invite|p_token text|p_token text|jsonb|t|t|t|t
+get_employer_metrics|||jsonb|t|f|t|t
+get_entity_commission_summary|p_level text, p_entity_id text|p_level text, p_entity_id text|jsonb|f|f|t|t
+get_entity_metrics_rollup|p_level text, p_entity_ids text[]|p_level text, p_entity_ids text[]|jsonb|t|f|t|t
+get_my_employer_funding|||jsonb|t|f|t|t
+get_nav_overview|p_fund_code text|p_fund_code text DEFAULT 'UPU-BAL'::text|jsonb|t|f|t|t
+get_pending_dues_by_agent|||TABLE(agent_id text, agent_name text, employee_id text, branch_id text, branch_name text, pending_amount numeric, pending_count bigint)|t|f|t|t
+get_pending_dues_by_branch|||TABLE(branch_id text, branch_name text, pending_amount numeric, pending_count bigint, agent_count bigint)|t|f|t|t
+get_platform_overview|||jsonb|t|f|t|t
+get_top_branch|p_level text, p_parent_id text|p_level text, p_parent_id text|jsonb|t|f|t|t
+get_top_entities|p_level text, p_sort_key text, p_limit integer|p_level text, p_sort_key text DEFAULT NULL::text, p_limit integer DEFAULT 6|TABLE(id text, name text, parent_id text, parent_name text, manager_name text, status text, total_subscribers bigint, active_rate integer, aum numeric, total_contributions numeric)|t|f|t|t
+group_insurance_premium_per_member|p_config jsonb|p_config jsonb|numeric|f|f|t|t
+guard_mass_subscriber_detach|||trigger|t|t|t|t
+latest_nav|p_fund text|p_fund text DEFAULT 'UPU-BAL'::text|numeric|t|f|t|t
+list_access_requests|p_status text|p_status text DEFAULT 'pending'::text|jsonb|t|f|t|t
+list_nav_snapshots|p_fund_code text, p_limit integer, p_offset integer, p_status text|p_fund_code text DEFAULT 'UPU-BAL'::text, p_limit integer DEFAULT 60, p_offset integer DEFAULT 0, p_status text DEFAULT NULL::text|jsonb|t|f|t|t
+list_nominee_claims|p_status text|p_status text DEFAULT 'pending'::text|jsonb|t|f|t|t
+make_contribution|p_nonce text, p_amount numeric, p_retirement_pct numeric, p_method text|p_nonce text, p_amount numeric, p_retirement_pct numeric DEFAULT 80, p_method text DEFAULT 'MTN Mobile Money'::text|jsonb|t|f|t|t
+mark_notifications_read|p_ids text[]|p_ids text[]|void|t|f|t|t
+nav_for_date|p_date date, p_fund text|p_date date, p_fund text DEFAULT 'UPU-BAL'::text|numeric|t|f|t|t
+pay_insurance_premium|p_nonce text, p_product text, p_cover numeric, p_premium numeric, p_method text|p_nonce text, p_product text, p_cover numeric, p_premium numeric, p_method text DEFAULT 'MTN Mobile Money'::text|jsonb|t|f|f|t
+publish_nav_snapshot|p_nav_date date, p_unit_price numeric, p_fund_code text, p_source text, p_confirm_move boolean|p_nav_date date, p_unit_price numeric, p_fund_code text DEFAULT 'UPU-BAL'::text, p_source text DEFAULT 'admin_manual'::text, p_confirm_move boolean DEFAULT false|jsonb|t|f|t|t
+register_login_identity|p_phone_raw text, p_role text, p_entity_id text, p_label text, p_name text, p_email text|p_phone_raw text, p_role text, p_entity_id text, p_label text, p_name text DEFAULT NULL::text, p_email text DEFAULT NULL::text|text|t|f|t|t
+remove_employer_member|p_subscriber_id text|p_subscriber_id text|jsonb|t|f|t|t
+request_withdrawal|p_nonce text, p_amount numeric, p_bucket text, p_reason text, p_method text, p_split_retirement numeric, p_split_emergency numeric|p_nonce text, p_amount numeric, p_bucket text DEFAULT NULL::text, p_reason text DEFAULT NULL::text, p_method text DEFAULT 'MTN Mobile Money'::text, p_split_retirement numeric DEFAULT NULL::numeric, p_split_emergency numeric DEFAULT NULL::numeric|jsonb|t|f|t|t
+review_nominee_claim|p_id text, p_status text, p_note text, p_subscriber_id text|p_id text, p_status text, p_note text DEFAULT NULL::text, p_subscriber_id text DEFAULT NULL::text|jsonb|t|f|t|t
+search_entities|p_q text|p_q text|TABLE(entity_id text, entity_name text, level text, label text, parent_id text, score real)|f|f|t|t
+set_commission_rate|p_rate numeric|p_rate numeric|numeric|t|f|t|t
+set_distributor_status|p_distributor_id text, p_status text|p_distributor_id text, p_status text|jsonb|t|f|t|t
+set_employer_status|p_employer_id text, p_status text|p_employer_id text, p_status text|jsonb|t|f|t|t
+submit_employer_contribution_run|p_period_label text, p_method text, p_nonce text|p_period_label text DEFAULT NULL::text, p_method text DEFAULT NULL::text, p_nonce text DEFAULT NULL::text|jsonb|t|f|t|t
+submit_hospital_cash_claim|p_nonce text, p_admission_date date, p_discharge_date date, p_provider text, p_description text|p_nonce text, p_admission_date date, p_discharge_date date, p_provider text, p_description text|jsonb|t|f|t|t
+subscriber_agent_id|||text|t|f|t|t
+subscriber_branch_id|||text|t|f|t|t
+trg_branches_default_distributor|||trigger|t|t|t|t
+trg_distributors_enforce_editable_cols|||trigger|f|t|t|t
+trg_subscribers_after_insert|||trigger|t|t|t|t
+trg_subscribers_enforce_editable_cols|||trigger|f|t|t|t
+trg_transactions_contribution|||trigger|t|t|t|t
+trg_transactions_withdrawal|||trigger|t|t|t|t
+update_employer_member_compensation|p_subscriber_id text, p_compensation numeric|p_subscriber_id text, p_compensation numeric|jsonb|t|f|t|t
+update_employer_profile|p_patch jsonb, p_group_cover numeric, p_insurance_enabled boolean|p_patch jsonb, p_group_cover numeric DEFAULT NULL::numeric, p_insurance_enabled boolean DEFAULT NULL::boolean|jsonb|t|f|t|t
+upsert_nominees|p_subscriber_id text, p_pension jsonb, p_insurance jsonb|p_subscriber_id text, p_pension jsonb DEFAULT '[]'::jsonb, p_insurance jsonb DEFAULT '[]'::jsonb|jsonb|t|f|t|t

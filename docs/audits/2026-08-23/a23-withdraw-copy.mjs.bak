@@ -1,0 +1,19 @@
+// A23 — READ-ONLY. Capture the rendered copy of the subscriber withdraw flow
+// (desktop + phone) to check what the same pot of money is called on screen.
+// Navigation + text reads only; nothing is submitted.
+import { chromium } from '@playwright/test';
+const STATE = '/Users/shubhang/Desktop/Projects/uganda-dashboard/e2e/.auth/subscriber.json';
+const b = await chromium.launch();
+for (const [label, vp] of [['desktop', { width: 1440, height: 950 }], ['phone', { width: 390, height: 844 }]]) {
+  const ctx = await b.newContext({ storageState: STATE, timezoneId: 'Africa/Kampala', viewport: vp });
+  const p = await ctx.newPage();
+  for (const route of ['/dashboard/withdraw', '/dashboard/withdraw/new']) {
+    await p.goto('http://localhost:5173' + route, { waitUntil: 'domcontentloaded' });
+    await p.waitForTimeout(6000);
+    const t = await p.locator('main, body').first().innerText();
+    console.log(`\n===== ${label} ${route} =====`);
+    console.log(t.replace(/\n{2,}/g, '\n').slice(0, 1400));
+  }
+  await ctx.close();
+}
+await b.close();

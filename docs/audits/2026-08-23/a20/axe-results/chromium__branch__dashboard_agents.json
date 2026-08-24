@@ -1,0 +1,7 @@
+{
+  "role": "branch",
+  "route": "/dashboard/agents",
+  "project": "chromium",
+  "url": "http://localhost:5173/dashboard/agents",
+  "violations": []
+}

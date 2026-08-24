@@ -1,0 +1,11 @@
+=== FILE INVENTORY ===
+jsx: 433
+js: 177
+module.css: 229
+api ts: 48
+server ts: 5
+e2e specs: 38
+migrations fwd: 108
+migrations down: 86
+docs md: 331
+unit tests: 118

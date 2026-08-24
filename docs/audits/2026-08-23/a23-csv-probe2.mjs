@@ -1,0 +1,11 @@
+import { chromium } from '@playwright/test';
+const STATE = '/Users/shubhang/Desktop/Projects/uganda-dashboard/e2e/.auth/subscriber.json';
+const b = await chromium.launch();
+const ctx = await b.newContext({ storageState: STATE, timezoneId: 'Africa/Kampala', viewport: { width: 1440, height: 950 }, acceptDownloads: true });
+const p = await ctx.newPage();
+await p.goto('http://localhost:5173/dashboard/reports/all-transactions', { waitUntil: 'domcontentloaded' });
+await p.waitForTimeout(15000);
+console.log('table rows:', await p.locator('table tbody tr').count());
+const btns = await p.getByRole('button').allTextContents();
+console.log('buttons:', JSON.stringify(btns.filter(Boolean).slice(0, 25)));
+await b.close();

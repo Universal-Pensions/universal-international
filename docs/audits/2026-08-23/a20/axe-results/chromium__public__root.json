@@ -1,0 +1,29 @@
+{
+  "role": "public",
+  "route": "/",
+  "project": "chromium",
+  "url": "http://localhost:5173/",
+  "violations": [
+    {
+      "id": "aria-hidden-focus",
+      "impact": "serious",
+      "help": "ARIA hidden element must not be focusable or contain focusable elements",
+      "nodes": 1,
+      "targets": [
+        "aside"
+      ]
+    },
+    {
+      "id": "color-contrast",
+      "impact": "serious",
+      "help": "Elements must meet minimum color contrast ratio thresholds",
+      "nodes": 18,
+      "targets": [
+        "._regulatory_1tlk9_35",
+        "._linkGroup_1tlk9_48:nth-child(1) > ._groupLabel_1tlk9_54",
+        "._link_1tlk9_42[href=\"/\"][data-discover=\"true\"]",
+        "._link_1tlk9_42[href$=\"employers\"][data-discover=\"true\"]"
+      ]
+    }
+  ]
+}

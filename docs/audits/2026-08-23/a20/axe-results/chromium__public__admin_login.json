@@ -1,0 +1,7 @@
+{
+  "role": "public",
+  "route": "/admin/login",
+  "project": "chromium",
+  "url": "http://localhost:5173/admin/login",
+  "violations": []
+}

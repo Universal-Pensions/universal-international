@@ -1,0 +1,11 @@
+import { chromium } from 'playwright';
+const BASE='http://localhost:5173';
+const b=await chromium.launch({headless:true});
+const ctx=await b.newContext({viewport:{width:1440,height:900}});
+const page=await ctx.newPage();
+await page.goto(BASE+'/distributors',{waitUntil:'domcontentloaded'});
+await page.waitForTimeout(2500);
+const btns=await page.evaluate(()=>Array.from(document.querySelectorAll('button,a,[role=button]')).map(e=>(e.tagName)+':'+(e.innerText||e.getAttribute('aria-label')||'').replace(/\s+/g,' ').trim()).filter(x=>x.length>3).slice(0,30));
+console.log('CONTROLS:',JSON.stringify(btns));
+await page.screenshot({path:'docs/audits/2026-08-23/scratch/a13-desktop-landing.png',fullPage:false});
+await b.close();

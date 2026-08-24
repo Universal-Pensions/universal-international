@@ -1,0 +1,54 @@
+[
+ {
+  "id": "A07-001",
+  "agent": "A07",
+  "title": "Sentry scrubber has no NIN redaction pattern",
+  "severity": "medium",
+  "confidence": "plausible",
+  "category": "pii",
+  "surface": "backend",
+  "location": "server/sentryScrub.ts:31-37",
+  "evidence": "source: PHONE_RE/JWT_RE/BEARER_RE + SENSITIVE_KEYS present; no NIN pattern",
+  "impact": "A NIN in a KYC error string forwards to Sentry unredacted",
+  "suggested_fix": "add NIN_RE + 'nin' to SENSITIVE_KEYS"
+ },
+ {
+  "id": "A07-002",
+  "agent": "A07",
+  "title": "agent-referral unauthenticated service-role INSERT (input-capped)",
+  "severity": "low",
+  "confidence": "confirmed",
+  "category": "security",
+  "surface": "backend",
+  "location": "api/kyc/agent-referral.ts:118-140",
+  "evidence": "no agentId field; phone canonicalised; all fields length-capped; writeLimiter 5/min",
+  "impact": "stored-XSS source (render sink is A24); storage-spam bounded",
+  "suggested_fix": "ensure render side escapes"
+ },
+ {
+  "id": "A07-003",
+  "agent": "A07",
+  "title": "CORS allows no-Origin requests (by design)",
+  "severity": "info",
+  "confidence": "confirmed",
+  "category": "security",
+  "surface": "backend",
+  "location": "server/cors.ts",
+  "evidence": "cb(null,true) when origin undefined; browser origins restricted to uganda-dashboard*.vercel.app",
+  "impact": "none for this deployment",
+  "suggested_fix": "revisit if cookie auth added"
+ },
+ {
+  "id": "A07-004",
+  "agent": "A07",
+  "title": "Rate limiter IP-spoofable via X-Forwarded-For in no-proxy deployment (local only; prod trust-proxy:1 mitigates)",
+  "severity": "low",
+  "confidence": "confirmed",
+  "category": "security",
+  "surface": "backend",
+  "location": "server/index.ts:88 trust proxy:1",
+  "evidence": "local: 12 rotating-XFF POSTs all 200, never 429; prod likely safe (Render single-hop appends real IP)",
+  "impact": "local dev bypass; prod fragile if hop count changes",
+  "suggested_fix": "pin limiter keyGenerator to trusted source + assert hop count"
+ }
+]

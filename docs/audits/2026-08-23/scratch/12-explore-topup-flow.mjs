@@ -1,0 +1,20 @@
+import { chromium } from 'playwright';
+import { signIn } from './lib.mjs';
+const b = await chromium.launch();
+const p = await (await b.newContext()).newPage();
+const seen = [];
+p.on('request', r => { const u=r.url(); if (u.includes('/rest/v1/rpc/')) seen.push(r.method()+' '+u.split('/rest/v1/')[1].split('?')[0]); });
+await signIn(p, { landingPath: '/', phone: '+256711000001' });
+await p.goto('http://localhost:5173/dashboard/save', { waitUntil: 'domcontentloaded' });
+await p.waitForTimeout(7000);
+// block the write so nothing can be committed while we explore
+await p.route('**/rest/v1/rpc/make_contribution*', r => r.fulfill({status:500,contentType:'application/json',body:'{"message":"blocked by audit"}'}));
+await p.getByRole('button', { name: /^Top up extra$/ }).first().click().catch(()=>{});
+await p.waitForTimeout(400);
+await p.getByRole('button', { name: /^Top up UGX/ }).first().click();
+await p.waitForTimeout(2000);
+console.log('--- after click, controls ---');
+console.log((await p.evaluate(() => [...document.querySelectorAll('button,input')].filter(e=>e.offsetParent!==null).map(el => `${el.tagName} ${(el.getAttribute('aria-label')||el.innerText||el.placeholder||'').trim().replace(/\s+/g,' ').slice(0,50)}`))).join('\n'));
+console.log('--- rpc seen ---', seen.join(' | '));
+await p.screenshot({ path:'docs/audits/2026-08-23/scratch/topup-step2.png' });
+await b.close(); process.exit(0);

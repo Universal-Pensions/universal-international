@@ -1,0 +1,245 @@
+[
+ {
+  "id": "A02-001",
+  "title": "Subscriber JWT can mint arbitrary money by POSTing straight to /rest/v1/transactions",
+  "severity": "high",
+  "confidence": "confirmed",
+  "category": "rls-write-policy-too-broad",
+  "surface": "database/RLS + PostgREST",
+  "location": "policy transactions_insert_self on public.transactions (trigger transactions_after_insert_contribution -> public.trg_transactions_contribution)",
+  "evidence": "policy: WITH CHECK ((auth.jwt() ->> 'app_role') = 'subscriber' AND subscriber_id = (auth.jwt() ->> 'subscriberId')) -- constrains WHO the row belongs to but not WHAT KIND of row it is. trigger: CREATE TRIGGER transactions_after_insert_contribution AFTER INSERT ON public.transactions FOR EACH ROW WHEN ((new.type = 'contribution'::text)) EXECUTE FUNCTION trg_transactions_contribution().\\n\\npsql proof (fully rolled back):\\n$ psql \"$SUPABASE_DB_URL\" -X -q -At -F' || '\\nBEGIN;\\nSELECT 'BEFORE (as postgres)', total_balance, retirement_balance, emergency_balance, units FROM subscriber_balances WHERE subscriber_id='s-0001';\\n  BEFORE (as postgres) || 1386092 || 1108874 || 277218 || 882.0745314258030892\\nSET LOCAL ROLE authenticated;\\nSELECT set_config('request.jwt.claims','{\\\"sub\\\":\\\"s-0001\\\",\\\"role\\\":\\\"authenticated\\\",\\\"app_role\\\":\\\"subscriber\\\",\\\"phone\\\":\\\"+256711000001\\\",\\\"subscriberId\\\":\\\"s-0001\\\"}', true);\\n  t\\nINSERT INTO transactions (id,subscriber_id,type,amount,date,status,method,txn_ref,source,split_retirement,split_emergency) VALUES ('a02-probe-tx1','s-0001','contribution',1000000000,now(),'settled','mobile_money','A02PROBE','own',800000000,200000000);\\nSELECT 'AFTER (as subscriber, own row)', total_balance, retirement_balance, emergency_balance, units FROM subscriber_balances WHERE subscriber_id='s-0001';\\n  AFTER (as subscriber, own row) || 1001386092 || 801108874 || 200277218 || 637257.2813533680200892\\nROLLBACK;\\nSELECT 'POST-ROLLBACK balance', total_balance FROM subscriber_balances WHERE subscriber_id='s-0001';\\n  POST-ROLLBACK balance || 1386092\\nSELECT 'POST-ROLLBACK probe txn rows', count(*) FROM transactions WHERE id like 'a02-probe%';\\n  POST-ROLLBACK probe txn rows || 0\\n\\nHTTP/PostgREST proof, zero-mutation (re-using an existing PK forces the unique violation to fire AFTER the RLS WITH CHECK, so 409 proves RLS ALLOWED the row while nothing is written):\\n$ node a02_http.mjs   # HS256 JWT minted from SUPABASE_JWT_SECRET exactly as e2e/global-setup.ts; token redacted eyJ...<328>\\nW1 sub POST transactions contribution 1e9 (dup id) :: HTTP 409 :: {\"code\":\"23505\",\"message\":\"duplicate key value violates unique constraint \\\\\"transactions_pkey\\\\\"\"}\\nW2 sub POST transactions FOR s-0002 (cross-tenant, dup id) :: HTTP 403 :: {\"code\":\"42501\",\"message\":\"new row violates row-level security policy for table \\\\\"transactions\\\\\"\"}\\n\\nReachability: src/services/supabaseClient.js:172-173 ships VITE_SUPABASE_URL + VITE_SUPABASE_ANON_KEY to the browser and its custom fetch wrapper attaches the upensions_token JWT from localStorage on every request.",
+  "impact": "Any logged-in demo subscriber can set their own balance to any number (UGX 1,386,092 -> 1,001,386,092 in the proof; units 882 -> 637,257). The fabricated money propagates upward into the agent portfolio, branch/distributor rollups and the admin AUM KPI, so OTHER roles' dashboards display wrong money. It also bypasses money_nonces idempotency and can fabricate an agent commission row. Withdrawal rows work the same way in reverse (W03 sub INSERT own withdrawal txn -500,000 || OK || 1). The policy exists only to support one narrow path -- src/services/subscriber.js:1411 inserts a type='premium' marker on insurance renewal, which fires neither trigger. Scored high under this audit's rubric ('a write can corrupt or duplicate data'); it is the top-priority item here and would be critical on a production deployment.",
+  "suggested_fix": "Narrow the policy to the one shape the app needs: WITH CHECK (... AND type = 'premium' AND amount >= 0 AND source = 'own'). Or drop transactions_insert_self entirely and route the renewal marker row through the existing pay_insurance_premium SECURITY DEFINER RPC.",
+  "demo_visible": false,
+  "effort": "S",
+  "roles_affected": [
+   "subscriber",
+   "agent",
+   "branch",
+   "distributor",
+   "admin"
+  ],
+  "repro": [
+   "Log into the demo as any subscriber (phone + any 6-digit OTP).",
+   "Read the JWT from localStorage key 'upensions_token' in devtools.",
+   "POST to ${VITE_SUPABASE_URL}/rest/v1/transactions with headers apikey=<anon key from the bundle>, Authorization: Bearer <that JWT>, body {id:'<any new id>', subscriber_id:'<your own id>', type:'contribution', amount:1000000000, date:<now>, status:'settled', method:'mobile_money', txn_ref:'X', source:'own'}.",
+   "Reload the subscriber dashboard: the balance is now +1,000,000,000 UGX and the same figure appears in the admin AUM KPI."
+  ],
+  "agent": "A02"
+ },
+ {
+  "id": "A02-002",
+  "title": "Subscriber can rewrite their own insurance cover, premium and status to anything (insurance_policies + subscriber_insurance_products)",
+  "severity": "high",
+  "confidence": "confirmed",
+  "category": "rls-write-policy-too-broad",
+  "surface": "database/RLS + PostgREST",
+  "location": "policies insurance_policies_update_self, sip_update_self, sip_insert_self, insurance_policies_insert_self on public.insurance_policies / public.subscriber_insurance_products",
+  "evidence": "Neither table has an editable-column trigger (unlike subscribers and distributors, which do -- verified: SELECT tgname FROM pg_trigger returns only branches_default_distributor, distributors_enforce_editable_cols, subscribers_after_insert, subscribers_enforce_editable_cols, subscribers_guard_mass_detach, trg_block_inactive_employer_subscriber(_update), transactions_after_insert_contribution, transactions_after_insert_withdrawal). authenticated holds a full table-level UPDATE grant on both. The USING/WITH CHECK only pin subscriber_id.\\n\\npsql probes (all inside BEGIN ... ROLLBACK):\\nC12 sub sets insurance_policies.cover=500000000 || OK || 1\\nC13 sub sets insurance_policies.premium_monthly=0 || OK || 1\\nC14 sub sets insurance_policies.status='active', funded_by='self' || OK || 1\\nC15 sub sets subscriber_insurance_products.status='active' || OK || 2\\nR31 sub INSERT sip row for self || ERROR || duplicate key value violates unique constraint \"subscriber_insurance_products_pkey\"   (post-RLS unique violation => RLS WITH CHECK PASSED)\\n\\nHTTP/PostgREST zero-write proof (NULL into a NOT NULL column aborts AFTER the ACL check and AFTER the RLS USING filter, so 400/23502 = grant OK + row visible + update permitted, nothing written):\\n$ node a02_http3.mjs\\nN1 sub PATCH OWN insurance_policies.cover=null :: HTTP 400 :: {\"code\":\"23502\",\"message\":\"null value in column \\\\\"cover\\\\\" of relation \\\\\"insurance_policies\\\\\" violates not-null constraint\"}\\nN6 sub PATCH OWN sip.status=null :: HTTP 400 :: {\"code\":\"23502\",\"message\":\"null value in column \\\\\"status\\\\\" of relation \\\\\"subscriber_insurance_products\\\\\" violates not-null constraint\"}\\nN2 sub PATCH OTHER insurance_policies.cover=null :: HTTP 200 :: []      (cross-tenant correctly denied)\\nN7 agent PATCH s-0001 insurance_policies.cover=null :: HTTP 200 :: []   (agent has no UPDATE policy -- correct)\\nN8 anon PATCH insurance_policies.cover=null :: HTTP 401 :: permission denied for function subscriber_agent_id",
+  "impact": "A subscriber can grant themselves unlimited life/health/funeral cover at zero premium and flip status to 'active' with nothing paid, directly falsifying the insurance-premium invariant (self-pay insurance = ANNUAL only) and the 0072 save-to-cover state machine. The Insurance Statement report, the agent subscriber-detail policy chips and the employer Insurance page then show cover that was never funded. This is wrong money in the insurance ledger.",
+  "suggested_fix": "Revoke UPDATE on the business columns of both tables from authenticated/anon and route the two real app paths -- renewal (src/services/subscriber.js:1399-1404) and upgrade/downgrade -- through the existing fund_insurance_products / pay_insurance_premium DEFINER RPCs. Alternatively add a trg_*_enforce_editable_cols BEFORE UPDATE trigger mirroring the one already on subscribers.",
+  "demo_visible": false,
+  "effort": "M",
+  "roles_affected": [
+   "subscriber",
+   "agent",
+   "employer",
+   "admin"
+  ],
+  "repro": [
+   "Log into the demo as any subscriber.",
+   "PATCH ${VITE_SUPABASE_URL}/rest/v1/insurance_policies?subscriber_id=eq.<own id> with the localStorage JWT and body {\"cover\":500000000,\"premium_monthly\":0,\"status\":\"active\",\"funded_by\":\"self\"}.",
+   "Open Settings > Insurance cover and the Insurance Statement report: unlimited cover, zero premium, status Active."
+  ],
+  "agent": "A02"
+ },
+ {
+  "id": "A02-003",
+  "title": "contribution_schedules.insurance_funding_mode and the accrual counters are directly writable by the subscriber (spec check 7 violated)",
+  "severity": "medium",
+  "confidence": "confirmed",
+  "category": "column-grant-too-broad",
+  "surface": "database/grants + RLS",
+  "location": "column grant UPDATE(insurance_funding_mode, insurance_premium_accrued, insurance_premium_target, retirement_pct, emergency_pct, ...) ON public.contribution_schedules TO authenticated, with policy contribution_schedules_update_self",
+  "evidence": "$ psql \"$SUPABASE_DB_URL\" -X -q -At -c \"select column_name from information_schema.column_privileges where table_schema='public' and table_name='contribution_schedules' and grantee='authenticated' and privilege_type='UPDATE' order by 1;\"\\namount\\ncontribution_indexation_pct\\nemergency_pct\\nfrequency\\ninclude_insurance\\ninsurance_choice_made\\ninsurance_funding_mode\\ninsurance_premium_accrued\\ninsurance_premium_target\\ninsurance_savings_pct\\nlast_indexed_at\\nnext_due_date\\nretirement_pct\\nsubscriber_id\\nupdated_at\\n\\nContrast with the correctly-locked-down subscribers table:\\n$ psql ... -c \"select column_name from information_schema.column_privileges where table_schema='public' and table_name='subscribers' and grantee='authenticated' and privilege_type='UPDATE' order by 1;\"\\nconsent_at\\nemail\\nname\\noccupation\\nphone\\n\\npsql probes (rolled back):\\nC08 sub sets schedules.insurance_funding_mode='save_to_cover' || OK || 1\\nC09 sub sets schedules.insurance_premium_accrued=99999999 || OK || 1\\nC10 sub sets schedules.insurance_premium_target=0 || OK || 1\\nC11 sub sets schedules.subscriber_id='s-0002' (repoint) || ERROR || new row violates row-level security policy for table \"contribution_schedules\"   (WITH CHECK holds)\\n\\nHTTP zero-write proof:\\nN3 sub PATCH /rest/v1/contribution_schedules?subscriber_id=eq.s-0001 {insurance_funding_mode:null} :: HTTP 400 :: {\"code\":\"23502\",\"message\":\"null value in column \\\\\"insurance_funding_mode\\\\\" of relation \\\\\"contribution_schedules\\\\\" violates not-null constraint\"}\\nN5 ... {retirement_pct:null} :: HTTP 400 :: 23502 not-null on retirement_pct\\nN4 sub PATCH ...subscriber_id=eq.s-0002 :: HTTP 200 :: []   (cross-tenant denied)\\n\\nWhy these columns matter: trg_transactions_contribution reads them -- 'IF v_sched.insurance_funding_mode = ''save_to_cover'' THEN ...' and 'v_new_accrued := LEAST(v_target, v_sched.insurance_premium_accrued + v_emergency_share * (COALESCE(v_sched.insurance_savings_pct,100)/100.0));'.",
+  "impact": "The spec explicitly requires contribution_schedules.insurance_funding_mode to be rejected; it is not. A subscriber can flip the funding mode, zero or inflate the accrual counter and re-split retirement/emergency percentages outside the RPC that owns those invariants, so the schedule shown in the demo can disagree with what the RPC believes. Bounded, because the sweep in trg_transactions_contribution also requires v_emg_bal >= v_target -- real money must be in emergency_balance, so cover cannot be conjured from the counter alone.",
+  "suggested_fix": "REVOKE UPDATE (insurance_funding_mode, insurance_premium_accrued, insurance_premium_target, insurance_savings_pct, insurance_choice_made, include_insurance, subscriber_id) ON public.contribution_schedules FROM authenticated, anon; -- the same pattern already applied to public.subscribers.",
+  "demo_visible": false,
+  "effort": "S",
+  "roles_affected": [
+   "subscriber"
+  ],
+  "repro": [
+   "Log into the demo as any subscriber.",
+   "PATCH ${VITE_SUPABASE_URL}/rest/v1/contribution_schedules?subscriber_id=eq.<own id> with the localStorage JWT and body {\"insurance_funding_mode\":\"save_to_cover\",\"insurance_premium_accrued\":99999999}.",
+   "The write succeeds (200) even though fund_insurance_products is the only sanctioned door for that field."
+  ],
+  "agent": "A02"
+ },
+ {
+  "id": "A02-004",
+  "title": "Subscriber can create withdrawals and nominees rows directly, bypassing request_withdrawal and its balance/nonce checks",
+  "severity": "medium",
+  "confidence": "confirmed",
+  "category": "rls-write-policy-too-broad",
+  "surface": "database/RLS + PostgREST",
+  "location": "policies withdrawals_insert_self, nominees_insert_self, nominees_update_self, nominees_delete_self",
+  "evidence": "psql probes (all inside BEGIN ... ROLLBACK):\\nR04 sub INSERT own withdrawals row (250,000 UGX, bucket=emergency) || OK || 1\\nR05 sub INSERT withdrawals for s-0002 || ERROR || new row violates row-level security policy for table \"withdrawals\"\\nR06 sub INSERT own nominee || OK || 1\\nR07 sub INSERT nominee for s-0002 || ERROR || new row violates row-level security policy for table \"nominees\"\\nR08 sub DELETE s-0002 nominees || OK || 0\\nmatrix cells: subscriber|nominees|UPDATE|ALLOWED|3 ; subscriber|nominees|DELETE|ALLOWED|3 ; subscriber|nominees|INSERT|ALLOWED-RLS-PASSED (duplicate key value violates unique constraint \"nominees_subscriber_id_type_unique\")\\n\\nStatement used: INSERT INTO withdrawals (id,subscriber_id,amount,bucket,reason,status,date) VALUES ('a02-probe-w1','s-0001',250000,'emergency','a02 probe','processing',CURRENT_DATE)",
+  "impact": "A withdrawal request created this way skips request_withdrawal's balance check, bucket validation and nonce idempotency, yet it lands in the agent / branch / distributor / admin withdrawal queues and in the Withdrawals & Payouts report as a genuine payout request. Nominee shares can be set so they do not sum to 100. Same-tenant only -- cross-tenant inserts and deletes are correctly denied.",
+  "suggested_fix": "Drop withdrawals_insert_self (the app already calls the request_withdrawal DEFINER RPC). Keep the three nominee policies only if useUpdateNominees genuinely writes the table directly; otherwise drop them and add a nominee RPC that enforces the 100% share invariant.",
+  "demo_visible": false,
+  "effort": "S",
+  "roles_affected": [
+   "subscriber",
+   "agent",
+   "branch",
+   "distributor",
+   "admin"
+  ],
+  "repro": [
+   "Log into the demo as any subscriber.",
+   "POST ${VITE_SUPABASE_URL}/rest/v1/withdrawals with the localStorage JWT and body {id:'x1', subscriber_id:'<own id>', amount:250000, bucket:'emergency', reason:'test', status:'processing', date:'<today>'} -- succeeds regardless of the actual emergency balance.",
+   "Open the distributor Withdrawals & Payouts report: the fabricated request is listed."
+  ],
+  "agent": "A02"
+ },
+ {
+  "id": "A02-005",
+  "title": "agent / branch / distributor can create and edit their own hierarchy rows directly, bypassing the creation RPCs (BACKEND.md says this is impossible)",
+  "severity": "medium",
+  "confidence": "confirmed",
+  "category": "doc-vs-live-contract-mismatch",
+  "surface": "database/RLS + docs",
+  "location": "policies subscribers_insert_agent, agents_insert_branch, agents_update_branch, branches_insert_distributor, branches_update_distributor, distributors_update_self; contradicted by docs/BACKEND.md:46, docs/BACKEND.md:601, docs/role-permissions.md:250",
+  "evidence": "docs/BACKEND.md:601 states: 'One SELECT policy per table, no client write policies -- every write goes through a 0035 SECURITY DEFINER RPC.' docs/role-permissions.md:250 repeats it: 'Writes go through the employer SECURITY DEFINER RPCs (0044/0048/0056/0062; no client write policies)'. The live database disagrees.\\n\\npsql probes (all inside BEGIN ... ROLLBACK):\\nW09 agent INSERT subscriber under a-001 || OK || 1        (fires trg_subscribers_after_insert)\\nW10 agent INSERT subscriber under a-042 || ERROR || new row violates row-level security policy for table \"subscribers\"\\nW12 branch INSERT agent in b-kam-015 || OK || 1\\nW13 branch INSERT agent in b-mba-290 || ERROR || new row violates row-level security policy for table \"agents\"\\nW15 branch UPDATE own agents || OK || 5\\nW14 branch UPDATE agent a-1879 (other branch) || OK || 0\\nW16 distributor INSERT branch under d-001 || OK || 1\\nW17 distributor INSERT branch under d-002 || ERROR || new row violates row-level security policy for table \"branches\"\\nW18 distributor UPDATE branch b-bug-074 (d-002) || OK || 0\\nW19 distributor UPDATE own distributors row || OK || 1     (guarded by trg_distributors_enforce_editable_cols)\\nW20 distributor UPDATE d-002 row || OK || 0\\nmatrix cell: agent|subscribers|INSERT|ALLOWED-RLS-PASSED (duplicate key value violates unique constraint \"subscribers_phone_unique_non_demo_idx\")\\nmatrix cell: distributor|branches|UPDATE|ALLOWED|291\\n\\nHTTP: W6 agent POST subscribers under a-042 :: HTTP 403 :: new row violates row-level security policy for table \"subscribers\"",
+  "impact": "No isolation failure -- every success is tenant-correct and every cross-tenant attempt is denied. The defect is that three docs assert clients cannot write these tables at all, and the next contributor will trust the doc. A row created this way skips the RPC's validation (NIN/phone/district checks in create_subscriber_*, create_branch's district FK check, create_agent's shape) while still firing trg_subscribers_after_insert, producing a half-formed but plausible-looking subscriber. subscribers.phone uniqueness is the only backstop and it did hold.",
+  "suggested_fix": "Pick one: either drop the six write policies so the DEFINER RPCs are the only door, or correct docs/BACKEND.md:46, :601 and docs/role-permissions.md:250 to describe what actually exists. Do not leave the doc and the database disagreeing.",
+  "demo_visible": false,
+  "effort": "M",
+  "roles_affected": [
+   "agent",
+   "branch",
+   "distributor"
+  ],
+  "repro": [
+   "Log into the demo as agent a-001 (phone +256700000001).",
+   "POST ${VITE_SUPABASE_URL}/rest/v1/subscribers with the localStorage JWT and body {id:'x', name:'X', phone:'+256799990001', agent_id:'a-001', is_active:true} -- succeeds, with no NIN, district or KYC field.",
+   "The new subscriber appears in the agent's roster with balances auto-created by trg_subscribers_after_insert."
+  ],
+  "agent": "A02"
+ },
+ {
+  "id": "A02-006",
+  "title": "subscriber_insurance_products has no SELECT policy for branch, distributor, employer or admin -- 1,473 live rows invisible to four roles",
+  "severity": "low",
+  "confidence": "confirmed",
+  "category": "rls-coverage-gap",
+  "surface": "database/RLS",
+  "location": "public.subscriber_insurance_products (only 4 policies: sip_select_self, sip_select_agent, sip_insert_self, sip_update_self)",
+  "evidence": "The parallel table insurance_policies (life) has EIGHT policies including insurance_policies_select_admin / _branch / _distributor / _employer. When 0064/0065 split health and funeral cover into subscriber_insurance_products, only the self + agent policies were carried over.\\n\\n$ psql \"$SUPABASE_DB_URL\" -X -q -At -F'|' -c \"select 'sip_rows_total',count(*)::text from subscriber_insurance_products union all select 'sip_rows_for_emp001_staff',count(*)::text from subscriber_insurance_products p join subscribers s on s.id=p.subscriber_id where s.employer_id='emp-001' union all select 'sip_rows_under_d001',count(*)::text from subscriber_insurance_products p join subscribers s on s.id=p.subscriber_id join agents a on a.id=s.agent_id join branches b on b.id=a.branch_id where b.distributor_id='d-001' union all select 'sip_rows_under_bkam015',count(*)::text from subscriber_insurance_products p join subscribers s on s.id=p.subscriber_id join agents a on a.id=s.agent_id where a.branch_id='b-kam-015';\"\\nsip_rows_total|1473\\nsip_rows_for_emp001_staff|21\\nsip_rows_under_d001|1328\\nsip_rows_under_bkam015|6\\n\\nMatrix SELECT row for subscriber_insurance_products: anon=ERR, subscriber=2, agent=11, branch=0, distributor=0, employer=0, admin=0 -- while insurance_policies reads 1/7/13/2478/21/2731 for the same roles.\\n\\ndocs/role-permissions.md says the admin's *_select_admin policies 'clone the distributor see-everything grants' and that the employer Insurance page shows 'per-member cover/status'.",
+  "impact": "No user-visible effect today: src/services/employer.js:364 selects only insurance_policies(*), and no admin/distributor rollup RPC reads the table -- 'select proname from pg_proc where pronamespace=public and prosrc ilike ''%subscriber_insurance_products%''' returns only fund_insurance_products, pay_insurance_premium, submit_hospital_cash_claim, update_employer_profile, trg_transactions_contribution, _insert_subscriber_chain. It is a latent gap: the moment anyone adds a multi-product insurance panel for those roles it will silently return [] instead of erroring, so health/funeral cover would be under-reported without any signal.",
+  "suggested_fix": "Add sip_select_admin / sip_select_branch / sip_select_distributor / sip_select_employer mirroring the four insurance_policies_select_* policies verbatim.",
+  "demo_visible": false,
+  "effort": "S",
+  "roles_affected": [
+   "branch",
+   "distributor",
+   "employer",
+   "admin"
+  ],
+  "repro": [
+   "psql: BEGIN; SET LOCAL ROLE authenticated; SELECT set_config('request.jwt.claims','{\"sub\":\"admin-001\",\"role\":\"authenticated\",\"app_role\":\"admin\",\"adminId\":\"admin-001\"}',true); SELECT count(*) FROM subscriber_insurance_products; ROLLBACK;",
+   "Returns 0, while the same query as postgres returns 1473."
+  ],
+  "agent": "A02"
+ },
+ {
+  "id": "A02-007",
+  "title": "distributors is unreadable by subscriber / agent / branch / employer, contradicting docs/role-permissions.md",
+  "severity": "low",
+  "confidence": "confirmed",
+  "category": "doc-vs-live-contract-mismatch",
+  "surface": "database/RLS + docs",
+  "location": "public.distributors -- policies distributors_select_admin, distributors_select_self, distributors_update_self; docs/role-permissions.md 'Data Scoping Rules Summary'",
+  "evidence": "docs/role-permissions.md states: 'All authenticated roles read distributors: distributors_select USING (true) lets the singleton row resolve for every dashboard''s Operated by ... attribution', and the per-role table lists 'read-only of the singleton distributors row' for subscriber, agent and branch. Migration 0081 replaced that with admin-only + distributor-self.\\n\\npsql probes:\\nR41 subscriber SELECT distributors || OK || 0\\nR42 agent SELECT distributors || OK || 0\\nR43 branch SELECT distributors || OK || 0\\nR39 employer SELECT distributors || OK || 0\\nX04d d-001 reads d-002 distributor row || OK || 0\\nLive: distributor sees 1 (own), admin sees 3.\\n\\nCallers checked: grep -rn \"useEntity('distributor'\" src/ returns only src/dashboard/settings/Settings.jsx:37, src/dashboard/overview/DistributorOverview.jsx:143, src/dashboard/mobile/DistributorHomeMobile.jsx:118, src/dashboard/mobile/DistributorHubMobile.jsx:61, src/dashboard/mobile/SettingsMobile.jsx:16 -- all distributor-shell files, which do have access.",
+  "impact": "Doc drift only, today -- no subscriber/agent/branch/employer component reads the table, so nothing is visibly broken. But docs/role-permissions.md is the reference this very audit's 'expected' column was scored against, and four of its role rows are wrong.",
+  "suggested_fix": "Correct the four role rows in docs/role-permissions.md, or restore a narrow distributors_select_attribution policy (id + name only) if the 'Operated by ...' line is still wanted on the non-distributor shells.",
+  "demo_visible": false,
+  "effort": "S",
+  "roles_affected": [
+   "subscriber",
+   "agent",
+   "branch",
+   "employer"
+  ],
+  "repro": [
+   "psql: BEGIN; SET LOCAL ROLE authenticated; SELECT set_config('request.jwt.claims','{\"sub\":\"a-001\",\"role\":\"authenticated\",\"app_role\":\"agent\",\"agentId\":\"a-001\"}',true); SELECT count(*) FROM distributors; ROLLBACK;",
+   "Returns 0; docs/role-permissions.md says it should return the singleton row."
+  ],
+  "agent": "A02"
+ },
+ {
+  "id": "A02-008",
+  "title": "anon reads of 15 tables return HTTP 401 naming an internal helper function instead of an empty result set",
+  "severity": "low",
+  "confidence": "confirmed",
+  "category": "error-handling",
+  "surface": "database/grants + PostgREST",
+  "location": "missing EXECUTE grant to anon on public.subscriber_agent_id(), public.current_distributor_id(), public.distributor_branch_ids()",
+  "evidence": "$ node a02_http.mjs\\nA1 anon GET districts :: HTTP 200 :: [{\"id\":\"d-buikwe\"}, {\"id\":\"d-bukomansimbi\"}]\\nA2 anon GET subscribers :: HTTP 401 :: {\"code\":\"42501\",\"details\":null,\"hint\":null,\"message\":\"permission denied for function subscriber_agent_id\"}\\nA3 anon GET transactions :: HTTP 401 :: {\"code\":\"42501\",\"message\":\"permission denied for function subscriber_agent_id\"}\\nA4 anon GET money_nonces :: HTTP 200 :: []\\nA5 anon GET entity_status_log :: HTTP 401 :: {\"code\":\"42501\",\"hint\":\"Grant the required privileges to the current role with: GRANT SELECT ON public.entity_status_log TO anon;\",\"message\":\"permission denied for table entity_status_log\"}\\nA6 anon GET users :: HTTP 401 :: {\"code\":\"42501\",\"hint\":\"Grant the required privileges to the current role with: GRANT SELECT ON public.users TO anon;\",\"message\":\"permission denied for table users\"}\\n\\nMatrix: 31 anon cells error this way -- 20 subscriber_agent_id, 7 current_distributor_id, 4 distributor_branch_ids -- across agents, branches, claims, commissions, contribution_schedules, distributors, insurance_policies, nominees, notifications, settlement_batches, subscriber_balances, subscriber_insurance_products, subscribers, transactions, withdrawals; plus 10 table-ACL denials on users / entity_detach_log / entity_status_log.",
+  "impact": "Fail-closed -- no data leaks, and tables whose policies contain no helper (money_nonces, settlement_uploads, ...) correctly return HTTP 200 []. But the response leaks internal schema identifiers and a literal 'GRANT ...' hint to unauthenticated callers, and it is a 401 rather than an empty set: src/services/supabaseClient.js:131-137 (isSupabaseAuthError) treats status === 401 as token expiry and forwardSupabaseAuthError() clears the auth keys and forces a logout+redirect to '/'. Not reproduced end-to-end because no current anon code path reads these tables (the landing/signup flow only reads districts/regions and calls the three anon-granted RPCs), so the logout interaction is reasoned, not observed.",
+  "suggested_fix": "Either GRANT EXECUTE ON FUNCTION public.subscriber_agent_id(), public.current_distributor_id(), public.distributor_branch_ids() TO anon so anon reads return [] uniformly, or REVOKE the table-level grants from anon on those 15 tables so the denial is uniform and says nothing about the schema.",
+  "demo_visible": false,
+  "effort": "S",
+  "roles_affected": [
+   "anon"
+  ],
+  "repro": [
+   "curl -s -H \"apikey: $VITE_SUPABASE_ANON_KEY\" -H \"Authorization: Bearer $VITE_SUPABASE_ANON_KEY\" \"$VITE_SUPABASE_URL/rest/v1/subscribers?select=id&limit=2\"",
+   "Returns HTTP 401 {\"code\":\"42501\",\"message\":\"permission denied for function subscriber_agent_id\"} rather than 200 []."
+  ],
+  "agent": "A02"
+ },
+ {
+  "id": "A02-009",
+  "title": "Live data drifted materially during the audit window (other agents writing through the app)",
+  "severity": "info",
+  "confidence": "confirmed",
+  "category": "environment",
+  "surface": "database",
+  "location": "public.subscribers, public.transactions, public.users",
+  "evidence": "docs/audits/2026-08-23/00-baseline.md \u00a76 vs measured mid-A02:\\n$ psql \"$SUPABASE_DB_URL\" -X -q -At -F'|' -c \"select 'subscribers',count(*) from subscribers union all select 'transactions',count(*) from transactions union all select 'users',count(*) from users union all select 'agents',count(*) from agents union all select 'a-001 subs', count(*) from subscribers where agent_id='a-001';\"\\nsubscribers|5081     (baseline 5064)\\ntransactions|29158   (baseline 29027)\\nusers|51             (baseline 48)\\nagents|2046          (baseline 2046)\\na-001 subs|28        (was 11 at the start of this agent's run)\\nAlso: admin SELECT subscribers returned 5079 mid-run and 5067 in the matrix pass -- two readings minutes apart.",
+  "impact": "None to correctness of this audit's verdicts -- A02 wrote nothing (every probe was rolled back or forced into a constraint violation; verified afterwards: transactions matching 'a02-probe%' = 0, s-0001 total_balance unchanged at 1386092, name/phone/schedule mode/insurance cover unchanged). But every absolute row count in this report and in rls-matrix.csv is point-in-time, and downstream agents should not treat a mismatch against 00-baseline.md as evidence of a defect.",
+  "suggested_fix": "No code change. Downstream audit agents should cite counts with a timestamp, and reconciliation agents (A04/A06) should take their own snapshot rather than reusing A00's.",
+  "demo_visible": false,
+  "effort": "S",
+  "roles_affected": [],
+  "repro": [
+   "Re-run the count query above and compare against 00-baseline.md \u00a76."
+  ],
+  "agent": "A02"
+ },
+ {
+  "id": "A02-010",
+  "title": "One branches row has distributor_id IS NULL and is invisible to every distributor",
+  "severity": "info",
+  "confidence": "confirmed",
+  "category": "data-integrity",
+  "surface": "database",
+  "location": "public.branches row id='tst-branch-msc7w8vm'",
+  "evidence": "$ psql \"$SUPABASE_DB_URL\" -X -q -At -F'|' -c \"select distributor_id, count(*) from branches group by 1 order by 1;\"\\nd-001|291\\nd-002|27\\nd-003|2\\n|1\\n$ psql \"$SUPABASE_DB_URL\" -X -q -At -F'|' -c \"select id from branches where distributor_id is null;\"\\ntst-branch-msc7w8vm\\n\\nbranches_scope_distributor is RESTRICTIVE with USING ((COALESCE(auth.jwt() ->> 'app_role','') <> 'distributor') OR (distributor_id = current_distributor_id())), so a NULL owner matches no distributor. Matrix confirms: admin sees 321 branches, d-001 sees 291, 291+27+2 = 320.",
+  "impact": "An ownership orphan that no distributor can ever see or manage; only the admin's branch list shows it. Looks like a leftover E2E fixture. Reported for A06 (ownership/invariants) rather than remediated here.",
+  "suggested_fix": "Delete the fixture row, or give it a distributor_id. Separately, consider adding a NOT NULL constraint on branches.distributor_id now that trg_branches_default_distributor exists to supply a default.",
+  "demo_visible": false,
+  "effort": "S",
+  "roles_affected": [
+   "distributor",
+   "admin"
+  ],
+  "repro": [
+   "psql -c \"select id, name, distributor_id from branches where distributor_id is null;\"",
+   "Returns tst-branch-msc7w8vm."
+  ],
+  "agent": "A02"
+ }
+]

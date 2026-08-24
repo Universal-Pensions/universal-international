@@ -1,0 +1,17 @@
+{
+  "role": "subscriber",
+  "route": "/dashboard/withdraw",
+  "project": "chromium",
+  "url": "http://localhost:5173/dashboard/withdraw",
+  "violations": [
+    {
+      "id": "color-contrast",
+      "impact": "serious",
+      "help": "Elements must meet minimum color contrast ratio thresholds",
+      "nodes": 1,
+      "targets": [
+        "._sumValPos_31alo_547"
+      ]
+    }
+  ]
+}

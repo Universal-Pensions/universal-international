@@ -1,0 +1,407 @@
+{
+  "get_admin_attention": {
+    "role": "admin",
+    "status": 200,
+    "isArray": false,
+    "keys": [
+      "asOf",
+      "today",
+      "delayedNav",
+      "thresholds",
+      "reconciliation",
+      "inactiveBranches",
+      "delayedWithdrawals",
+      "dormantSubscribers",
+      "pendingAccessRequests",
+      "delayedCustodyTransfers",
+      "delayedInsurancePayouts",
+      "delayedEmployerTransfers",
+      "underperformingDistributors"
+    ]
+  },
+  "get_admin_attention_rows": {
+    "role": "admin",
+    "status": 200,
+    "isArray": true,
+    "n": 5,
+    "keys": [
+      "id",
+      "date",
+      "href",
+      "kind",
+      "dueBy",
+      "amount",
+      "status",
+      "primary",
+      "daysLate",
+      "secondary",
+      "recipientId",
+      "recipientName",
+      "recipientRole"
+    ]
+  },
+  "get_agent_commission_detail": {
+    "role": "branch",
+    "status": 200,
+    "isArray": false,
+    "keys": [
+      "scalar:string"
+    ]
+  },
+  "get_agent_commission_list": {
+    "role": "branch",
+    "status": 200,
+    "isArray": true,
+    "n": 4,
+    "keys": [
+      "agent_id",
+      "agent_name",
+      "employee_id",
+      "branch_id",
+      "branch_name",
+      "total_commissions",
+      "total_paid",
+      "total_due",
+      "subscribers_onboarded",
+      "active_subscribers",
+      "filtered_amount",
+      "filtered_count"
+    ]
+  },
+  "get_all_employers_metrics": {
+    "role": "admin",
+    "status": 200,
+    "isArray": true,
+    "n": 8,
+    "keys": [
+      "id",
+      "name",
+      "sector",
+      "status",
+      "district",
+      "createdAt",
+      "headcount",
+      "activeCount",
+      "insuredCount",
+      "totalBalance",
+      "payrollCadence",
+      "totalContributions",
+      "employerContributions"
+    ]
+  },
+  "get_branch_pending_contributions": {
+    "role": "branch",
+    "status": 200,
+    "isArray": true,
+    "n": 4,
+    "keys": [
+      "agent_id",
+      "agent_name",
+      "total",
+      "pending"
+    ]
+  },
+  "get_breadcrumb": {
+    "role": "admin",
+    "status": 200,
+    "isArray": true,
+    "n": 1,
+    "keys": [
+      "id",
+      "name",
+      "level"
+    ]
+  },
+  "get_commission_rate": {
+    "role": "distributor",
+    "status": 200,
+    "isArray": false,
+    "keys": [
+      "scalar:number"
+    ]
+  },
+  "get_commission_summary": {
+    "role": "distributor",
+    "status": 200,
+    "isArray": false,
+    "keys": [
+      "countDue",
+      "totalDue",
+      "countPaid",
+      "totalPaid",
+      "countTotal",
+      "totalCommissions"
+    ]
+  },
+  "get_distributor_rollup": {
+    "role": "admin",
+    "status": 200,
+    "isArray": true,
+    "n": 3,
+    "keys": [
+      "distributor_id",
+      "branches",
+      "agents",
+      "subscribers",
+      "active_subscribers",
+      "aum"
+    ]
+  },
+  "get_employer_activity_rollup": {
+    "role": "admin",
+    "status": 200,
+    "isArray": false,
+    "keys": [
+      "topEmployer",
+      "dailyWithdrawals",
+      "weeklyWithdrawals",
+      "dailyContributions",
+      "monthlyWithdrawals",
+      "newSubscribersToday",
+      "weeklyContributions",
+      "monthlyContributions",
+      "prevDailyWithdrawals",
+      "prevWeeklyWithdrawals",
+      "newSubscribersThisWeek",
+      "prevDailyContributions",
+      "prevMonthlyWithdrawals",
+      "newSubscribersThisMonth",
+      "prevNewSubscribersToday",
+      "prevWeeklyContributions",
+      "prevNewSubscribersThisWeek",
+      "prevNewSubscribersThisMonth"
+    ]
+  },
+  "get_employer_geo_rollup": {
+    "role": "admin",
+    "status": 200,
+    "isArray": false,
+    "keys": [
+      "byRegion",
+      "byDistrict"
+    ]
+  },
+  "get_employer_metrics": {
+    "role": "employer",
+    "status": 200,
+    "isArray": false,
+    "keys": [
+      "active",
+      "headcount",
+      "suspended",
+      "employeeYtd",
+      "employerYtd",
+      "insuredCount",
+      "totalBalance",
+      "ownContributions",
+      "totalContributions",
+      "employerContributions"
+    ]
+  },
+  "get_entity_commission_summary": {
+    "role": "distributor",
+    "status": 200,
+    "isArray": false,
+    "keys": [
+      "total",
+      "countDue",
+      "totalDue",
+      "countPaid",
+      "totalPaid",
+      "countTotal",
+      "settlementRate"
+    ]
+  },
+  "get_entity_metrics_rollup": {
+    "role": "distributor",
+    "status": 200,
+    "isArray": false,
+    "keys": [
+      "b-kam-015"
+    ]
+  },
+  "get_my_employer_funding": {
+    "role": "subscriber",
+    "status": 200,
+    "isArray": false,
+    "keys": [
+      "scalar:string"
+    ]
+  },
+  "get_nav_overview": {
+    "role": "admin",
+    "status": 200,
+    "isArray": false,
+    "keys": [
+      "aum",
+      "series",
+      "fundCode",
+      "changeAbs",
+      "changePct",
+      "growthPct",
+      "currentNav",
+      "pendingDays",
+      "previousNav",
+      "totalGrowth",
+      "avgGrowthPct",
+      "firstNavDate",
+      "unitsInIssue",
+      "membersPriced",
+      "totalInvested",
+      "currentNavDate",
+      "publishedCount",
+      "membersUnpriced",
+      "previousNavDate",
+      "membersWithBasis",
+      "lastPublishedDaysAgo"
+    ]
+  },
+  "get_pending_dues_by_agent": {
+    "role": "distributor",
+    "status": 200,
+    "isArray": true,
+    "n": 1000,
+    "keys": [
+      "agent_id",
+      "agent_name",
+      "employee_id",
+      "branch_id",
+      "branch_name",
+      "pending_amount",
+      "pending_count"
+    ]
+  },
+  "get_pending_dues_by_branch": {
+    "role": "distributor",
+    "status": 200,
+    "isArray": true,
+    "n": 288,
+    "keys": [
+      "branch_id",
+      "branch_name",
+      "pending_amount",
+      "pending_count",
+      "agent_count"
+    ]
+  },
+  "get_platform_overview": {
+    "role": "admin",
+    "status": 200,
+    "isArray": false,
+    "keys": [
+      "aum",
+      "agents",
+      "branches",
+      "byChannel",
+      "employers",
+      "distributors",
+      "totalSubscribers",
+      "totalWithdrawals",
+      "activeSubscribers",
+      "subscribersDirect",
+      "totalContributions",
+      "inactiveSubscribers",
+      "subscribersViaEmployer",
+      "subscribersViaDistributor"
+    ]
+  },
+  "get_top_branch": {
+    "role": "distributor",
+    "status": 200,
+    "isArray": false,
+    "keys": [
+      "scalar:string"
+    ]
+  },
+  "get_top_entities": {
+    "role": "distributor",
+    "status": 200,
+    "isArray": true,
+    "n": 5,
+    "keys": [
+      "id",
+      "name",
+      "parent_id",
+      "parent_name",
+      "manager_name",
+      "status",
+      "total_subscribers",
+      "active_rate",
+      "aum",
+      "total_contributions"
+    ]
+  },
+  "list_access_requests": {
+    "role": "admin",
+    "status": 200,
+    "isArray": true,
+    "n": 4,
+    "keys": [
+      "id",
+      "kind",
+      "sector",
+      "status",
+      "message",
+      "orgName",
+      "district",
+      "createdAt",
+      "decidedAt",
+      "contactName",
+      "contactEmail",
+      "contactPhone",
+      "provisionedId",
+      "registrationNo"
+    ]
+  },
+  "list_nav_snapshots": {
+    "role": "admin",
+    "status": 200,
+    "isArray": false,
+    "keys": [
+      "rows",
+      "total"
+    ]
+  },
+  "list_nominee_claims": {
+    "role": "admin",
+    "status": 200,
+    "isArray": true,
+    "n": 6,
+    "keys": [
+      "id",
+      "notes",
+      "status",
+      "product",
+      "district",
+      "createdAt",
+      "reference",
+      "reviewNote",
+      "reviewedAt",
+      "reviewedBy",
+      "claimantNin",
+      "dateOfDeath",
+      "deceasedNin",
+      "claimantName",
+      "deceasedName",
+      "relationship",
+      "claimantEmail",
+      "claimantPhone",
+      "deceasedPhone",
+      "matchedSubscriberId"
+    ]
+  },
+  "search_entities": {
+    "role": "admin",
+    "status": 200,
+    "isArray": true,
+    "n": 8,
+    "keys": [
+      "entity_id",
+      "entity_name",
+      "level",
+      "label",
+      "parent_id",
+      "score"
+    ]
+  }
+}

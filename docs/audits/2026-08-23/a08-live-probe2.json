@@ -1,0 +1,364 @@
+{
+  "results": [
+    {
+      "probe": "LEVEL_LIST_COLUMNS",
+      "role": "admin",
+      "table": "regions",
+      "status": 200,
+      "code": "",
+      "msg": "",
+      "cr": "0-0/*",
+      "body": "[{\"id\":\"r-central\",\"name\":\"Central\",\"parent_id\":\"ug\",\"center_lng\":32.58,\"center_lat\":0.35}]"
+    },
+    {
+      "probe": "LEVEL_LIST_COLUMNS",
+      "role": "admin",
+      "table": "districts",
+      "status": 200,
+      "code": "",
+      "msg": "",
+      "cr": "0-0/*",
+      "body": "[{\"id\":\"d-buikwe\",\"name\":\"Buikwe\",\"region_id\":\"r-central\",\"center_lng\":33.0388,\"center_lat\":0.3016,\"active\":true}]"
+    },
+    {
+      "probe": "LEVEL_LIST_COLUMNS",
+      "role": "admin",
+      "table": "subscribers",
+      "status": 200,
+      "code": "",
+      "msg": "",
+      "cr": "0-0/*",
+      "body": "[{\"id\":\"s-0002\",\"name\":\"Mary Kiiza\",\"phone\":\"+256714288464\",\"email\":\"mary.kiiza216@mail.ug\",\"gender\":\"female\",\"age\":54,\"dob\":\"1972-06-15\",\"nin\":null,\"occupation\":null,\"agent_id\":\"a-001\",\"district_id\":"
+    },
+    {
+      "probe": "LEVEL_LIST_COLUMNS",
+      "role": "admin",
+      "table": "distributors",
+      "status": 200,
+      "code": "",
+      "msg": "",
+      "cr": "0-0/*",
+      "body": "[{\"id\":\"d-001\",\"name\":\"Universal Pensions Uganda — National\",\"parent_id\":\"ug\",\"manager_name\":\"Distributor Lead\",\"manager_phone\":\"+256700000021\",\"manager_email\":null,\"status\":\"active\",\"created_at\":\"202"
+    },
+    {
+      "probe": "LEVEL_LIST_COLUMNS",
+      "role": "admin",
+      "table": "branches",
+      "status": 200,
+      "code": "",
+      "msg": "",
+      "cr": "0-0/*",
+      "body": "[{\"id\":\"b-bui-001\",\"name\":\"Buikwe Central\",\"district_id\":\"d-buikwe\",\"center_lng\":33.0472,\"center_lat\":0.2731,\"manager_name\":\"Ronald Lubega\",\"manager_phone\":\"+256714386015\",\"manager_email\":null,\"status"
+    },
+    {
+      "probe": "LEVEL_LIST_COLUMNS",
+      "role": "admin",
+      "table": "agents",
+      "status": 200,
+      "code": "",
+      "msg": "",
+      "cr": "0-0/*",
+      "body": "[{\"id\":\"a-001\",\"name\":\"Dorothy Kiiza\",\"gender\":\"female\",\"employee_id\":\"EMP-0001\",\"branch_id\":\"b-bui-001\",\"center_lng\":33.05258287159556,\"center_lat\":0.28302294284507906,\"phone\":\"+256711443975\",\"email\""
+    },
+    {
+      "probe": "LEVEL_LIST_COLUMNS",
+      "role": "distributor",
+      "table": "regions",
+      "status": 200,
+      "code": "",
+      "msg": "",
+      "cr": "0-0/*",
+      "body": "[{\"id\":\"r-central\",\"name\":\"Central\",\"parent_id\":\"ug\",\"center_lng\":32.58,\"center_lat\":0.35}]"
+    },
+    {
+      "probe": "LEVEL_LIST_COLUMNS",
+      "role": "distributor",
+      "table": "districts",
+      "status": 200,
+      "code": "",
+      "msg": "",
+      "cr": "0-0/*",
+      "body": "[{\"id\":\"d-buikwe\",\"name\":\"Buikwe\",\"region_id\":\"r-central\",\"center_lng\":33.0388,\"center_lat\":0.3016,\"active\":true}]"
+    },
+    {
+      "probe": "LEVEL_LIST_COLUMNS",
+      "role": "distributor",
+      "table": "subscribers",
+      "status": 200,
+      "code": "",
+      "msg": "",
+      "cr": "0-0/*",
+      "body": "[{\"id\":\"s-0002\",\"name\":\"Mary Kiiza\",\"phone\":\"+256714288464\",\"email\":\"mary.kiiza216@mail.ug\",\"gender\":\"female\",\"age\":54,\"dob\":\"1972-06-15\",\"nin\":null,\"occupation\":null,\"agent_id\":\"a-001\",\"district_id\":"
+    },
+    {
+      "probe": "LEVEL_LIST_COLUMNS",
+      "role": "distributor",
+      "table": "distributors",
+      "status": 200,
+      "code": "",
+      "msg": "",
+      "cr": "0-0/*",
+      "body": "[{\"id\":\"d-001\",\"name\":\"Universal Pensions Uganda — National\",\"parent_id\":\"ug\",\"manager_name\":\"Distributor Lead\",\"manager_phone\":\"+256700000021\",\"manager_email\":null,\"status\":\"active\",\"created_at\":\"202"
+    },
+    {
+      "probe": "LEVEL_LIST_COLUMNS",
+      "role": "distributor",
+      "table": "branches",
+      "status": 200,
+      "code": "",
+      "msg": "",
+      "cr": "0-0/*",
+      "body": "[{\"id\":\"b-bui-001\",\"name\":\"Buikwe Central\",\"district_id\":\"d-buikwe\",\"center_lng\":33.0472,\"center_lat\":0.2731,\"manager_name\":\"Ronald Lubega\",\"manager_phone\":\"+256714386015\",\"manager_email\":null,\"status"
+    },
+    {
+      "probe": "LEVEL_LIST_COLUMNS",
+      "role": "distributor",
+      "table": "agents",
+      "status": 200,
+      "code": "",
+      "msg": "",
+      "cr": "0-0/*",
+      "body": "[{\"id\":\"a-001\",\"name\":\"Dorothy Kiiza\",\"gender\":\"female\",\"employee_id\":\"EMP-0001\",\"branch_id\":\"b-bui-001\",\"center_lng\":33.05258287159556,\"center_lat\":0.28302294284507906,\"phone\":\"+256711443975\",\"email\""
+    },
+    {
+      "probe": "LEVEL_LIST_COLUMNS",
+      "role": "branch",
+      "table": "regions",
+      "status": 200,
+      "code": "",
+      "msg": "",
+      "cr": "0-0/*",
+      "body": "[{\"id\":\"r-central\",\"name\":\"Central\",\"parent_id\":\"ug\",\"center_lng\":32.58,\"center_lat\":0.35}]"
+    },
+    {
+      "probe": "LEVEL_LIST_COLUMNS",
+      "role": "branch",
+      "table": "districts",
+      "status": 200,
+      "code": "",
+      "msg": "",
+      "cr": "0-0/*",
+      "body": "[{\"id\":\"d-buikwe\",\"name\":\"Buikwe\",\"region_id\":\"r-central\",\"center_lng\":33.0388,\"center_lat\":0.3016,\"active\":true}]"
+    },
+    {
+      "probe": "LEVEL_LIST_COLUMNS",
+      "role": "branch",
+      "table": "subscribers",
+      "status": 200,
+      "code": "",
+      "msg": "",
+      "cr": "0-0/*",
+      "body": "[{\"id\":\"s-0292\",\"name\":\"James Lubega\",\"phone\":\"+256713172114\",\"email\":\"james.lubega89@hotmail.com\",\"gender\":\"male\",\"age\":51,\"dob\":\"1975-06-15\",\"nin\":null,\"occupation\":null,\"agent_id\":\"a-087\",\"district"
+    },
+    {
+      "probe": "LEVEL_LIST_COLUMNS",
+      "role": "branch",
+      "table": "distributors",
+      "status": 200,
+      "code": "",
+      "msg": "",
+      "cr": "*/*",
+      "body": "[]"
+    },
+    {
+      "probe": "LEVEL_LIST_COLUMNS",
+      "role": "branch",
+      "table": "branches",
+      "status": 200,
+      "code": "",
+      "msg": "",
+      "cr": "0-0/*",
+      "body": "[{\"id\":\"b-kam-015\",\"name\":\"Kampala Central\",\"district_id\":\"d-kampala\",\"center_lng\":32.6077,\"center_lat\":0.3163,\"manager_name\":\"Isaac Asiimwe\",\"manager_phone\":\"+256759795078\",\"manager_email\":null,\"stat"
+    },
+    {
+      "probe": "LEVEL_LIST_COLUMNS",
+      "role": "branch",
+      "table": "agents",
+      "status": 200,
+      "code": "",
+      "msg": "",
+      "cr": "0-0/*",
+      "body": "[{\"id\":\"a-087\",\"name\":\"Beatrice Drazu\",\"gender\":\"female\",\"employee_id\":\"EMP-0087\",\"branch_id\":\"b-kam-015\",\"center_lng\":32.61582417099078,\"center_lat\":0.31924185665710075,\"phone\":\"+256762199359\",\"email"
+    },
+    {
+      "probe": "MEMBER_SELECT",
+      "role": "employer",
+      "table": "subscribers",
+      "status": 200,
+      "code": "",
+      "msg": "",
+      "cr": "0-0/*",
+      "body": "[{\"id\":\"empe-020\",\"name\":\"Daniel Okot\",\"email\":\"daniel.okot@nilebreweries.demo\",\"phone\":\"+256700100020\",\"gender\":\"male\",\"age\":34,\"dob\":\"1992-06-15\",\"nin\":\"CM34030099001T\",\"occupation\":\"Shift Superviso"
+    },
+    {
+      "probe": "ORDER",
+      "role": "admin",
+      "table": "subscribers.registered_date",
+      "status": 200,
+      "code": "",
+      "msg": "",
+      "cr": "0-0/*",
+      "body": "[{\"id\":\"tst-sub-tree-msc7vzsc\",\"name\":\"TST tree member\",\"email\":null,\"phone\":\"+25679sc7vzsc\",\"gender\":null,\"age\":null,\"dob\":null,\"nin\":null,\"occupation\":null,\"agent_id\":null,\"district_id\":null,\"kyc_st"
+    },
+    {
+      "probe": "ORDER",
+      "role": "admin",
+      "table": "subscribers.name",
+      "status": 200,
+      "code": "",
+      "msg": "",
+      "cr": "0-0/*",
+      "body": "[{\"id\":\"emp-005-e02\",\"name\":\"Wilson Masaba\",\"email\":null,\"phone\":\"+256700200032\",\"gender\":\"male\",\"age\":36,\"dob\":\"1990-06-15\",\"nin\":null,\"occupation\":\"Buyer\",\"agent_id\":null,\"district_id\":\"d-mbale\",\"ky"
+    },
+    {
+      "probe": "ORDER",
+      "role": "admin",
+      "table": "subscribers.kyc_status",
+      "status": 200,
+      "code": "",
+      "msg": "",
+      "cr": "0-0/*",
+      "body": "[{\"id\":\"s-0002\",\"name\":\"Mary Kiiza\",\"email\":\"mary.kiiza216@mail.ug\",\"phone\":\"+256714288464\",\"gender\":\"female\",\"age\":54,\"dob\":\"1972-06-15\",\"nin\":null,\"occupation\":null,\"agent_id\":\"a-001\",\"district_id\":"
+    },
+    {
+      "probe": "ORDER",
+      "role": "admin",
+      "table": "subscribers.is_active",
+      "status": 200,
+      "code": "",
+      "msg": "",
+      "cr": "0-0/*",
+      "body": "[{\"id\":\"s-0002\",\"name\":\"Mary Kiiza\",\"email\":\"mary.kiiza216@mail.ug\",\"phone\":\"+256714288464\",\"gender\":\"female\",\"age\":54,\"dob\":\"1972-06-15\",\"nin\":null,\"occupation\":null,\"agent_id\":\"a-001\",\"district_id\":"
+    },
+    {
+      "probe": "ORDER",
+      "role": "subscriber",
+      "table": "transactions.date",
+      "status": 200,
+      "code": "",
+      "msg": "",
+      "cr": "0-0/*",
+      "body": "[{\"id\":\"tx-s-0001-adhoc-9d14c718d548444bbc0902df56cac582\",\"subscriber_id\":\"s-0001\",\"agent_id\":null,\"type\":\"contribution\",\"amount\":5000,\"date\":\"2026-08-07T11:39:01.109607+00:00\",\"status\":\"settled\",\"met"
+    },
+    {
+      "probe": "ORDER",
+      "role": "employer",
+      "table": "transactions.date",
+      "status": 200,
+      "code": "",
+      "msg": "",
+      "cr": "0-0/*",
+      "body": "[{\"id\":\"t-17bfd160c90e4ff0aecc41d9eb1fec20\",\"subscriber_id\":\"empe-018\",\"agent_id\":null,\"type\":\"insurance_premium\",\"amount\":40000,\"date\":\"2026-08-23T09:50:16.666439+00:00\",\"status\":\"settled\",\"method\":\""
+    },
+    {
+      "probe": "ORDER",
+      "role": "subscriber",
+      "table": "claims.submitted_date",
+      "status": 200,
+      "code": "",
+      "msg": "",
+      "cr": "0-0/*",
+      "body": "[{\"id\":\"clm-f5168a34bd824d1f9b7079e7177c9dfd\",\"subscriber_id\":\"s-0001\",\"type\":\"health\",\"status\":\"submitted\",\"amount\":750000,\"incident_date\":\"2026-07-10\",\"submitted_date\":\"2026-08-07\",\"description\":\"Ad"
+    },
+    {
+      "probe": "ORDER",
+      "role": "subscriber",
+      "table": "withdrawals.date",
+      "status": 200,
+      "code": "",
+      "msg": "",
+      "cr": "0-0/*",
+      "body": "[{\"id\":\"wd-s-0001-1\",\"subscriber_id\":\"s-0001\",\"amount\":20126,\"bucket\":\"emergency\",\"reason\":\"Other\",\"method\":\"MTN Mobile Money\",\"status\":\"paid\",\"date\":\"2025-11-27\",\"reference\":\"[demo-closeout]\",\"create"
+    },
+    {
+      "probe": "ORDER",
+      "role": "subscriber",
+      "table": "nominees.created_at",
+      "status": 200,
+      "code": "",
+      "msg": "",
+      "cr": "0-0/*",
+      "body": "[{\"id\":\"nom-s-0001-p-1\",\"subscriber_id\":\"s-0001\",\"type\":\"pension\",\"name\":\"Robert Kasozi\",\"phone\":\"+256776215815\",\"relationship\":\"child\",\"nin\":\"CM60864063\",\"share\":50,\"created_at\":\"2026-07-27T14:26:06."
+    },
+    {
+      "probe": "ORDER",
+      "role": "employer",
+      "table": "contribution_runs.run_at",
+      "status": 200,
+      "code": "",
+      "msg": "",
+      "cr": "0-0/*",
+      "body": "[{\"id\":\"run-73a0e5c89d06448fb7b49696fe8946b4\",\"employer_id\":\"emp-001\",\"period_label\":\"E2E Run 1785753040826\",\"status\":\"completed\",\"employer_total\":1972000,\"employee_total\":1972000,\"grand_total\":470400"
+    },
+    {
+      "probe": "ORDER",
+      "role": "distributor",
+      "table": "notifications.created_at",
+      "status": 200,
+      "code": "",
+      "msg": "",
+      "cr": "*/*",
+      "body": "[]"
+    },
+    {
+      "probe": "ORDER",
+      "role": "distributor",
+      "table": "settlement_batches.created_at",
+      "status": 200,
+      "code": "",
+      "msg": "",
+      "cr": "0-0/*",
+      "body": "[{\"id\":\"sb-09258a3b9cc94064be51e0a6f0a04fa5\",\"agent_id\":\"a-001\",\"branch_id\":\"b-bui-001\",\"pending_total\":15000,\"paid_amount\":5000,\"txn_ref\":\"E2E-PARTIAL-1785752804482\",\"paid_date\":\"2026-08-03\",\"line_co"
+    },
+    {
+      "probe": "ORDER",
+      "role": "employer",
+      "table": "employer_invites.created_at",
+      "status": 200,
+      "code": "",
+      "msg": "",
+      "cr": "0-0/*",
+      "body": "[{\"token\":\"inv-097aadbd95c649d9ae4e37309e9a920d\",\"employer_id\":\"emp-001\",\"prefill\":{\"email\": \"achint.i091@gmail.com\", \"phone\": \"701234567\", \"fullName\": \"Achint Ahluwalia\", \"compensation\": 1000000},\"co"
+    },
+    {
+      "probe": "ORDER",
+      "role": "distributor",
+      "table": "commissions.first_contribution_date",
+      "status": 200,
+      "code": "",
+      "msg": "",
+      "cr": "0-0/*",
+      "body": "[{\"id\":\"c-01000103\",\"agent_id\":\"a-001\",\"branch_id\":\"b-bui-001\",\"subscriber_id\":\"s-100126\",\"subscriber_name\":\"A03AUDIT One\",\"amount\":5000,\"status\":\"due\",\"first_contribution_date\":\"2026-08-23\",\"due_date"
+    }
+  ],
+  "caps": [
+    {
+      "label": "employer run contributions (getEmployerContributions)",
+      "role": "employer",
+      "status": 200,
+      "contentRange": "0-177/178",
+      "note": null
+    },
+    {
+      "label": "distributor commissions (unbounded .from(commissions))",
+      "role": "distributor",
+      "status": 206,
+      "contentRange": "0-999/4617",
+      "note": null
+    },
+    {
+      "label": "agent subscriber list",
+      "role": "agent",
+      "status": 200,
+      "contentRange": "0-25/26",
+      "note": null
+    },
+    {
+      "label": "subscriber transactions",
+      "role": "subscriber",
+      "status": 200,
+      "contentRange": "0-9/10",
+      "note": null
+    }
+  ]
+}

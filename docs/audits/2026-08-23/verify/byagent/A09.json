@@ -1,0 +1,416 @@
+[
+ {
+  "id": "A09-001",
+  "title": "Keepalive monitor cannot see or prevent the Supabase auto-pause that takes the demo down",
+  "severity": "high",
+  "confidence": "confirmed",
+  "category": "availability-monitoring",
+  "surface": "infra/ci",
+  "location": ".github/workflows/keepalive.yml:29-31 + server/index.ts:110-116",
+  "evidence": "$ cat .github/workflows/keepalive.yml (line 29-31)\n          code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 30 \\\n            \"https://uganda-dashboard-api.onrender.com/healthz\")\n\n$ sed -n '110,116p' server/index.ts\napp.get('/healthz', cors(corsOptions), (_req, res) => {\n  res.setHeader('Cache-Control', 'no-store');\n  res.status(200).json({ ok: true });\n});\n(comment at :95-97: \"Must remain I/O-free so a misconfigured Supabase deploy still surfaces as `service up, env wrong` rather than a network outage (G16)\")\n\n$ gh run list --workflow=keepalive.yml --limit 200 --created 2026-08-18..2026-08-23 --json conclusion,createdAt | python3 ...\nruns in 2026-08-18..2026-08-23: 200\nconclusions: Counter({'success': 200})",
+  "impact": "Supabase free tier auto-paused after ~7 idle days (last activity 2026-08-11, discovered paused 2026-08-23). The only scheduled monitor pings an endpoint that is deliberately I/O-free and therefore generates zero Postgres activity, so it can neither defer the pause nor detect it: 200 of 200 runs reported success while the demo was unusable. A rep opening the demo cold sees shell chrome, zero data and 503 on every /api/* call, with no in-product explanation, until a human with Supabase dashboard access clicks restore (~2 min, 6 failed /readyz polls first).",
+  "suggested_fix": "Point keepalive.yml:31 at /readyz instead of /healthz (one line). /readyz performs one cheap read against commission_config, so the ping both generates the DB activity that defers the pause and turns red when the DB is unreachable. Alternatives: a second GHA cron running `psql \"$SUPABASE_DB_URL\" -c 'select 1'` (needs a prod credential added to GitHub, weaker), or Supabase Pro at $25/mo (removes auto-pause and adds PITR, also closing A09-003).",
+  "demo_visible": true,
+  "effort": "S",
+  "roles_affected": [
+   "all"
+  ],
+  "repro": [
+   "Leave the Supabase project idle for ~7 days (the GHA keepalive keeps pinging /healthz throughout)",
+   "Observe: `gh run list --workflow=keepalive.yml` shows 100% success",
+   "Open https://uganda-dashboard.vercel.app and sign in as any persona",
+   "Frontend renders with zero data; every /api/* call returns 503; /readyz returns {\"ok\":false,\"code\":\"not_ready\"}",
+   "Only a manual Supabase restore recovers it (~120 s)"
+  ],
+  "agent": "A09"
+ },
+ {
+  "id": "A09-002",
+  "title": "Playwright E2E job times out on every push to main, so the \u00a715-M1 db guard has never executed and nothing gates production",
+  "severity": "high",
+  "confidence": "confirmed",
+  "category": "ci-gating",
+  "surface": "infra/ci",
+  "location": ".github/workflows/test.yml (job `e2e`, timeout-minutes: 20; steps \"Run Playwright full matrix\" and \"Assert db/ specs actually executed \u2026 (\u00a715-M1)\")",
+  "evidence": "$ gh api repos/shubhang1992/uganda-dashboard/actions/jobs/93757067117 --jq '...'\n{\"completed\":\"2026-08-11T11:19:42Z\",\"conclusion\":\"cancelled\",\"name\":\"Playwright E2E\",\"started\":\"2026-08-11T10:59:26Z\",\"steps\":[...\n {\"n\":\"Run Playwright full matrix (main post-merge \u2014 chromium + webkit, smoke + flow + regression + db)\",\"c\":\"cancelled\",\"s\":\"2026-08-11T11:00:49Z\",\"e\":\"2026-08-11T11:19:39Z\"},\n {\"n\":\"Assert db/ specs actually executed (not silently skipped) (\u00a715-M1)\",\"c\":\"skipped\"},\n {\"n\":\"Upload Playwright HTML report\",\"c\":\"skipped\"},\n {\"n\":\"Upload Playwright traces + screenshots on failure\",\"c\":\"skipped\"}]}\n\n$ <sweep of every push-to-main run in the last 60 workflow runs> | awk '{print $2, $3}' | sort | uniq -c\n  41 cancelled m1=skipped\n\n$ gh api repos/shubhang1992/uganda-dashboard/branches/main/protection\n{\"message\":\"Branch not protected\",\"status\":\"404\"}\n$ gh api repos/shubhang1992/uganda-dashboard/rulesets\n[]\n\n$ gh run list --workflow=test.yml --limit 60 --json conclusion,event | ...\ntotal runs listed: 60\n('pull_request','cancelled') 3\n('pull_request','failure') 16\n('push','cancelled') 41",
+  "impact": "The full Playwright matrix needs >24.4 min at --workers=1 (baseline \u00a710) and playwright.config.ts:52 sets `retries: CI ? 1 : 0`, so CI is strictly slower than that against a 20-minute job ceiling. The job is cancelled every time and every subsequent step is skipped: the guard written specifically to catch silently-skipped RLS / money-idempotency / schema-invariant specs has run ZERO times in 41 attempts, and the HTML report and traces are never uploaded either (`if: ${{ !cancelled() }}` is false on a timeout). With main unprotected, no rulesets, and Vercel auto-deploying on push, bd637f6 shipped to production on a cancelled pipeline \u2014 as did all 40 pushes before it. This is why the 30 deterministic Playwright failures in baseline \u00a710 reached production unnoticed. Zero green CI runs of any kind in the last 60 runs.",
+  "suggested_fix": "Split e2e into its own job or raise timeout-minutes to >=45; move the \u00a715-M1 assertion BEFORE the full-matrix step (or into its own always-run job) so it executes regardless; change both artifact uploads from `if: ${{ !cancelled() }}` to `if: always()`. Consider a branch-protection rule on main requiring lint-and-unit at minimum.",
+  "demo_visible": false,
+  "effort": "M",
+  "roles_affected": [
+   "all"
+  ],
+  "repro": [
+   "gh run list --workflow=test.yml --limit 60 --json conclusion,event \u2192 41/41 push runs 'cancelled'",
+   "gh api repos/shubhang1992/uganda-dashboard/actions/jobs/93757067117 \u2192 full-matrix step cancelled at 18m50s, \u00a715-M1 step skipped",
+   "Repeat for runs 30809969527, 30154831059, 27422831333 \u2192 identical (cancelled / m1=skipped) spanning 2026-06-12 to 2026-08-11"
+  ],
+  "agent": "A09"
+ },
+ {
+  "id": "A09-003",
+  "title": "`npm run seed` TRUNCATEs the live demo database with no confirmation and no backup",
+  "severity": "high",
+  "confidence": "confirmed",
+  "category": "data-destruction-risk",
+  "surface": "scripts",
+  "location": "package.json (\"seed\") -> scripts/seed-supabase.mjs:335-365",
+  "evidence": "$ python3 -c \"...json.load(open('package.json'))['scripts']...\"\nseed: dotenv -e .env.local -- node scripts/seed-supabase.mjs\n\n$ sed -n '325,375p' scripts/seed-supabase.mjs\n    //  \u26a0\ufe0f  DESTRUCTIVE RESET \u2014 TRUNCATE \u2026 RESTART IDENTITY CASCADE  \u26a0\ufe0f\n    //  \u203c\ufe0f  ONLY SAFE against the fresh, empty demo project this script is run\n    //      against. It is HUMAN-RUN ONLY and will irrecoverably destroy ALL\n    //      data in these tables \u2026 There is no undo.\n    console.log('\u2022 TRUNCATE (destructive reset)\u2026');\n    await client.query(`\n      TRUNCATE TABLE\n        regions, districts, branches, agents, subscribers, subscriber_balances,\n        contribution_schedules, insurance_policies, nominees, transactions,\n        claims, withdrawals, commission_config, commissions, \u2026\n\n$ grep -nE \"DELETE|TRUNCATE|confirm|process.argv|--yes|--force|readline|ALLOW\" scripts/seed-supabase.mjs\n335:    //  \u26a0\ufe0f  DESTRUCTIVE RESET \u2026\n359:    console.log('\u2022 TRUNCATE (destructive reset)\u2026');\n361:      TRUNCATE TABLE\n(no confirmation prompt, no argv gate, no env gate anywhere in the file)\n\n$ sed -n '199,208p' docs/render-operational.md\n\"No database backup, no log replay, no warm-start cache.\"",
+  "impact": "The only SUPABASE_DB_URL present in .env.local points at the LIVE Singapore project. A single `npm run seed` irreversibly destroys 5,064 subscribers, 29,027 transactions and 5,001 commissions with no prompt, no --yes flag, no project-ref assertion, and no restore path on the Supabase free tier. Every demo fails afterwards until a full reseed. This has already happened once (change-set audit 2026-06-16 recorded a destructive live reseed). Script was READ ONLY, never executed, per G4.",
+  "suggested_fix": "Require an explicit `--yes-destroy <project-ref>` argument that must match the ref parsed out of SUPABASE_DB_URL before the TRUNCATE runs, or gate the TRUNCATE block on SEED_ALLOW_TRUNCATE=1. Turns a keystroke into a deliberate decision at near-zero cost.",
+  "demo_visible": true,
+  "effort": "S",
+  "roles_affected": [
+   "all"
+  ],
+  "repro": [
+   "Inspect package.json: `seed` resolves SUPABASE_DB_URL from .env.local, which points at the live project ilkhfnoyxlxwqadebnkp",
+   "Inspect scripts/seed-supabase.mjs:359-365 \u2014 TRUNCATE ... RESTART IDENTITY CASCADE executes unconditionally after BEGIN",
+   "grep for any confirmation/argv/env guard: none exists",
+   "(Not executed \u2014 G4)"
+  ],
+  "agent": "A09"
+ },
+ {
+  "id": "A09-004",
+  "title": "Enforcing the report-only CSP would break the app's typography three ways and the KYC ID previews; today the policy has no report sink so it collects nothing",
+  "severity": "medium",
+  "confidence": "confirmed",
+  "category": "security-headers",
+  "surface": "infra/frontend",
+  "location": "vercel.json:11; index.html:41; src/signup/steps/ReviewStep.jsx:303,309",
+  "evidence": "$ curl -sS -D - -o /dev/null https://uganda-dashboard.vercel.app/\ncontent-security-policy-report-only: default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://*.tile.openstreetmap.org https://*.basemaps.cartocdn.com; connect-src 'self' https://ilkhfnoyxlxwqadebnkp.supabase.co https://uganda-dashboard-api.onrender.com https://*.sentry.io; font-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none'\n(NO report-uri and NO report-to anywhere in the header)\n\nBrowser network log, https://uganda-dashboard.vercel.app/faq (14 requests):\n  9. https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:...&family=Inter:... \u2192 200   [violates style-src]\n 11. https://fonts.gstatic.com/s/inter/v20/UcC73FwrK3iLTeHuS_nVMrMxCp50SjIa1ZL7W0Q5nw.woff2 \u2192 200 [violates font-src]\n 12. https://fonts.gstatic.com/s/plusjakartasans/v12/LDIoaomQNQcsA88c7O9yZ4KMCoOg4Ko20yygg_vb.woff2 \u2192 200 [violates font-src]\n\n$ cat index.html (line 41, byte-identical in dist/index.html)\n<link href=\"https://fonts.googleapis.com/css2?family=...&display=swap\" rel=\"stylesheet\" media=\"print\" onload=\"this.media='all'\" />\n(inline event-handler attribute \u2014 blocked by script-src 'self' with no 'unsafe-inline'/'unsafe-hashes')\n\n$ sed -n '151p' src/signup/steps/IdUploadStep.jsx\n    const nextUrl = URL.createObjectURL(selected);\n$ grep -n \"<img\" src/signup/steps/ReviewStep.jsx\n303:            <img src={signup.idFrontPreviewUrl} alt=\"ID front\" width=\"120\" height=\"76\" />\n309:            <img src={signup.idBackPreviewUrl} alt=\"ID back\" width=\"120\" height=\"76\" />\n(blob: URL vs img-src that lists 'self' data: and two tile hosts but NOT blob:)",
+  "impact": "The header is currently decorative: a Content-Security-Policy-Report-Only with no reporting endpoint is evaluated and discarded, which is exactly why three real breakages accumulated behind it unnoticed. Flipping to enforcement today would drop the brand typefaces to system fallbacks (blocked stylesheet + blocked woff2 + the inline onload that flips media=print to all never firing) and blank both ID thumbnails on the signup review step.",
+  "suggested_fix": "Preferred: self-host Plus Jakarta Sans and Inter into public/fonts/, which lets style-src 'self' 'unsafe-inline' and font-src 'self' stand unchanged and removes the inline onload entirely; then only add blob: to img-src and a report sink. Alternative (keep Google Fonts): style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https://*.tile.openstreetmap.org https://*.basemaps.cartocdn.com; add worker-src 'self'; manifest-src 'self'; add report-uri <endpoint>; and replace the media=print/onload link with a plain <link rel=\"stylesheet\">. script-src 'self' with no 'unsafe-eval' is safe \u2014 0 of 135 built chunks contain eval( or new Function(.",
+  "demo_visible": false,
+  "effort": "M",
+  "roles_affected": [
+   "all"
+  ],
+  "repro": [
+   "curl -sS -D - -o /dev/null https://uganda-dashboard.vercel.app/ \u2192 header contains no report-uri/report-to",
+   "Load https://uganda-dashboard.vercel.app/faq in Chrome and read the network log \u2192 fonts.googleapis.com stylesheet + 2 fonts.gstatic.com woff2 requests, none permitted by the served policy",
+   "Read index.html:41 \u2192 inline onload= attribute",
+   "Read IdUploadStep.jsx:151 + ReviewStep.jsx:303,309 \u2192 blob: URL rendered as <img src>, no blob: in img-src"
+  ],
+  "agent": "A09"
+ },
+ {
+  "id": "A09-005",
+  "title": "Frontend Sentry is not configured in production \u2014 @sentry/react is tree-shaken out of the shipped bundle entirely",
+  "severity": "medium",
+  "confidence": "confirmed",
+  "category": "observability",
+  "surface": "infra/frontend",
+  "location": "src/main.jsx:29 (VITE_SENTRY_DSN gate); Vercel project env prj_RseGQ3f8Xdvn4Q46A5G2ALdTYJdg",
+  "evidence": "$ curl -s https://uganda-dashboard.vercel.app/assets/index-IM_IiCjH.js -o /tmp/prodindex.js && grep -c \"ingest.sentry.io\" /tmp/prodindex.js\n0\n$ grep -oiE \"sentry\" /tmp/prodindex.js | wc -l\n0\n$ for c in vendor-CRnas3xB.js vendor-react-DWMwQj0t.js; do n=$(curl -s https://uganda-dashboard.vercel.app/assets/$c | grep -oic \"sentry\"); echo \"$c sentry-mentions=$n\"; done\nvendor-CRnas3xB.js sentry-mentions=0\nvendor-react-DWMwQj0t.js sentry-mentions=0\n\n$ sed -n '29,38p' src/main.jsx\nif (import.meta.env.VITE_SENTRY_DSN) {\n  Sentry.init({ dsn: ..., tracesSampleRate: 0.1, sendDefaultPii: false, ... });\n}",
+  "impact": "VITE_SENTRY_DSN is unset in Vercel, so Vite replaces the guard with `undefined`, the branch is dead-code-eliminated and the namespace import tree-shakes away \u2014 zero occurrences of the string 'sentry' survive in the entry or vendor chunks. Every browser-side crash in production is invisible, including the ones behind the 30 deterministic Playwright failures in baseline \u00a710. ErrorBoundary still renders its fallback so a rep sees a broken panel and nobody is told. The https://*.sentry.io entry in the CSP connect-src is dead weight. (Config itself is correct on both sides: DSN-gated, tracesSampleRate 0.1, sendDefaultPii false, scrubber on beforeSend/beforeBreadcrumb; the two scrubbers were verified byte-equivalent \u2014 13/13 identical keys, 3/3 identical regexes.)",
+  "suggested_fix": "Set VITE_SENTRY_DSN (and ideally VITE_SENTRY_RELEASE wired to VERCEL_GIT_COMMIT_SHA) in the Vercel project env for Production, or delete the frontend Sentry code path and the *.sentry.io CSP entry so the docs stop describing observability the deployment does not have.",
+  "demo_visible": false,
+  "effort": "S",
+  "roles_affected": [
+   "all"
+  ],
+  "repro": [
+   "curl -s https://uganda-dashboard.vercel.app/assets/index-IM_IiCjH.js | grep -c ingest.sentry.io \u2192 0",
+   "curl the two vendor chunks and grep -oic sentry \u2192 0, 0",
+   "Conclusion: the DSN-guarded branch was eliminated at build time, so VITE_SENTRY_DSN is unset in Vercel production"
+  ],
+  "agent": "A09"
+ },
+ {
+  "id": "A09-006",
+  "title": "render.yaml is not the applied configuration \u2014 the live build command has drifted from the blueprint",
+  "severity": "medium",
+  "confidence": "confirmed",
+  "category": "config-drift",
+  "surface": "infra/deploy",
+  "location": "render.yaml:25 vs live service srv-d8bc20mgvqtc73afh16g",
+  "evidence": "$ sed -n '25p' render.yaml\n    buildCommand: npm ci --include=dev && npm run build:api && npm prune --omit=dev   # G15 \u2014 --include=dev required because NODE_ENV=production would otherwise make `npm ci` skip devDeps (@types/*, @vercel/node, tsx, @sentry/* are devDeps)\n\n$ mcp__render__get_service srv-d8bc20mgvqtc73afh16g\n\"envSpecificDetails\": {\n  \"buildCommand\": \"npm ci && npm run build:api && npm prune --omit=dev\",\n  \"startCommand\": \"node dist-server/server/index.js\"\n}\n(also: live has \"cache\": {\"profile\": \"no-cache\"} which render.yaml does not declare; \"buildPlan\": \"starter\" vs declared plan: free)",
+  "impact": "The blueprint the repo presents as infrastructure-as-code does not describe the running service. docs/render-operational.md:199-208 documents disaster recovery as \"re-run the Provisioning Checklist \u2014 recreate the service from render.yaml\", which would produce a DIFFERENT service from the one in production. Builds currently succeed only because NPM_CONFIG_PRODUCTION=false compensates for the missing --include=dev; if that env var is ever dropped the live build silently loses tsc/@types and fails while render.yaml still reads as correct. The comment is also partly wrong: @sentry/node is a prod dependency (correctly \u2014 npm prune --omit=dev would otherwise delete it from the runtime).",
+  "suggested_fix": "Re-apply the blueprint so the live buildCommand matches render.yaml (or edit the live command to include --include=dev), and correct the '@sentry/* are devDeps' claim in the comment \u2014 only @sentry/react is a devDependency, and that itself is a bug (A09-012).",
+  "demo_visible": false,
+  "effort": "S",
+  "roles_affected": [
+   "all"
+  ],
+  "repro": [
+   "mcp__render__get_service srv-d8bc20mgvqtc73afh16g \u2192 buildCommand is 'npm ci && npm run build:api && npm prune --omit=dev'",
+   "sed -n '25p' render.yaml \u2192 declares 'npm ci --include=dev && ...'",
+   "The two differ; the blueprint is not the applied config"
+  ],
+  "agent": "A09"
+ },
+ {
+  "id": "A09-007",
+  "title": "Keepalive fires roughly a third as often as its own stated design rationale requires",
+  "severity": "medium",
+  "confidence": "confirmed",
+  "category": "availability-monitoring",
+  "surface": "infra/ci",
+  "location": ".github/workflows/keepalive.yml:1-11,15",
+  "evidence": "$ sed -n '1,15p' .github/workflows/keepalive.yml\n# GitHub Actions' cron has 5\u201315 min real-world jitter; running every 10 min\n# widens the margin against Render's 15-min spin-down so two jittered fires\n# stay <15 min apart. \u2026\n    - cron: '*/10 * * * *'   # every 10 min\n\n$ gh run list --workflow=keepalive.yml --limit 200 --created 2026-08-18..2026-08-23 --json conclusion,createdAt | python3 ...\nruns in 2026-08-18..2026-08-23: 200\nconclusions: Counter({'success': 200})\ngaps min=13.8 med=35.0 mean=37.7 max=103.1 n=199\ngaps >15min: 197 of 199\ngaps <=10min: 0",
+  "impact": "The invariant the workflow claims to maintain ('two jittered fires stay <15 min apart') holds for 2 of 199 measured intervals; ZERO fires landed within 10 minutes of each other and the worst gap was 103 minutes. The comment is a false reassurance, and the practical monitoring resolution is up to 103 minutes of undetected downtime regardless of which endpoint is pinged. Note this does NOT currently cause Render spin-down \u2014 the instance shows an unbroken 7-day memory series \u2014 but it does cap how quickly any outage can be noticed.",
+  "suggested_fix": "Either correct the comment to the measured reality, or move the ping to an external scheduler with real cadence. keepalive.yml already references cron-job.org / UptimeRobot as a '5-min backup'; the Render log stream shows no evidence one is currently running against a valid path (see A09-010 \u2014 a single GET /api/health 404 in 34 hours).",
+  "demo_visible": false,
+  "effort": "S",
+  "roles_affected": [
+   "all"
+  ],
+  "repro": [
+   "gh run list --workflow=keepalive.yml --limit 200 --created 2026-08-18..2026-08-23 --json createdAt",
+   "Compute successive gaps: median 35.0 min, mean 37.7 min, max 103.1 min, 197/199 exceed 15 min, 0 are <=10 min"
+  ],
+  "agent": "A09"
+ },
+ {
+  "id": "A09-008",
+  "title": "Dependabot security alerts are disabled, and 12 version PRs are wedged behind a red lint gate",
+  "severity": "medium",
+  "confidence": "confirmed",
+  "category": "dependency-management",
+  "surface": "infra/ci",
+  "location": "repository settings; .github/dependabot.yml",
+  "evidence": "$ gh api repos/shubhang1992/uganda-dashboard/dependabot/alerts --jq 'length'\n{\"message\":\"Dependabot alerts are disabled for this repository.\",\"documentation_url\":\"https://docs.github.com/rest/dependabot/alerts#list-dependabot-alerts-for-a-repository\",\"status\":\"403\"}\n\n$ gh pr list --state open --limit 20\n35\tbuild(deps): Bump the npm-minor-and-patch group across 1 directory with 27 updates\tOPEN\t2026-08-11\n31\tBump actions/setup-node from 4 to 7\tOPEN\t2026-07-14\n29\tBump actions/cache from 4 to 6\tOPEN\t2026-06-30\n27\tBump actions/checkout from 4 to 7\tOPEN\t2026-06-23\n23\tBump express-rate-limit 7.5.1 -> 8.5.2\tOPEN\t2026-06-09\n... (14 open total, 12 dependabot, oldest 2026-06-09)\n\n$ gh run view 32104912210 --log-failed | tail\n> 82 |     setAmountStr('');\n     |     ^^^^^^^^^^^^ Avoid calling setState() directly within an effect  react-hooks/set-state-in-effect\n\u2716 345 problems (20 errors, 325 warnings)\n##[error]Process completed with exit code 1.",
+  "impact": "No advisory in the tree (3 critical / 12 high / 5 moderate / 3 low) will ever open a security PR. Separately the version PRs that ARE opened cannot merge: the grouped npm PR fails lint on 20 NEW react-hooks/set-state-in-effect errors introduced by the bumped eslint-plugin-react-hooks, not by anything the bumps broke. Dependency maintenance has been fully stalled since 2026-06-09. Actual exposure is nil \u2014 none of the 23 advisories is reachable at runtime (see the reachability triage in \u00a710 of the report) \u2014 so this is deliberately reported as a process finding, not inflated to high.",
+  "suggested_fix": "Enable Dependabot alerts in repository settings. Unblock the grouped PR by pinning eslint-plugin-react-hooks to the current major or by fixing the 20 set-state-in-effect errors in a separate, reviewable change.",
+  "demo_visible": false,
+  "effort": "M",
+  "roles_affected": [
+   "all"
+  ],
+  "repro": [
+   "gh api repos/shubhang1992/uganda-dashboard/dependabot/alerts \u2192 403 'Dependabot alerts are disabled for this repository.'",
+   "gh pr list --state open \u2192 14 open, 12 from dependabot, oldest 2026-06-09",
+   "gh run view 32104912210 --log-failed \u2192 lint fails with 20 errors from the bumped react-hooks plugin"
+  ],
+  "agent": "A09"
+ },
+ {
+  "id": "A09-009",
+  "title": "No documented rollback for the frontend or the API, and 22 migrations cannot be reversed at all",
+  "severity": "medium",
+  "confidence": "confirmed",
+  "category": "rollback",
+  "surface": "infra/deploy",
+  "location": "docs/render-operational.md; docs/ARCHITECTURE.md \u00a7deploy; scripts/render-deploy.mjs:15-16; supabase/migrations/",
+  "evidence": "$ grep -rn -i \"rollback\" CLAUDE.md docs/*.md | grep -v docs/archive\n(only DB material + the VITE_USE_SUPABASE 'rollback flag'; the sole Vercel rollback mention lives in the archived docs/audits/2026-04-distributor/rollback-playbook.md:10)\n\n$ sed -n '15,16p' scripts/render-deploy.mjs\n// Render's autoDeployTrigger is `off` (CLAUDE.md \u00a71 guardrail), so this is the\n// supported way to deploy `main` on demand. It deploys whatever commit is\n// currently at the tip of the service's branch (main).\n\n$ sed -n '199,208p' docs/render-operational.md\n\"No database backup, no log replay, no warm-start cache.\"\n\n$ echo \"forward: $(ls supabase/migrations/*.sql | grep -v '\\.down\\.sql' | wc -l)  down: $(ls supabase/migrations/*.down.sql | wc -l)\"\nforward:      108  down:       86\n$ for f in supabase/migrations/*.sql; do case \"$f\" in *.down.sql) continue;; esac; b=\"${f%.sql}\"; [ -f \"$b.down.sql\" ] || basename $f; done\n0001_initial_schema.sql 0002_rpc_functions.sql 0003_rls_policies.sql 0004_commission_run_rpcs.sql\n0005_subscriber_update_fix.sql 0006_trigger_security_definer.sql 0007_rls_use_app_role.sql\n0008_rls_wrap_auth_jwt_initplan.sql 0009_fk_covering_indexes.sql 0010_function_search_path.sql\n0011_drop_unused_indexes.sql 0012_pg_trgm_into_extensions_schema.sql 0013_fk_covering_indexes_followup.sql\n0014_signup_phone_and_agent_dispute.sql 0015_signup_insurance_and_premium_tx.sql 0017_unique_constraints.sql\n0018_entity_metrics_rollup.sql 0019_fix_metrics_rollup_app_role.sql 0020_entity_metrics_rollup_v3.sql\n0021_commission_rpcs_app_role.sql 0027_post_audit_polish.sql 0028_replay_safety_guards.sql\n(22 files; rollback coverage is contiguous from 0029 onward)",
+  "impact": "With main unprotected and CI never green (A09-002), a bad deploy is likely, yet the recovery procedure for two of the three surfaces exists only as tribal knowledge. `npm run deploy:api` can only ever move FORWARD (tip-of-main), so reverting a bad API deploy requires the undocumented Render dashboard rollback or a git revert + push + hook. The DB floor at 0029 means the initial schema, all RPCs, all RLS policies, the search_path pinning and the security-definer trigger conversion are irreversible by script. docs/BACKEND.md:424 also records a money hazard inside the covered range: reverting 0092 restores 0067's reader and SILENTLY ZEROES the employee contribution leg for any config saved while 0092 was live.",
+  "suggested_fix": "Add a short 'Rollback' section to docs/render-operational.md covering (a) Vercel: `vercel rollback <deployment>` or dashboard Promote-to-Production (17 prior production deployments are retained), (b) Render: dashboard rollback to a deactivated deploy, since deploy:api cannot do it, and (c) an explicit statement that migrations below 0029 are forward-only. Down-migrations were parsed, never executed (G6).",
+  "demo_visible": false,
+  "effort": "M",
+  "roles_affected": [
+   "all"
+  ],
+  "repro": [
+   "grep -rn -i rollback CLAUDE.md docs/*.md \u2192 no Vercel or Render rollback procedure in current docs",
+   "Read scripts/render-deploy.mjs:15-16 \u2192 deploys tip-of-main only",
+   "Enumerate supabase/migrations for forward files lacking a sibling .down.sql \u2192 22 files, all below 0029"
+  ],
+  "agent": "A09"
+ },
+ {
+  "id": "A09-010",
+  "title": "/healthz and /readyz are registered before morgan, so all health and readiness traffic is invisible in the logs",
+  "severity": "low",
+  "confidence": "confirmed",
+  "category": "observability",
+  "surface": "api",
+  "location": "server/index.ts:110 and :128 (routes) vs :196-197 (app.use(morgan(...)))",
+  "evidence": "$ grep -n \"morgan\\|app.use(\\|app.get(\" server/index.ts | head\n52:import morgan from 'morgan';\n110:app.get('/healthz', cors(corsOptions), (_req, res) => {\n128:app.get('/readyz', cors(corsOptions), async (_req, res) => {\n154:app.use(helmet());\n196:app.use(\n197:  morgan(':method :url :status :response-time ms - :res[content-length]')\n\n$ mcp__render__list_logs resource=[srv-d8bc20mgvqtc73afh16g] 2026-08-22T00:00:00Z .. 2026-08-23T10:45:00Z limit=50\n{\"hasMore\":false,\"logs\":[{\"message\":\"GET /api/health 404 0.572 ms - 20\",\"timestamp\":\"2026-08-23T08:27:26.209990382Z\",\"labels\":[...\"level\":\"info\",\"type\":\"app\"]}]}\n(exactly ONE app log line in 34 hours, despite ~60 keepalive pings, my own /healthz and /readyz probes, and the browser's /readyz calls)",
+  "impact": "You cannot tell from the log stream whether the keepalive is running or whether /readyz has been failing \u2014 precisely the two signals needed to diagnose A09-001. Separately, that single 404 shows something external is polling /api/health, a path that does not exist (the 16 mounted routes are at server/index.ts:255-270), so whatever monitor that is has been recording a 404 as 'up'.",
+  "suggested_fix": "Register morgan before the health routes \u2014 it adds one log line per ping and no meaningful bytes to the response body, preserving the ~1 KB budget the /healthz comment is protecting. Repoint whatever external monitor is hitting /api/health at /readyz.",
+  "demo_visible": false,
+  "effort": "S",
+  "roles_affected": [
+   "all"
+  ],
+  "repro": [
+   "curl https://uganda-dashboard-api.onrender.com/healthz and /readyz several times",
+   "mcp__render__list_logs over the same window \u2192 none of those requests appear",
+   "Read server/index.ts: routes at :110/:128 precede app.use(morgan(...)) at :196"
+  ],
+  "agent": "A09"
+ },
+ {
+  "id": "A09-011",
+  "title": "CI installs with --legacy-peer-deps while Render installs with plain npm ci; the flag is unnecessary and masks future peer breaks",
+  "severity": "low",
+  "confidence": "confirmed",
+  "category": "config-drift",
+  "surface": "infra/ci",
+  "location": ".github/workflows/test.yml (both jobs: `npm ci --legacy-peer-deps`) vs live Render buildCommand `npm ci`",
+  "evidence": "$ grep -n \"npm ci\" .github/workflows/test.yml\n        run: npm ci --legacy-peer-deps          (lint-and-unit job)\n        run: npm ci --legacy-peer-deps          (e2e job)\n\n$ mcp__render__get_service srv-d8bc20mgvqtc73afh16g \u2192 \"buildCommand\": \"npm ci && npm run build:api && npm prune --omit=dev\"\n$ mcp__render__list_deploys \u2192 dep-d9tfvju417fc73eb1igg, commit bd637f63, status \"live\", finishedAt 2026-08-11T10:57:30Z   (built successfully with plain `npm ci`)\n\n$ git show HEAD:package.json > $SP/package.json && rm -f $SP/package-lock.json\n$ cd $SP && npm install --package-lock-only --dry-run --strict-peer-deps --no-audit --no-fund\nnpm warn EBADENGINE Unsupported engine { required: { node: '22.x' }, current: { node: 'v24.14.0' } }\nup to date in 1m\n(strict peer resolution from scratch on the committed manifest SUCCEEDS \u2014 no conflict exists)",
+  "impact": "CI can go green on a dependency tree that Render's stricter install would reject, and the flag permanently suppresses the peer-conflict signal for any future bump. Benign today (proven: no conflict exists, and Render's plain npm ci built successfully), but it is exactly the class of drift that only surfaces during a deploy. The user's working-tree package.json/package-lock.json were NOT modified \u2014 the probe ran on scratchpad copies.",
+  "suggested_fix": "Drop --legacy-peer-deps from both CI jobs so CI and Render install identically.",
+  "demo_visible": false,
+  "effort": "S",
+  "roles_affected": [
+   "all"
+  ],
+  "repro": [
+   "Copy HEAD:package.json to a scratch dir with no lockfile",
+   "npm install --package-lock-only --dry-run --strict-peer-deps \u2192 succeeds, no peer error",
+   "Confirm the live Render build used plain `npm ci` and succeeded (mcp__render__list_deploys)"
+  ],
+  "agent": "A09"
+ },
+ {
+  "id": "A09-012",
+  "title": "@sentry/react is a devDependency but is imported by code that ships to the browser",
+  "severity": "low",
+  "confidence": "confirmed",
+  "category": "manifest-correctness",
+  "surface": "frontend",
+  "location": "package.json devDependencies (\"@sentry/react\": \"^10.57.0\"); imported at src/main.jsx:6 and src/components/ErrorBoundary.jsx:20",
+  "evidence": "$ python3 -c \"import json;d=json.load(open('package.json'));...\"\nDEV (count 32):\n  @sentry/react ^10.57.0        <-- devDependency\nDEPENDENCIES:\n  @sentry/node ^10.57.0         <-- correctly a prod dependency (Render prunes --omit=dev after build)\n\n$ sed -n '6p' src/main.jsx\nimport * as Sentry from '@sentry/react';\n$ sed -n '20p' src/components/ErrorBoundary.jsx\n      import('@sentry/react').then((Sentry) =>",
+  "impact": "Latent, not live \u2014 Vercel installs all dependencies, so the production build resolves the import today. Any build performed with --omit=dev (the posture Render's build already uses for the server half) would fail to resolve it. Also makes render.yaml:25's comment ('@sentry/* are devDeps') half-true in a way that could mislead a future maintainer into pruning @sentry/node.",
+  "suggested_fix": "Move @sentry/react from devDependencies to dependencies.",
+  "demo_visible": false,
+  "effort": "S",
+  "roles_affected": [
+   "all"
+  ],
+  "repro": [
+   "Read package.json \u2192 @sentry/react sits under devDependencies",
+   "Read src/main.jsx:6 \u2192 it is a static import in browser-shipped code"
+  ],
+  "agent": "A09"
+ },
+ {
+  "id": "A09-013",
+  "title": "The repo's only typecheck skips every API test file; there is no root tsconfig and no pre-commit hook",
+  "severity": "low",
+  "confidence": "confirmed",
+  "category": "type-safety",
+  "surface": "infra/ci",
+  "location": "server/tsconfig.json (exclude); repository root",
+  "evidence": "$ cat server/tsconfig.json\n  \"exclude\": [\"../node_modules/**\", \"../dist/**\", \"../api/**/*.test.ts\", \"../api/**/*.spec.ts\", \"./**/*.test.ts\"]\n\n$ find api server -name \"*.test.ts\" | head\napi/chat.test.ts  api/contact.test.ts  api/kyc/otp-verify.test.ts  api/kyc/nira-verify.test.ts\napi/kyc/aml-screen.test.ts  api/kyc/id-ocr.test.ts  api/kyc/agent-referral.test.ts\napi/kyc/id-quality.test.ts  api/kyc/otp-send.test.ts  api/kyc/face-match.test.ts\n\n$ ls tsconfig*.json\n(zsh): no matches found: tsconfig*.json\n\n$ ls -a .husky 2>/dev/null || echo \"no .husky\"\nno .husky\n$ ls .git/hooks/ | grep -v sample || echo \"no active git hooks\"\nno active git hooks\n$ grep -n \"husky\\|lint-staged\\|pre-commit\\|prepare\" package.json\n(no output)",
+  "impact": "npm run build:api is the only type gate in the repo, and it deliberately excludes 10+ TypeScript test files, so type drift in the API tests is caught by nothing. With no root tsconfig and no pre-commit hook either, the first feedback on any breakage is a CI run that never completes (A09-002).",
+  "suggested_fix": "Add a second `tsc --noEmit` pass covering the excluded test files (or drop the excludes now that vitest type-strips them anyway), and consider a minimal pre-commit hook running eslint on staged files.",
+  "demo_visible": false,
+  "effort": "S",
+  "roles_affected": [
+   "all"
+  ],
+  "repro": [
+   "cat server/tsconfig.json \u2192 api/**/*.test.ts and ./**/*.test.ts are excluded",
+   "find api server -name '*.test.ts' \u2192 10+ files never type-checked",
+   "ls tsconfig*.json \u2192 none; ls .git/hooks | grep -v sample \u2192 none"
+  ],
+  "agent": "A09"
+ },
+ {
+  "id": "A09-014",
+  "title": "SUPABASE_URL is absent from .env.local and local dev survives only on a fallback the code says is marked for removal",
+  "severity": "low",
+  "confidence": "confirmed",
+  "category": "env-config",
+  "surface": "infra/local",
+  "location": ".env.local (names only); server/env.ts:16,33",
+  "evidence": "$ grep -oE '^[A-Za-z_][A-Za-z0-9_]*' .env.local | sort      # NAMES ONLY, no values read (G2)\nPORT\nRENDER_DEPLOY_HOOK\nSUPABASE_DB_URL\nSUPABASE_JWT_SECRET\nSUPABASE_SERVICE_ROLE_KEY\nVITE_SUPABASE_ANON_KEY\nVITE_SUPABASE_URL\nVITE_USE_SUPABASE\n(no SUPABASE_URL)\n\n$ sed -n '14,16p;33p' server/env.ts\n// `SUPABASE_URL` is the new server-side name (G19). During the Vercel\n// \u2192 Render cutover we still accept `VITE_SUPABASE_URL` as a fallback \u2014\n// once every deploy has the renamed var, the fallback can drop in a follow-up.\n  const supabaseUrl = process.env.SUPABASE_URL ?? process.env.VITE_SUPABASE_URL;\n\n$ sed -n '41p' .env.local.example\n# removal \u2014 set SUPABASE_URL so local `npm run dev:api` keeps booting once it's gone.",
+  "impact": "The day someone completes the documented cleanup and removes the ?? VITE_SUPABASE_URL fallback, local `npm run dev:api` stops booting for anyone whose .env.local predates it \u2014 which is everyone's, today. assertServerEnv() would throw '[env] missing required server env vars: SUPABASE_URL'.",
+  "suggested_fix": "Add SUPABASE_URL to .env.local (it is already in the .env.local.example template) before the fallback is removed.",
+  "demo_visible": false,
+  "effort": "S",
+  "roles_affected": [
+   "all"
+  ],
+  "repro": [
+   "List the variable names in .env.local \u2192 SUPABASE_URL is not among them",
+   "Read server/env.ts:33 \u2192 boot succeeds only via the VITE_SUPABASE_URL fallback",
+   "Read the comment at server/env.ts:14-16 and .env.local.example:41 \u2192 both state the fallback is scheduled for removal"
+  ],
+  "agent": "A09"
+ },
+ {
+  "id": "A09-015",
+  "title": "The retired Tokyo Supabase project is still ACTIVE in the same free organisation as the live one",
+  "severity": "info",
+  "confidence": "confirmed",
+  "category": "infra-hygiene",
+  "surface": "infra/db",
+  "location": "Supabase org ugoaezmojpyvcbeeqfbz",
+  "evidence": "$ mcp__supabase__list_projects\n{\"id\":\"zengmiugieqjqzaccbqe\",\"name\":\"Uganda dashboard\",\"region\":\"ap-northeast-1\",\"status\":\"ACTIVE_HEALTHY\",\"created_at\":\"2026-05-14T07:36:41Z\"}\n{\"id\":\"ilkhfnoyxlxwqadebnkp\",\"name\":\"Pension dashbaord\",\"region\":\"ap-southeast-1\",\"status\":\"ACTIVE_HEALTHY\",\"created_at\":\"2026-06-05T05:02:16Z\"}",
+  "impact": "The pre-cutover Tokyo project (the one that ran out of disk, per the 2026-06-04 audit) is still live alongside the Singapore project, consuming the second free-tier project slot and holding a stale copy of the demo data that a mistyped project ref could connect to. Its name \u2014 'Uganda dashboard' \u2014 is also the more obvious of the two; the live project is 'Pension dashbaord', typo included.",
+  "suggested_fix": "Pause or delete zengmiugieqjqzaccbqe once its data is confirmed unneeded, and rename the live project to something unambiguous.",
+  "demo_visible": false,
+  "effort": "S",
+  "roles_affected": [
+   "all"
+  ],
+  "repro": [
+   "mcp__supabase__list_projects \u2192 two ACTIVE_HEALTHY projects in org ugoaezmojpyvcbeeqfbz"
+  ],
+  "agent": "A09"
+ },
+ {
+  "id": "A09-016",
+  "title": "Planner statistics survived the restore \u2014 the audit plan's 'empty stats' premise is wrong and does not affect a cold demo",
+  "severity": "info",
+  "confidence": "confirmed",
+  "category": "correction",
+  "surface": "infra/db",
+  "location": "live DB ilkhfnoyxlxwqadebnkp, pg_class / pg_statistic / pg_stat_user_tables",
+  "evidence": "$ psql -X -q -At -F'|' -c \"SELECT relname, n_live_tup, last_analyze, last_autoanalyze, last_vacuum, last_autovacuum FROM pg_stat_user_tables WHERE schemaname='public' ORDER BY relname;\"\nsubscribers|0||||\ntransactions|114||||\ncommissions|0||||\n... (all 37 tables: n_live_tup ~0, all four last_* timestamps NULL)\n\n$ psql -c \"SELECT relname, reltuples::bigint, relpages FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname='public' AND relkind='r' ORDER BY reltuples DESC LIMIT 12;\"\ntransactions|28671|558\nnominees|24386|357\nwithdrawals|6628|146\nsubscribers|5064|525\nsubscriber_balances|5060|185\ncontribution_schedules|5021|68\ncommissions|5000|69\nagents|2043|68\n\n$ psql -c \"SELECT count(*) FROM pg_stats WHERE schemaname='public';\"\n302",
+  "impact": "Only the cumulative activity counters were reset. The query planner reads pg_class.reltuples/relpages and pg_statistic, and both survived intact: reltuples for transactions is 28,671 against a true count of 29,027 (-1.2%) and subscribers is exact at 5,064, with 302 column-level statistics rows for the public schema. A manual ANALYZE would not measurably change any plan, so this does NOT materially affect a cold demo. What was lost is seq_scan/idx_scan history, which removes the evidence base for 'which indexes are unused' \u2014 A21 should note that rather than concluding indexes are dead.",
+  "suggested_fix": "No action needed for the demo. A21 should not infer unused indexes from the reset counters, and every agent should keep using count(*) rather than n_live_tup per baseline \u00a76.",
+  "demo_visible": false,
+  "effort": "S",
+  "roles_affected": [
+   "all"
+  ],
+  "repro": [
+   "Query pg_stat_user_tables \u2192 n_live_tup 0 and all last_* NULL for all 37 tables",
+   "Query pg_class.reltuples \u2192 accurate to within 1.2%",
+   "Query pg_stats \u2192 302 rows for the public schema"
+  ],
+  "agent": "A09"
+ },
+ {
+  "id": "A09-017",
+  "title": "Two header-level inconsistencies: content-hashed assets are not served immutable, and the API sets CORP same-origin on a deliberately cross-origin service",
+  "severity": "info",
+  "confidence": "confirmed",
+  "category": "security-headers",
+  "surface": "infra/deploy",
+  "location": "Vercel edge (/assets/*); server/index.ts:154 (app.use(helmet()))",
+  "evidence": "$ curl -sS -D - -o /dev/null https://uganda-dashboard.vercel.app/assets/index-DpSq6jQ9.css\ncache-control: public, max-age=0, must-revalidate\n(content-hashed filename, but not immutable)\n\n$ curl -sS -D - -o /dev/null -X POST -H 'Content-Type: application/json' -d '{\"message\":\"hello\"}' https://uganda-dashboard-api.onrender.com/api/chat\ncross-origin-resource-policy: same-origin\ncross-origin-opener-policy: same-origin\nx-frame-options: SAMEORIGIN\ncontent-security-policy: default-src 'self';\u2026;frame-ancestors 'self';\u2026\n\n$ curl -sS -D - -o /dev/null https://uganda-dashboard-api.onrender.com/healthz\nx-powered-by: Express\n(registered before helmet at server/index.ts:110, so helmet never strips it)",
+  "impact": "Content-hashed assets are revalidated on every page load instead of being served immutable \u2014 a cheap round-trip to reclaim on the Ugandan mobile connections a rep demos over. CORP: same-origin on an API that exists to be called cross-origin is contradictory but inert (CORP does not apply to CORS-mode fetch, and the app's calls all succeed). x-powered-by leaks on /healthz only \u2014 a deliberate consequence of registering it before helmet to protect the ~1 KB uptime-monitor response budget.",
+  "suggested_fix": "Add a vercel.json headers rule for /assets/(.*) with `cache-control: public, max-age=31536000, immutable`. Optionally set helmet's crossOriginResourcePolicy to 'cross-origin' on the API so the header matches intent.",
+  "demo_visible": false,
+  "effort": "S",
+  "roles_affected": [
+   "all"
+  ],
+  "repro": [
+   "curl -D - the CSS asset \u2192 cache-control: public, max-age=0, must-revalidate",
+   "curl -D - POST /api/chat \u2192 cross-origin-resource-policy: same-origin",
+   "curl -D - /healthz \u2192 x-powered-by: Express present"
+  ],
+  "agent": "A09"
+ },
+ {
+  "id": "A09-018",
+  "title": "Environment-documentation gaps and one stale note in docs/BACKEND.md \u00a72",
+  "severity": "info",
+  "confidence": "confirmed",
+  "category": "documentation",
+  "surface": "docs",
+  "location": "docs/BACKEND.md \u00a72 (env table and Notes)",
+  "evidence": "$ grep -rn \"ALLOW_DESTRUCTIVE_E2E\" docs/ CLAUDE.md\ndocs/ARCHITECTURE.md:457: (prose only, inside a testing table)\ndocs/audits/2026-05-31/06-testing.md:163:\n(absent from .env.local.example and from the docs/BACKEND.md \u00a72 table, yet read at e2e/specs/regression/empty-states.spec.ts:70)\n\n$ grep -rn \"RENDER_DEPLOY_HOOK\" docs/*.md CLAUDE.md\ndocs/BACKEND.md:988, docs/BACKEND.md:996, docs/render-operational.md:22,24,26\n(prose only \u2014 absent from the \u00a72 env table)\n\n$ grep -n \"SUPABASE_DB_URL\" docs/BACKEND.md\n| `SUPABASE_DB_URL` | **Local-only** | `scripts/seed-supabase.mjs` | \u2026\n(omits scripts/apply-migration.mjs:20, which also reads it)\n\n$ sed -n '86p' docs/BACKEND.md\n- `api/_lib/supabase-admin.ts` and `api/_lib/jwt.ts` both hard-fail at first invocation if their env vars are missing (no deploy-time preflight \u2014 audit X14).\n(STALE: server/env.ts assertServerEnv() now runs a preflight before app.listen \u2014 server/index.ts:40-41)",
+  "impact": "Env-var required/documented count is 21/20: ALLOW_DESTRUCTIVE_E2E appears in no env template, RENDER_DEPLOY_HOOK is missing from the canonical \u00a72 table, SUPABASE_DB_URL's 'Read by' column is incomplete, the four GitHub Actions secret names are documented only inside test.yml's own comment header, and the 'no deploy-time preflight (audit X14)' note is now false. None has user-visible effect; all cost onboarding time.",
+  "suggested_fix": "Add ALLOW_DESTRUCTIVE_E2E and RENDER_DEPLOY_HOOK rows to the docs/BACKEND.md \u00a72 table, add scripts/apply-migration.mjs to SUPABASE_DB_URL's 'Read by' cell, list the four GHA secret names in the same table, and delete the stale X14 sentence now that assertServerEnv() exists.",
+  "demo_visible": false,
+  "effort": "S",
+  "roles_affected": [
+   "all"
+  ],
+  "repro": [
+   "grep ALLOW_DESTRUCTIVE_E2E across docs/ and .env.local.example \u2192 prose mention only, no template entry",
+   "grep RENDER_DEPLOY_HOOK in docs/BACKEND.md \u2192 prose rows 988/996 only, not the \u00a72 table",
+   "Read docs/BACKEND.md:86 against server/index.ts:40-41 \u2192 the preflight claim is out of date"
+  ],
+  "agent": "A09"
+ }
+]

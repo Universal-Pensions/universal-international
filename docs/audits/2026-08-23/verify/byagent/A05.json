@@ -1,0 +1,369 @@
+[
+ {
+  "id": "A05-001",
+  "title": "apply_settlement has no tenancy check \u2014 any distributor can settle another distributor's agents' commissions",
+  "severity": "critical",
+  "confidence": "confirmed",
+  "category": "tenancy",
+  "surface": "rpc",
+  "location": "public.apply_settlement (live) \u00b7 supabase/migrations/0032_fix_settlement_apply.sql:130",
+  "evidence": "psql -f t_rls2.sql (run under SET LOCAL ROLE authenticated so RLS is active, then RESET ROLE to read back; whole txn ROLLBACK):\n  BEGIN; SELECT count(*) FROM commissions WHERE agent_id='a-001' AND status='due';  -> baseline_a001_due | 21\n  SET LOCAL ROLE authenticated;\n  SET LOCAL request.jwt.claims = '{\"app_role\":\"distributor\",\"distributorId\":\"d-002\",\"sub\":\"d-002\",\"role\":\"authenticated\"}';\n  SELECT public.apply_settlement('[{\"agentId\":\"a-001\",\"amountPaid\":12000,\"paymentRef\":\"A05-XTEN-PROOF\",\"paymentDate\":\"2026-08-23\"}]'::jsonb,'a05-xten-proof');\n   -> d002_settles_a001 | {\"skipped\": [], \"totalPaid\": 10000, \"linesSettled\": 2, \"agentsSettled\": 1}\n  RESET ROLE;\n  SELECT id, agent_id, branch_id, amount, status, paid_amount, txn_ref FROM commissions WHERE txn_ref='A05-XTEN-PROOF';\n   -> c-00002 | a-001 | b-bui-001 | 5000 | paid | 5000 | A05-XTEN-PROOF\n   -> c-00003 | a-001 | b-bui-001 | 5000 | paid | 5000 | A05-XTEN-PROOF\n  SELECT id, agent_id, branch_id, pending_total, paid_amount, line_count, client_nonce FROM settlement_batches WHERE txn_ref='A05-XTEN-PROOF';\n   -> sb-25f3aed7c42b4fbf9f59754c0b6ed49c | a-001 | b-bui-001 | 105000 | 10000 | 2 | a05-xten-proof\n  SELECT b.distributor_id FROM agents a JOIN branches b ON b.id=a.branch_id WHERE a.id='a-001';  -> PROOF_owner | d-001\n  ROLLBACK;\nSame session, reads ARE scoped (psql -f t_rls.sql): rls_active_d002_sees_a001_commissions | 0 ; rls_active_d002_sees_own | 8.\nSymmetric in the other direction (psql -f t_tenancy.sql, d-001 settling d-002's a-780): before | a-780 | d-002 | due | 8 | 40000 ; result {\"skipped\": [], \"totalPaid\": 15000, \"linesSettled\": 3, \"agentsSettled\": 1}; while d001_can_READ_a780 | 0 and d001_read_rowcount | 1408.\nReachable through the UI: node u/rt.mjs case 6f -> '6f foreign-distributor-file :: parsedRows=1 mappingOk=true missing=[] accepted=[{\"agentId\":\"a-780\",\"amountPaid\":15000,\"paymentRef\":\"FOREIGN-REF\",\"paymentDate\":\"2026-08-23\"}] skipped=[]'.",
+  "impact": "A distributor can mark another distributor's commissions paid, stamp them with a payment reference that distributor never issued, emit commission_settled notifications into the victim's agents and branches, and write a settlement_batches row into the victim's branch. The victim's dashboards then show money as settled that was never paid. The write is invisible to its author (RLS blocks the read-back) and unattributable for the victim. Every commission READ was tenant-bounded by the 0081-0089 series; the one write that moves money was not.",
+  "suggested_fix": "Add an ownership predicate inside apply_settlement's per-row loop, mirroring 0087: IF v_role='distributor' AND NOT EXISTS (SELECT 1 FROM public.agents a WHERE a.id=v_agent_id AND a.branch_id IN (SELECT public.distributor_branch_ids())) THEN skip with reason 'not_your_agent'; CONTINUE; END IF. Add 'not_your_agent' to SETTLEMENT_SKIP_REASONS (src/utils/settlement.js:60) and pre-block in CommissionPanel confirmSummary any row whose agentId is absent from pendingMap.",
+  "demo_visible": true,
+  "effort": "S",
+  "roles_affected": [
+   "distributor",
+   "admin",
+   "agent",
+   "branch"
+  ],
+  "repro": [
+   "Sign in as distributor d-001 (or d-002).",
+   "Open Commissions -> Download template.",
+   "Add one row for an agent owned by the OTHER distributor (e.g. a-780 for d-001), with any Amount Paid.",
+   "Upload the file. The confirm modal shows 'Settle 1 agent \u00b7 0 lines' with a plain (non-caution) Confirm button \u2014 no mismatch, no skip.",
+   "Confirm. The foreign agent's oldest due commissions flip to paid and a settlement_batches row lands in the other distributor's branch."
+  ],
+  "agent": "A05"
+ },
+ {
+  "id": "A05-002",
+  "title": "Agent demo persona's Commissions page shows Playwright test residue as real payment history, with two contradictory outstanding-balance figures",
+  "severity": "critical",
+  "confidence": "confirmed",
+  "category": "data-integrity",
+  "surface": "ui",
+  "location": "src/agent-dashboard/pages/CommissionsDesktop.jsx:206 \u00b7 src/agent-dashboard/pages/commissions/CommissionsParts.jsx:123 \u00b7 live rows in public.settlement_batches",
+  "evidence": "Headless Chromium with e2e/.auth/agent.json (persona a-001, the documented demo agent), http://localhost:5173/dashboard/commissions, 1440x1000, clean baseline state (5001 commissions, a-001 = 4 due / 7 paid):\n  Commissions\n  UGX 55K earned and owed \u00b7 64% settled\n  Your last settlement was partial\n  UGX 5K paid against UGX 15K due \u2014 UGX 10K is still outstanding (ref sb-09258a3b9cc94064be51e0a6f0a04fa5).\n  Ask for reason\n  EARNED  UGX 35K    OWED  UGX 20K    SETTLED  64%\n  Earned 7 commissions paid 35K / Owed 4 awaiting payout 20K\n  HISTORY  Settlement history\n  #  PAID         REFERENCE                   LINES  DUE AT THE TIME  PAID    STATUS\n  1  3 Aug 2026   E2E-PARTIAL-1785752804482   1      UGX 15K          UGX 5K  PARTIAL\n  2  2 Aug 2026   E2E-PARTIAL-1785700815516   1      UGX 10K          UGX 5K  PARTIAL\n  3  2 Aug 2026   E2E-PARTIAL-1785700183410   1      UGX 5K           UGX 5K  FULL\n  4  16 Jul 2026  MM-SEED-0001                9      UGX 45K          UGX 45K FULL\nScreenshots: docs/audits/2026-08-23/screenshots/a05-agent-commissions-desktop.png and a05-agent-commissions-mobile.png (390x844 renders the same banner + history).\nThe refs are Date.now() tokens minted by e2e/specs/flows/distributor-apply-settlement.spec.ts:361 (const paymentRef = `E2E-PARTIAL-${Date.now()}`); its afterEach only deletes the batch if createdBatchIds was assigned, and that assignment is the LAST statement of the test body (:398-403).",
+  "impact": "Three separate wrongnesses on one headline demo screen: (1) the banner says UGX 10K outstanding while the tile directly beneath says UGX 20K / 4 awaiting payout; (2) rows 1-3 are leaked Playwright artifacts from 2026-08-02/03 with zero backing commission rows, presented as the agent's payment history with machine-generated references; (3) row 4 claims 9 lines / UGX 45K while the EARNED tile says UGX 35K / 7 commissions paid. A rep opening the agent persona's Commissions tab lands on this.",
+  "suggested_fix": "Delete the three orphan E2E-PARTIAL-* settlement_batches rows and their notifications; re-run the settlement seed so sb-seed-0001 matches the lines it actually flipped; move the createdBatchIds registration in the E2E afterEach to look the batch up by txn_ref BEFORE the assertions rather than after; point the settlement specs at a dedicated fixture agent instead of the a-001 demo persona.",
+  "demo_visible": true,
+  "effort": "S",
+  "roles_affected": [
+   "agent"
+  ],
+  "repro": [
+   "Sign in as the agent demo persona a-001 (phone +256700000001, password Demo1234, any 6-digit OTP).",
+   "Open Commissions.",
+   "Read the partial-settlement banner (UGX 10K outstanding) against the OWED tile (UGX 20K) immediately below it.",
+   "Scroll to Settlement history and read rows 1-3: E2E-PARTIAL-<epoch-ms> references.",
+   "Compare row 4 (MM-SEED-0001, 9 lines, UGX 45K) with the EARNED tile (UGX 35K, 7 commissions paid)."
+  ],
+  "agent": "A05"
+ },
+ {
+  "id": "A05-003",
+  "title": "settlement_batches.paid_amount / line_count do not equal the lines they flipped \u2014 25,000 UGX and 5 lines of settlement are unbacked in live data",
+  "severity": "high",
+  "confidence": "confirmed",
+  "category": "data-integrity",
+  "surface": "db",
+  "location": "public.settlement_batches (live rows sb-seed-0001, sb-aaa8b141\u2026, sb-3da879ed\u2026, sb-09258a3b\u2026)",
+  "evidence": "psql \"$SUPABASE_DB_URL\" -X -q -c \"select b.id, b.txn_ref, b.agent_id, b.line_count claimed_lines, b.paid_amount claimed_paid, (select count(*) from commissions c where c.txn_ref=b.txn_ref and c.agent_id=b.agent_id and c.status='paid') actual_lines, (select coalesce(sum(c.paid_amount),0) from commissions c where c.txn_ref=b.txn_ref and c.agent_id=b.agent_id and c.status='paid') actual_paid from settlement_batches b order by b.created_at;\"\n                 id                  |          txn_ref          | agent_id | claimed_lines | claimed_paid | actual_lines | actual_paid\n-------------------------------------+---------------------------+----------+---------------+--------------+--------------+-------------\n sb-seed-0001                        | MM-SEED-0001              | a-001    |             9 |        45000 |            7 |       35000\n sb-seed-0002                        | MM-SEED-0002              | a-042    |             3 |        15000 |            3 |       15000\n sb-aaa8b14105404d22b9b2a81e8b133cab | E2E-PARTIAL-1785700183410 | a-001    |             1 |         5000 |            0 |           0\n sb-3da879edd4bb4ac98a18346f1b66b6dc | E2E-PARTIAL-1785700815516 | a-001    |             1 |         5000 |            0 |           0\n sb-09258a3b9cc94064be51e0a6f0a04fa5 | E2E-PARTIAL-1785752804482 | a-001    |             1 |         5000 |            0 |           0\n(5 rows)\n\npsql \u2026 -At -F'|' -c \"select (select sum(paid_amount) from settlement_batches) batches_paid, (select sum(paid_amount) from commissions where status='paid') lines_paid, (select sum(line_count) from settlement_batches) batches_lines, (select count(*) from commissions where status='paid') lines_count;\"\n75000|50000|15|10",
+  "impact": "The settlement ledger claims 75,000 UGX / 15 lines paid while the commission rows account for only 50,000 UGX / 10 lines. Four of five live batches are wrong. The distributor's Commissions panel shows SETTLED 50K / 10 paid while the agent's settlement history for the same agent totals 60K \u2014 the two roles disagree about how much has been paid out. No constraint, trigger, or periodic check would catch this.",
+  "suggested_fix": "Repair the five rows (drop the three orphan E2E batches; recompute sb-seed-0001 from the lines that actually carry MM-SEED-0001). Add the reconciliation query above to the /qa harness as an invariant that must return zero mismatching rows.",
+  "demo_visible": true,
+  "effort": "S",
+  "roles_affected": [
+   "agent",
+   "branch",
+   "distributor",
+   "admin"
+  ],
+  "repro": [
+   "Run the reconciliation query above against the live DB.",
+   "Observe 4 of 5 rows where claimed_lines/claimed_paid exceed actual_lines/actual_paid.",
+   "Cross-check: distributor Commissions panel reads SETTLED 50K / 10 paid; agent a-001 settlement history totals UGX 60K over 4 rows."
+  ],
+  "agent": "A05"
+ },
+ {
+  "id": "A05-004",
+  "title": "Re-uploading the same settlement file settles another tranche against the same payment reference \u2014 the nonce is minted per file-pick",
+  "severity": "high",
+  "confidence": "confirmed",
+  "category": "replay",
+  "surface": "rpc",
+  "location": "src/dashboard/commissions/CommissionPanel.jsx:358 (nonce minted in handleUploadFile) and :324 (input reset so the same file can be re-picked) \u00b7 public.apply_settlement (no txn_ref uniqueness)",
+  "evidence": "psql \"$SUPABASE_DB_URL\" -X -q -f t_replay.sql (all inside BEGIN..ROLLBACK, claims app_role=distributor/distributorId=d-001):\n due_before | 4 | 20000\n submit1            | {\"skipped\": [], \"totalPaid\": 5000, \"linesSettled\": 1, \"agentsSettled\": 1}\n replay_same_nonce  | {\"skipped\": [], \"totalPaid\": 5000, \"linesSettled\": 1, \"agentsSettled\": 1}\n batches_after_same_nonce | 1        <-- same-nonce replay IS a no-op (passes)\n replay_new_nonce   | {\"skipped\": [], \"totalPaid\": 5000, \"linesSettled\": 1, \"agentsSettled\": 1}\n replay_new_nonce_2 | {\"skipped\": [], \"totalPaid\": 5000, \"linesSettled\": 1, \"agentsSettled\": 1}\n batches_after_new_nonces:\n  sb-c6ad8744b81c49e9a6a821bc53072cc2 | a-001 | 20000 | 5000 | 1 | A05-REPLAY-REF | a05-nonce-1\n  sb-8498bec4575b4cd1ab11b8ecf198deca | a-001 | 15000 | 5000 | 1 | A05-REPLAY-REF | a05-nonce-2\n  sb-19ae093c7dc4451c9dc1efc628fd5d1c | a-001 | 10000 | 5000 | 1 | A05-REPLAY-REF | a05-nonce-3\n lines  | 3 | 15000\n notifs | 6\nCode: function newSettlementNonce() is called inside handleUploadFile (CommissionPanel.jsx:358), i.e. once per file selection, and :324 explicitly does e.target.value='' so the SAME file can be re-picked.\nCoverage: the only replay test, e2e/specs/flows/distributor-apply-settlement.spec.ts:432, is a test.fixme whose whole body is expect(true).toBe(true).",
+  "impact": "One real UGX 5,000 payment settled UGX 15,000 of commission across three batches carrying an identical payment reference, and emitted 6 commission_settled notifications. Nothing in the schema, the RPC, or the UI treats a repeated txn_ref as suspicious. The confirm modal's 'amount mismatch' line is indistinguishable from a legitimate partial payment under the documented INFORM-NOT-BLOCK semantics, so the duplicate is never flagged.",
+  "suggested_fix": "Add CREATE UNIQUE INDEX \u2026 ON settlement_batches (agent_id, txn_ref) WHERE txn_ref IS NOT NULL, or derive the nonce from a hash of the normalised row set so the same file always yields the same nonce. Replace the test.fixme placeholder with a real replay spec asserting settlement_batches gains exactly one row across two submits.",
+  "demo_visible": true,
+  "effort": "S",
+  "roles_affected": [
+   "distributor",
+   "admin",
+   "agent",
+   "branch"
+  ],
+  "repro": [
+   "Sign in as distributor d-001. Open Commissions.",
+   "Upload a settlement CSV paying one agent a partial amount (e.g. UGX 5,000 against 20,000 pending). Confirm.",
+   "Without changing anything, pick the SAME file again and Confirm.",
+   "Repeat once more. Three settlement_batches rows now exist with the identical Payment Reference and 3x the money settled."
+  ],
+  "agent": "A05"
+ },
+ {
+  "id": "A05-005",
+  "title": "Two rows for the same agent in one settlement upload settle that agent twice in a single call",
+  "severity": "high",
+  "confidence": "confirmed",
+  "category": "replay",
+  "surface": "rpc",
+  "location": "public.apply_settlement (FOR v_row IN SELECT jsonb_array_elements(p_rows) with no per-agent grouping) \u00b7 src/utils/settlement.js:170 normalizeUploadedRows (no dedupe by agentId)",
+  "evidence": "Client-side (node u/rt2.mjs, real production parse path):\n  duplicate-agent-rows :: ok=true missing=[] accepted=[{\"agentId\":\"a-001\",\"amountPaid\":5000,\"paymentRef\":\"R1\",\"paymentDate\":\"\"},{\"agentId\":\"a-001\",\"amountPaid\":5000,\"paymentRef\":\"R1\",\"paymentDate\":\"\"}] skipped=[]\nServer-side (psql -f t_dupe.sql, BEGIN..ROLLBACK, one RPC call with the agent listed twice):\n  dupe_rows | {\"skipped\": [], \"totalPaid\": 10000, \"linesSettled\": 2, \"agentsSettled\": 2}\n  batches | sb-370be86ba4974cf9835d00cb9de30ee5 | a-001 | 95000 | 5000 | 1\n  batches | sb-11fbd8c1141c4fb79caed9ca14458a93 | a-001 | 90000 | 5000 | 1\n  lines  | 2 | 10000\n  notifs | 4",
+  "impact": "A distributor who appends a correction row instead of editing the template in place pays the agent twice. The nonce cannot help \u2014 it is one RPC invocation. Worse, the response reports agentsSettled: 2 for a single agent, so the success toast (CommissionPanel.jsx:372) reads 'Settled 2 agents' and the confirm modal's agentCount (:503, pendingUpload.rows.length) also says 2. There is no signal anywhere that it is the same agent twice.",
+  "suggested_fix": "Aggregate p_rows by agentId before the loop (SELECT agentId, sum(amountPaid) \u2026 GROUP BY agentId) or reject a duplicated agentId with a new 'duplicate_agent' skip reason; mirror the de-duplication in normalizeUploadedRows so the confirm modal counts distinct agents.",
+  "demo_visible": true,
+  "effort": "S",
+  "roles_affected": [
+   "distributor",
+   "admin",
+   "agent",
+   "branch"
+  ],
+  "repro": [
+   "Download the settlement template as distributor d-001.",
+   "Duplicate one agent's row so the file lists the same Agent ID twice, each with an Amount Paid.",
+   "Upload and Confirm. Two settlement_batches rows are written for that one agent and the toast reads 'Settled 2 agents'."
+  ],
+  "agent": "A05"
+ },
+ {
+  "id": "A05-006",
+  "title": "apply_settlement has no NULL guard on amountPaid \u2014 a row with no amount settles the agent's ENTIRE due slice",
+  "severity": "medium",
+  "confidence": "confirmed",
+  "category": "correctness",
+  "surface": "rpc",
+  "location": "supabase/migrations/0032_fix_settlement_apply.sql:184 (EXIT WHEN v_remaining < v_line.amount) and :150 (v_amount_paid := round((v_row ->> 'amountPaid')::numeric))",
+  "evidence": "psql \"$SUPABASE_DB_URL\" -X -q -f t_null.sql (BEGIN..ROLLBACK; payload has NO amountPaid key at all):\n due_before | 4 | 20000\n SELECT public.apply_settlement('[{\"agentId\":\"a-001\",\"paymentRef\":\"A05-NULLAMT\",\"paymentDate\":\"2026-08-23\"}]'::jsonb,'a05-nullamt');\n  missing_key | {\"skipped\": [], \"totalPaid\": 20000, \"linesSettled\": 4, \"agentsSettled\": 1}\n due_after | 0 |\n lines | c-00002 | 5000 | paid | 5000 | A05-NULLAMT\n lines | c-00003 | 5000 | paid | 5000 | A05-NULLAMT\n lines | c-00001 | 5000 | paid | 5000 | A05-NULLAMT\n lines | c-01000100 | 5000 | paid | 5000 | A05-NULLAMT\n batch | a-001 | 20000 | 20000 | 4 | A05-NULLAMT\nRoot cause: with v_remaining NULL, 'EXIT WHEN NULL < amount' evaluates to NULL, which is not TRUE, so the FIFO loop never exits and every due line is stamped paid.\nNot reachable via the current UI: node u/rt.mjs case 6a -> '6a unmodified-template :: accepted=[] skipped=[{\"agentId\":\"a-001\",\"reason\":\"no_amount\"},{\"agentId\":\"a-042\",\"reason\":\"no_amount\"}]'.",
+  "impact": "A settlement payload carrying no amount records a full-slice settlement. The current UI filters such rows out (normalizeUploadedRows), so this is not reachable from the settlement upload today \u2014 but apply_settlement is GRANT EXECUTE \u2026 TO authenticated (0032:318), so every distributor and admin token can call it directly, and migration 0032's own header claims the RPC applies defence-in-depth on the amount. It does not.",
+  "suggested_fix": "After the round(), add: IF v_amount_paid IS NULL OR v_amount_paid <= 0 THEN v_skipped := v_skipped || jsonb_build_array(jsonb_build_object('agentId', v_agent_id, 'reason', 'no_amount')); CONTINUE; END IF;",
+  "demo_visible": false,
+  "effort": "S",
+  "roles_affected": [
+   "distributor",
+   "admin"
+  ],
+  "repro": [
+   "As any authenticated distributor or admin, call the RPC directly: apply_settlement('[{\"agentId\":\"a-001\",\"paymentRef\":\"X\"}]'::jsonb, 'n1') \u2014 note the absent amountPaid key.",
+   "Every due commission for that agent flips to paid and a batch is recorded for the full slice."
+  ],
+  "agent": "A05"
+ },
+ {
+  "id": "A05-007",
+  "title": "Over-payment is silently swallowed \u2014 the entered amount above the due total is recorded nowhere and produces no skip or warning",
+  "severity": "medium",
+  "confidence": "confirmed",
+  "category": "correctness",
+  "surface": "rpc",
+  "location": "supabase/migrations/0032_fix_settlement_apply.sql:203 (batch records v_settled_total; leftover v_remaining discarded)",
+  "evidence": "psql \"$SUPABASE_DB_URL\" -X -q -f t_dupe.sql (second transaction, BEGIN..ROLLBACK):\n due_before | 19 | 95000\n overpay | {\"skipped\": [], \"totalPaid\": 95000, \"linesSettled\": 19, \"agentsSettled\": 1}\n batch | a-001 | pending_total 95000 | paid_amount 95000 | line_count 19\n due_after | 0\nEntered 200,000; recorded 95,000; the remaining 105,000 exists nowhere and `skipped` is empty.\nThe client accepts a 10x tampered cell too (node u/rt.mjs): '6c tampered-10x-and-negative :: accepted=[{\"agentId\":\"a-001\",\"amountPaid\":200000,\"paymentRef\":\"MM-A05-RT\",\"paymentDate\":\"2026-08-23\"}] skipped=[{\"agentId\":\"a-042\",\"reason\":\"no_amount\"}]'.",
+  "impact": "A fat-fingered or tampered Amount Paid cell records a smaller settlement than the distributor believes they paid, with no server-side signal. Because `skipped` is empty the post-settlement result panel (CommissionPanel.jsx:1030) shows nothing and the toast reports the server's total, so the discrepancy is never surfaced after the fact. Under-payment has a deliberate INFORM-NOT-BLOCK story; over-payment has no equivalent. The only guard is the advisory pre-submit 'amount mismatch' line in the confirm modal.",
+  "suggested_fix": "Either cap and report \u2014 add a skip entry {reason:'overpaid', unallocated:<remainder>} when v_remaining > 0 after the loop \u2014 or persist the entered amount on settlement_batches alongside the allocated one so the two can be reconciled later.",
+  "demo_visible": false,
+  "effort": "S",
+  "roles_affected": [
+   "distributor",
+   "admin"
+  ],
+  "repro": [
+   "As distributor d-001, upload a settlement file entering 10x an agent's pending amount.",
+   "Confirm past the amount-mismatch warning.",
+   "The batch records only the allocated total; the difference is not recorded anywhere and `skipped` is empty."
+  ],
+  "agent": "A05"
+ },
+ {
+  "id": "A05-008",
+  "title": "Seeded settlement batches are stamped with the wrong branch, so the b-kam-015 demo branch persona is told UGX 45,000 was paid while its own Commissions page shows 0 paid and a 0% settlement rate",
+  "severity": "medium",
+  "confidence": "confirmed",
+  "category": "data-integrity",
+  "surface": "ui",
+  "location": "scripts/seed-supabase.mjs:1108-1109 (branchId hardcoded to b-kam-015 / b-mba-290) \u00b7 live settlement_batches + notifications rows",
+  "evidence": "psql \u2026 -c \"select b.id, b.agent_id, b.branch_id, a.branch_id as agent_branch from settlement_batches b join agents a on a.id=b.agent_id where b.branch_id is distinct from a.branch_id;\"\n sb-seed-0001|a-001|b-kam-015|b-bui-001\n sb-seed-0002|a-042|b-mba-290|b-buv-007\npsql \u2026 -c \"select status, count(*), sum(amount) from commissions where branch_id='b-kam-015' group by 1;\"  -> due|31|155000  (zero paid)\npsql \u2026 -c \"select recipient_role, recipient_id, body, amount, ref_id from notifications where ref_id like 'sb-seed%';\"\n agent |a-001    |UGX 45000 paid for 9 commissions.|45000|sb-seed-0001\n branch|b-kam-015|UGX 45000 paid for 9 commissions.|45000|sb-seed-0001\n agent |a-042    |UGX 15000 paid for 3 commissions.|15000|sb-seed-0002\n branch|b-mba-290|UGX 15000 paid for 3 commissions.|15000|sb-seed-0002\nRendered (headless Chromium, e2e/.auth/branch.json = persona b-kam-015, notification bell on /dashboard; screenshot a05-branch-notification-bell.png):\n  Notifications   Mark all read\n  Commission settled                3w\n  UGX 45000 paid for 9 commissions.\nSame persona at /dashboard/commissions (screenshot a05-branch-commissions.png):\n  SETTLED THIS CYCLE 0  Paid across 0 agents / DUE NEXT RUN 155K / SETTLEMENT RATE 0%\nIts agent roster (a05-branch-analytics.png) is Beatrice Drazu, Brenda Nankya, Annet Drazu, Frank Lubega, Lillian Nankya \u2014 Dorothy Kiiza (a-001) is not in this branch.",
+  "impact": "settlement_batches RLS scopes by branch_id, so a batch belonging to an agent in Buikwe Central is routed to the Kampala Central branch dashboard and notification feed, and never reaches the branch that actually earned it. The demo branch persona sees UGX 45,000 'Commission settled' one click from its landing page while its own commission ledger reports 0 paid / 0% settled \u2014 contradictory money attributed to a branch that made no payout. The body is also unformatted ('UGX 45000') where every RPC-generated notification writes 'UGX 5,000' (0032:212 to_char FM999,999,999,999).",
+  "suggested_fix": "In scripts/seed-supabase.mjs settlementSeeds, derive branchId from the agent (as the live apply_settlement does at 0032:174) instead of hardcoding it, and route the seeded notification bodies through formatSettlementNotificationBody (src/utils/settlement.js:44) so seeded and live copy match.",
+  "demo_visible": true,
+  "effort": "S",
+  "roles_affected": [
+   "branch",
+   "agent"
+  ],
+  "repro": [
+   "Sign in as the branch demo persona b-kam-015 (Kampala Central).",
+   "Open the notification bell on /dashboard: 'Commission settled \u2014 UGX 45000 paid for 9 commissions.'",
+   "Open Commissions: SETTLED THIS CYCLE 0, Paid across 0 agents, SETTLEMENT RATE 0%.",
+   "Open Analytics: the agent roster does not contain Dorothy Kiiza (a-001), the agent that batch belongs to."
+  ],
+  "agent": "A05"
+ },
+ {
+  "id": "A05-009",
+  "title": "0089's down-migration would silently revert NAV pricing \u2014 it re-emits trg_transactions_contribution with the hardcoded 1,000 UGX unit price",
+  "severity": "medium",
+  "confidence": "confirmed",
+  "category": "rollback",
+  "surface": "migration",
+  "location": "supabase/migrations/0089_per_distributor_commission_rate.down.sql:22",
+  "evidence": "grep -n \"v_unit_price\" supabase/migrations/0089_per_distributor_commission_rate.down.sql\n 22:  v_unit_price       NUMERIC := 1000;\n 58:    NEW.amount / v_unit_price,\n 118:                 units             = units - (v_target / v_unit_price),   -- v_unit_price = 1000\npsql \u2026 -c \"select pg_get_functiondef(oid) from pg_proc where proname='trg_transactions_contribution' and pronamespace='public'::regnamespace;\" | grep -n v_unit_price\n 8:  v_unit_price       NUMERIC;   -- 0104: the fund NAV, assigned in BEGIN\n 25:  v_unit_price := public.nav_for_date(COALESCE(NEW.date::date, CURRENT_DATE));\ngrep -n \"v_unit_price|nav_for_date\" supabase/migrations/0104_nav_pricing_rpcs.sql\n 78:  v_unit_price       NUMERIC;   -- 0104: the fund NAV, assigned in BEGIN\n 95:  v_unit_price := public.nav_for_date(COALESCE(NEW.date::date, CURRENT_DATE));\n 195: \u2026 invested * (1 - LEAST(v_target / v_unit_price, units) / units)\nParsed only, never executed (G6).",
+  "impact": "Executing 0089's down would reinstate the hardcoded 1,000 UGX unit price and drop the `invested`-column arithmetic 0104 added, silently rolling back the 0103-0107 NAV pricing work and re-breaking every unit/AUM figure. The same hazard applies to every .down.sql in the trg_transactions_contribution chain authored before 0104 (0042, 0043, 0072); 0089 is the one inside A05's scope.",
+  "suggested_fix": "Regenerate the affected down files from the live function body at authoring time \u2014 the asserted single-match transform technique 0089's own forward migration documents \u2014 or mark them 'forward-only, do not execute' and strip the trigger re-emission.",
+  "demo_visible": false,
+  "effort": "M",
+  "roles_affected": [
+   "subscriber",
+   "agent",
+   "branch",
+   "distributor",
+   "admin",
+   "employer"
+  ],
+  "repro": [
+   "Diff supabase/migrations/0089_per_distributor_commission_rate.down.sql line 22 against the live pg_get_functiondef of trg_transactions_contribution line 25.",
+   "The down file pins v_unit_price := 1000; the live body assigns public.nav_for_date(...)."
+  ],
+  "agent": "A05"
+ },
+ {
+  "id": "A05-010",
+  "title": "The agent's partial-settlement banner shows an internal 34-character batch UUID instead of the human payment reference",
+  "severity": "low",
+  "confidence": "confirmed",
+  "category": "copy",
+  "surface": "ui",
+  "location": "src/agent-dashboard/pages/commissions/CommissionsParts.jsx:149 (and the mailto body at :132)",
+  "evidence": "Rendered on /dashboard/commissions as persona a-001 (screenshot a05-agent-commissions-desktop.png):\n  'UGX 5K paid against UGX 15K due \u2014 UGX 10K is still outstanding (ref sb-09258a3b9cc94064be51e0a6f0a04fa5).'\nCode: `\u2014 {formatUGX(shortfall)} is still outstanding (ref {batch.id}).` \u2014 batch.id, not batch.txnRef. The same row's txn_ref is 'E2E-PARTIAL-1785752804482' (production shape: 'MM-\u2026'), which is what a mobile-money payer would recognise.",
+  "impact": "A 34-character opaque identifier is surfaced to a low-literacy agent audience and pasted into the 'Ask for reason' support mailto, where back-office staff would also have to translate it. The batch already carries a human payment reference that is displayed one section below in the Settlement history table.",
+  "suggested_fix": "Render batch.txnRef in the banner and the mailto body, falling back to batch.id only when txnRef is null.",
+  "demo_visible": true,
+  "effort": "S",
+  "roles_affected": [
+   "agent"
+  ],
+  "repro": [
+   "Sign in as agent a-001 and open Commissions.",
+   "Read the partial-settlement banner: it cites 'ref sb-09258a3b9cc94064be51e0a6f0a04fa5'.",
+   "Compare with the Settlement history table below, which shows the readable reference E2E-PARTIAL-1785752804482 for the same batch."
+  ],
+  "agent": "A05"
+ },
+ {
+  "id": "A05-011",
+  "title": "parseAmount misparses formula and scientific-notation money cells into plausible-looking amounts, and returns 0 in violation of its own contract",
+  "severity": "low",
+  "confidence": "confirmed",
+  "category": "correctness",
+  "surface": "ui",
+  "location": "src/utils/finance.js:110-122",
+  "evidence": "node u/rt2.mjs (direct probes of the shipped function):\n  parseAmount(\"=1+1\")             = 11\n  parseAmount(\"1e9\")              = 19\n  parseAmount(\"0.4\")              = 0\n  parseAmount(\"UGX 20,000\")       = 20000\n  parseAmount(\"20 000\")           = 20000\n  parseAmount(\"4999.6\")           = 5000\n  parseAmount(\"lots\")             = null\n  parseAmount(\"-5\") / (\"0\") / (\"\") = null\nThe `[^\\d.-]` strip at :117 turns '=1+1' into '11' and '1e9' into '19'. The `n <= 0` guard at :120 runs BEFORE Math.round, so 0.4 survives it and the function returns 0 despite documenting 'a whole-UGX integer > 0'.\nRelated, same parse path (node u/rt.mjs): '6c3 formula-injection :: accepted=[{\"agentId\":\"=cmd|calc\",\"amountPaid\":11,\u2026}]'.",
+  "impact": "A spreadsheet cell that Excel stored as a formula string, or a value in scientific notation, becomes a real settlement amount (UGX 11, UGX 19) rather than being rejected as unparseable \u2014 a distributor would never notice the difference between 11 and a rejected row. The 0 return reaches the RPC and is skipped as amount_too_low, so nothing breaks today, but the documented contract is violated. The accepted '=cmd|calc' Agent ID is the classic spreadsheet formula-injection shape.",
+  "suggested_fix": "Reject any cell that is not cleanly numeric after stripping only currency symbols and group separators (validate with a strict regex instead of character-class deletion); move the positivity check after Math.round so 0.4 returns null.",
+  "demo_visible": false,
+  "effort": "S",
+  "roles_affected": [
+   "distributor",
+   "admin"
+  ],
+  "repro": [
+   "Put =1+1 in the 'Amount Paid (UGX)' cell of a settlement template and upload it.",
+   "The row is accepted with amountPaid 11 rather than skipped as no_amount."
+  ],
+  "agent": "A05"
+ },
+ {
+  "id": "A05-012",
+  "title": "A commission rate of 0 is accepted and generates UGX 0 commission rows instead of no commission",
+  "severity": "low",
+  "confidence": "confirmed",
+  "category": "correctness",
+  "surface": "rpc",
+  "location": "supabase/migrations/0089_per_distributor_commission_rate.sql:107 (IF p_rate < 0 OR p_rate > v_rate_max) \u00b7 trg_transactions_contribution (IF v_commission_rate IS NOT NULL)",
+  "evidence": "psql \"$SUPABASE_DB_URL\" -X -q -f t_rate2.sql (BEGIN..ROLLBACK):\n zero_rate_allowed | 0\n rate_for_bui      | 0\npsql \"$SUPABASE_DB_URL\" -X -q -f t_zero.sql (BEGIN..ROLLBACK; set cfg-d-001 rate to 0, create a subscriber under a-001, insert a contribution):\n        phase         |     id     | agent_id | subscriber_id | amount | status\n ----------------------+------------+----------+---------------+--------+--------\n  zero_rate_commission | c-01000122 | a-001    | a05-zero-sub  |      0 | due\nThe trigger's guard is IF v_commission_rate IS NOT NULL \u2014 0 is not NULL, so a zero-value row is inserted.",
+  "impact": "An operator who legitimately configures 'no commission' gets a ledger full of UGX 0 due lines, inflating every 'N commissions owed' count and every agent's record count on the Commissions surfaces. Not present in live data (all 5001 rows are 5000 UGX).",
+  "suggested_fix": "Either reject p_rate = 0 in set_commission_rate with a clear message, or change the trigger guard to IF v_commission_rate IS NOT NULL AND v_commission_rate > 0.",
+  "demo_visible": false,
+  "effort": "S",
+  "roles_affected": [
+   "distributor",
+   "admin",
+   "agent"
+  ],
+  "repro": [
+   "As distributor d-001 call set_commission_rate(0).",
+   "Create a subscriber under one of that distributor's agents and post their first contribution.",
+   "A commission row is created with amount 0 and status due."
+  ],
+  "agent": "A05"
+ },
+ {
+  "id": "A05-013",
+  "title": "Re-assigning a subscriber to a different agent generates a second commission for the same subscriber",
+  "severity": "low",
+  "confidence": "confirmed",
+  "category": "correctness",
+  "surface": "db",
+  "location": "public.trg_transactions_contribution (dedupe guard keyed on subscriber_id AND agent_id) \u00b7 ux_commissions_agent_subscriber",
+  "evidence": "psql \"$SUPABASE_DB_URL\" -X -q -f t_second_contrib.sql (BEGIN..ROLLBACK):\n before               | 1        (s-0004 has one commission)\n after_second_contrib | 1        <-- a SECOND contribution under the SAME agent creates nothing (correct)\n after_reassign:\n  c-00004    | a-001 | b-bui-001 | s-0004 | 5000 | paid\n  c-01000106 | a-042 | b-buv-007 | s-0004 | 5000 | due    <-- second commission after UPDATE subscribers SET agent_id='a-042'\nGuard text (live pg_get_functiondef): IF NOT EXISTS (SELECT 1 FROM public.commissions WHERE subscriber_id = NEW.subscriber_id AND agent_id = v_agent_id).\ntrg_subscribers_enforce_editable_cols blocks agent_id edits only when app_role='subscriber' (IF v_role IS DISTINCT FROM 'subscriber' THEN RETURN NEW).\nLive data: psql \u2026 -c \"select count(*) from (select subscriber_id from commissions group by 1 having count(*)>1) x;\" -> 0",
+  "impact": "The 'exactly one commission per onboarding' invariant is keyed on (subscriber, agent) rather than on subscriber, so a re-assignment plus a contribution pays a second 5,000 UGX onboarding commission for the same member. Latent: no UI path in the repo re-assigns agent_id (0060's deactivation sets it to NULL, which is safe), and live data has zero subscribers with more than one commission.",
+  "suggested_fix": "If a subscriber may only ever generate one onboarding commission, key the guard (and the unique index) on subscriber_id alone; otherwise document the re-assignment case explicitly and gate agent_id changes behind an RPC that decides whether a new commission is owed.",
+  "demo_visible": false,
+  "effort": "M",
+  "roles_affected": [
+   "agent",
+   "distributor",
+   "admin"
+  ],
+  "repro": [
+   "Take a subscriber that already has a commission under agent A.",
+   "UPDATE subscribers SET agent_id = <agent B> for that subscriber (any role other than subscriber).",
+   "Insert another contribution. A second commission row is created under agent B."
+  ],
+  "agent": "A05"
+ },
+ {
+  "id": "A05-014",
+  "title": "settlement_uploads is an unbounded, never-reconciled idempotency ledger claiming 1,530,000 UGX of settlement against 50,000 actually paid",
+  "severity": "info",
+  "confidence": "confirmed",
+  "category": "hygiene",
+  "surface": "db",
+  "location": "public.settlement_uploads \u00b7 e2e/specs/flows/distributor-apply-settlement.spec.ts afterEach",
+  "evidence": "psql \u2026 -At -c \"select count(*) from settlement_uploads;\"                                          141\npsql \u2026 -At -c \"select count(*) from settlement_uploads where (result->>'linesSettled')::int > 0;\"  126\npsql \u2026 -At -F'|' -c \"select sum((result->>'totalPaid')::numeric), sum((result->>'linesSettled')::int) from settlement_uploads;\"\n 1530000|306\nAgainst 5 settlement_batches rows and 50,000 UGX / 10 lines actually paid. The E2E afterEach reverts commissions and deletes settlement_batches + notifications but never the settlement_uploads row.",
+  "impact": "No user-visible effect \u2014 the table has no RLS policies and no authenticated grant, so only the SECURITY DEFINER RPC reads it. It simply accumulates and diverges permanently from reality; today's baseline Playwright run added 8 more rows and zero orphan batches, i.e. cleanup works when tests pass.",
+  "suggested_fix": "Have the E2E cleanup also delete its settlement_uploads rows by nonce, and consider a retention window on the ledger (the nonce only needs to outlive a plausible retry).",
+  "demo_visible": false,
+  "effort": "S",
+  "roles_affected": [],
+  "repro": [
+   "Query select count(*), sum((result->>'totalPaid')::numeric) from settlement_uploads and compare with sum(paid_amount) from settlement_batches."
+  ],
+  "agent": "A05"
+ },
+ {
+  "id": "A05-015",
+  "title": "Migration 0087 documents an ownership guard on get_agent_commission_detail that its body never emits",
+  "severity": "info",
+  "confidence": "confirmed",
+  "category": "doc-drift",
+  "surface": "migration",
+  "location": "supabase/migrations/0087_scope_commission_rpcs.sql:15-19 vs live public.get_agent_commission_detail",
+  "evidence": "0087 header: 'Ownership guard on `get_agent_commission_detail` \u2026 It now returns NULL.' The migration body has four numbered sections (get_agent_commission_list, get_pending_dues_by_agent, get_pending_dues_by_branch, get_top_branch) and none re-emits that function.\ngrep -n get_agent_commission_detail supabase/migrations/*.sql (excluding .down) shows the last CREATE OR REPLACE is 0029_commission_simplify.sql:270.\npsql \u2026 -c \"select pg_get_functiondef(oid) from pg_proc where proname='get_agent_commission_detail' and pronamespace='public'::regnamespace;\" | head -6\n CREATE OR REPLACE FUNCTION public.get_agent_commission_detail(p_agent_id text)\n  RETURNS jsonb\n  LANGUAGE plpgsql\n  STABLE\n  SET search_path TO 'public', 'pg_temp'\nBehaviour is nevertheless correct \u2014 psql -f t_rls.sql under SET LOCAL ROLE authenticated with distributorId=d-002:\n        phase        | agent_name | agent_phone | branch_name | total | due_lines\n ---------------------+------------+-------------+-------------+-------+-----------\n  d002_detail_of_a001 |            |             |             |       |            (NULL)\nbecause the function is SECURITY INVOKER and RLS on public.agents makes the opening SELECT \u2026 INTO v_agent find nothing, hitting IF NOT FOUND THEN RETURN NULL.",
+  "impact": "No user-visible effect and no data leak: the intended behaviour is delivered incidentally by RLS on public.agents rather than by the guard the migration claims to have added. The risk is that anyone reading 0087 believes an explicit guard exists in the function body; if the function were ever converted to SECURITY DEFINER the protection would vanish silently.",
+  "suggested_fix": "Either emit the documented guard (IF the resolved agent's branch is not in distributor_branch_ids() THEN RETURN NULL) or amend 0087's header to state that the protection comes from RLS on public.agents plus SECURITY INVOKER, and add a comment to that effect on the function.",
+  "demo_visible": false,
+  "effort": "S",
+  "roles_affected": [],
+  "repro": [
+   "Read supabase/migrations/0087_scope_commission_rpcs.sql lines 15-19.",
+   "Grep the same file for get_agent_commission_detail \u2014 it appears only in the header comment.",
+   "Dump the live definition: it is still the 0029 body."
+  ],
+  "agent": "A05"
+ }
+]

@@ -1,0 +1,430 @@
+[
+ {
+  "id": "A04-003",
+  "title": "A reseed leaves units at the dead 1,000 UGX price and zeroes bucket units; the next NAV publish inflates AUM 57% and zeroes every member's retirement pot",
+  "severity": "high",
+  "confidence": "confirmed",
+  "category": "wrong-money",
+  "surface": "seed / money engine",
+  "location": "scripts/seed-supabase.mjs:78",
+  "demo_visible": true,
+  "effort": "S",
+  "roles_affected": [
+   "admin",
+   "subscriber",
+   "employer",
+   "distributor",
+   "agent",
+   "branch_admin"
+  ],
+  "evidence": "Three measured facts. (1) scripts/seed-supabase.mjs:74-83 `const UNIT_PRICE = 1000; function unitsFromBalance(netBalance){return Math.round(((netBalance ?? 0)/UNIT_PRICE)*100)/100;}`. (2) `nav_snapshots` is absent from the seed's TRUNCATE list (scripts/seed-supabase.mjs:361-397) and the seed never inserts into it, so the register keeps saying 1,571.40. (3) The subscriber_balances insert (:639-658) writes only subscriber_id/retirement_balance/emergency_balance/total_balance/units; information_schema shows the omitted columns default to 0: `retirement_units|numeric|NO|0`, `emergency_units|numeric|NO|0`, `invested|numeric|NO|0`.\n\nReproduced against live inside BEGIN\u2026ROLLBACK on s-0004, writing the seed shape then applying publish_nav_snapshot's revaluation arithmetic VERBATIM (0106 body lines 72-79):\n$ psql -X -f probe_drift.sql\n-- pre (real)      671179 | 536943 | 134236 | units 427.1217067764500730 | ru 341.697365 | invested 609894.31\n-- seed shape      671179 | 536943 | 134236 | units 671.1800000000000000 | ru 0 | eu 0 | invested 0\n-- AFTER_PUBLISH  1054692 |      0 |1054692 | units 671.1800000000000000 | invested 0\n======== POST-ROLLBACK RE-READ\n 671179 | 536943 | 134236 | 427.1217067764500730 | 341.697365 | 85.4243417764500730 | 609894.3057",
+  "impact": "total_balance +57.1%, retirement_balance -100% (to exactly 0), emergency_balance +686%, invested 0. Across 5,060 members: platform AUM inflates ~57% with no money in, EVERY member's retirement savings read zero, every shilling becomes withdrawable 'emergency' money, and all growth figures collapse to 0% (get_nav_overview's avgGrowthPct filters on invested > 0, which no row would satisfy). subscribers.current_unit_value also reverts to the seed's random 950-1050 while the register says 1,571.40, so the '@ X/unit' line is wrong too. Even before any publish the reseed alone breaks the units x NAV == total_balance invariant by 57% for every row, and the admin NAV page's own projectedAum = unitsInIssue x typedPrice (AdminNavDesktop.jsx:131-133) sits 57% above the AUM tile beside it. This becomes CRITICAL the moment anyone reseeds \u2014 and 0105's header calls the NAV publish 'the live demo moment'.",
+  "suggested_fix": "Either (a) have the seed derive units from public.latest_nav() instead of the 1,000 literal and write retirement_units/emergency_units/invested (units x bucket ratio, and invested = total_balance so growth starts at 0%), or (b) add nav_snapshots to the TRUNCATE list and reseed a flat 1,000 register so the two stay consistent. Option (a) is preferable \u2014 it keeps the 5-year price history 0105 built. Either way add a post-seed assertion that abs(total_balance - round(units * latest_nav())) <= 1 and retirement_units + emergency_units = units for every row.",
+  "repro": [
+   "cd /Users/shubhang/Desktop/Projects/uganda-dashboard && set -a; . ./.env.local >/dev/null 2>&1; set +a",
+   "psql \"$SUPABASE_DB_URL\" -X -c \"BEGIN; UPDATE subscriber_balances SET units = round((total_balance/1000)*100)/100, retirement_units = DEFAULT, emergency_units = DEFAULT, invested = DEFAULT WHERE subscriber_id='s-0004'; UPDATE subscriber_balances SET total_balance = round(units*1571.40), retirement_balance = round(retirement_units*1571.40), emergency_balance = round(units*1571.40)-round(retirement_units*1571.40) WHERE subscriber_id='s-0004'; SELECT total_balance, retirement_balance, emergency_balance FROM subscriber_balances WHERE subscriber_id='s-0004'; ROLLBACK;\"",
+   "Observe 1054692 | 0 | 1054692 versus the real 671179 | 536943 | 134236"
+  ],
+  "agent": "A04"
+ },
+ {
+  "id": "A04-001",
+  "title": "make_contribution accepts NaN / Infinity / unbounded amounts; NaN irrecoverably poisons units and every AUM figure on the platform",
+  "severity": "high",
+  "confidence": "confirmed",
+  "category": "input-validation",
+  "surface": "RPC",
+  "location": "public.make_contribution:19",
+  "demo_visible": true,
+  "effort": "S",
+  "roles_affected": [
+   "subscriber",
+   "admin",
+   "distributor",
+   "employer",
+   "agent",
+   "branch_admin"
+  ],
+  "evidence": "The sole amount guard in the live body is `IF p_amount IS NULL OR p_amount <= 0 THEN RAISE EXCEPTION 'amount must be positive'`. In PostgreSQL `NaN <= 0` is FALSE (NaN sorts above every other numeric), so it does not fire.\n\nAll probes inside BEGIN\u2026ROLLBACK on s-0004:\n======== G5 contribution amount = NaN\n {\"id\":\"tx-s-0004-adhoc-29ba8243b0aa41f18e2f6ba1eac1c8c2\",\"amount\":\"NaN\",\"splitEmergency\":\"NaN\",\"splitRetirement\":\"NaN\"}\n total_balance | retirement_balance | emergency_balance | units | invested\n NaN           | NaN                | NaN               | NaN   | NaN\n======== G6 contribution amount = Infinity\n {\"amount\":\"Infinity\",\"splitEmergency\":\"NaN\",\"splitRetirement\":\"Infinity\"}\n======== G7 contribution amount = 1e30\n accepted = 1000000000000000000000000000000\n total_balance 1000000000000000000000000671179 | units 636375206821942217131220994.7217067764500730\n======== POST-ROLLBACK RE-READ (equals PRE-STATE)\n s-0004 | 671179 | 536943 | 134236 | 427.1217067764500730 | 609894.3057\n a04_nonces 0",
+  "impact": "units and invested are themselves poisoned, and nothing in the system ever recomputes them \u2014 publish_nav_snapshot derives total_balance = round(units * price), so NaN propagates forever. One poisoned member makes SUM(units) and SUM(total_balance) NaN, so get_nav_overview returns aum: NaN and unitsInIssue: NaN, and EVERY AUM surface on the platform (admin overview, distributor and branch rollups, league tables, employer metrics) renders NaN. Unlike the publish-side variant this is NOT recoverable from inside the app \u2014 only direct SQL can repair it. The shipped UI cannot trigger it (JSON.stringify(NaN) -> null, which the NULL guard rejects; src/services/subscriber.js:824 passes p_amount straight through with no Number.isFinite check), so reachability requires a direct RPC call; PostgREST casts a JSON string to the parameter type, making {\"p_amount\":\"NaN\"} the plausible vector. That HTTP leg was deliberately not executed because it would commit.",
+  "suggested_fix": "Replace the guard with a shared validator: `IF p_amount IS NULL OR p_amount <= 0 OR p_amount = 'NaN'::numeric OR p_amount = 'Infinity'::numeric OR p_amount > 100000000 THEN RAISE EXCEPTION ... END IF;` and apply the same to request_withdrawal, pay_insurance_premium, fund_insurance_products and submit_employer_contribution_run. Add `CHECK (total_balance = total_balance AND units = units)` (a NaN trap) plus non-negativity CHECKs on subscriber_balances \u2014 the table currently has zero CHECK constraints.",
+  "repro": [
+   "cd /Users/shubhang/Desktop/Projects/uganda-dashboard && set -a; . ./.env.local >/dev/null 2>&1; set +a",
+   "psql \"$SUPABASE_DB_URL\" -X -c \"BEGIN; SET LOCAL ROLE authenticated; SELECT set_config('request.jwt.claims','{\\\"app_role\\\":\\\"subscriber\\\",\\\"subscriberId\\\":\\\"s-0004\\\",\\\"role\\\":\\\"authenticated\\\"}',true); SELECT public.make_contribution('probe','NaN'::numeric,80,'MTN'); RESET ROLE; SELECT total_balance,units,invested FROM subscriber_balances WHERE subscriber_id='s-0004'; ROLLBACK;\"",
+   "Observe NaN | NaN | NaN, then confirm the post-ROLLBACK re-read is unchanged"
+  ],
+  "agent": "A04"
+ },
+ {
+  "id": "A04-002",
+  "title": "request_withdrawal validates only that the split legs SUM to the amount, so a negative leg creates money in the retirement bucket",
+  "severity": "high",
+  "confidence": "confirmed",
+  "category": "wrong-money",
+  "surface": "RPC",
+  "location": "public.request_withdrawal:65-69",
+  "demo_visible": true,
+  "effort": "S",
+  "roles_affected": [
+   "subscriber"
+  ],
+  "evidence": "Live body lines 65-69 are the only validation on the explicit splits:\n  IF v_split_ret IS NOT NULL AND v_split_emg IS NOT NULL\n     AND (v_split_ret + v_split_emg) <> p_amount THEN RAISE EXCEPTION ...\nNeither leg is checked for sign or against its own bucket. trg_transactions_withdrawal then computes GREATEST(0, retirement_balance - v_ret_take); with v_ret_take negative that ADDS to the bucket.\n\nProbe inside BEGIN\u2026ROLLBACK on s-0004 (pre: total 671179 / ret 536943 / emg 134236):\n======== S1 explicit splits that SUM to the amount but one leg is NEGATIVE\n SELECT public.request_withdrawal('A04-S1', 100000, NULL, 'x', 'MTN', -100000, 200000)\n accepted = 100000\n total_balance | retirement_balance | emergency_balance | invariant_break | units\n 571179        | 636943             | 0                 | 65764           | 363.48418609\n======== POST-ROLLBACK RE-READ\n 671179 | 536943 | 134236 | 427.12170678\n a04_nonces 0",
+  "impact": "(-100000) + 200000 = 100000 passes the sum check, and the member's RETIREMENT balance rises by 100,000 UGX on a withdrawal \u2014 money created from nothing. Simultaneously the buckets stop summing to the total (break 65,764), so the member's dashboard shows Retirement 636,943 + Savings 0 against Total 571,179. total_balance and units stay mutually consistent (363.484 x 1571.4 = 571,179), so the units x NAV reconciliation would not catch it and v_reconciliation_exceptions' split_mismatch check would flag only the symptom. Not reachable through WithdrawPage.jsx (which never sends explicit splits) \u2014 requires a direct RPC call.",
+  "suggested_fix": "Add to the same IF block: `IF v_split_ret < 0 OR v_split_emg < 0 THEN RAISE EXCEPTION 'split legs must be non-negative' USING ERRCODE='P0001'; END IF;` and a per-bucket sufficiency check against the FOR UPDATE-locked balance row (v_split_ret <= retirement_balance AND v_split_emg <= emergency_balance). This fix also closes A04-004.",
+  "repro": [
+   "cd /Users/shubhang/Desktop/Projects/uganda-dashboard && set -a; . ./.env.local >/dev/null 2>&1; set +a",
+   "psql \"$SUPABASE_DB_URL\" -X -c \"BEGIN; SET LOCAL ROLE authenticated; SELECT set_config('request.jwt.claims','{\\\"app_role\\\":\\\"subscriber\\\",\\\"subscriberId\\\":\\\"s-0004\\\",\\\"role\\\":\\\"authenticated\\\"}',true); SELECT public.request_withdrawal('probe',100000,NULL,'x','MTN',-100000,200000); RESET ROLE; SELECT total_balance,retirement_balance,emergency_balance FROM subscriber_balances WHERE subscriber_id='s-0004'; ROLLBACK;\"",
+   "Observe retirement_balance rise from 536943 to 636943 on a withdrawal"
+  ],
+  "agent": "A04"
+ },
+ {
+  "id": "A04-004",
+  "title": "request_withdrawal with bucket='emergency' for more than the emergency balance clamps the bucket at 0 but debits the full total, so the two buckets stop summing to the total",
+  "severity": "medium",
+  "confidence": "confirmed",
+  "category": "wrong-money",
+  "surface": "RPC",
+  "location": "public.request_withdrawal:54-60",
+  "demo_visible": true,
+  "effort": "S",
+  "roles_affected": [
+   "subscriber"
+  ],
+  "evidence": "Live body lines 54-60 turn p_bucket='emergency' into `v_split_ret := 0; v_split_emg := p_amount;` with no check against the emergency balance. The only balance guard (line 46) compares p_amount against total_balance, not the bucket. trg_transactions_withdrawal then does GREATEST(0, emergency_balance - v_emg_take) while debiting total_balance by the full ABS(amount).\n\nProbe inside BEGIN\u2026ROLLBACK on s-0004 (emergency holds only 134,236):\n======== W5 withdraw 400000 from bucket=emergency\n accepted = 400000\n total_balance | retirement_balance | emergency_balance | bucket_sum | invariant_break | units\n 271179        | 536943             | 0                 | 536943     | 265764          | 172.57162405\n======== W6 same amount, bucket = NULL (trigger emergency-first fallback) \u2014 CONTROL\n total_balance 271179 | retirement 271179 | emergency 0 | invariant_break 0   <-- correct\n======== POST-ROLLBACK RE-READ\n 671179 | 536943 | 134236 | 427.1217067764500730",
+  "impact": "The member's dashboard shows Retirement 536,943 + Savings 0 against Total savings 271,179 \u2014 the two buckets sum to almost double the headline total, two contradictory money figures on one screen. total_balance and units remain mutually consistent (172.5716 x 1571.4 = 271,179), so the units x NAV reconciliation cannot detect it. The W6 control proves the trigger's own emergency-first fallback path is correct, isolating the defect to the p_bucket branch of the RPC. WithdrawPage.jsx:68,76,77 caps the amount at the selected bucket's balance, so the shipped UI cannot produce it \u2014 this needs a direct RPC call or a stale client.",
+  "suggested_fix": "In the p_bucket branch, read the locked balance row's bucket columns and RAISE when p_amount exceeds the named bucket, e.g. `IF p_bucket = 'emergency' AND p_amount > v_emergency_balance THEN RAISE EXCEPTION 'withdrawal of % exceeds the emergency balance %'`. Same for 'retirement'. Covered by the same fix as A04-002.",
+  "repro": [
+   "cd /Users/shubhang/Desktop/Projects/uganda-dashboard && set -a; . ./.env.local >/dev/null 2>&1; set +a",
+   "psql \"$SUPABASE_DB_URL\" -X -c \"BEGIN; SET LOCAL ROLE authenticated; SELECT set_config('request.jwt.claims','{\\\"app_role\\\":\\\"subscriber\\\",\\\"subscriberId\\\":\\\"s-0004\\\",\\\"role\\\":\\\"authenticated\\\"}',true); SELECT public.request_withdrawal('probe',400000,'emergency','x','MTN',NULL,NULL); RESET ROLE; SELECT total_balance,retirement_balance,emergency_balance,(retirement_balance+emergency_balance-total_balance) AS break FROM subscriber_balances WHERE subscriber_id='s-0004'; ROLLBACK;\"",
+   "Observe break = 265764"
+  ],
+  "agent": "A04"
+ },
+ {
+  "id": "A04-005",
+  "title": "publish_nav_snapshot's p_unit_price <= 0 guard AND the unit_price > 0 CHECK constraint both pass NaN/Infinity; with confirmMove the entire book goes NaN",
+  "severity": "medium",
+  "confidence": "confirmed",
+  "category": "input-validation",
+  "surface": "RPC",
+  "location": "public.publish_nav_snapshot:18-20",
+  "demo_visible": true,
+  "effort": "S",
+  "roles_affected": [
+   "admin"
+  ],
+  "evidence": "Live body lines 18-20: `IF p_unit_price IS NULL OR p_unit_price <= 0 THEN RAISE EXCEPTION 'unit price must be greater than zero'`. NaN <= 0 is FALSE in PostgreSQL, and the table constraint `nav_snapshots_unit_price_check CHECK ((unit_price > (0)::numeric))` also passes because NaN > 0 is TRUE.\n\nProbes inside BEGIN\u2026ROLLBACK (0 and -5 correctly rejected; NaN not):\n======== P2 unit_price = 0    -> ERROR: unit price must be greater than zero\n======== P3 unit_price = -5   -> ERROR: unit price must be greater than zero\n======== P3b unit_price = NaN, confirm=false -> ERROR: price move of %NaN from 1571.4 on 2026-08-08 needs confirmation   (stopped only INCIDENTALLY, by the move gate)\n======== P9 unit_price = NaN, confirm=TRUE\n {\"aum\":\"NaN\",\"navDate\":\"2026-08-24\",\"revalued\":true,\"unitPrice\":\"NaN\",\"unitsInIssue\":1559263.395\u2026,\"membersPriced\":5060}\n after_NaN | total_balance NaN | retirement NaN | emergency NaN\n book      | nan_rows 5060 | aum NaN\n nav_row   | 2026-08-24 | NaN | published\n======== P10 unit_price = Infinity, confirm=TRUE -> accepted, unitPrice \"Infinity\", aum \"NaN\"\n======== POST-ROLLBACK: nav_published 1242, nav_pending 4, A04PROBE snapshots 0, latest_nav 1571.4",
+  "impact": "All 5,060 subscriber_balances rows go NaN in one statement and the register itself stores a NaN price, so every AUM surface on the platform reads NaN. It IS recoverable \u2014 units and retirement_units survive untouched, so publishing a valid price restores the book \u2014 which is why this is medium rather than high. Admin-gated. The NaN price is stopped without confirmMove only because a previous published price exists to compute a move against; on an empty or single-row register that incidental protection disappears.",
+  "suggested_fix": "Extend the guard to `IF p_unit_price IS NULL OR p_unit_price <= 0 OR p_unit_price = 'NaN'::numeric OR p_unit_price = 'Infinity'::numeric OR p_unit_price > 1000000 THEN RAISE ...`, and tighten the table constraint to `CHECK (unit_price > 0 AND unit_price = unit_price AND unit_price < 'Infinity'::numeric)` so the register cannot store a non-finite price by any route.",
+  "repro": [
+   "cd /Users/shubhang/Desktop/Projects/uganda-dashboard && set -a; . ./.env.local >/dev/null 2>&1; set +a",
+   "psql \"$SUPABASE_DB_URL\" -X -c \"BEGIN; SET LOCAL ROLE authenticated; SELECT set_config('request.jwt.claims','{\\\"app_role\\\":\\\"admin\\\",\\\"role\\\":\\\"authenticated\\\"}',true); SELECT public.publish_nav_snapshot(CURRENT_DATE,'NaN'::numeric,'UPU-BAL','admin_manual',true); RESET ROLE; SELECT count(*) FILTER (WHERE total_balance='NaN'::numeric) FROM subscriber_balances; ROLLBACK;\"",
+   "Observe 5060 NaN rows, then confirm the post-ROLLBACK register is still 1242 published / 4 pending"
+  ],
+  "agent": "A04"
+ },
+ {
+  "id": "A04-006",
+  "title": "Four unrelated down-migrations CREATE OR REPLACE the contribution trigger with the hardcoded 1,000 unit price, silently reverting NAV pricing",
+  "severity": "medium",
+  "confidence": "confirmed",
+  "category": "migration-safety",
+  "surface": "migrations",
+  "location": "supabase/migrations/0089_per_distributor_commission_rate.down.sql:22",
+  "demo_visible": false,
+  "effort": "M",
+  "roles_affected": [
+   "subscriber",
+   "admin",
+   "employer"
+  ],
+  "evidence": "Forward path is clean \u2014 0 live functions match the hardcoded price:\n$ psql -At -c \"select proname from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname='public' and p.prosrc ~ 'v_unit_price\\s*(NUMERIC|numeric)?\\s*:=\\s*1000';\"\n(0 rows)\nThe live trg_transactions_contribution opens with `v_unit_price := public.nav_for_date(COALESCE(NEW.date::date, CURRENT_DATE));` (line 20) and request_withdrawal uses `public.latest_nav()` (line 27). 0038's copy sits in submit_contribution_run, a member of the 0021 family A00 \u00a75.1 proved is not live; 0043's copy was superseded by 0072/0089/0104.\n\nDown path (per-file counts, no down-migration was executed \u2014 G6):\n0042_signup_writeflow_hardening.down: 1 trg_contrib CREATE-OR-REPLACE | 4 unit_price refs | 0 req_wd\n0043_subscriber_employer_link.down:   1 trg_contrib CREATE-OR-REPLACE | 2 unit_price refs | 0 req_wd\n0072_insurance_save_to_cover.down:    1 trg_contrib CREATE-OR-REPLACE | 4 unit_price refs | 1 req_wd\n0089_per_distributor_commission_rate.down: 1 trg_contrib CREATE-OR-REPLACE | 3 unit_price refs | 0 req_wd\n0104_nav_pricing_rpcs.down:           1 trg_contrib CREATE-OR-REPLACE | 5 unit_price refs | 1 req_wd",
+  "impact": "Rolling back any of four migrations that have nothing to do with NAV (0042 signup hardening, 0043 employer link, 0072 insurance save-to-cover, 0089 per-distributor commission) silently reverts the money engine to the flat 1,000 UGX price \u2014 no error, no version check, no guard. Every subsequent contribution would then buy 57% more units per shilling than it paid for, and the next NAV publish would restate that member's balance upward accordingly. This is the identical CREATE OR REPLACE clobber pattern that produced the project's own 0095-over-0090 login-identity regression.",
+  "suggested_fix": "Add a guard header to each affected down-migration: a DO block that RAISEs if the NAV migrations are applied, e.g. `IF EXISTS (SELECT 1 FROM pg_proc WHERE proname='nav_for_date') THEN RAISE EXCEPTION '0089.down would clobber 0104 NAV pricing \u2014 revert 0104-0107 first'; END IF;`. Longer term, stop re-emitting whole function bodies in down files for functions the file did not originally create.",
+  "repro": [
+   "cd /Users/shubhang/Desktop/Projects/uganda-dashboard",
+   "grep -n 'CREATE OR REPLACE FUNCTION public.trg_transactions_contribution' supabase/migrations/0089_per_distributor_commission_rate.down.sql",
+   "sed -n '22p' supabase/migrations/0089_per_distributor_commission_rate.down.sql   # v_unit_price NUMERIC := 1000;"
+  ],
+  "agent": "A04"
+ },
+ {
+  "id": "A04-007",
+  "title": "NAV is 16 days stale and the 'Delayed NAV updation' counter cannot see it \u2014 it counts only pre-seeded pending rows, so 11 unpriced weekdays are invisible",
+  "severity": "medium",
+  "confidence": "confirmed",
+  "category": "stale-data",
+  "surface": "admin NAV page",
+  "location": "public.get_admin_attention (nav_late CTE)",
+  "demo_visible": true,
+  "effort": "M",
+  "roles_affected": [
+   "admin"
+  ],
+  "evidence": "$ psql -At -c \"select jsonb_pretty(public.get_admin_attention());\"  (as admin)\n  \"delayedNav\": 4,\n  \"thresholds\": { \"navStaleDays\": 1, ... }\n$ psql -At -c \"select jsonb_pretty(public.get_nav_overview('UPU-BAL') - 'series');\"\n  \"currentNav\": 1571.4, \"currentNavDate\": \"2026-08-08\", \"lastPublishedDaysAgo\": 16, \"pendingDays\": 4\nThe nav_late CTE in get_admin_attention is: SELECT count(*) FROM public.nav_snapshots WHERE status='pending' AND nav_date < v_today.\n$ psql -At -c \"select count(*) unpriced_weekdays, min(d)::text, max(d)::text from (select d::date d from generate_series(DATE '2026-08-09', CURRENT_DATE, INTERVAL '1 day') d where extract(isodow from d)<6 and not exists (select 1 from nav_snapshots n where n.nav_date=d::date and n.fund_code='UPU-BAL')) q;\"\n11|2026-08-10|2026-08-24\n$ psql -At -F'|' -c \"select nav_date, unit_price, status, source from nav_snapshots where status='pending' order by nav_date;\"\n2026-08-04|1000.00|pending|fund_admin_feed\n2026-08-05|1000.00|pending|fund_admin_feed\n2026-08-06|1000.00|pending|fund_admin_feed\n2026-08-07|1000.00|pending|fund_admin_feed",
+  "impact": "Three compounding problems on the money-headline screen. (1) The NAV page reads 'As at 8 August 2026' on 24 August \u2014 a 16-day-old price on a fund that supposedly prices daily. (2) delayedNav says 4 while 11 weekdays have NO nav_snapshots row at all, so nothing creates a pending row per weekday and the fund can go unpriced indefinitely without the alert ever moving. (3) All 4 flagged pending days (2026-08-04..07) sit BEHIND the newest published day (2026-08-08), so publishing one returns revalued:false and cannot move AUM \u2014 I confirmed this in probe P5. 0105's header calls publishing a pending day 'the live demo moment: it moves AUM and every member's growth at once'; that script no longer works. The 4 pending rows also carry a stale unit_price of 1000.00, a latent trap if any path ever flips status without going through the RPC.",
+  "suggested_fix": "Have get_admin_attention compute staleness from the newest PUBLISHED day (CURRENT_DATE - max(nav_date) against the navStaleDays threshold it already defines) rather than counting pre-seeded pending rows, and surface lastPublishedDaysAgo on the attention panel. Separately, re-anchor the demo fixture: publish a fresh NAV for the current week and re-seed pending rows ahead of the newest published day so the 'publish clears the signal and moves AUM' demo works again.",
+  "repro": [
+   "cd /Users/shubhang/Desktop/Projects/uganda-dashboard && set -a; . ./.env.local >/dev/null 2>&1; set +a",
+   "psql \"$SUPABASE_DB_URL\" -X -At -c \"set local role authenticated; select set_config('request.jwt.claims','{\\\"app_role\\\":\\\"admin\\\",\\\"role\\\":\\\"authenticated\\\"}',true); select jsonb_pretty(public.get_nav_overview('UPU-BAL') - 'series');\"",
+   "Observe lastPublishedDaysAgo 16 against pendingDays 4"
+  ],
+  "agent": "A04"
+ },
+ {
+  "id": "A04-008",
+  "title": "v_reconciliation_exceptions checks the shilling split but not the unit ledger, so a broken units invariant is invisible to the admin",
+  "severity": "medium",
+  "confidence": "confirmed",
+  "category": "observability",
+  "surface": "admin Needs Attention",
+  "location": "public.v_reconciliation_exceptions",
+  "demo_visible": false,
+  "effort": "S",
+  "roles_affected": [
+   "admin"
+  ],
+  "evidence": "The live view definition (pg_get_viewdef) has exactly five branches: missing_balance, split_mismatch (abs(retirement_balance + emergency_balance - total_balance) > 1), orphan_subscriber, orphan_run, agent_mismatch. There is NO check for retirement_units + emergency_units <> units, none for total_balance <> round(units * latest_nav()), none for negatives, and none for NaN.\n\nProof that the gap is live and real:\n$ psql -At -F'|' -c \"select check_code, count(*) from public.v_reconciliation_exceptions group by 1 order by 1;\"\nagent_mismatch|3\nmissing_balance|4\n(no unit-level branch fires)\n$ psql -At -F'|' -c \"select count(*) filter (where coalesce(retirement_units,0)+coalesce(emergency_units,0)<>units) from subscriber_balances;\"\n1\nThe one broken row (s-0005, gap 6.363752068219 units = exactly 10,000.00 UGX at the current NAV) is completely invisible to the admin panel.\n$ psql -At -F'|' -c \"select c.relname, con.conname from pg_constraint con join pg_class c on c.oid=con.conrelid where con.contype='c' and c.relname='subscriber_balances';\"\n(0 rows)   <-- subscriber_balances has ZERO CHECK constraints",
+  "impact": "units is what prices every member's money \u2014 total_balance is derived from it on every NAV publish \u2014 yet the only monitored invariant is the shilling split that units produce. A broken unit ledger silently survives until a publish converts it into wrong shillings. A04-002 and A04-004 both corrupt state in ways this view would only partly catch, and subscriber_balances carries no CHECK constraint of any kind to backstop it.",
+  "suggested_fix": "Add two branches to v_reconciliation_exceptions: unit_split_mismatch (abs(retirement_units + emergency_units - units) > 0.000001) and nav_mismatch (abs(total_balance - units * public.latest_nav()) > 1), plus a negative/NaN branch. Back them with CHECK constraints on subscriber_balances for non-negativity and NaN.",
+  "repro": [
+   "cd /Users/shubhang/Desktop/Projects/uganda-dashboard && set -a; . ./.env.local >/dev/null 2>&1; set +a",
+   "psql \"$SUPABASE_DB_URL\" -X -At -F'|' -c \"select count(*) filter (where coalesce(retirement_units,0)+coalesce(emergency_units,0)<>units) as broken from subscriber_balances;\"",
+   "psql \"$SUPABASE_DB_URL\" -X -At -F'|' -c \"select check_code, count(*) from public.v_reconciliation_exceptions group by 1;\"",
+   "Compare: 1 broken unit row, 0 unit-level exceptions reported"
+  ],
+  "agent": "A04"
+ },
+ {
+  "id": "A04-009",
+  "title": "33 leftover E2E employer contribution runs (1,881 rows, 145.37M UGX) permanently inflate live AUM, growing ~3.7M every full-suite run",
+  "severity": "medium",
+  "confidence": "confirmed",
+  "category": "test-hygiene",
+  "surface": "live data",
+  "location": "e2e / public.submit_employer_contribution_run",
+  "demo_visible": true,
+  "effort": "M",
+  "roles_affected": [
+   "admin",
+   "employer",
+   "distributor"
+  ],
+  "evidence": "$ psql -At -F'|' -c \"select count(distinct txn_ref) runs, count(*) rows, sum(amount) ugx from transactions where txn_ref like 'EMP-%';\"\n33|1881|145372000\n$ psql -At -F'|' -c \"select type, count(*), sum(amount) from transactions where txn_ref like 'EMP-%' group by 1;\"\ncontribution      |1254|120292000\ninsurance_premium | 627| 25080000\n$ psql -At -F'|' -c \"select round(100.0*(select sum(amount) from transactions where txn_ref like 'EMP-%' and type='contribution')/(select sum(total_balance) from subscriber_balances),3);\"\n4.909\nRuns are dated 2026-07-30 through 2026-08-24, 57 rows each. FIVE landed during this audit: EMP-a2d4d427 (2026-08-23 09:43), EMP-c4642919 (09:50), EMP-1bd291a9 (2026-08-24 07:54), EMP-f516defb (08:02), EMP-b4a27020 (08:10).",
+  "impact": "120,292,000 UGX (4.9% of live AUM) is E2E-generated money that no member ever paid, and it is arithmetically indistinguishable from real demo data because the trigger applied it correctly. Every full-suite execution adds another +3,718,000 UGX permanently. The employer dashboard's headcount-weighted metrics and the admin AUM tile both drift upward on every CI run. CORRECTS 00d-live-write-ledger.md, which records this as '114 transactions rows, txn_ref = EMP-c4642919' \u2014 that ref actually holds 57 rows, the 114 was two runs, and the true population is 33 runs.",
+  "suggested_fix": "Extend the E2E fixture to record the txn_ref returned by submit_employer_contribution_run and delete its transactions rows (plus the contribution_runs row) in afterEach, and add an assertNoLeftoverRuns() post-suite probe alongside assertNoSubscriberOrphans. Separately, decide whether the 33 existing runs should be swept before the next demo \u2014 they are internally consistent, so a plain delete would desync subscriber_balances and must be paired with a rebalance.",
+  "repro": [
+   "cd /Users/shubhang/Desktop/Projects/uganda-dashboard && set -a; . ./.env.local >/dev/null 2>&1; set +a",
+   "psql \"$SUPABASE_DB_URL\" -X -At -F'|' -c \"select txn_ref, min(date)::text, count(*), sum(amount) from transactions where txn_ref like 'EMP-%' group by 1 order by 2;\""
+  ],
+  "agent": "A04"
+ },
+ {
+  "id": "A04-010",
+  "title": "Four leftover E2E subscribers named 'TST tree member' / 'TST retag probe' surface on the admin Needs Attention panel during a live demo",
+  "severity": "medium",
+  "confidence": "confirmed",
+  "category": "test-hygiene",
+  "surface": "admin Needs Attention",
+  "location": "e2e/fixtures/db.ts:100-127",
+  "demo_visible": true,
+  "effort": "S",
+  "roles_affected": [
+   "admin"
+  ],
+  "evidence": "$ psql -At -F'|' -c \"select kind,check_code,ref_id,who from public.v_reconciliation_exceptions where check_code='missing_balance' order by ref_id;\"\nuser|missing_balance|tst-sub-emp-msc7vzsc|TST employer member\nuser|missing_balance|tst-sub-retag-msc7vzsc|TST retag probe\nuser|missing_balance|tst-sub-tree-msc7vzsc|TST tree member\nuser|missing_balance|tst-sub-tree-msd3855c|TST tree member\n$ psql -At -c \"select jsonb_pretty(public.get_admin_attention());\"  (as admin)\n  \"reconciliation\": { \"total\": 7, \"userWise\": 4, \"transactionWise\": 3 }\nCause: e2e/fixtures/db.ts::cleanupSubscriberByPhone deletes every SUBSCRIBER_CHILD_TABLES row first (including subscriber_balances) and the parent subscribers row LAST; an abort between the two leaves exactly this shape. assertNoSubscriberOrphans probes only the reverse direction (child without parent) and is structurally unable to detect it.",
+  "impact": "A rep opening the admin Needs Attention panel during a demo sees four reconciliation exceptions literally named 'TST retag probe' and 'TST tree member'. This is also the whole of the 5,064 vs 5,060 baseline gap. The rows carry zero transactions and zero balances so they cannot affect any money reconciliation, but they inflate every subscriber headcount by 4.",
+  "suggested_fix": "Reverse the deletion order in cleanupSubscriberByPhone (parent last is correct for FKs only if the whole thing is one transaction \u2014 wrap it in a single RPC or transaction so it is atomic), and add a reverse probe to assertNoSubscriberOrphans that flags subscribers with no subscriber_balances row. Delete the four existing tst-sub-* rows before the next demo.",
+  "repro": [
+   "cd /Users/shubhang/Desktop/Projects/uganda-dashboard && set -a; . ./.env.local >/dev/null 2>&1; set +a",
+   "psql \"$SUPABASE_DB_URL\" -X -At -F'|' -c \"select ref_id, who from public.v_reconciliation_exceptions where check_code='missing_balance';\"",
+   "Sign in as admin-001 / Demo1234 and open the Needs Attention panel"
+  ],
+  "agent": "A04"
+ },
+ {
+  "id": "A04-011",
+  "title": "The idempotency nonce is claimed AFTER the money write with ON CONFLICT DO NOTHING, so two concurrent same-nonce calls both apply the contribution",
+  "severity": "medium",
+  "confidence": "plausible",
+  "category": "idempotency",
+  "surface": "RPC",
+  "location": "public.make_contribution:23-28,62-66",
+  "demo_visible": false,
+  "effort": "S",
+  "roles_affected": [
+   "subscriber"
+  ],
+  "evidence": "CONCURRENT EXECUTION WAS NOT PERFORMED \u2014 the two-session psql orchestration was denied by the auto-mode permission classifier, so this verdict is derived from the RPC body as the spec directs.\n\nLive body sequence:\n  line 24  SELECT result INTO v_prior FROM public.money_nonces WHERE nonce = p_nonce;   -- plain read, NO lock\n  line 40  INSERT INTO public.transactions (...)                                        -- MONEY MOVES HERE\n  line 63  INSERT INTO public.money_nonces (...) ON CONFLICT (nonce) DO NOTHING;        -- nonce claimed AFTER\nrequest_withdrawal has the identical shape at lines 32-36 / 143-147.\n\nStructural facts measured live:\n$ psql -At -F'|' -c \"select indexname, indexdef from pg_indexes where schemaname='public' and tablename='money_nonces';\"\nmoney_nonces_pkey|CREATE UNIQUE INDEX money_nonces_pkey ON public.money_nonces USING btree (nonce)\n$ psql -At -F'|' -c \"select conname, pg_get_constraintdef(oid) from pg_constraint where conrelid='public.transactions'::regclass;\"\ntransactions_pkey|PRIMARY KEY (id)      <-- id is gen_random_uuid(); NOTHING ties a transaction to a nonce\n\nSerial replay DOES work (verified, rolled back): 3 calls with the same nonce -> 1 effect, byte-identical returns, even when call 3 passed a different amount.",
+  "impact": "Under READ COMMITTED neither concurrent session sees the other's uncommitted nonce row at line 24, and nothing at line 40 can collide because the transaction id is a fresh uuid \u2014 so both write a transactions row. The subscriber_balances upsert in the trigger serialises the two but does not de-duplicate: DO UPDATE SET balance = balance + EXCLUDED.balance re-reads the winner's committed row and adds its own delta on top. ON CONFLICT DO NOTHING at line 63 then silently swallows the second nonce. Net effect: one nonce row, the contribution applied TWICE. The nonce is minted per confirm-sheet specifically to survive a double-tap, which is exactly the scenario that produces two near-simultaneous calls.",
+  "suggested_fix": "Claim the nonce FIRST and let the unique index arbitrate: `INSERT INTO public.money_nonces (nonce, subscriber_id, kind, result) VALUES (p_nonce, v_subscriber_id, 'contribution', '{}'::jsonb) ON CONFLICT (nonce) DO NOTHING RETURNING nonce INTO v_claimed; IF v_claimed IS NULL THEN SELECT result INTO v_prior ... ; RETURN v_prior; END IF;` then do the money write and UPDATE the nonce row with the real result. Apply the same to request_withdrawal.",
+  "repro": [
+   "Read the live body: psql \"$SUPABASE_DB_URL\" -X -At -c \"select prosrc from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname='public' and proname='make_contribution';\"",
+   "Note the SELECT at line 24 precedes the transactions INSERT at line 40, and the money_nonces INSERT at line 63 follows it",
+   "Confirm no constraint links transactions to a nonce: psql \"$SUPABASE_DB_URL\" -X -At -F'|' -c \"select conname, pg_get_constraintdef(oid) from pg_constraint where conrelid='public.transactions'::regclass;\""
+  ],
+  "agent": "A04"
+ },
+ {
+  "id": "A04-012",
+  "title": "MIN_CONTRIBUTION / MIN_WITHDRAW of 5,000 and the zero-decimal UGX rule are client-only; the RPCs accept 1 UGX and 0.004 UGX",
+  "severity": "low",
+  "confidence": "confirmed",
+  "category": "validation",
+  "surface": "RPC",
+  "location": "src/constants/savings.js:12-13",
+  "demo_visible": false,
+  "effort": "S",
+  "roles_affected": [
+   "subscriber"
+  ],
+  "evidence": "src/constants/savings.js:11-13 declares `export const MIN_CONTRIBUTION = 5_000; export const MIN_WITHDRAW = 5_000;` and src/utils/finance.js:95-97 states 'UGX is a zero-decimal currency: the platform never stores sub-shilling amounts.' Neither is enforced server-side \u2014 the RPCs check only `p_amount <= 0`.\n\nProbes inside BEGIN\u2026ROLLBACK on s-0004:\n======== G3 contribution amount = 1  -> accepted_amount = 1\n======== G4 contribution amount = 0.004\n {\"amount\":0.004,\"splitEmergency\":0.004,\"splitRetirement\":0}\n total_balance 671179.004 | emergency_balance 134236.004 | units 427.121709321950900287768869\n======== W4 withdrawal 4999  -> accepted = 4999\n======== POST-ROLLBACK RE-READ: 671179 | 536943 | 134236 | 427.1217067764500730",
+  "impact": "A 1 UGX contribution passes, and a fractional amount persists a sub-shilling balance (671179.004) that every currency formatter would then have to round for display, breaking the zero-decimal invariant the codebase states explicitly. Note the sub-shilling case also mis-splits: round(0.004 * 80/100) = 0, so the whole amount lands in the emergency bucket rather than 80/20. Only reachable by a direct RPC call \u2014 the UI enforces both minimums.",
+  "suggested_fix": "Add `IF p_amount < 5000 THEN RAISE EXCEPTION 'amount is below the 5,000 UGX minimum' USING ERRCODE='P0001'; END IF;` and `IF p_amount <> round(p_amount) THEN RAISE EXCEPTION 'amount must be whole shillings'; END IF;` to make_contribution and request_withdrawal, so the constants in src/constants/savings.js have a server-side counterpart.",
+  "repro": [
+   "cd /Users/shubhang/Desktop/Projects/uganda-dashboard && set -a; . ./.env.local >/dev/null 2>&1; set +a",
+   "psql \"$SUPABASE_DB_URL\" -X -c \"BEGIN; SET LOCAL ROLE authenticated; SELECT set_config('request.jwt.claims','{\\\"app_role\\\":\\\"subscriber\\\",\\\"subscriberId\\\":\\\"s-0004\\\",\\\"role\\\":\\\"authenticated\\\"}',true); SELECT public.make_contribution('probe',0.004,80,'MTN'); RESET ROLE; SELECT total_balance FROM subscriber_balances WHERE subscriber_id='s-0004'; ROLLBACK;\"",
+   "Observe 671179.004"
+  ],
+  "agent": "A04"
+ },
+ {
+  "id": "A04-013",
+  "title": "request_withdrawal writes a POSITIVE transactions.amount while all 5,402 historical withdrawal rows are negative",
+  "severity": "low",
+  "confidence": "confirmed",
+  "category": "data-consistency",
+  "surface": "ledger",
+  "location": "public.request_withdrawal:77-83",
+  "demo_visible": false,
+  "effort": "S",
+  "roles_affected": [
+   "subscriber",
+   "admin"
+  ],
+  "evidence": "$ psql -At -F'|' -c \"select status, sign(amount) as sgn, count(*), sum(amount) from transactions where type='withdrawal' group by 1,2 order by 1,2;\"\npaid|-1|3731|-39105087\nprocessing|-1|1191|-12415196\nprocessing|1|1|5000        <-- the one runtime-created row\nsettled|-1|480|-186671255\n$ psql -x -c \"select * from transactions where type='withdrawal' and amount>0;\"\nid tx-s-100117-wd-9d3276ed45564b3caead81d55fca579b | amount 5000 | date 2026-08-07 11:46:10 | txn_ref WD-965239 | bucket emergency\nThe RPC inserts `p_amount` (positive) at lines 77-83; the seed writes negatives. 0105's own header states 'Withdrawals are stored NEGATIVE'.\n$ psql -At -F'|' -c \"select 'signed', sum(amount) from transactions where type='withdrawal' union all select 'abs', -sum(abs(amount)) from transactions where type='withdrawal';\"\nsigned|-238186538\nabs|-238196538      <-- a 10,000 UGX discrepancy, exactly 2x the one positive row",
+  "impact": "Balances are unaffected \u2014 trg_transactions_withdrawal defensively uses ABS(NEW.amount) \u2014 and the read path normalises too (src/services/subscriber.js:339 maps withdrawals to -Math.abs, and src/utils/finance.js:143 txDisplayAmount forces the sign by type). The live aggregate RPCs I checked (get_platform_overview, get_entity_metrics_rollup) also use SUM(ABS(amount)) for withdrawals. So the impact today is confined to any consumer that sums the raw signed column \u2014 a psql export, an ad-hoc report, or a future aggregate written without the ABS. But the stated invariant 'withdrawals are stored negative' is now false, and 0105's backfill walk depends on it (it branches on r.amount >= 0), so a re-run of that walk would treat this row as a contribution.",
+  "suggested_fix": "Change request_withdrawal to insert -ABS(p_amount) so the runtime path matches the 5,402 historical rows and 0105's documented convention, or add a CHECK constraint `CHECK (type <> 'withdrawal' OR amount <= 0)` to make the invariant enforceable. Fix the one existing positive row at the same time.",
+  "repro": [
+   "cd /Users/shubhang/Desktop/Projects/uganda-dashboard && set -a; . ./.env.local >/dev/null 2>&1; set +a",
+   "psql \"$SUPABASE_DB_URL\" -X -At -F'|' -c \"select id, amount, date, txn_ref from transactions where type='withdrawal' and amount>0;\""
+  ],
+  "agent": "A04"
+ },
+ {
+  "id": "A04-014",
+  "title": "The admin publish form computes the price move against currentNav while the RPC computes it against the price preceding p_nav_date; for a back-dated publish the two disagree",
+  "severity": "low",
+  "confidence": "confirmed",
+  "category": "ui-server-mismatch",
+  "surface": "admin NAV page",
+  "location": "src/admin-dashboard/nav/AdminNavDesktop.jsx:128-130",
+  "demo_visible": true,
+  "effort": "S",
+  "roles_affected": [
+   "admin"
+  ],
+  "evidence": "Client (AdminNavDesktop.jsx:128-130):\n  const movePct = priceIsUsable && d?.currentNav ? ((typedPrice - d.currentNav) / d.currentNav) * 100 : null;\n  // d.currentNav is the NEWEST published price, regardless of the date being published\nServer (publish_nav_snapshot live body lines 30-36):\n  SELECT unit_price, nav_date INTO v_prev_price, v_prev_date FROM public.nav_snapshots\n   WHERE fund_code = p_fund_code AND status = 'published' AND nav_date < p_nav_date\n   ORDER BY nav_date DESC LIMIT 1;\n  v_move := round(((p_unit_price - v_prev_price) / v_prev_price) * 100, 4);\nMeasured divergence \u2014 publishing 2026-08-05 at 1600 (probe P5, rolled back):\n  server returned \"changePct\": 2.2351, \"previousUnitPrice\": 1565.02, \"previousNavDate\": \"2026-08-03\"\n  client would have shown (1600 - 1571.4)/1571.4 = +1.82% against 1571.40 on 2026-08-08",
+  "impact": "For any back-dated publish the confirm dialog quotes a different move, a different baseline price and a different baseline date than the RPC actually used, and the >10% confirm gate can fire on one side but not the other. The server gate is authoritative so nothing unsafe gets through, but the admin is shown a figure that is not the one being evaluated \u2014 on the screen whose entire job is to make a price change legible before it revalues 5,060 members.",
+  "suggested_fix": "Derive the baseline client-side from the loaded register rows the page already has: find the newest published row with navDate < formState.navDate and compute movePct against that, falling back to currentNav only when the form date is today. The rows are already in history.data.rows (the same source duplicateRow uses at :137-140), so this needs no extra round-trip.",
+  "repro": [
+   "cd /Users/shubhang/Desktop/Projects/uganda-dashboard",
+   "sed -n '128,133p' src/admin-dashboard/nav/AdminNavDesktop.jsx",
+   "Sign in as admin-001 / Demo1234, open the Unit price page, set the date to 2026-08-05 and the price to 1600, and compare the on-screen move with the RPC's changePct"
+  ],
+  "agent": "A04"
+ },
+ {
+  "id": "A04-015",
+  "title": "The NAV publish form's default date uses UTC, so between 00:00 and 03:00 East Africa Time it defaults to yesterday",
+  "severity": "low",
+  "confidence": "confirmed",
+  "category": "timezone",
+  "surface": "admin NAV page",
+  "location": "src/admin-dashboard/nav/AdminNavDesktop.jsx:110",
+  "demo_visible": false,
+  "effort": "S",
+  "roles_affected": [
+   "admin"
+  ],
+  "evidence": "src/admin-dashboard/nav/AdminNavDesktop.jsx:110\n  const todayIso = new Date().toISOString().slice(0, 10);\nUsed at :116 to seed the form's navDate and at :182 as the future-date guard:\n  navDate: todayIso,\n  if (formState.navDate > todayIso) { setFormError('You cannot set a price for a day that has not happened yet.'); return; }\nUganda is UTC+3 with no DST, so for the first three hours of every local day toISOString() yields the previous calendar date.",
+  "impact": "An admin publishing between midnight and 3am EAT gets the form pre-filled with yesterday's date. If a price for yesterday already exists the publish silently CORRECTS it rather than adding today's, and because a newer row may exist the RPC returns revalued:false \u2014 the book is not repriced and the toast says 'Today's prices are unchanged because a newer price is already published.' The same offset makes the future-date guard reject a legitimate same-day publish during that window. The server's own guard uses CURRENT_DATE in the database's timezone, so client and server can disagree about what 'today' is.",
+  "suggested_fix": "Derive the date in the Africa/Kampala zone rather than UTC, e.g. new Intl.DateTimeFormat('en-CA', { timeZone: 'Africa/Kampala' }).format(new Date()), which yields an ISO-shaped YYYY-MM-DD directly. Apply the same helper anywhere else the app compares a user-entered date against 'today'.",
+  "repro": [
+   "cd /Users/shubhang/Desktop/Projects/uganda-dashboard",
+   "sed -n '110,120p' src/admin-dashboard/nav/AdminNavDesktop.jsx",
+   "node -e \"const d=new Date('2026-08-24T01:30:00+03:00'); console.log('UTC slice:', d.toISOString().slice(0,10), '| Kampala:', new Intl.DateTimeFormat('en-CA',{timeZone:'Africa/Kampala'}).format(d));\"",
+   "Prints 'UTC slice: 2026-08-23 | Kampala: 2026-08-24'"
+  ],
+  "agent": "A04"
+ },
+ {
+  "id": "A04-016",
+  "title": "The single live unit-bucket invariant break on s-0005 is AUDIT-CAUSED, not a product defect \u2014 it belongs in the write ledger",
+  "severity": "info",
+  "confidence": "confirmed",
+  "category": "audit-hygiene",
+  "surface": "live data",
+  "location": "public.subscriber_balances (s-0005) / docs/audits/2026-08-23/00d-live-write-ledger.md",
+  "demo_visible": false,
+  "effort": "S",
+  "roles_affected": [
+   "admin"
+  ],
+  "evidence": "$ psql -x -c \"select * from subscriber_balances where subscriber_id='s-0005';\"\n units 203.98642208035116 | retirement_units 185.404883 | emergency_units 24.9452911485705822\n updated_at 2026-08-24 08:01:28.956196+00 | nav_as_of 2026-08-24\n gap = 6.363752068219 units;  6.3637520682194222 * 1571.4 = 10000.00000000000004508\n\nFive facts settle attribution:\n1. s-0005's units is EXACTLY ledger-consistent \u2014 an independent replay of its transactions priced at nav_for_date reproduces it: `s-0005 | live 203.986422080351 | walk 203.986422080351 | unit_delta 0.000000000000`. Nothing corrupted units.\n2. Only emergency_units is wrong, by exactly 10,000.00 UGX at the current NAV.\n3. updated_at is 2026-08-24 08:01:28 UTC \u2014 inside this audit's window \u2014 yet s-0005 has NO transactions row and NO withdrawals row on that date.\n4. Only two live functions write retirement_units/emergency_units: `select proname from pg_proc where prosrc ilike '%retirement_units%'` -> _resync_bucket_units, publish_nav_snapshot. And `grep -rn 'subscriber_balances' src api server` shows no application code writes the table at all.\n5. Every product path that changes units calls _resync_bucket_units immediately after (request_withdrawal:120, trg_transactions_contribution:61 and :125).",
+  "impact": "No product impact. The write came from an ad-hoc SQL statement issued by another audit agent that replicated request_withdrawal's balance UPDATE without its PERFORM public._resync_bucket_units(...) call. Recorded here so it is not mistaken for a product defect by a later reader, and so the write ledger is complete. I did NOT repair it \u2014 hand-repairing a fractional unit count is exactly the class of action 00d-live-write-ledger.md warns against.",
+  "suggested_fix": "Add this as Event 3 in docs/audits/2026-08-23/00d-live-write-ledger.md alongside the s-0001 contribution and the E2E employer runs. Leave the row alone, or repair it deliberately with `SELECT public._resync_bucket_units('s-0005');` which recomputes both bucket unit columns from the balance ratio in one atomic statement \u2014 that is the safe repair, and it is the only one I would recommend.",
+  "repro": [
+   "cd /Users/shubhang/Desktop/Projects/uganda-dashboard && set -a; . ./.env.local >/dev/null 2>&1; set +a",
+   "psql \"$SUPABASE_DB_URL\" -X -At -F'|' -c \"select subscriber_id, units, retirement_units, emergency_units, (retirement_units+emergency_units-units) as gap, updated_at from subscriber_balances where subscriber_id='s-0005';\"",
+   "psql \"$SUPABASE_DB_URL\" -X -At -F'|' -c \"select count(*) from transactions where subscriber_id='s-0005' and date > '2026-08-04';\"   -- 0"
+  ],
+  "agent": "A04"
+ },
+ {
+  "id": "A04-017",
+  "title": "602 pre-0102 employer rows hold 10,843,200 UGX in the emergency bucket; 0102 documents this as a deliberate non-backfill",
+  "severity": "info",
+  "confidence": "confirmed",
+  "category": "documented-residue",
+  "surface": "ledger",
+  "location": "supabase/migrations/0102_employer_contributions_all_retirement.sql:52-58",
+  "demo_visible": false,
+  "effort": "L",
+  "roles_affected": [
+   "subscriber",
+   "employer"
+  ],
+  "evidence": "$ psql -At -F'|' -c \"select source, type, count(*), count(*) filter (where split_emergency>0) emg_rows, coalesce(sum(split_emergency),0) emg_ugx from transactions where type='contribution' group by 1,2;\"\nemployer|contribution|697|602|10843200\n$ psql -At -F'|' -c \"select date_trunc('day',date)::date, count(*), count(*) filter (where split_emergency>0) from transactions where source='employer' and type='contribution' group by 1 order by 1;\"\n... 2026-08-03|57|57  |  2026-08-23|38|0  |  2026-08-24|57|0\nThe 0102 cutover is visible in the data: every employer-source row written on or after 2026-08-23 has split_emergency = 0.\n0102 header lines 52-58: 'NOT TOUCHED, deliberately: * Existing transactions keep the splits they were posted with. Those runs really did allocate that way; rewriting them would falsify the ledger and desync subscriber_balances, which the 0016 trigger maintains from these rows. Members keep whatever liquid balance they have already accrued.'",
+  "impact": "No defect \u2014 the RPC-level invariant (employer money is 100% retirement) is correct and verified against live data. Recorded so a later reader who queries `sum(split_emergency) where source='employer'` and sees 10.8M does not raise it as a regression. The residue means a handful of employer-tagged members still show employer-funded money in their withdrawable bucket, which is the state 0102 explicitly chose to preserve rather than rewrite.",
+  "suggested_fix": "No action. If the residue is ever considered undesirable for demo purposes, it must be corrected by a migration that rewrites BOTH the transactions splits and the derived subscriber_balances buckets in one transaction \u2014 never the ledger alone.",
+  "repro": [
+   "cd /Users/shubhang/Desktop/Projects/uganda-dashboard && set -a; . ./.env.local >/dev/null 2>&1; set +a",
+   "psql \"$SUPABASE_DB_URL\" -X -At -F'|' -c \"select date_trunc('day',date)::date, count(*), count(*) filter (where split_emergency>0) emg, coalesce(sum(split_emergency),0) from transactions where source='employer' and type='contribution' group by 1 order by 1;\""
+  ],
+  "agent": "A04"
+ },
+ {
+  "id": "A04-018",
+  "title": "0105's rollback artefacts are intact, so the NAV backfill remains reversible",
+  "severity": "info",
+  "confidence": "confirmed",
+  "category": "rollback-readiness",
+  "surface": "schema",
+  "location": "public.subscriber_balances_pre_nav",
+  "demo_visible": false,
+  "effort": "S",
+  "roles_affected": [
+   "admin"
+  ],
+  "evidence": "$ psql -At -F'|' -c \"select relname, (select count(*) from public.subscriber_balances_pre_nav) from pg_class where relname in ('subscriber_balances_pre_nav','subscribers_unit_value_pre_nav');\"\nsubscriber_balances_pre_nav|5060\nsubscribers_unit_value_pre_nav|5060\n0105 header: '\u26a0\ufe0f THIS IS THE IRREVERSIBLE STEP ... \u00a71 snapshots subscriber_balances into public.subscriber_balances_pre_nav FIRST \u2014 0105_nav_backfill.down.sql restores from that table and cannot work without it. Do not drop it until the change is accepted.'\nBoth tables carry ENABLE + FORCE ROW LEVEL SECURITY with no policy and no grant, so they are unreachable by any client role.",
+  "impact": "Positive finding: the only irreversible migration in the money engine still has its restore source, at full row count, correctly locked down. Worth stating explicitly because 0105's own header flags dropping these tables as the point of no return, and because a reader tidying up 'leftover' tables could destroy the rollback path without realising it. Note this counts 5,060 rows against today's 5,060 balance rows, so the snapshot is complete.",
+  "suggested_fix": "No action, other than to NOT drop these two tables until the NAV change is formally accepted. If they are dropped, record it, because 0105 becomes irreversible at that moment.",
+  "repro": [
+   "cd /Users/shubhang/Desktop/Projects/uganda-dashboard && set -a; . ./.env.local >/dev/null 2>&1; set +a",
+   "psql \"$SUPABASE_DB_URL\" -X -At -F'|' -c \"select count(*) from public.subscriber_balances_pre_nav;\""
+  ],
+  "agent": "A04"
+ }
+]

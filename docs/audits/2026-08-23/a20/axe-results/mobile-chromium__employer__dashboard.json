@@ -1,0 +1,18 @@
+{
+  "role": "employer",
+  "route": "/dashboard",
+  "project": "mobile-chromium",
+  "url": "http://localhost:5173/dashboard",
+  "violations": [
+    {
+      "id": "color-contrast",
+      "impact": "serious",
+      "help": "Elements must meet minimum color contrast ratio thresholds",
+      "nodes": 2,
+      "targets": [
+        "._lrow_1fs0e_172:nth-child(2) > ._pill_1fs0e_248._pillOk_1fs0e_262",
+        "._lrow_1fs0e_172:nth-child(4) > ._pill_1fs0e_248._pillOk_1fs0e_262"
+      ]
+    }
+  ]
+}

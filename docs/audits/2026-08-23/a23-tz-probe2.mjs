@@ -1,0 +1,14 @@
+import { chromium } from '@playwright/test';
+const BASE = 'http://localhost:5173';
+const STATE = '/Users/shubhang/Desktop/Projects/uganda-dashboard/e2e/.auth/subscriber.json';
+const b = await chromium.launch();
+const ctx = await b.newContext({ storageState: STATE, timezoneId: 'Africa/Kampala', viewport: { width: 1440, height: 900 } });
+const p = await ctx.newPage();
+p.on('console', (m) => { if (m.type() === 'error') console.log('CONSOLE ERROR:', m.text().slice(0, 200)); });
+await p.goto(BASE + '/dashboard/reports/all-transactions', { waitUntil: 'domcontentloaded' });
+await p.waitForTimeout(25000);
+console.log('URL:', p.url());
+const txt = await p.locator('body').innerText();
+console.log('--- body text (first 2500) ---');
+console.log(txt.slice(0, 2500));
+await b.close();

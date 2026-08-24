@@ -1,0 +1,508 @@
+[
+  {
+    "name": "get_admin_attention",
+    "role": "admin",
+    "args": {},
+    "status": 200,
+    "keys": [
+      "asOf",
+      "today",
+      "delayedNav",
+      "thresholds",
+      "reconciliation",
+      "inactiveBranches",
+      "delayedWithdrawals",
+      "dormantSubscribers",
+      "pendingAccessRequests",
+      "delayedCustodyTransfers",
+      "delayedInsurancePayouts",
+      "delayedEmployerTransfers",
+      "underperformingDistributors"
+    ],
+    "sample": "{\"asOf\":\"2026-08-23T10:45:50.902666\",\"today\":\"2026-08-23\",\"delayedNav\":4,\"thresholds\":{\"claimSlaDays\":10,\"navStaleDays\":1,\"custodyGraceDays\":0,\"employerGraceDays\":{\"weekly\":10,\"monthly\":35,\"annually\":380,\"quarterly\":100,\"half-yearly\":190},\"withdrawalSlaDays\":5,\"underperformActiveRatePct\":60},\"reconciliation\":{\"total\":7,\"userWise\":4,\"transactionWise\":3},\"inactiveBranches\":31,\"delayedWithdrawals\":{\""
+  },
+  {
+    "name": "get_admin_attention_rows",
+    "role": "admin",
+    "args": {
+      "p_type": "kyc_pending",
+      "p_limit": 5
+    },
+    "status": 400,
+    "keys": [
+      "code",
+      "details",
+      "hint",
+      "message"
+    ],
+    "sample": "{\"code\":\"P0001\",\"details\":null,\"hint\":null,\"message\":\"unknown attention type kyc_pending\"}"
+  },
+  {
+    "name": "get_commission_rate",
+    "role": "distributor",
+    "args": {},
+    "status": 200,
+    "keys": [
+      "scalar:number:5000"
+    ],
+    "sample": "5000"
+  },
+  {
+    "name": "get_commission_summary",
+    "role": "distributor",
+    "args": {
+      "p_branch_id": null
+    },
+    "status": 200,
+    "keys": [
+      "countDue",
+      "totalDue",
+      "countPaid",
+      "totalPaid",
+      "countTotal",
+      "totalCommissions"
+    ],
+    "sample": "{\"countDue\":4592,\"totalDue\":22960000,\"countPaid\":10,\"totalPaid\":50000,\"countTotal\":4602,\"totalCommissions\":23010000}"
+  },
+  {
+    "name": "get_entity_commission_summary",
+    "role": "distributor",
+    "args": {
+      "p_level": "branch",
+      "p_entity_id": "b-kam-015"
+    },
+    "status": 200,
+    "keys": [
+      "total",
+      "countDue",
+      "totalDue",
+      "countPaid",
+      "totalPaid",
+      "countTotal",
+      "settlementRate"
+    ],
+    "sample": "{\"total\":155000,\"countDue\":31,\"totalDue\":155000,\"countPaid\":0,\"totalPaid\":0,\"countTotal\":31,\"settlementRate\":0}"
+  },
+  {
+    "name": "get_agent_commission_list",
+    "role": "distributor",
+    "args": {
+      "p_status_focus": null
+    },
+    "status": 200,
+    "keys": [
+      "[]",
+      "agent_id",
+      "agent_name",
+      "employee_id",
+      "branch_id",
+      "branch_name",
+      "total_commissions",
+      "total_paid",
+      "total_due",
+      "subscribers_onboarded",
+      "active_subscribers",
+      "filtered_amount",
+      "filtered_count"
+    ],
+    "sample": "[{\"agent_id\":\"a-001\",\"agent_name\":\"Dorothy Kiiza\",\"employee_id\":\"EMP-0001\",\"branch_id\":\"b-bui-001\",\"branch_name\":\"Buikwe Central\",\"total_commissions\":55000,\"total_paid\":35000,\"total_due\":20000,\"subscribers_onboarded\":11,\"active_subscribers\":11,\"filtered_amount\":55000,\"filtered_count\":11},{\"agent_id\":\"a-003\",\"agent_name\":\"Florence Atuhaire\",\"employee_id\":\"EMP-0003\",\"branch_id\":\"b-bui-001\",\"branch_n"
+  },
+  {
+    "name": "get_agent_commission_detail",
+    "role": "distributor",
+    "args": {
+      "p_agent_id": "a-001"
+    },
+    "status": 200,
+    "keys": [
+      "rating",
+      "agentId",
+      "branchId",
+      "totalDue",
+      "agentName",
+      "totalPaid",
+      "agentPhone",
+      "branchName",
+      "employeeId",
+      "dueTransactions",
+      "paidTransactions",
+      "totalCommissions",
+      "activeSubscribers",
+      "dormantSubscribers",
+      "subscribersOnboarded"
+    ],
+    "sample": "{\"rating\":3.9,\"agentId\":\"a-001\",\"branchId\":\"b-bui-001\",\"totalDue\":20000,\"agentName\":\"Dorothy Kiiza\",\"totalPaid\":35000,\"agentPhone\":\"+256711443975\",\"branchName\":\"Buikwe Central\",\"employeeId\":\"EMP-0001\",\"dueTransactions\":[{\"id\":\"c-00002\",\"amount\":5000,\"status\":\"due\",\"dueDate\":\"2024-12-30\",\"branchId\":\"b-bui-001\",\"branchName\":\"Buikwe Central\",\"daysToDate\":-601,\"subscriberId\":\"s-0002\",\"subscriberName\":"
+  },
+  {
+    "name": "get_pending_dues_by_agent",
+    "role": "distributor",
+    "args": {},
+    "status": 200,
+    "keys": [
+      "[]",
+      "agent_id",
+      "agent_name",
+      "employee_id",
+      "branch_id",
+      "branch_name",
+      "pending_amount",
+      "pending_count"
+    ],
+    "sample": "[{\"agent_id\":\"a-377\",\"agent_name\":\"Rebecca Musinguzi\",\"employee_id\":\"EMP-0377\",\"branch_id\":\"b-rak-058\",\"branch_name\":\"Rakai Central\",\"pending_amount\":60000,\"pending_count\":12},{\"agent_id\":\"a-158\",\"agent_name\":\"Denis Akello\",\"employee_id\":\"EMP-0158\",\"branch_id\":\"b-kay-025\",\"branch_name\":\"Kayunga Central\",\"pending_amount\":60000,\"pending_count\":12},{\"agent_id\":\"a-314\",\"agent_name\":\"Robert Okello\",\"em"
+  },
+  {
+    "name": "get_pending_dues_by_branch",
+    "role": "distributor",
+    "args": {},
+    "status": 200,
+    "keys": [
+      "[]",
+      "branch_id",
+      "branch_name",
+      "pending_amount",
+      "pending_count",
+      "agent_count"
+    ],
+    "sample": "[{\"branch_id\":\"b-kam-020\",\"branch_name\":\"Rubaga\",\"pending_amount\":285000,\"pending_count\":57,\"agent_count\":7},{\"branch_id\":\"b-muk-051\",\"branch_name\":\"Lugazi\",\"pending_amount\":220000,\"pending_count\":44,\"agent_count\":7},{\"branch_id\":\"b-wak-062\",\"branch_name\":\"Entebbe\",\"pending_amount\":215000,\"pending_count\":43,\"agent_count\":6},{\"branch_id\":\"b-buk-078\",\"branch_name\":\"Bukedea Central\",\"pending_amount\":"
+  },
+  {
+    "name": "get_employer_metrics",
+    "role": "employer",
+    "args": {},
+    "status": 200,
+    "keys": [
+      "active",
+      "headcount",
+      "suspended",
+      "employeeYtd",
+      "employerYtd",
+      "insuredCount",
+      "totalBalance",
+      "ownContributions",
+      "totalContributions",
+      "employerContributions"
+    ],
+    "sample": "{\"active\":19,\"headcount\":21,\"suspended\":2,\"employeeYtd\":65745500,\"employerYtd\":58160000,\"insuredCount\":21,\"totalBalance\":188617903,\"ownContributions\":115655000,\"totalContributions\":173815000,\"employerContributions\":58160000}"
+  },
+  {
+    "name": "get_all_employers_metrics",
+    "role": "admin",
+    "args": {},
+    "status": 200,
+    "keys": [
+      "[]",
+      "id",
+      "name",
+      "sector",
+      "status",
+      "district",
+      "createdAt",
+      "headcount",
+      "activeCount",
+      "insuredCount",
+      "totalBalance",
+      "payrollCadence",
+      "totalContributions",
+      "employerContributions"
+    ],
+    "sample": "[{\"id\":\"emp-003\",\"name\":\"Gulu Traders Union\",\"sector\":\"Wholesale & Retail\",\"status\":\"active\",\"district\":\"Gulu\",\"createdAt\":\"2026-07-27T14:26:06.958998+00:00\",\"headcount\":6,\"activeCount\":5,\"insuredCount\":0,\"totalBalance\":18524479,\"payrollCadence\":\"monthly\",\"totalContributions\":15300000,\"employerContributions\":0},{\"id\":\"emp-004\",\"name\":\"Jinja Steel Mills\",\"sector\":\"Manufacturing\",\"status\":\"active\",\""
+  },
+  {
+    "name": "get_top_branch",
+    "role": "distributor",
+    "args": {
+      "p_level": "country",
+      "p_parent_id": "ug"
+    },
+    "status": 200,
+    "keys": [
+      "name",
+      "contribution"
+    ],
+    "sample": "{\"name\":\"Ntinda\",\"contribution\":1811690}"
+  },
+  {
+    "name": "get_breadcrumb",
+    "role": "distributor",
+    "args": {
+      "p_level": "branch",
+      "p_ids": {
+        "branch": "b-kam-015"
+      }
+    },
+    "status": 200,
+    "keys": [
+      "[]",
+      "id",
+      "name",
+      "level"
+    ],
+    "sample": "[{\"id\":\"ug\",\"name\":\"Uganda\",\"level\":\"country\"}]"
+  },
+  {
+    "name": "get_entity_metrics_rollup",
+    "role": "distributor",
+    "args": {
+      "p_level": "branch",
+      "p_entity_ids": [
+        "b-kam-015"
+      ]
+    },
+    "status": 200,
+    "keys": [
+      "b-kam-015"
+    ],
+    "sample": "{\"b-kam-015\":{\"aum\":13564967,\"activeRate\":90,\"kycPending\":0,\"genderRatio\":{\"male\":58,\"other\":0,\"female\":42},\"totalAgents\":5,\"coverageRate\":0,\"kycIncomplete\":0,\"totalBranches\":1,\"ageDistribution\":{\"56+\":1,\"18-25\":3,\"26-35\":9,\"36-45\":10,\"46-55\":8},\"dailyWithdrawals\":0,\"totalSubscribers\":31,\"totalWithdrawals\":2215315,\"activeSubscribers\":28,\"weeklyWithdrawals\":0,\"dailyContributions\":0,\"monthlyWithdraw"
+  },
+  {
+    "name": "get_distributor_rollup",
+    "role": "admin",
+    "args": {},
+    "status": 200,
+    "keys": [
+      "[]",
+      "distributor_id",
+      "branches",
+      "agents",
+      "subscribers",
+      "active_subscribers",
+      "aum"
+    ],
+    "sample": "[{\"distributor_id\":\"d-001\",\"branches\":291,\"agents\":1872,\"subscribers\":4602,\"active_subscribers\":3606,\"aum\":1954867232},{\"distributor_id\":\"d-002\",\"branches\":27,\"agents\":171,\"subscribers\":399,\"active_subscribers\":305,\"aum\":170104155},{\"distributor_id\":\"d-003\",\"branches\":2,\"agents\":3,\"subscribers\":0,\"active_subscribers\":0,\"aum\":0}]"
+  },
+  {
+    "name": "get_top_entities",
+    "role": "distributor",
+    "args": {
+      "p_level": "branch",
+      "p_sort_key": "aum",
+      "p_limit": 3
+    },
+    "status": 200,
+    "keys": [
+      "[]",
+      "id",
+      "name",
+      "parent_id",
+      "parent_name",
+      "manager_name",
+      "status",
+      "total_subscribers",
+      "active_rate",
+      "aum",
+      "total_contributions"
+    ],
+    "sample": "[{\"id\":\"b-kam-020\",\"name\":\"Rubaga\",\"parent_id\":\"d-kampala\",\"parent_name\":\"Kampala\",\"manager_name\":\"Samuel Namutebi\",\"status\":\"active\",\"total_subscribers\":57,\"active_rate\":77,\"aum\":21730078,\"total_contributions\":19168859},{\"id\":\"b-mit-044\",\"name\":\"Mityana Central\",\"parent_id\":\"d-mityana\",\"parent_name\":\"Mityana\",\"manager_name\":\"Irene Kabuye\",\"status\":\"inactive\",\"total_subscribers\":37,\"active_rate\":7"
+  },
+  {
+    "name": "get_branch_pending_contributions",
+    "role": "branch",
+    "args": {
+      "p_branch_id": "b-kam-015"
+    },
+    "status": 200,
+    "keys": [
+      "[]",
+      "agent_id",
+      "agent_name",
+      "total",
+      "pending"
+    ],
+    "sample": "[{\"agent_id\":\"a-087\",\"agent_name\":\"Beatrice Drazu\",\"total\":10,\"pending\":0},{\"agent_id\":\"a-088\",\"agent_name\":\"Frank Lubega\",\"total\":2,\"pending\":0},{\"agent_id\":\"a-089\",\"agent_name\":\"Annet Drazu\",\"total\":4,\"pending\":0},{\"agent_id\":\"a-091\",\"agent_name\":\"Brenda Nankya\",\"total\":12,\"pending\":3}]"
+  },
+  {
+    "name": "get_platform_overview",
+    "role": "admin",
+    "args": {},
+    "status": 200,
+    "keys": [
+      "aum",
+      "agents",
+      "branches",
+      "byChannel",
+      "employers",
+      "distributors",
+      "totalSubscribers",
+      "totalWithdrawals",
+      "activeSubscribers",
+      "subscribersDirect",
+      "totalContributions",
+      "inactiveSubscribers",
+      "subscribersViaEmployer",
+      "subscribersViaDistributor"
+    ],
+    "sample": "{\"aum\":2441327487,\"agents\":2046,\"branches\":321,\"byChannel\":{\"direct\":{\"aum\":0,\"active\":5,\"inactive\":0,\"subscribers\":5,\"withdrawals\":0,\"contributions\":0},\"employer\":{\"aum\":316356100,\"active\":52,\"inactive\":6,\"subscribers\":58,\"withdrawals\":420000,\"contributions\":279062500},\"distributor\":{\"aum\":2124971387,\"active\":3911,\"inactive\":1090,\"subscribers\":5001,\"withdrawals\":237776538,\"contributions\":17157924"
+  },
+  {
+    "name": "get_employer_geo_rollup",
+    "role": "admin",
+    "args": {},
+    "status": 200,
+    "keys": [
+      "byRegion",
+      "byDistrict"
+    ],
+    "sample": "{\"byRegion\":{\"unmapped\":{\"aum\":0,\"active\":0,\"employers\":1,\"subscribers\":0},\"r-central\":{\"aum\":206884921,\"active\":24,\"employers\":2,\"subscribers\":27},\"r-eastern\":{\"aum\":48529223,\"active\":12,\"employers\":2,\"subscribers\":13},\"r-western\":{\"aum\":25926552,\"active\":6,\"employers\":1,\"subscribers\":7},\"r-northern\":{\"aum\":35015404,\"active\":10,\"employers\":2,\"subscribers\":11}},\"byDistrict\":{\"d-gulu\":{\"aum\":185244"
+  },
+  {
+    "name": "get_employer_activity_rollup",
+    "role": "admin",
+    "args": {},
+    "status": 200,
+    "keys": [
+      "topEmployer",
+      "dailyWithdrawals",
+      "weeklyWithdrawals",
+      "dailyContributions",
+      "monthlyWithdrawals",
+      "newSubscribersToday",
+      "weeklyContributions",
+      "monthlyContributions",
+      "prevDailyWithdrawals",
+      "prevWeeklyWithdrawals",
+      "newSubscribersThisWeek",
+      "prevDailyContributions",
+      "prevMonthlyWithdrawals",
+      "newSubscribersThisMonth",
+      "prevNewSubscribersToday",
+      "prevWeeklyContributions",
+      "prevNewSubscribersThisWeek",
+      "prevNewSubscribersThisMonth"
+    ],
+    "sample": "{\"topEmployer\":{\"name\":\"Nile Breweries Demo Ltd\",\"contribution\":7179000},\"dailyWithdrawals\":150000,\"weeklyWithdrawals\":150000,\"dailyContributions\":2358000,\"monthlyWithdrawals\":330000,\"newSubscribersToday\":0,\"weeklyContributions\":2463000,\"monthlyContributions\":[0,3427500,0,2775000,0,1035000,577500,592500,0,2358000,2358000,7179000],\"prevDailyWithdrawals\":0,\"prevWeeklyWithdrawals\":60000,\"newSubscribe"
+  },
+  {
+    "name": "get_nav_overview",
+    "role": "admin",
+    "args": {
+      "p_fund_code": "UPU-BAL"
+    },
+    "status": 200,
+    "keys": [
+      "aum",
+      "series",
+      "fundCode",
+      "changeAbs",
+      "changePct",
+      "growthPct",
+      "currentNav",
+      "pendingDays",
+      "previousNav",
+      "totalGrowth",
+      "avgGrowthPct",
+      "firstNavDate",
+      "unitsInIssue",
+      "membersPriced",
+      "totalInvested",
+      "currentNavDate",
+      "publishedCount",
+      "membersUnpriced",
+      "previousNavDate",
+      "membersWithBasis",
+      "lastPublishedDaysAgo"
+    ],
+    "sample": "{\"aum\":2441327487,\"series\":[{\"aum\":null,\"date\":\"2025-08-06\",\"unitPrice\":1438.86},{\"aum\":null,\"date\":\"2025-08-07\",\"unitPrice\":1438.24},{\"aum\":null,\"date\":\"2025-08-08\",\"unitPrice\":1427.52},{\"aum\":null,\"date\":\"2025-08-11\",\"unitPrice\":1436.63},{\"aum\":null,\"date\":\"2025-08-12\",\"unitPrice\":1429.35},{\"aum\":null,\"date\":\"2025-08-13\",\"unitPrice\":1436.69},{\"aum\":null,\"date\":\"2025-08-14\",\"unitPrice\":1427.98},{"
+  },
+  {
+    "name": "list_nav_snapshots",
+    "role": "admin",
+    "args": {
+      "p_fund_code": "UPU-BAL",
+      "p_limit": 3,
+      "p_offset": 0,
+      "p_status": null
+    },
+    "status": 200,
+    "keys": [
+      "rows",
+      "total"
+    ],
+    "sample": "{\"rows\":[{\"id\":\"nav-78760cbeb4044a259ca2bd35f322a1a2\",\"aum\":2435411487,\"source\":\"admin_manual\",\"status\":\"published\",\"navDate\":\"2026-08-08\",\"changePct\":57.14,\"unitPrice\":1571.4,\"publishedAt\":\"2026-08-08T11:27:01.577902+00:00\",\"publishedBy\":\"admin\",\"unitsInIssue\":1549835.496365119,\"previousUnitPrice\":1000},{\"id\":\"nav-demo-20260807\",\"aum\":null,\"source\":\"fund_admin_feed\",\"status\":\"pending\",\"navDate\":\""
+  },
+  {
+    "name": "list_nominee_claims",
+    "role": "admin",
+    "args": {
+      "p_status": null
+    },
+    "status": 200,
+    "keys": [
+      "[]",
+      "id",
+      "notes",
+      "status",
+      "product",
+      "district",
+      "createdAt",
+      "reference",
+      "reviewNote",
+      "reviewedAt",
+      "reviewedBy",
+      "claimantNin",
+      "dateOfDeath",
+      "deceasedNin",
+      "claimantName",
+      "deceasedName",
+      "relationship",
+      "claimantEmail",
+      "claimantPhone",
+      "deceasedPhone",
+      "matchedSubscriberId"
+    ],
+    "sample": "[{\"id\":\"nc-demo-0003\",\"notes\":\"She was admitted in Mbarara for two weeks before she passed away.\",\"status\":\"pending\",\"product\":\"funeral\",\"district\":\"Isingiro\",\"createdAt\":\"2026-08-10T10:00:47.423498+00:00\",\"reference\":\"NC-DEMO-0003\",\"reviewNote\":null,\"reviewedAt\":null,\"reviewedBy\":null,\"claimantNin\":null,\"dateOfDeath\":\"2026-08-06\",\"deceasedNin\":null,\"claimantName\":\"Judith Mwesigwa\",\"deceasedName\":"
+  },
+  {
+    "name": "list_access_requests",
+    "role": "admin",
+    "args": {
+      "p_status": null
+    },
+    "status": 200,
+    "keys": [
+      "[]",
+      "id",
+      "kind",
+      "sector",
+      "status",
+      "message",
+      "orgName",
+      "district",
+      "createdAt",
+      "decidedAt",
+      "contactName",
+      "contactEmail",
+      "contactPhone",
+      "provisionedId",
+      "registrationNo"
+    ],
+    "sample": "[{\"id\":\"ar-1786103803205-x30h\",\"kind\":\"employer\",\"sector\":\"Fintechj\",\"status\":\"approved\",\"message\":null,\"orgName\":\"Uniclusion Uganda\",\"district\":\"Budaka\",\"createdAt\":\"2026-08-07T11:56:43.346621+00:00\",\"decidedAt\":\"2026-08-07T11:57:13.526822+00:00\",\"contactName\":\"Abc\",\"contactEmail\":\"achint@universalpensions.com\",\"contactPhone\":\"+256701232323\",\"provisionedId\":\"emp-80511f65be7a4656b2bd45b6fad18625\","
+  },
+  {
+    "name": "search_entities",
+    "role": "distributor",
+    "args": {
+      "p_q": "kam"
+    },
+    "status": 200,
+    "keys": [
+      "[]",
+      "entity_id",
+      "entity_name",
+      "level",
+      "label",
+      "parent_id",
+      "score"
+    ],
+    "sample": "[{\"entity_id\":\"d-kamuli\",\"entity_name\":\"Kamuli\",\"level\":\"district\",\"label\":\"District\",\"parent_id\":\"r-eastern\",\"score\":0.375},{\"entity_id\":\"d-kampala\",\"entity_name\":\"Kampala\",\"level\":\"district\",\"label\":\"District\",\"parent_id\":\"r-central\",\"score\":0.333333},{\"entity_id\":\"b-mba-293\",\"entity_name\":\"Kamukuzi\",\"level\":\"branch\",\"label\":\"Branch\",\"parent_id\":\"d-mbarara\",\"score\":0.3},{\"entity_id\":\"d-kamwenge\""
+  },
+  {
+    "name": "get_my_employer_funding",
+    "role": "subscriber",
+    "args": {},
+    "status": 200,
+    "keys": [
+      "scalar:object:null"
+    ],
+    "sample": "null"
+  }
+]

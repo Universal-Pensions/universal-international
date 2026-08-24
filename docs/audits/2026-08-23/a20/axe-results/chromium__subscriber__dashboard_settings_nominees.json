@@ -1,0 +1,17 @@
+{
+  "role": "subscriber",
+  "route": "/dashboard/settings/nominees",
+  "project": "chromium",
+  "url": "http://localhost:5173/dashboard/settings/nominees",
+  "violations": [
+    {
+      "id": "color-contrast",
+      "impact": "serious",
+      "help": "Elements must meet minimum color contrast ratio thresholds",
+      "nodes": 1,
+      "targets": [
+        "._shareBannerOk_1qbup_167"
+      ]
+    }
+  ]
+}

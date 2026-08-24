@@ -1,0 +1,383 @@
+table_name,column_name,data_type,is_nullable,column_default
+access_requests,id,text,NO,"('ar-'::text || replace((gen_random_uuid())::text, '-'::text, ''::text))"
+access_requests,kind,text,NO,""
+access_requests,org_name,text,NO,""
+access_requests,contact_name,text,YES,""
+access_requests,contact_email,text,YES,""
+access_requests,contact_phone,text,YES,""
+access_requests,sector,text,YES,""
+access_requests,district,text,YES,""
+access_requests,message,text,YES,""
+access_requests,status,text,NO,'pending'::text
+access_requests,provisioned_id,text,YES,""
+access_requests,created_at,timestamp with time zone,NO,now()
+access_requests,decided_at,timestamp with time zone,YES,""
+access_requests,registration_no,text,YES,""
+agent_referrals,id,text,NO,""
+agent_referrals,ticket_id,text,NO,""
+agent_referrals,phone,text,NO,""
+agent_referrals,reason,text,NO,""
+agent_referrals,stage,text,YES,""
+agent_referrals,status,text,NO,'open'::text
+agent_referrals,eta,text,YES,""
+agent_referrals,created_at,timestamp with time zone,NO,now()
+agent_referrals,resolved_at,timestamp with time zone,YES,""
+agents,id,text,NO,""
+agents,name,text,NO,""
+agents,gender,text,YES,""
+agents,employee_id,text,YES,""
+agents,branch_id,text,NO,""
+agents,center_lng,numeric,YES,""
+agents,center_lat,numeric,YES,""
+agents,phone,text,YES,""
+agents,email,text,YES,""
+agents,rating,numeric,YES,""
+agents,performance,integer,YES,""
+agents,status,text,NO,'active'::text
+agents,languages,jsonb,NO,'[]'::jsonb
+agents,specialties,jsonb,NO,'[]'::jsonb
+agents,tenure_months,integer,YES,""
+agents,joined_date,date,YES,""
+agents,created_at,timestamp with time zone,NO,now()
+agents,coverage_rate,integer,NO,0
+branches,id,text,NO,""
+branches,name,text,NO,""
+branches,district_id,text,NO,""
+branches,center_lng,numeric,YES,""
+branches,center_lat,numeric,YES,""
+branches,manager_name,text,YES,""
+branches,manager_phone,text,YES,""
+branches,manager_email,text,YES,""
+branches,status,text,NO,'active'::text
+branches,score,numeric,YES,""
+branches,rank,integer,YES,""
+branches,district_rank,integer,YES,""
+branches,district_branch_count,integer,YES,""
+branches,created_at,timestamp with time zone,NO,now()
+branches,distributor_id,text,YES,""
+claims,id,text,NO,""
+claims,subscriber_id,text,NO,""
+claims,type,text,NO,""
+claims,status,text,NO,""
+claims,amount,numeric,NO,""
+claims,incident_date,date,YES,""
+claims,submitted_date,date,NO,""
+claims,description,text,YES,""
+claims,created_at,timestamp with time zone,NO,now()
+claims,product,text,NO,""
+claims,discharge_date,date,YES,""
+claims,nights,integer,YES,""
+claims,provider,text,YES,""
+claims,daily_benefit,numeric,YES,""
+claims,expected_by,date,YES,(CURRENT_DATE + 10)
+commission_config,id,text,NO,'default'::text
+commission_config,rate,numeric,NO,""
+commission_config,cadence,text,NO,""
+commission_config,next_run_date,date,YES,""
+commission_config,last_updated_by,text,YES,""
+commission_config,updated_at,timestamp with time zone,NO,now()
+commission_config,distributor_id,text,YES,""
+commissions,id,text,NO,""
+commissions,agent_id,text,NO,""
+commissions,branch_id,text,YES,""
+commissions,subscriber_id,text,NO,""
+commissions,subscriber_name,text,YES,""
+commissions,amount,numeric,NO,""
+commissions,status,USER-DEFINED,NO,'due'::commission_status
+commissions,first_contribution_date,date,YES,""
+commissions,due_date,date,YES,""
+commissions,paid_date,date,YES,""
+commissions,txn_ref,text,YES,""
+commissions,created_at,timestamp with time zone,NO,now()
+commissions,paid_amount,numeric,YES,""
+contact_submissions,id,text,NO,""
+contact_submissions,name,text,NO,""
+contact_submissions,email,text,NO,""
+contact_submissions,message,text,NO,""
+contact_submissions,created_at,timestamp with time zone,NO,now()
+contribution_run_uploads,nonce,text,NO,""
+contribution_run_uploads,result,jsonb,NO,""
+contribution_run_uploads,created_at,timestamp with time zone,NO,now()
+contribution_runs,id,text,NO,""
+contribution_runs,employer_id,text,NO,""
+contribution_runs,period_label,text,YES,""
+contribution_runs,status,text,NO,'completed'::text
+contribution_runs,employer_total,numeric,NO,0
+contribution_runs,employee_total,numeric,NO,0
+contribution_runs,grand_total,numeric,NO,0
+contribution_runs,run_at,timestamp with time zone,NO,now()
+contribution_runs,created_at,timestamp with time zone,NO,now()
+contribution_runs,insurance_total,numeric,NO,0
+contribution_schedules,subscriber_id,text,NO,""
+contribution_schedules,frequency,text,NO,""
+contribution_schedules,amount,numeric,NO,""
+contribution_schedules,retirement_pct,integer,NO,80
+contribution_schedules,emergency_pct,integer,NO,20
+contribution_schedules,include_insurance,boolean,NO,false
+contribution_schedules,insurance_choice_made,boolean,NO,false
+contribution_schedules,next_due_date,date,YES,""
+contribution_schedules,updated_at,timestamp with time zone,NO,now()
+contribution_schedules,insurance_funding_mode,text,NO,'pay_now'::text
+contribution_schedules,insurance_premium_target,numeric,NO,0
+contribution_schedules,insurance_premium_accrued,numeric,NO,0
+contribution_schedules,insurance_savings_pct,numeric,NO,100
+contribution_schedules,contribution_indexation_pct,numeric,NO,0
+contribution_schedules,last_indexed_at,timestamp with time zone,YES,""
+custody_transfers,id,text,NO,"('cbt-'::text || replace((gen_random_uuid())::text, '-'::text, ''::text))"
+custody_transfers,batch_label,text,NO,""
+custody_transfers,custodian,text,NO,'Stanbic Bank Uganda — Custody'::text
+custody_transfers,source,text,NO,""
+custody_transfers,amount,numeric,NO,0
+custody_transfers,collected_from,date,NO,""
+custody_transfers,collected_to,date,NO,""
+custody_transfers,due_by,date,NO,""
+custody_transfers,transferred_at,date,YES,""
+custody_transfers,status,text,NO,'pending'::text
+custody_transfers,bank_ref,text,YES,""
+custody_transfers,failure_reason,text,YES,""
+custody_transfers,created_at,timestamp with time zone,NO,now()
+demo_personas,id,text,NO,""
+demo_personas,phone,text,NO,""
+demo_personas,role,text,NO,""
+demo_personas,entity_id,text,NO,""
+demo_personas,label,text,YES,""
+demo_personas,created_at,timestamp with time zone,NO,now()
+distributors,id,text,NO,""
+distributors,name,text,NO,""
+distributors,parent_id,text,NO,'ug'::text
+distributors,manager_name,text,YES,""
+distributors,manager_phone,text,YES,""
+distributors,manager_email,text,YES,""
+distributors,status,text,NO,'active'::text
+distributors,created_at,timestamp with time zone,NO,now()
+distributors,updated_at,timestamp with time zone,NO,now()
+distributors,registration_no,text,YES,""
+districts,id,text,NO,""
+districts,name,text,NO,""
+districts,region_id,text,NO,""
+districts,center_lng,numeric,YES,""
+districts,center_lat,numeric,YES,""
+districts,active,boolean,NO,true
+employer_invites,token,text,NO,""
+employer_invites,employer_id,text,NO,""
+employer_invites,prefill,jsonb,NO,'{}'::jsonb
+employer_invites,collect_schedule,boolean,NO,false
+employer_invites,status,text,NO,'pending'::text
+employer_invites,subscriber_id,text,YES,""
+employer_invites,created_at,timestamp with time zone,NO,now()
+employer_invites,expires_at,timestamp with time zone,NO,(now() + '7 days'::interval)
+employer_invites,completed_at,timestamp with time zone,YES,""
+employers,id,text,NO,""
+employers,name,text,NO,""
+employers,sector,text,YES,""
+employers,registration_no,text,YES,""
+employers,contact_name,text,YES,""
+employers,contact_phone,text,YES,""
+employers,contact_email,text,YES,""
+employers,district,text,YES,""
+employers,payroll_cadence,text,YES,""
+employers,default_contribution_config,jsonb,NO,'{}'::jsonb
+employers,created_at,timestamp with time zone,NO,now()
+employers,updated_at,timestamp with time zone,NO,now()
+employers,status,text,NO,'active'::text
+entity_detach_log,id,bigint,NO,nextval('entity_detach_log_id_seq'::regclass)
+entity_detach_log,subscriber_id,text,NO,""
+entity_detach_log,link_kind,text,NO,""
+entity_detach_log,prior_value,text,NO,""
+entity_detach_log,scope_id,text,NO,""
+entity_detach_log,detached_at,timestamp with time zone,NO,now()
+entity_detach_log,restored_at,timestamp with time zone,YES,""
+entity_status_log,id,bigint,NO,nextval('entity_status_log_id_seq'::regclass)
+entity_status_log,entity_kind,text,NO,""
+entity_status_log,entity_id,text,NO,""
+entity_status_log,prior_status,text,NO,""
+entity_status_log,scope_id,text,NO,""
+entity_status_log,changed_at,timestamp with time zone,NO,now()
+entity_status_log,restored_at,timestamp with time zone,YES,""
+insurance_policies,subscriber_id,text,NO,""
+insurance_policies,cover,numeric,NO,0
+insurance_policies,premium_monthly,numeric,NO,0
+insurance_policies,policy_start,date,YES,""
+insurance_policies,renewal_date,date,YES,""
+insurance_policies,status,text,NO,'inactive'::text
+insurance_policies,updated_at,timestamp with time zone,NO,now()
+insurance_policies,funded_by,text,NO,'self'::text
+money_nonces,nonce,text,NO,""
+money_nonces,subscriber_id,text,NO,""
+money_nonces,kind,text,NO,""
+money_nonces,result,jsonb,NO,""
+money_nonces,created_at,timestamp with time zone,NO,now()
+nav_snapshots,id,text,NO,"('nav-'::text || replace((gen_random_uuid())::text, '-'::text, ''::text))"
+nav_snapshots,fund_code,text,NO,'UPU-BAL'::text
+nav_snapshots,nav_date,date,NO,""
+nav_snapshots,unit_price,numeric,NO,1000
+nav_snapshots,status,text,NO,'published'::text
+nav_snapshots,published_at,timestamp with time zone,YES,""
+nav_snapshots,source,text,YES,""
+nav_snapshots,created_at,timestamp with time zone,NO,now()
+nav_snapshots,published_by,text,YES,""
+nav_snapshots,units_in_issue,numeric,YES,""
+nav_snapshots,aum,numeric,YES,""
+nav_snapshots,members_priced,integer,YES,""
+nominee_claims,id,text,NO,"('nc-'::text || replace((gen_random_uuid())::text, '-'::text, ''::text))"
+nominee_claims,reference,text,NO,"('NC-'::text || upper(substr(replace((gen_random_uuid())::text, '-'::text, ''::text), 1, 8)))"
+nominee_claims,product,text,NO,""
+nominee_claims,deceased_name,text,NO,""
+nominee_claims,deceased_nin,text,YES,""
+nominee_claims,deceased_phone,text,YES,""
+nominee_claims,date_of_death,date,NO,""
+nominee_claims,claimant_name,text,NO,""
+nominee_claims,claimant_nin,text,YES,""
+nominee_claims,claimant_phone,text,NO,""
+nominee_claims,claimant_email,text,YES,""
+nominee_claims,relationship,text,NO,""
+nominee_claims,district,text,YES,""
+nominee_claims,notes,text,YES,""
+nominee_claims,status,text,NO,'pending'::text
+nominee_claims,reviewed_by,text,YES,""
+nominee_claims,reviewed_at,timestamp with time zone,YES,""
+nominee_claims,review_note,text,YES,""
+nominee_claims,matched_subscriber_id,text,YES,""
+nominee_claims,created_at,timestamp with time zone,NO,now()
+nominees,id,text,NO,""
+nominees,subscriber_id,text,NO,""
+nominees,type,USER-DEFINED,NO,""
+nominees,name,text,NO,""
+nominees,phone,text,YES,""
+nominees,relationship,text,YES,""
+nominees,nin,text,YES,""
+nominees,share,numeric,NO,""
+nominees,created_at,timestamp with time zone,NO,now()
+notifications,id,text,NO,""
+notifications,recipient_role,text,NO,""
+notifications,recipient_id,text,NO,""
+notifications,type,text,NO,""
+notifications,title,text,NO,""
+notifications,body,text,NO,""
+notifications,amount,numeric,YES,""
+notifications,ref_id,text,YES,""
+notifications,is_read,boolean,NO,false
+notifications,created_at,timestamp with time zone,NO,now()
+regions,id,text,NO,""
+regions,name,text,NO,""
+regions,parent_id,text,YES,""
+regions,center_lng,numeric,YES,""
+regions,center_lat,numeric,YES,""
+settlement_batches,id,text,NO,""
+settlement_batches,agent_id,text,NO,""
+settlement_batches,branch_id,text,YES,""
+settlement_batches,pending_total,numeric,NO,""
+settlement_batches,paid_amount,numeric,NO,""
+settlement_batches,txn_ref,text,YES,""
+settlement_batches,paid_date,date,YES,""
+settlement_batches,line_count,integer,NO,""
+settlement_batches,created_at,timestamp with time zone,NO,now()
+settlement_batches,client_nonce,text,YES,""
+settlement_uploads,nonce,text,NO,""
+settlement_uploads,result,jsonb,NO,""
+settlement_uploads,created_at,timestamp with time zone,NO,now()
+subscriber_balances,subscriber_id,text,NO,""
+subscriber_balances,retirement_balance,numeric,NO,0
+subscriber_balances,emergency_balance,numeric,NO,0
+subscriber_balances,total_balance,numeric,NO,0
+subscriber_balances,units,numeric,NO,0
+subscriber_balances,updated_at,timestamp with time zone,NO,now()
+subscriber_balances,retirement_units,numeric,NO,0
+subscriber_balances,emergency_units,numeric,NO,0
+subscriber_balances,invested,numeric,NO,0
+subscriber_balances,nav_as_of,date,YES,""
+subscriber_balances_pre_nav,subscriber_id,text,YES,""
+subscriber_balances_pre_nav,retirement_balance,numeric,YES,""
+subscriber_balances_pre_nav,emergency_balance,numeric,YES,""
+subscriber_balances_pre_nav,total_balance,numeric,YES,""
+subscriber_balances_pre_nav,units,numeric,YES,""
+subscriber_balances_pre_nav,updated_at,timestamp with time zone,YES,""
+subscriber_balances_pre_nav,retirement_units,numeric,YES,""
+subscriber_balances_pre_nav,emergency_units,numeric,YES,""
+subscriber_balances_pre_nav,invested,numeric,YES,""
+subscriber_balances_pre_nav,nav_as_of,date,YES,""
+subscriber_balances_pre_nav,snapshot_at,timestamp with time zone,YES,""
+subscriber_insurance_products,subscriber_id,text,NO,""
+subscriber_insurance_products,product,text,NO,""
+subscriber_insurance_products,cover,numeric,NO,0
+subscriber_insurance_products,premium_monthly,numeric,NO,0
+subscriber_insurance_products,policy_start,date,YES,""
+subscriber_insurance_products,renewal_date,date,YES,""
+subscriber_insurance_products,status,text,NO,'inactive'::text
+subscriber_insurance_products,updated_at,timestamp with time zone,NO,now()
+subscriber_insurance_products,funded_by,text,NO,'self'::text
+subscriber_signup_uploads,nonce,text,NO,""
+subscriber_signup_uploads,result,jsonb,NO,""
+subscriber_signup_uploads,created_at,timestamp with time zone,NO,now()
+subscribers,id,text,NO,""
+subscribers,name,text,NO,""
+subscribers,email,text,YES,""
+subscribers,phone,text,NO,""
+subscribers,gender,text,YES,""
+subscribers,age,integer,YES,""
+subscribers,dob,date,YES,""
+subscribers,nin,text,YES,""
+subscribers,occupation,text,YES,""
+subscribers,agent_id,text,YES,""
+subscribers,district_id,text,YES,""
+subscribers,kyc_status,text,NO,'complete'::text
+subscribers,is_active,boolean,NO,true
+subscribers,is_demo_signup,boolean,NO,false
+subscribers,insurance_same_as_pension,boolean,NO,true
+subscribers,registered_date,date,YES,""
+subscribers,consent_at,timestamp with time zone,YES,""
+subscribers,last_contribution_date,date,YES,""
+subscribers,contribution_history,jsonb,NO,'[]'::jsonb
+subscribers,products_held,jsonb,NO,'[]'::jsonb
+subscribers,current_unit_value,numeric,YES,""
+subscribers,unit_value_as_of,timestamp with time zone,YES,""
+subscribers,created_at,timestamp with time zone,NO,now()
+subscribers,employer_id,text,YES,""
+subscribers,compensation,numeric,NO,0
+subscribers_unit_value_pre_nav,id,text,YES,""
+subscribers_unit_value_pre_nav,current_unit_value,numeric,YES,""
+subscribers_unit_value_pre_nav,unit_value_as_of,timestamp with time zone,YES,""
+subscribers_unit_value_pre_nav,snapshot_at,timestamp with time zone,YES,""
+transactions,id,text,NO,""
+transactions,subscriber_id,text,NO,""
+transactions,agent_id,text,YES,""
+transactions,type,text,NO,""
+transactions,amount,numeric,NO,""
+transactions,date,timestamp with time zone,NO,""
+transactions,status,text,YES,""
+transactions,method,text,YES,""
+transactions,txn_ref,text,YES,""
+transactions,bucket,text,YES,""
+transactions,split_retirement,numeric,YES,""
+transactions,split_emergency,numeric,YES,""
+transactions,created_at,timestamp with time zone,NO,now()
+transactions,source,text,NO,'own'::text
+transactions,contribution_run_id,text,YES,""
+users,id,text,NO,""
+users,phone,text,NO,""
+users,role,text,NO,""
+users,name,text,YES,""
+users,entity_id,text,YES,""
+users,email,text,YES,""
+users,last_login_at,timestamp with time zone,YES,""
+users,created_at,timestamp with time zone,NO,now()
+users,password_hash,text,YES,""
+v_reconciliation_exceptions,kind,text,YES,""
+v_reconciliation_exceptions,check_code,text,YES,""
+v_reconciliation_exceptions,issue,text,YES,""
+v_reconciliation_exceptions,ref_id,text,YES,""
+v_reconciliation_exceptions,who,text,YES,""
+v_reconciliation_exceptions,subscriber_id,text,YES,""
+v_reconciliation_exceptions,amount,numeric,YES,""
+v_reconciliation_exceptions,occurred_on,date,YES,""
+withdrawals,id,text,NO,""
+withdrawals,subscriber_id,text,NO,""
+withdrawals,amount,numeric,NO,""
+withdrawals,bucket,text,NO,""
+withdrawals,reason,text,YES,""
+withdrawals,method,text,YES,""
+withdrawals,status,text,NO,'processing'::text
+withdrawals,date,date,NO,""
+withdrawals,reference,text,YES,""
+withdrawals,created_at,timestamp with time zone,NO,now()
+withdrawals,expected_by,date,YES,(CURRENT_DATE + 5)

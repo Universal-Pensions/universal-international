@@ -1,0 +1,7 @@
+{
+  "role": "employer",
+  "route": "/dashboard/runs",
+  "project": "mobile-chromium",
+  "url": "http://localhost:5173/dashboard/runs",
+  "violations": []
+}

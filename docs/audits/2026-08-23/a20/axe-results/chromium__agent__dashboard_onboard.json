@@ -1,0 +1,7 @@
+{
+  "role": "agent",
+  "route": "/dashboard/onboard",
+  "project": "chromium",
+  "url": "http://localhost:5173/dashboard/onboard",
+  "violations": []
+}

@@ -1,0 +1,139 @@
+[
+ {
+  "id": "A21-001",
+  "title": "Distributor/admin subscriber list downloads the entire collection client-side (~3.4MB raw / ~6,765 rows into memory)",
+  "severity": "medium",
+  "confidence": "confirmed",
+  "category": "efficiency",
+  "surface": "distributor + admin dashboard (subscriber list screen)",
+  "location": "src/dashboard/subscriber/ViewSubscribers.jsx:251-263; src/services/entities.js:447-517",
+  "evidence": "Logged in as d-001 via /api/auth/verify-otp, then curled live PostgREST with the distributor JWT. subscribers: content-range 0-999/4602, page0 = 580,383 B raw / 101,615 B gzip in 0.53s -> full set 6 requests (page0 + count HEAD + pages 1-4) ~2.67MB raw / ~467KB gzip. agents: content-range 0-999/1872 -> 3 requests ~147KB gzip. branches: 0-290/291 -> 1 request 13.4KB gzip. TOTAL ~10 PostgREST requests, ~3.4MB raw / ~630KB gzip, ~6,765 rows held in memory on one screen. The correct server-side path getEntityPage/useInfiniteEntityList is dead code (its docstring: 'CURRENTLY UNUSED ... its only caller useInfiniteEntityList has no consumers', entities.js:546-574).",
+  "impact": "On a rep's Ugandan 4G link to Singapore (RTT 0.4-0.6s, ~2-5Mbps) the headline distributor/admin subscriber screen stalls for several seconds fetching the whole dataset; memory holds ~6,765 objects. Renders fine (virtualized) but the transfer is the bottleneck. Demo-visible on a supported viewport.",
+  "suggested_fix": "Wire the list to the already-built getEntityPage server-side paginate+filter+sort path (or scope the read to the drilled entity) instead of pulling all ~4,600 subscriber rows + all agents + all branches for a virtualized viewport.",
+  "repro": [
+   "cd repo; set -a; . ./.env.local; set +a",
+   "curl -sX POST localhost:3001/api/auth/verify-otp -d '{\"phone\":\"+256700000021\",\"role\":\"distributor\",\"otp\":\"123456\"}' -> capture token",
+   "curl -s \"$VITE_SUPABASE_URL/rest/v1/subscribers?select=id,name,...,subscriber_balances(total_balance)\" -H \"apikey:$ANON\" -H \"Authorization: Bearer <jwt>\" -H 'Range: 0-999' -H 'Prefer: count=exact' -> 206, content-range 0-999/4602, 580,383 bytes"
+  ],
+  "roles_affected": [
+   "distributor",
+   "admin"
+  ],
+  "demo_visible": true,
+  "effort": "M",
+  "agent": "A21"
+ },
+ {
+  "id": "A21-002",
+  "title": "Oversized aggregated CSS chunks (120KB landing sheet, 149KB distributor DashboardShell)",
+  "severity": "low",
+  "confidence": "confirmed",
+  "category": "efficiency",
+  "surface": "all dashboards + landing",
+  "location": "dist/assets/index-*.css (120KB raw/20KB gzip), DashboardShell-*.css (149KB raw/20KB gzip), ConsentStep-*.css (93KB), EmployerDashboardShell-*.css (82KB)",
+  "evidence": "ls -la dist/assets/*.css and gzip -c: index CSS 122,753 B raw / 20,470 B gzip (landing critical path, render-blocking); DashboardShell 152,795 B raw / 20,367 B gzip; ConsentStep 95,514 B; EmployerDashboardShell 83,827 B.",
+  "impact": "Gzip keeps each ~20KB so runtime impact is bounded, but the 120KB landing sheet is render-blocking and the aggregate size suggests shared tokens/utilities re-emitted per shell.",
+  "suggested_fix": "Audit CSS Modules for dead/duplicated selectors and extract shared tokens/utility layers so they aren't re-emitted into every shell's chunk.",
+  "roles_affected": [
+   "all"
+  ],
+  "demo_visible": false,
+  "effort": "M",
+  "agent": "A21"
+ },
+ {
+  "id": "A21-003",
+  "title": "Employer demo seed data (22KB gzip) ships to the browser on the live-backend path",
+  "severity": "low",
+  "confidence": "confirmed",
+  "category": "efficiency",
+  "surface": "subscriber + employer dashboards",
+  "location": "src/services/subscriber.js:38; src/services/employer.js:37 -> src/data/employerSeed.js",
+  "evidence": "grep shows employerSeed.js (322 lines) statically imported by two service modules; build emits employerSeed-*.js at 78.27 KB raw / 22,176 B gzip. It is only the VITE_USE_SUPABASE=false mock fallback but a static import can't be tree-shaken from a reachable branch, so it downloads in the default Supabase-backed demo. (MemberDetailBody/useEmployer grep hits were comments, not real imports -> CLAUDE.md 4.1 not violated.)",
+  "impact": "22KB gzip of dead demo data downloads on subscriber and employer dashboards in the live-backend demo path.",
+  "suggested_fix": "Load employerSeed via dynamic import() inside the !IS_SUPABASE_ENABLED branch so it is not bundled into the live-backend path.",
+  "roles_affected": [
+   "subscriber",
+   "employer"
+  ],
+  "demo_visible": false,
+  "effort": "S",
+  "agent": "A21"
+ },
+ {
+  "id": "A21-004",
+  "title": "Redundant/duplicate indexes and minor DB advisor lints",
+  "severity": "low",
+  "confidence": "confirmed",
+  "category": "efficiency",
+  "surface": "database schema",
+  "location": "public.subscribers, public.demo_personas, public.money_nonces, public.*_pre_nav",
+  "evidence": "pg_indexes: subscribers has BOTH idx_subscribers_agent_id (single) and subscribers_agent_id_id_idx (agent_id,id composite) -> single-col redundant. Supabase perf advisor: demo_personas duplicate_index (2 identical unique indexes); money_nonces.subscriber_id FK unindexed; no_primary_key on subscribers_unit_value_pre_nav and subscriber_balances_pre_nav (NAV-migration backup tables). EXCLUDED: 9 unused_index advisor lints as unreliable (restore reset pg_stat_user_indexes.idx_scan).",
+  "impact": "Redundant write/storage overhead; negligible at demo scale. Backup pre_nav tables arguably shouldn't be in the live schema.",
+  "suggested_fix": "Drop the redundant single-col subscribers index and one demo_personas duplicate; add a covering index on money_nonces.subscriber_id or drop the FK; drop the *_pre_nav backup tables once the NAV migration is settled.",
+  "roles_affected": [
+   "all"
+  ],
+  "demo_visible": false,
+  "effort": "S",
+  "agent": "A21"
+ },
+ {
+  "id": "A21-005",
+  "title": "Six stacked permissive RLS SELECT policies add per-row overhead on large list reads",
+  "severity": "info",
+  "confidence": "confirmed",
+  "category": "efficiency",
+  "surface": "database RLS (cross-ref A02)",
+  "location": "public.subscribers SELECT policies (+ 17 other tables)",
+  "evidence": "Supabase performance advisor: 90 multiple_permissive_policies warnings. subscribers SELECT = 6 permissive policies (_select_admin/_agent/_branch/_distributor/_employer/_self) OR-evaluated per row, each reading auth.jwt(). EXPLAIN ANALYZE of the 5000-row list join executed in ~297ms; this per-row RLS work is part of that cost.",
+  "impact": "Per-row policy evaluation on the 4,600-row list read. Deliberate 6-roles-one-table design, not a bug; consolidation into one app_role-gated policy would reduce per-row work.",
+  "suggested_fix": "A02 to consider consolidating the 6 per-role SELECT policies into a single policy branching on auth.jwt()->>'app_role'.",
+  "roles_affected": [
+   "distributor",
+   "admin",
+   "branch",
+   "agent",
+   "employer"
+  ],
+  "demo_visible": false,
+  "effort": "L",
+  "agent": "A21"
+ },
+ {
+  "id": "A21-006",
+  "title": "Free-tier cold start compounds first-paint of the first data screen",
+  "severity": "info",
+  "confidence": "confirmed",
+  "category": "infra-performance",
+  "surface": "backend cold start (cross-ref A09)",
+  "location": "render.yaml (plan: free); src/components/WarmupBanner.jsx:16",
+  "evidence": "render.yaml plan: free, region singapore. WarmupBanner.jsx:16 comment: 'Render free-tier instances cold-start in 30-60s.' main.jsx mounts <WarmupBanner/> which fires warmupBackend() on boot. Baseline documents Supabase auto-pause (~2min restore, H-class). Measured landing LCP 312ms (fast) so the cold-start cost lands on the first data screen only.",
+  "impact": "A rep opening the demo cold waits 30-60s (Render) and up to ~2min (Supabase restore) before the first data screen paints; WarmupBanner mitigates the Render half by pinging on boot.",
+  "suggested_fix": "Owned by A09. Options: a paid always-on Render instance for demos, and a Supabase keepalive that actually touches Postgres (the current /healthz is I/O-free and cannot prevent the pause).",
+  "roles_affected": [
+   "all"
+  ],
+  "demo_visible": true,
+  "effort": "M",
+  "agent": "A21"
+ },
+ {
+  "id": "A21-007",
+  "title": "No metric-matched font fallback (measured CLS negligible)",
+  "severity": "info",
+  "confidence": "confirmed",
+  "category": "cls",
+  "surface": "landing + all pages",
+  "location": "src/index.css:31-32; index.html font link",
+  "evidence": "Async Google Fonts correctly non-render-blocking (media=print onload swap + preconnect to googleapis + gstatic, display=swap). Playwright-on-preview measured landing CLS 0.0001 (desktop) / 0 (Slow-4G+4xCPU). grep for size-adjust/ascent-override/@font-face across src/**.css: none -- fallbacks are generic 'Plus Jakarta Sans',sans-serif / 'Inter',sans-serif.",
+  "impact": "A layout shift is theoretically possible on a pathologically slow gstatic fetch but did not materialize in measurement. Defense-in-depth only; effectively a PASS.",
+  "suggested_fix": "Optional: add a metric-matched @font-face fallback (size-adjust/ascent-override) or self-host the two faces to remove the third-party critical-path dependency.",
+  "roles_affected": [
+   "all"
+  ],
+  "demo_visible": false,
+  "effort": "S",
+  "agent": "A21"
+ }
+]

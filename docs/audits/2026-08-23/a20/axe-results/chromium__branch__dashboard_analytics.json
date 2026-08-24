@@ -1,0 +1,7 @@
+{
+  "role": "branch",
+  "route": "/dashboard/analytics",
+  "project": "chromium",
+  "url": "http://localhost:5173/dashboard/analytics",
+  "violations": []
+}

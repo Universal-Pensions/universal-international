@@ -1,0 +1,229 @@
+[
+ {
+  "id": "A20-001",
+  "title": "Public site footer nav links render invisible (1.35:1) on desktop landing pages",
+  "severity": "medium",
+  "confidence": "confirmed",
+  "category": "color-contrast",
+  "surface": "public landing (/, /employers, /distributors, /admin, /faq, /contact, /about)",
+  "location": "src/components/Footer.module.css .link (interacts with src/index.css:189 a{color:inherit})",
+  "evidence": "getComputedStyle of footer link 'Subscribers' (playwright, 1440px): color=rgb(47,53,80) bg=rgb(27,26,74) => ratio 1.35:1. axe color-contrast (serious) on /: ._link_1tlk9_42[href=\"/\"] fg=#2f3550 bg=#1b1a4a ratio=1.35 expected=4.5; ._regulatory fg=#5d5e85 bg=#1b1a4a ratio=2.63; ._groupLabel fg=#7a7b9e bg=#1b1a4a ratio=3.98. Intended .link color is lavender rgba(217,220,242,0.55) but routed <Link> anchors inherit body slate --color-slate on the deep-indigo footer.",
+  "impact": "The entire footer navigation appears blank/broken to any viewer during a demo of the prospect-facing marketing site; total contrast failure for low-vision users.",
+  "suggested_fix": "Set an explicit light color on .footer a / .link (e.g. var(--color-lavender)) with specificity above the global a{color:inherit}.",
+  "demo_visible": true,
+  "roles_affected": [
+   "public"
+  ],
+  "effort": "S",
+  "repro": [
+   "Open http://localhost:5173/ at desktop width",
+   "Scroll to footer",
+   "Observe the link columns render as dark text on the deep-indigo footer (unreadable)"
+  ],
+  "agent": "A20"
+ },
+ {
+  "id": "A20-002",
+  "title": "Widespread AA contrast failures incl. status pills and the green money value on Save/Withdraw",
+  "severity": "medium",
+  "confidence": "confirmed",
+  "category": "color-contrast",
+  "surface": "38 role\u00d7route surfaces: all dashboard status pills/chips/badges + subscriber Save & Withdraw money screens + public marketing pages",
+  "location": "shared _statusPill/_chg/_rankChip/_headBadge styles; SavePage.jsx/WithdrawPage.jsx _sumValPos; palette tokens in src/index.css",
+  "evidence": "axe color-contrast (serious): 46/108 scans, 38 distinct role\u00d7route. Rendered: agent /dashboard/subscribers _statusPill[data-tone=active] fg=#2e8b57 bg=#e2efe7 ratio=3.58 (10px bold, need 4.5); subscriber /dashboard/save & /dashboard/withdraw _sumValPos fg=#2e8b57 bg=#ffffff ratio=4.24 (14px bold, need 4.5). Palette on white: status-warning 2.10, amber 1.67, positive 1.74, accent-mint 1.86, medal-silver 2.56 (all FAIL AA). text-on-indigo is fine: white-on-indigo 13.18:1.",
+  "impact": "Status semantics and a money figure on the two subscriber money screens fall below AA; the green pills recur on every agent/branch/admin table a rep demos.",
+  "suggested_fix": "Use the darker --color-kyc-success #1f6e44 (6.23:1) for green pill/value text, or enlarge/bolden; re-tone amber/mint/silver where used as text.",
+  "demo_visible": true,
+  "roles_affected": [
+   "subscriber",
+   "agent",
+   "branch",
+   "admin",
+   "distributor",
+   "employer",
+   "public"
+  ],
+  "effort": "M",
+  "agent": "A20"
+ },
+ {
+  "id": "A20-003",
+  "title": "aria-modal dialogs without focus trap/restore (incl. PaySheet payment surface)",
+  "severity": "medium",
+  "confidence": "confirmed",
+  "category": "focus-management",
+  "surface": "subscriber/branch/employer/agent BottomSheets + PaySheet",
+  "location": "src/subscriber-dashboard/shell/BottomSheet.jsx, src/branch-dashboard/shell/BottomSheet.jsx, src/employer-dashboard/shell/BottomSheet.jsx, src/agent-dashboard/shell/BottomSheet.jsx, src/components/PaySheet.jsx",
+  "evidence": "Focus audit (grep role/aria-modal, Escape, focus-trap, restore, .focus()): subscriber/branch/employer/agent BottomSheet all = dialog:yes esc:yes trap:NO restore:NO focus():NO. PaySheet = dialog:yes esc:NO trap:NO restore:NO focus():NO (role=\"dialog\" aria-modal=\"true\", createPortal). Contrast with Modal.jsx (full trap+restore+escape+aria-labelledby) and landing BottomSheet/SignInModal/EmployerSlidePanel (also full) \u2014 the logic is copy-pasted with no shared utility, and these 5 drifted.",
+  "impact": "Keyboard/SR users tab out of the aria-modal into the inert page behind it, violating the modal contract; on close focus is dropped to <body>; PaySheet cannot be dismissed with Escape.",
+  "suggested_fix": "Extract Modal.jsx's focus-trap into a shared useFocusTrap hook and apply to every aria-modal surface; add an Escape handler to PaySheet.",
+  "demo_visible": false,
+  "roles_affected": [
+   "subscriber",
+   "branch",
+   "employer",
+   "agent"
+  ],
+  "effort": "M",
+  "agent": "A20"
+ },
+ {
+  "id": "A20-004",
+  "title": "Closed landing nav drawer keeps focusable children tabbable while aria-hidden",
+  "severity": "medium",
+  "confidence": "confirmed",
+  "category": "aria-hidden-focus",
+  "surface": "public landing (/, /admin, /distributors, /employers)",
+  "location": "src/pages/landing/shell/LandingMobileShell.jsx (drawer _drawer_oo5s9_110)",
+  "evidence": "axe aria-hidden-focus (serious) on /, /admin, /distributors, /employers (chromium). DOM probe: aside[aria-hidden=true] '_drawer' contains 7 focusables ['BUTTON:Close menu','A:Subscribers','A:Employers',...].",
+  "impact": "Keyboard users tab into an off-screen invisible menu (7 controls) that is marked aria-hidden; focus vanishes with no visible target.",
+  "suggested_fix": "Render the drawer contents only when open, or apply inert / tabindex=-1 to its focusables while closed.",
+  "demo_visible": false,
+  "roles_affected": [
+   "public"
+  ],
+  "effort": "S",
+  "agent": "A20"
+ },
+ {
+  "id": "A20-005",
+  "title": "Horizontally/vertically scrollable data tables are not keyboard-accessible",
+  "severity": "medium",
+  "confidence": "confirmed",
+  "category": "scrollable-region-focusable",
+  "surface": "admin & distributor desktop dashboards (tables); landing quotes carousel (mobile); agent onboard list (mobile)",
+  "location": "shared table shell _tableScroll; _quotesScroll (landing); agent /dashboard/onboard <ol>",
+  "evidence": "axe scrollable-region-focusable (serious): 17 scans. admin /dashboard,/distributors,/employers,/nav,/network,/nominee-claims,/subscribers,/access-requests,/settings _tableScroll (chromium); distributor /dashboard,/agents,/branches,/commissions,/settings _tableScroll; public / and /distributors _quotesScroll (mobile); agent /dashboard/onboard ol (mobile).",
+  "impact": "Clipped table/carousel content is unreachable for keyboard-only users (container scrolls but is not focusable). Low impact for a mouse-using rep; a real blocker for keyboard/SR users.",
+  "suggested_fix": "Add tabindex=\"0\" and an aria-label to the scroll containers (axe's canonical fix).",
+  "demo_visible": false,
+  "roles_affected": [
+   "admin",
+   "distributor",
+   "agent",
+   "public"
+  ],
+  "effort": "S",
+  "agent": "A20"
+ },
+ {
+  "id": "A20-006",
+  "title": "Skip-link target <main id=\"main\"> is not programmatically focusable",
+  "severity": "low",
+  "confidence": "confirmed",
+  "category": "focus-management",
+  "surface": "all top-level shells; ComingSoon and AdminLogin use a <div> instead of <main>",
+  "location": "all shell <main id=\"main\"> (e.g. src/subscriber-dashboard/shell/SubscriberDesktopShell.jsx:121); src/App.jsx:71 and src/pages/AdminLogin.jsx:33 use <div id=\"main\">",
+  "evidence": "Runtime probe on /: Tab focuses skip-link (first in order) and it animates visible (top:0, matches :focus-visible). Enter -> location.hash='#main' but document.activeElement stays BODY, main tabindex=null, focusMovedToMain=false.",
+  "impact": "Activating the skip link scrolls but does not reliably move keyboard/SR focus into main (works in Chrome via sequential-focus-start; inconsistent across other browsers/screen readers).",
+  "suggested_fix": "Add tabIndex={-1} to each <main id=\"main\">; use <main> not <div> at the two div sites.",
+  "demo_visible": false,
+  "roles_affected": [
+   "subscriber",
+   "agent",
+   "branch",
+   "distributor",
+   "employer",
+   "admin",
+   "public"
+  ],
+  "effort": "S",
+  "agent": "A20"
+ },
+ {
+  "id": "A20-007",
+  "title": "310 untracked jsx-a11y warnings dominated by two over-strict rules; real defects ~16",
+  "severity": "low",
+  "confidence": "confirmed",
+  "category": "lint-backlog",
+  "surface": "repo-wide (eslint, all a11y rules forced to warn)",
+  "location": "eslint config + src/**/*.jsx",
+  "evidence": "Histogram: control-has-associated-label 139, label-has-for 137, aria-role 10, label-has-associated-control 8, no-autofocus 6, anchor-is-valid 4, no-noninteractive-element-to-interactive-role 3, interactive-supports-focus 2, no-static-element-interactions 1 = 310. axe found 0 rendered label/name violations across 108 scans, so the 284 label warnings are largely lint noise (label-has-for is deprecated/over-strict).",
+  "impact": "A large warn-only backlog masks the ~16 genuine warnings; no user-visible effect today.",
+  "suggested_fix": "Drop deprecated label-has-for, keep label-has-associated-control; ratchet the ~16 genuine warnings to error (mostly S effort).",
+  "demo_visible": false,
+  "roles_affected": [
+   "all"
+  ],
+  "effort": "M",
+  "agent": "A20"
+ },
+ {
+  "id": "A20-008",
+  "title": "All 10 jsx-a11y/aria-role warnings are a React prop-name collision, not invalid ARIA roles",
+  "severity": "low",
+  "confidence": "confirmed",
+  "category": "lint-noise",
+  "surface": "all 6 role dashboard shells (NotificationBell)",
+  "location": "src/components/notifications/NotificationBell.jsx role prop + 10 call sites (e.g. AdminDashboardShell.jsx:411, AgentDesktopShell.jsx:134, Sidebar.jsx:680)",
+  "evidence": "All 10 warning sites read <NotificationBell role=\"admin|agent|branch|distributor|employer\" .../> \u2014 role is a React prop, not a DOM attribute. NotificationBell renders only role=\"region\" to the DOM (valid). Genuine invalid ARIA roles: 0.",
+  "impact": "None functionally; the noise can hide a future genuine invalid role in this rule bucket.",
+  "suggested_fix": "Rename the prop recipientRole (per 00c).",
+  "demo_visible": false,
+  "roles_affected": [
+   "admin",
+   "agent",
+   "branch",
+   "distributor",
+   "employer"
+  ],
+  "effort": "S",
+  "agent": "A20"
+ },
+ {
+  "id": "A20-009",
+  "title": "6 autoFocus usages can disorient keyboard/screen-reader users",
+  "severity": "low",
+  "confidence": "confirmed",
+  "category": "focus-management",
+  "surface": "admin Create modals, employer member detail, distributor commission panel, sign-in",
+  "location": "src/admin-dashboard/employers/CreateEmployer.jsx:153, src/admin-dashboard/distributors/CreateDistributor.jsx:145, src/employer-dashboard/employees/MemberDetailBody.jsx:140, src/dashboard/commissions/CommissionPanel.jsx:619, src/dashboard/overlay/OverlayPanel.jsx:174, src/components/signin/PhoneEntry.jsx:148",
+  "evidence": "jsx-a11y/no-autofocus x6 (baseline lint.txt).",
+  "impact": "autoFocus can move SR/keyboard users unexpectedly and jump the viewport on open.",
+  "suggested_fix": "Manage focus imperatively on open instead of autoFocus (the two admin Create* modals are the weakest cases).",
+  "demo_visible": false,
+  "roles_affected": [
+   "admin",
+   "employer",
+   "distributor"
+  ],
+  "effort": "S",
+  "agent": "A20"
+ },
+ {
+  "id": "A20-011",
+  "title": "Subscriber balance change is not announced to screen readers",
+  "severity": "low",
+  "confidence": "confirmed",
+  "category": "aria-live",
+  "surface": "subscriber home (Total balance)",
+  "location": "src/subscriber-dashboard/home/HomeDesktop.jsx:163-166,362-363 (and HomeMobile.jsx)",
+  "evidence": "useCountUp(net,1100,...) rendered as plain heroValue text with no aria-live and not aria-hidden. Money confirmations otherwise route through Toast.jsx aria-live=polite and the withdraw slider announces via aria-valuetext, so the actions themselves are announced.",
+  "impact": "After a contribution the balance re-counts silently; SR users are not told it changed (minor because the action is confirmed via Toast).",
+  "suggested_fix": "Wrap the final balance in aria-live=polite and aria-hidden the intermediate count-up frames.",
+  "demo_visible": false,
+  "roles_affected": [
+   "subscriber"
+  ],
+  "effort": "S",
+  "agent": "A20"
+ },
+ {
+  "id": "A20-010",
+  "title": "<html lang=\"en\"> while every formatter uses en-UG",
+  "severity": "info",
+  "confidence": "confirmed",
+  "category": "i18n",
+  "surface": "global document",
+  "location": "index.html:2; src/utils/currency.js:16; src/utils/date.js:11",
+  "evidence": "<html lang=\"en\">; LOCALE='en-UG' declared twice; 18 direct en-UG call sites; og:locale=en_UG. Content is English, so the mismatch is cosmetic for SR pronunciation.",
+  "impact": "No material user-visible effect (en and en-UG are both English).",
+  "suggested_fix": "Set <html lang=\"en-UG\"> for consistency.",
+  "demo_visible": false,
+  "roles_affected": [
+   "all"
+  ],
+  "effort": "S",
+  "agent": "A20"
+ }
+]

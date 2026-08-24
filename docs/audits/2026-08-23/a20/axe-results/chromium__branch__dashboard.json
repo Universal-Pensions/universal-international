@@ -1,0 +1,18 @@
+{
+  "role": "branch",
+  "route": "/dashboard",
+  "project": "chromium",
+  "url": "http://localhost:5173/dashboard",
+  "violations": [
+    {
+      "id": "color-contrast",
+      "impact": "serious",
+      "help": "Elements must meet minimum color contrast ratio thresholds",
+      "nodes": 2,
+      "targets": [
+        "._rankChip_1qdht_166",
+        "._attnCount_1qdht_334"
+      ]
+    }
+  ]
+}

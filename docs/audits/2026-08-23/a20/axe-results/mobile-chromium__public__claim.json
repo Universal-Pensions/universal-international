@@ -1,0 +1,7 @@
+{
+  "role": "public",
+  "route": "/claim",
+  "project": "mobile-chromium",
+  "url": "http://localhost:5173/claim",
+  "violations": []
+}

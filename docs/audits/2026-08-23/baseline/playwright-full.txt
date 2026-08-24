@@ -1,0 +1,1462 @@
+◇ injected env (8) from .env.local // tip: ⌁ auth for agents [www.vestauth.com]
+◇ injected env (0) from .env.local // tip: ⌘ enable debugging { debug: true }
+
+Running 370 tests using 1 worker
+
+◇ injected env (0) from .env.local // tip: ⌘ suppress logs { quiet: true }
+◇ injected env (0) from .env.local // tip: ⌁ auth for agents [www.vestauth.com]
+  ✓    1 [chromium] › e2e/specs/db/deactivate-entities.spec.ts:172:3 › deactivate-entities enforcement (0060 + 0061) › 0060: INSERT a subscriber tagged to an INACTIVE employer raises (250ms)
+  ✓    2 [chromium] › e2e/specs/db/deactivate-entities.spec.ts:190:3 › deactivate-entities enforcement (0060 + 0061) › 0061: UPDATE-re-tag to an INACTIVE employer raises; detach + active re-tag pass (478ms)
+  ✓    3 [chromium] › e2e/specs/db/deactivate-entities.spec.ts:224:3 › deactivate-entities enforcement (0060 + 0061) › set_employer_status: deactivate flips status + detaches members; reactivate re-links them (952ms)
+  ✓    4 [chromium] › e2e/specs/db/deactivate-entities.spec.ts:275:3 › deactivate-entities enforcement (0060 + 0061) › set_distributor_status: deactivate flips distributor + branches + agents and detaches the agent tree (1.2s)
+  ✓    5 [chromium] › e2e/specs/db/invariants.spec.ts:71:3 › DB invariants (ilkhfnoyxlxwqadebnkp) › no duplicate agent emails (114ms)
+  ✓    6 [chromium] › e2e/specs/db/invariants.spec.ts:97:3 › DB invariants (ilkhfnoyxlxwqadebnkp) › no duplicate subscriber NIns (122ms)
+  ✓    7 [chromium] › e2e/specs/db/invariants.spec.ts:119:3 › DB invariants (ilkhfnoyxlxwqadebnkp) › every commission carries a valid two-state status (due | paid) (121ms)
+  ✓    8 [chromium] › e2e/specs/db/invariants.spec.ts:137:3 › DB invariants (ilkhfnoyxlxwqadebnkp) › paid commissions carry paid_date + paid_amount; due rows carry no paid_date (397ms)
+  ✓    9 [chromium] › e2e/specs/db/invariants.spec.ts:168:3 › DB invariants (ilkhfnoyxlxwqadebnkp) › no schedules with next_due_date < MOCK_NOW (seed anchor) (147ms)
+  ✓   10 [chromium] › e2e/specs/db/invariants.spec.ts:189:3 › DB invariants (ilkhfnoyxlxwqadebnkp) › distributors table is live and d-001 row exists (149ms)
+  ✓   11 [chromium] › e2e/specs/db/invariants.spec.ts:198:3 › DB invariants (ilkhfnoyxlxwqadebnkp) › settlement write RPCs (apply_settlement + mark_notifications_read) exist in pg_proc (249ms)
+  ✓   12 [chromium] › e2e/specs/db/invariants.spec.ts:257:3 › DB invariants (ilkhfnoyxlxwqadebnkp) › no seeded subscriber is orphaned from an agent that still bills for it (139ms)
+  ✓   13 [chromium] › e2e/specs/db/money-idempotency.spec.ts:132:3 › money RPC idempotency + atomicity (DB layer) › make_contribution is idempotent: same nonce twice credits exactly once (1.5s)
+  ✓   14 [chromium] › e2e/specs/db/money-idempotency.spec.ts:182:3 › money RPC idempotency + atomicity (DB layer) › request_withdrawal over the balance RAISEs and leaves no orphaned debit (1.0s)
+  ✓   15 [chromium] › e2e/specs/db/rls-isolation.spec.ts:61:3 › cross-tenant RLS isolation (DB layer) › agent A's JWT cannot read agent B's commissions (411ms)
+  ✓   16 [chromium] › e2e/specs/db/rls-isolation.spec.ts:101:3 › cross-tenant RLS isolation (DB layer) › subscriber A cannot read subscriber B's balance (383ms)
+  ✓   17 [chromium] › e2e/specs/db/rls-isolation.spec.ts:134:3 › cross-tenant RLS isolation (DB layer) › employer A's JWT cannot read employer B's tagged subscribers (935ms)
+[db] employers row inserted: id=emp-54aedf95026248ccb86ad940dd10a7d0 name=E2E Employer 1787478127446 sector=Manufacturing
+  ✓   18 [chromium] › e2e/specs/flows/admin-create-employer.spec.ts:55:3 › admin → create employer (UI + DB) › creating an employer inserts a row and it appears in the list (3.1s)
+  ✓   19 [chromium] › e2e/specs/flows/agent-dashboard-drill-to-subscriber.spec.ts:44:3 › agent → drill subscribers (regression baseline) › subscribers list page loads scoped to this agent (1.2s)
+  ✓   20 [chromium] › e2e/specs/flows/agent-dashboard-drill-to-subscriber.spec.ts:54:3 › agent → drill subscribers (regression baseline) › a known scoped subscriber renders on the list (1.0s)
+  ✓   21 [chromium] › e2e/specs/flows/agent-dashboard-drill-to-subscriber.spec.ts:85:3 › agent → drill subscribers (regression baseline) › subscriber detail and schedule pages load for an in-scope subscriber (1.2s)
+  ✓   22 [chromium] › e2e/specs/flows/agent-dashboard-drill-to-subscriber.spec.ts:102:3 › agent → drill subscribers (regression baseline) › a subscriber belonging to a different agent does not leak (521ms)
+  ✘   23 [chromium] › e2e/specs/flows/agent-onboard-subscriber.spec.ts:109:3 › agent → onboard new subscriber (UI + RPC + DB) › full wizard creates subscriber + balances via RPC (25.2s)
+◇ injected env (0) from .env.local // tip: ⌘ custom filepath { path: '/custom/path/.env' }
+  ✓   24 [chromium] › e2e/specs/flows/auth-otp-retry-lockout.spec.ts:46:3 › signin → OTP retry + lockout (UI feedback) › wrong code shows error → retry succeeds (1.4s)
+  ✓   25 [chromium] › e2e/specs/flows/auth-otp-retry-lockout.spec.ts:58:3 › signin → OTP retry + lockout (UI feedback) › 5 consecutive wrong codes lock the form (MAX_ATTEMPTS=5) (929ms)
+◇ injected env (0) from .env.local // tip: ◈ encrypted .env [www.dotenvx.com]
+  ✓   26 [chromium] › e2e/specs/flows/branch-dashboard-drill-to-subscriber.spec.ts:82:3 › branch admin → drill agent → subscriber (scoped) › agents panel shows only agents belonging to this branch (1.7s)
+  ✓   27 [chromium] › e2e/specs/flows/branch-dashboard-drill-to-subscriber.spec.ts:106:3 › branch admin → drill agent → subscriber (scoped) › AgentDetail inside the branch shell exposes a "View subscribers" CTA (1.5s)
+  ✓   28 [chromium] › e2e/specs/flows/branch-dashboard-drill-to-subscriber.spec.ts:122:3 › branch admin → drill agent → subscriber (scoped) › branch overview reports the authoritative branch-scoped subscriber total (1.4s)
+  ✓   29 [chromium] › e2e/specs/flows/distributor-apply-settlement.spec.ts:116:3 › distributor → apply settlement (UI → RPC → DB → notifications) › full payment flips due→paid, records a batch, notifies agent + branch (2.9s)
+  ✓   30 [chromium] › e2e/specs/flows/distributor-apply-settlement.spec.ts:230:3 › distributor → apply settlement (UI → RPC → DB → notifications) › the settled agent sees an unread NotificationBell badge (3.4s)
+  ✓   31 [chromium] › e2e/specs/flows/distributor-apply-settlement.spec.ts:296:3 › distributor → apply settlement (UI → RPC → DB → notifications) › partial payment settles only the lines the amount covers; the rest stay due (0032) (1.9s)
+  ✓   32 [chromium] › e2e/specs/flows/distributor-apply-settlement.spec.ts:368:3 › distributor → apply settlement (UI → RPC → DB → notifications) › per-line paid_amount reconciles with the batch total (0032) (2.2s)
+  -   33 [chromium] › e2e/specs/flows/distributor-apply-settlement.spec.ts:426:8 › distributor → apply settlement (UI → RPC → DB → notifications) › idempotency: re-submitting the same upload nonce records no second batch (0032)
+  ✓   34 [chromium] › e2e/specs/flows/distributor-commission-drill-subscribers.spec.ts:94:3 › distributor → commission drill → agent → subscribers (real data) › the agent → subscribers drill loads real rows (no 400/42703) (2.5s)
+[db] branches row inserted: id=b-new-1787478183023 name=E2E Branch 1787478181090 district=d-kampala
+  ✓   35 [chromium] › e2e/specs/flows/distributor-create-branch.spec.ts:48:3 › distributor → create branch (UI + DB) › submitting the form inserts a branch row (2.6s)
+  ✓   36 [chromium] › e2e/specs/flows/distributor-drill-agent-to-subscriber.spec.ts:57:3 › distributor → drill agent → subscriber › AgentDetail exposes a "View subscribers" CTA (2.4s)
+  ✓   37 [chromium] › e2e/specs/flows/distributor-drill-agent-to-subscriber.spec.ts:69:3 › distributor → drill agent → subscriber › clicking the agent CTA opens a subscriber list scoped to the agent (2.8s)
+  ✓   38 [chromium] › e2e/specs/flows/distributor-drill-agent-to-subscriber.spec.ts:98:3 › distributor → drill agent → subscriber › no subscriber from outside the agent leaks into the scoped list (2.6s)
+  ✓   39 [chromium] › e2e/specs/flows/distributor-drill-branch-to-subscriber.spec.ts:83:3 › distributor → drill branch → subscriber › BranchDetail exposes a "View subscribers" CTA (1.4s)
+  ✓   40 [chromium] › e2e/specs/flows/distributor-drill-branch-to-subscriber.spec.ts:106:3 › distributor → drill branch → subscriber › clicking the branch CTA opens a subscriber list scoped to the branch (2.5s)
+  ✓   41 [chromium] › e2e/specs/flows/distributor-drill-branch-to-subscriber.spec.ts:146:3 › distributor → drill branch → subscriber › no subscriber from outside the branch leaks into the scoped list (1.8s)
+[csv] all-transactions — 0 data rows (header always emitted)
+  ✓   42 [chromium] › e2e/specs/flows/distributor-exports-csv.spec.ts:37:3 › subscriber → /dashboard/reports/all-transactions Export CSV › downloads a CSV with BOM and header (868ms)
+  ✓   43 [chromium] › e2e/specs/flows/distributor-exports-csv.spec.ts:92:3 › distributor → commission detail Download › Commission panel exposes the CommissionPanel Download surface (617ms)
+  -   44 [chromium] › e2e/specs/flows/distributor-exports-csv.spec.ts:141:3 › mobile UA → CSV cap notice (>5k rows) › subscriber export does NOT surface the cap toast (legacy path)
+[perf] distributor chrome visible in 441ms (SLA target 3000ms)
+[metrics] subscribers=4602 agents=1872
+  ✓   45 [chromium] › e2e/specs/flows/distributor-renders-data.spec.ts:40:3 › distributor → renders live data (UI + DB) › dashboard chrome renders within 5s with non-zero metrics (1.4s)
+[count] rollup Subscribers tile = 4602
+[count] ViewSubscribers list total = 4602
+  ✓   46 [chromium] › e2e/specs/flows/distributor-renders-data.spec.ts:100:3 › distributor → renders live data (UI + DB) › subscriber count agrees between the rollup tile and the Subscribers list (7.2s)
+  ✓   47 [chromium] › e2e/specs/flows/distributor-renders-data.spec.ts:163:3 › distributor → renders live data (UI + DB) › drill country → region → district → branch → agent → subscriber via URL (3.3s)
+[db] contribution_runs row inserted: id=run-a2d4d42785c44647b85888a43f31b4d0 period=E2E Run 1787478210763 status=completed employer=1972000 employee=986000 insurance=760000 grand=3718000
+  ✓   48 [chromium] › e2e/specs/flows/employer-contribution-run.spec.ts:84:3 › employer → contribution run (UI → RPC → DB) › running a contribution run records a run and shows a success result (5.0s)
+  ✓   49 [chromium] › e2e/specs/flows/kyc-failure-paths.spec.ts:33:3 › signup → KYC force-failure surfaces › id-quality fail-blur surfaces "photo is blurry" guidance (1.9s)
+  ✓   50 [chromium] › e2e/specs/flows/kyc-failure-paths.spec.ts:44:3 › signup → KYC force-failure surfaces › nira-verify partial surfaces the double-check panel (7.8s)
+  -   51 [chromium] › e2e/specs/flows/kyc-failure-paths.spec.ts:71:8 › signup → KYC force-failure surfaces › aml-screen flagged routes to "Your account is under review"
+  -   52 [chromium] › e2e/specs/flows/kyc-failure-paths.spec.ts:76:8 › signup → KYC force-failure surfaces › face-match liveness-fail surfaces "Verification paused"
+  ✓   53 [chromium] › e2e/specs/flows/settings-change-password.spec.ts:88:3 › settings → set / change password (distributor — see header note) › set password → flip title → sign out → sign in with password (3.3s)
+[db] subscribers.email for s-0001: e2e-1785684051976@example.com → e2e-1787478228865@example.com
+  ✓   54 [chromium] › e2e/specs/flows/subscriber-edit-profile.spec.ts:58:3 › subscriber → edit profile (UI + DB) › saving a new email updates the DB and the UI reflects it (2.3s)
+  ✓   55 [chromium] › e2e/specs/flows/subscriber-signin-with-password.spec.ts:78:3 › subscriber → sign in with password › A) signs in with password after fresh signup (31.3s)
+  ✓   56 [chromium] › e2e/specs/flows/subscriber-signin-with-password.spec.ts:147:3 › subscriber → sign in with password › B) seeded subscriber password attempt falls back to OTP CTA (1.9s)
+[db] new subscriber: s-100125 (phone=+256716416301, district=d-kampala, kyc=complete)
+  ✓   57 [chromium] › e2e/specs/flows/subscriber-signup-to-contribute.spec.ts:116:3 › subscriber → signup wizard → first contribution (UI + DB) › completes 9-step signup + contribution and writes the subscriber chain (27.6s)
+  ✓   58 [chromium] › e2e/specs/regression/employer-kyc-nudge.spec.ts:55:3 › employer pending KYC — routed page + nudge channels › the route renders in place — it does NOT redirect away (858ms)
+  ✓   59 [chromium] › e2e/specs/regression/employer-kyc-nudge.spec.ts:62:3 › employer pending KYC — routed page + nudge channels › offers Email, SMS and WhatsApp once someone is selected (1.2s)
+  ✓   60 [chromium] › e2e/specs/regression/employer-kyc-nudge.spec.ts:77:3 › employer pending KYC — routed page + nudge channels › sending marks the invitee as reminded (2.6s)
+  ✓   61 [chromium] › e2e/specs/regression/employer-kyc-nudge.spec.ts:89:3 › employer pending KYC — routed page + nudge channels › unticking every channel blocks the send (1.3s)
+  ✓   62 [chromium] › e2e/specs/regression/empty-states.spec.ts:36:3 › ViewBranches empty states › filter-mismatch surface renders the adjust-filters copy (951ms)
+  -   63 [chromium] › e2e/specs/regression/empty-states.spec.ts:66:3 › ViewBranches empty states › zero-rows surface renders the no-data copy
+  ✓   64 [chromium] › e2e/specs/regression/map-drill.spec.ts:250:5 › map drill-down regression — distributor › clicking a region then a district drills country → region → district (3.6s)
+  ✓   65 [chromium] › e2e/specs/regression/map-drill.spec.ts:250:5 › map drill-down regression — admin › clicking a region then a district drills country → region → district (3.9s)
+  ✓   66 [chromium] › e2e/specs/regression/modal-escape.spec.ts:59:5 › Modal Escape regression › distributor → ViewBranches confirm-status modal › Escape closes the modal, not the panel (1.6s)
+  ✘   67 [chromium] › e2e/specs/regression/modal-escape.spec.ts:224:5 › Modal Escape regression › distributor → settlement confirm modal › Escape closes the confirm modal without closing CommissionPanel (26.7s)
+◇ injected env (0) from .env.local // tip: ⌘ enable debugging { debug: true }
+  ✓   68 [chromium] › e2e/specs/regression/subscriber-insurance-no-scroll.spec.ts:42:5 › Insurance cover — desktop fits without scrolling › fits 1440x900 (580ms)
+  ✓   69 [chromium] › e2e/specs/regression/subscriber-insurance-no-scroll.spec.ts:42:5 › Insurance cover — desktop fits without scrolling › fits 1280x800 (640ms)
+  ✓   70 [chromium] › e2e/specs/regression/subscriber-insurance-no-scroll.spec.ts:42:5 › Insurance cover — desktop fits without scrolling › fits 1100x800 (578ms)
+  ✓   71 [chromium] › e2e/specs/regression/subscriber-insurance-no-scroll.spec.ts:42:5 › Insurance cover — desktop fits without scrolling › fits 1024x768 (563ms)
+  ✓   72 [chromium] › e2e/specs/regression/subscriber-payment-methods.spec.ts:47:3 › subscriber contribution — payment methods › Save offers mobile money, card AND bank transfer (644ms)
+  ✓   73 [chromium] › e2e/specs/regression/subscriber-payment-methods.spec.ts:55:3 › subscriber contribution — payment methods › choosing Card reveals the card gateway and gates the CTA until it is complete (696ms)
+  ✓   74 [chromium] › e2e/specs/regression/subscriber-payment-methods.spec.ts:77:3 › subscriber contribution — payment methods › card number formats as you type and detects the brand (743ms)
+  ✓   75 [chromium] › e2e/specs/regression/subscriber-payment-methods.spec.ts:88:3 › subscriber contribution — payment methods › choosing Bank transfer reveals account details and a payment reference (663ms)
+  ✓   76 [chromium] › e2e/specs/regression/subscriber-settings-stubs.spec.ts:45:5 › subscriber settings → redirect routes › Notifications settings redirects to /dashboard/settings (922ms)
+  ✓   77 [chromium] › e2e/specs/regression/subscriber-settings-stubs.spec.ts:45:5 › subscriber settings → redirect routes › Security settings redirects to /dashboard/settings (907ms)
+  ✓   78 [chromium] › e2e/specs/regression/subscriber-settings-stubs.spec.ts:66:3 › subscriber nominees → sum-to-100 validation › exceeding 100% total share disables Save and offers Balance (649ms)
+  ✓   79 [chromium] › e2e/specs/regression/subscriber-write-failures.spec.ts:77:3 › subscriber dashboard → write-failure surfaces › Profile Save shows error toast on 500 (1.5s)
+  -   80 [chromium] › e2e/specs/regression/subscriber-write-failures.spec.ts:127:3 › subscriber dashboard → write-failure surfaces › Withdraw shows error toast on 500
+  ✓   81 [chromium] › e2e/specs/regression/subscriber-write-failures.spec.ts:217:3 › subscriber dashboard → write-failure surfaces › Claim shows error toast on 500 (4.3s)
+  ✓   82 [chromium] › e2e/specs/regression/subscriber-write-failures.spec.ts:255:3 › subscriber dashboard → write-failure surfaces › Insurance shows error toast on 500 (614ms)
+  ✓   83 [chromium] › e2e/specs/regression/subscriber-write-failures.spec.ts:295:3 › subscriber dashboard → write-failure surfaces › Schedule save shows error toast on 500 (9.3s)
+  ✓   84 [chromium] › e2e/specs/regression/subscriber-write-failures.spec.ts:364:3 › subscriber dashboard → write-failure surfaces › Nominees save shows error toast on 500 (638ms)
+  ✓   85 [chromium] › e2e/specs/smoke/_health.spec.ts:18:3 › harness health › landing page returns 200 and shows hero (454ms)
+  ✓   86 [chromium] › e2e/specs/smoke/_health.spec.ts:27:5 › harness health › subscriber storageState authenticates › reaches /dashboard without being redirected to login (433ms)
+  ✓   87 [chromium] › e2e/specs/smoke/admin-dashboard.spec.ts:75:3 › admin dashboard smoke › main dashboard loads with the admin sidebar visible (2.3s)
+  ✓   88 [chromium] › e2e/specs/smoke/admin-dashboard.spec.ts:97:3 › admin dashboard smoke › Distributor Network flyout reveals its children, then Distributors panel opens (1.9s)
+  ✓   89 [chromium] › e2e/specs/smoke/admin-dashboard.spec.ts:108:3 › admin dashboard smoke › Employers panel opens (1.7s)
+  ✓   90 [chromium] › e2e/specs/smoke/admin-dashboard.spec.ts:117:3 › admin dashboard smoke › View branches panel opens (reused distributor panel, via the network flyout) (2.3s)
+  ✓   91 [chromium] › e2e/specs/smoke/admin-dashboard.spec.ts:128:3 › admin dashboard smoke › View agents panel opens (reused distributor panel, via the network flyout) (2.7s)
+  ✓   92 [chromium] › e2e/specs/smoke/admin-dashboard.spec.ts:136:3 › admin dashboard smoke › View subscribers panel opens directly (platform-wide) (1.9s)
+  ✓   93 [chromium] › e2e/specs/smoke/admin-dashboard.spec.ts:148:3 › admin dashboard smoke › Settings panel opens (2.0s)
+  ✓   94 [chromium] › e2e/specs/smoke/agent-dashboard.spec.ts:41:3 › agent dashboard smoke › Home loads (572ms)
+  ✓   95 [chromium] › e2e/specs/smoke/agent-dashboard.spec.ts:52:3 › agent dashboard smoke › Onboard loads (670ms)
+  ✓   96 [chromium] › e2e/specs/smoke/agent-dashboard.spec.ts:63:3 › agent dashboard smoke › Subscribers list loads (679ms)
+  ✓   97 [chromium] › e2e/specs/smoke/agent-dashboard.spec.ts:74:3 › agent dashboard smoke › Subscriber detail loads (553ms)
+  ✓   98 [chromium] › e2e/specs/smoke/agent-dashboard.spec.ts:85:3 › agent dashboard smoke › Inbox loads (627ms)
+  ✓   99 [chromium] › e2e/specs/smoke/agent-dashboard.spec.ts:98:3 › agent dashboard smoke › Analytics loads (680ms)
+  ✓  100 [chromium] › e2e/specs/smoke/agent-dashboard.spec.ts:107:3 › agent dashboard smoke › Commissions home loads (657ms)
+  ✓  101 [chromium] › e2e/specs/smoke/agent-dashboard.spec.ts:116:3 › agent dashboard smoke › Commissions filtered view redirects safely (608ms)
+  ✓  102 [chromium] › e2e/specs/smoke/agent-dashboard.spec.ts:128:3 › agent dashboard smoke › Settings loads (562ms)
+  ✓  103 [chromium] › e2e/specs/smoke/branch-dashboard.spec.ts:39:3 › branch dashboard — desktop (routed) › overview loads (19.0s)
+  ✓  104 [chromium] › e2e/specs/smoke/branch-dashboard.spec.ts:55:3 › branch dashboard — desktop (routed) › rail navigates to each routed page (3.7s)
+  ✓  105 [chromium] › e2e/specs/smoke/branch-dashboard.spec.ts:80:3 › branch dashboard — desktop (routed) › Add agent opens an in-page view (not a modal) with Single + Bulk tabs (1.5s)
+  ✓  106 [chromium] › e2e/specs/smoke/branch-dashboard.spec.ts:95:3 › branch dashboard — desktop (routed) › agent roster shows active/inactive (no "Onboarding") and drills into a detail page (1.9s)
+  ✓  107 [chromium] › e2e/specs/smoke/branch-dashboard.spec.ts:109:3 › branch dashboard — desktop (routed) › Support ticket opens a read-only thread (1.5s)
+  ✓  108 [chromium] › e2e/specs/smoke/branch-dashboard.spec.ts:120:3 › branch dashboard — desktop (routed) › deep-link to a sub-route survives a hard refresh (2.7s)
+  ✓  109 [chromium] › e2e/specs/smoke/branch-dashboard.spec.ts:144:3 › branch dashboard — mobile (panels, byte-identical) › renders the original mobile panel shell, not the routed desktop rail (1.6s)
+  ✓  110 [chromium] › e2e/specs/smoke/distributor-dashboard.spec.ts:39:3 › distributor dashboard smoke › main dashboard loads with sidebar visible (2.9s)
+  ✓  111 [chromium] › e2e/specs/smoke/distributor-dashboard.spec.ts:55:3 › distributor dashboard smoke › Create branch panel opens (1.9s)
+  ✓  112 [chromium] › e2e/specs/smoke/distributor-dashboard.spec.ts:73:3 › distributor dashboard smoke › View branches panel opens (2.1s)
+  ✓  113 [chromium] › e2e/specs/smoke/distributor-dashboard.spec.ts:85:3 › distributor dashboard smoke › View agents panel opens (1.7s)
+  ✓  114 [chromium] › e2e/specs/smoke/distributor-dashboard.spec.ts:97:3 › distributor dashboard smoke › View subscribers panel opens (1.8s)
+  ✓  115 [chromium] › e2e/specs/smoke/distributor-dashboard.spec.ts:114:3 › distributor dashboard smoke › View reports panel opens (1.8s)
+  ✓  116 [chromium] › e2e/specs/smoke/distributor-dashboard.spec.ts:123:3 › distributor dashboard smoke › Commission panel opens (1.7s)
+  ✓  117 [chromium] › e2e/specs/smoke/distributor-dashboard.spec.ts:133:3 › distributor dashboard smoke › Settings panel opens (1.8s)
+  ✓  118 [chromium] › e2e/specs/smoke/employer-dashboard.spec.ts:38:3 › employer dashboard smoke › desktop shell + rail nav render (3.4s)
+  ✓  119 [chromium] › e2e/specs/smoke/employer-dashboard.spec.ts:55:3 › employer dashboard smoke › Employees route loads (3.1s)
+  ✓  120 [chromium] › e2e/specs/smoke/employer-dashboard.spec.ts:61:3 › employer dashboard smoke › Contribution Runs route loads (3.1s)
+  ✓  121 [chromium] › e2e/specs/smoke/employer-dashboard.spec.ts:67:3 › employer dashboard smoke › Insurance route loads (3.3s)
+  ✓  122 [chromium] › e2e/specs/smoke/employer-dashboard.spec.ts:73:3 › employer dashboard smoke › Analytics route loads (2.4s)
+  ✓  123 [chromium] › e2e/specs/smoke/employer-dashboard.spec.ts:79:3 › employer dashboard smoke › Support route loads (9.3s)
+  ✓  124 [chromium] › e2e/specs/smoke/employer-dashboard.spec.ts:85:3 › employer dashboard smoke › Settings route loads (4.7s)
+  ✓  125 [chromium] › e2e/specs/smoke/employer-dashboard.spec.ts:91:3 › employer dashboard smoke › Ask AI copilot opens (2.7s)
+  ✓  126 [chromium] › e2e/specs/smoke/landing.spec.ts:12:3 › landing public routes smoke › home page renders hero (431ms)
+  ✓  127 [chromium] › e2e/specs/smoke/landing.spec.ts:20:3 › landing public routes smoke › FAQ page renders (291ms)
+  ✓  128 [chromium] › e2e/specs/smoke/landing.spec.ts:27:3 › landing public routes smoke › Contact page renders (307ms)
+  ✓  129 [chromium] › e2e/specs/smoke/landing.spec.ts:34:3 › landing public routes smoke › About page renders (300ms)
+  ✓  130 [chromium] › e2e/specs/smoke/subscriber-dashboard.spec.ts:25:3 › subscriber dashboard smoke › Home loads (/dashboard) (2.2s)
+  ✓  131 [chromium] › e2e/specs/smoke/subscriber-dashboard.spec.ts:34:3 › subscriber dashboard smoke › Save loads (/dashboard/save) (621ms)
+  ✓  132 [chromium] › e2e/specs/smoke/subscriber-dashboard.spec.ts:43:3 › subscriber dashboard smoke › Schedule loads (/dashboard/save/schedule) (2.2s)
+  ✓  133 [chromium] › e2e/specs/smoke/subscriber-dashboard.spec.ts:54:3 › subscriber dashboard smoke › Withdrawals hub loads (/dashboard/withdraw) (624ms)
+  ✓  134 [chromium] › e2e/specs/smoke/subscriber-dashboard.spec.ts:60:3 › subscriber dashboard smoke › Withdraw savings loads (/dashboard/withdraw/savings) (598ms)
+  ✓  135 [chromium] › e2e/specs/smoke/subscriber-dashboard.spec.ts:70:3 › subscriber dashboard smoke › Claim loads (/dashboard/withdraw/claim) (619ms)
+  ✓  136 [chromium] › e2e/specs/smoke/subscriber-dashboard.spec.ts:76:3 › subscriber dashboard smoke › Claim redirect resolves (/dashboard/claim -> /dashboard/withdraw/claim) (905ms)
+  ✓  137 [chromium] › e2e/specs/smoke/subscriber-dashboard.spec.ts:83:3 › subscriber dashboard smoke › Activity loads (/dashboard/activity) (598ms)
+  ✓  138 [chromium] › e2e/specs/smoke/subscriber-dashboard.spec.ts:99:3 › subscriber dashboard smoke › Reports loads (/dashboard/reports) (610ms)
+  ✓  139 [chromium] › e2e/specs/smoke/subscriber-dashboard.spec.ts:109:3 › subscriber dashboard smoke › All Transactions report loads (/dashboard/reports/all-transactions) (635ms)
+  ✓  140 [chromium] › e2e/specs/smoke/subscriber-dashboard.spec.ts:115:3 › subscriber dashboard smoke › Contributions Summary report loads (/dashboard/reports/contributions-summary) (611ms)
+  ✓  141 [chromium] › e2e/specs/smoke/subscriber-dashboard.spec.ts:124:3 › subscriber dashboard smoke › Help loads (/dashboard/help) (625ms)
+  ✓  142 [chromium] › e2e/specs/smoke/subscriber-dashboard.spec.ts:130:3 › subscriber dashboard smoke › Agent loads (/dashboard/agent) (17.9s)
+  ✓  143 [chromium] › e2e/specs/smoke/subscriber-dashboard.spec.ts:161:3 › subscriber dashboard smoke › Profile tab loads (/dashboard/settings) (609ms)
+  ✓  144 [chromium] › e2e/specs/smoke/subscriber-dashboard.spec.ts:173:3 › subscriber dashboard smoke › Profile edit form loads (/dashboard/settings/profile) (600ms)
+◇ injected env (0) from .env.local // tip: ⌁ auth for agents [www.vestauth.com]
+◇ injected env (0) from .env.local // tip: ◈ secrets for agents [www.dotenvx.com]
+  ✓  145 [webkit] › e2e/specs/db/deactivate-entities.spec.ts:172:3 › deactivate-entities enforcement (0060 + 0061) › 0060: INSERT a subscriber tagged to an INACTIVE employer raises (375ms)
+  ✓  146 [webkit] › e2e/specs/db/deactivate-entities.spec.ts:190:3 › deactivate-entities enforcement (0060 + 0061) › 0061: UPDATE-re-tag to an INACTIVE employer raises; detach + active re-tag pass (786ms)
+  ✓  147 [webkit] › e2e/specs/db/deactivate-entities.spec.ts:224:3 › deactivate-entities enforcement (0060 + 0061) › set_employer_status: deactivate flips status + detaches members; reactivate re-links them (1.3s)
+  ✓  148 [webkit] › e2e/specs/db/deactivate-entities.spec.ts:275:3 › deactivate-entities enforcement (0060 + 0061) › set_distributor_status: deactivate flips distributor + branches + agents and detaches the agent tree (1.5s)
+  ✓  149 [webkit] › e2e/specs/db/invariants.spec.ts:71:3 › DB invariants (ilkhfnoyxlxwqadebnkp) › no duplicate agent emails (174ms)
+  ✓  150 [webkit] › e2e/specs/db/invariants.spec.ts:97:3 › DB invariants (ilkhfnoyxlxwqadebnkp) › no duplicate subscriber NIns (118ms)
+  ✓  151 [webkit] › e2e/specs/db/invariants.spec.ts:119:3 › DB invariants (ilkhfnoyxlxwqadebnkp) › every commission carries a valid two-state status (due | paid) (190ms)
+  ✓  152 [webkit] › e2e/specs/db/invariants.spec.ts:137:3 › DB invariants (ilkhfnoyxlxwqadebnkp) › paid commissions carry paid_date + paid_amount; due rows carry no paid_date (434ms)
+  ✓  153 [webkit] › e2e/specs/db/invariants.spec.ts:168:3 › DB invariants (ilkhfnoyxlxwqadebnkp) › no schedules with next_due_date < MOCK_NOW (seed anchor) (171ms)
+  ✓  154 [webkit] › e2e/specs/db/invariants.spec.ts:189:3 › DB invariants (ilkhfnoyxlxwqadebnkp) › distributors table is live and d-001 row exists (148ms)
+  ✓  155 [webkit] › e2e/specs/db/invariants.spec.ts:198:3 › DB invariants (ilkhfnoyxlxwqadebnkp) › settlement write RPCs (apply_settlement + mark_notifications_read) exist in pg_proc (283ms)
+  ✓  156 [webkit] › e2e/specs/db/invariants.spec.ts:257:3 › DB invariants (ilkhfnoyxlxwqadebnkp) › no seeded subscriber is orphaned from an agent that still bills for it (180ms)
+  ✓  157 [webkit] › e2e/specs/db/money-idempotency.spec.ts:132:3 › money RPC idempotency + atomicity (DB layer) › make_contribution is idempotent: same nonce twice credits exactly once (1.8s)
+  ✓  158 [webkit] › e2e/specs/db/money-idempotency.spec.ts:182:3 › money RPC idempotency + atomicity (DB layer) › request_withdrawal over the balance RAISEs and leaves no orphaned debit (1.1s)
+  ✓  159 [webkit] › e2e/specs/db/rls-isolation.spec.ts:61:3 › cross-tenant RLS isolation (DB layer) › agent A's JWT cannot read agent B's commissions (405ms)
+  ✓  160 [webkit] › e2e/specs/db/rls-isolation.spec.ts:101:3 › cross-tenant RLS isolation (DB layer) › subscriber A cannot read subscriber B's balance (839ms)
+  ✓  161 [webkit] › e2e/specs/db/rls-isolation.spec.ts:134:3 › cross-tenant RLS isolation (DB layer) › employer A's JWT cannot read employer B's tagged subscribers (1.2s)
+[db] employers row inserted: id=emp-deb154b0057e491f9b0eedc87766b7e3 name=E2E Employer 1787478509234 sector=Manufacturing
+  ✓  162 [webkit] › e2e/specs/flows/admin-create-employer.spec.ts:55:3 › admin → create employer (UI + DB) › creating an employer inserts a row and it appears in the list (3.1s)
+  ✓  163 [webkit] › e2e/specs/flows/agent-dashboard-drill-to-subscriber.spec.ts:44:3 › agent → drill subscribers (regression baseline) › subscribers list page loads scoped to this agent (1.3s)
+  ✓  164 [webkit] › e2e/specs/flows/agent-dashboard-drill-to-subscriber.spec.ts:54:3 › agent → drill subscribers (regression baseline) › a known scoped subscriber renders on the list (5.5s)
+  ✓  165 [webkit] › e2e/specs/flows/agent-dashboard-drill-to-subscriber.spec.ts:85:3 › agent → drill subscribers (regression baseline) › subscriber detail and schedule pages load for an in-scope subscriber (1.6s)
+  ✓  166 [webkit] › e2e/specs/flows/agent-dashboard-drill-to-subscriber.spec.ts:102:3 › agent → drill subscribers (regression baseline) › a subscriber belonging to a different agent does not leak (824ms)
+  ✘  167 [webkit] › e2e/specs/flows/agent-onboard-subscriber.spec.ts:109:3 › agent → onboard new subscriber (UI + RPC + DB) › full wizard creates subscriber + balances via RPC (29.1s)
+◇ injected env (0) from .env.local // tip: ⌘ multiple files { path: ['.env.local', '.env'] }
+  ✓  168 [webkit] › e2e/specs/flows/auth-otp-retry-lockout.spec.ts:46:3 › signin → OTP retry + lockout (UI feedback) › wrong code shows error → retry succeeds (2.3s)
+  ✓  169 [webkit] › e2e/specs/flows/auth-otp-retry-lockout.spec.ts:58:3 › signin → OTP retry + lockout (UI feedback) › 5 consecutive wrong codes lock the form (MAX_ATTEMPTS=5) (1.2s)
+◇ injected env (0) from .env.local // tip: ⌘ suppress logs { quiet: true }
+  ✓  170 [webkit] › e2e/specs/flows/branch-dashboard-drill-to-subscriber.spec.ts:82:3 › branch admin → drill agent → subscriber (scoped) › agents panel shows only agents belonging to this branch (1.4s)
+  ✓  171 [webkit] › e2e/specs/flows/branch-dashboard-drill-to-subscriber.spec.ts:106:3 › branch admin → drill agent → subscriber (scoped) › AgentDetail inside the branch shell exposes a "View subscribers" CTA (1.8s)
+  ✓  172 [webkit] › e2e/specs/flows/branch-dashboard-drill-to-subscriber.spec.ts:122:3 › branch admin → drill agent → subscriber (scoped) › branch overview reports the authoritative branch-scoped subscriber total (1.8s)
+  ✓  173 [webkit] › e2e/specs/flows/distributor-apply-settlement.spec.ts:116:3 › distributor → apply settlement (UI → RPC → DB → notifications) › full payment flips due→paid, records a batch, notifies agent + branch (3.3s)
+  ✓  174 [webkit] › e2e/specs/flows/distributor-apply-settlement.spec.ts:230:3 › distributor → apply settlement (UI → RPC → DB → notifications) › the settled agent sees an unread NotificationBell badge (4.8s)
+  ✓  175 [webkit] › e2e/specs/flows/distributor-apply-settlement.spec.ts:296:3 › distributor → apply settlement (UI → RPC → DB → notifications) › partial payment settles only the lines the amount covers; the rest stay due (0032) (2.6s)
+  ✓  176 [webkit] › e2e/specs/flows/distributor-apply-settlement.spec.ts:368:3 › distributor → apply settlement (UI → RPC → DB → notifications) › per-line paid_amount reconciles with the batch total (0032) (2.5s)
+  -  177 [webkit] › e2e/specs/flows/distributor-apply-settlement.spec.ts:426:8 › distributor → apply settlement (UI → RPC → DB → notifications) › idempotency: re-submitting the same upload nonce records no second batch (0032)
+  ✓  178 [webkit] › e2e/specs/flows/distributor-commission-drill-subscribers.spec.ts:94:3 › distributor → commission drill → agent → subscribers (real data) › the agent → subscribers drill loads real rows (no 400/42703) (3.6s)
+[db] branches row inserted: id=b-new-1787478581883 name=E2E Branch 1787478578670 district=d-kampala
+  ✓  179 [webkit] › e2e/specs/flows/distributor-create-branch.spec.ts:48:3 › distributor → create branch (UI + DB) › submitting the form inserts a branch row (4.1s)
+  ✓  180 [webkit] › e2e/specs/flows/distributor-drill-agent-to-subscriber.spec.ts:57:3 › distributor → drill agent → subscriber › AgentDetail exposes a "View subscribers" CTA (2.4s)
+  ✓  181 [webkit] › e2e/specs/flows/distributor-drill-agent-to-subscriber.spec.ts:69:3 › distributor → drill agent → subscriber › clicking the agent CTA opens a subscriber list scoped to the agent (3.2s)
+  ✓  182 [webkit] › e2e/specs/flows/distributor-drill-agent-to-subscriber.spec.ts:98:3 › distributor → drill agent → subscriber › no subscriber from outside the agent leaks into the scoped list (3.0s)
+  ✓  183 [webkit] › e2e/specs/flows/distributor-drill-branch-to-subscriber.spec.ts:83:3 › distributor → drill branch → subscriber › BranchDetail exposes a "View subscribers" CTA (1.7s)
+  ✓  184 [webkit] › e2e/specs/flows/distributor-drill-branch-to-subscriber.spec.ts:106:3 › distributor → drill branch → subscriber › clicking the branch CTA opens a subscriber list scoped to the branch (3.0s)
+  ✓  185 [webkit] › e2e/specs/flows/distributor-drill-branch-to-subscriber.spec.ts:146:3 › distributor → drill branch → subscriber › no subscriber from outside the branch leaks into the scoped list (2.3s)
+[csv] all-transactions — 0 data rows (header always emitted)
+  ✓  186 [webkit] › e2e/specs/flows/distributor-exports-csv.spec.ts:37:3 › subscriber → /dashboard/reports/all-transactions Export CSV › downloads a CSV with BOM and header (1.8s)
+  ✓  187 [webkit] › e2e/specs/flows/distributor-exports-csv.spec.ts:92:3 › distributor → commission detail Download › Commission panel exposes the CommissionPanel Download surface (1.1s)
+  -  188 [webkit] › e2e/specs/flows/distributor-exports-csv.spec.ts:141:3 › mobile UA → CSV cap notice (>5k rows) › subscriber export does NOT surface the cap toast (legacy path)
+[perf] distributor chrome visible in 524ms (SLA target 3000ms)
+[metrics] subscribers=4602 agents=1872
+  ✓  189 [webkit] › e2e/specs/flows/distributor-renders-data.spec.ts:40:3 › distributor → renders live data (UI + DB) › dashboard chrome renders within 5s with non-zero metrics (1.4s)
+[count] rollup Subscribers tile = 4602
+[count] ViewSubscribers list total = 4602
+  ✓  190 [webkit] › e2e/specs/flows/distributor-renders-data.spec.ts:100:3 › distributor → renders live data (UI + DB) › subscriber count agrees between the rollup tile and the Subscribers list (8.8s)
+  ✓  191 [webkit] › e2e/specs/flows/distributor-renders-data.spec.ts:163:3 › distributor → renders live data (UI + DB) › drill country → region → district → branch → agent → subscriber via URL (2.6s)
+[db] contribution_runs row inserted: id=run-c46429196ae84370bc1ae0e1e76f92ba period=E2E Run 1787478614538 status=completed employer=1972000 employee=986000 insurance=760000 grand=3718000
+  ✓  192 [webkit] › e2e/specs/flows/employer-contribution-run.spec.ts:84:3 › employer → contribution run (UI → RPC → DB) › running a contribution run records a run and shows a success result (3.7s)
+  ✓  193 [webkit] › e2e/specs/flows/kyc-failure-paths.spec.ts:33:3 › signup → KYC force-failure surfaces › id-quality fail-blur surfaces "photo is blurry" guidance (2.2s)
+  ✓  194 [webkit] › e2e/specs/flows/kyc-failure-paths.spec.ts:44:3 › signup → KYC force-failure surfaces › nira-verify partial surfaces the double-check panel (8.1s)
+  -  195 [webkit] › e2e/specs/flows/kyc-failure-paths.spec.ts:71:8 › signup → KYC force-failure surfaces › aml-screen flagged routes to "Your account is under review"
+  -  196 [webkit] › e2e/specs/flows/kyc-failure-paths.spec.ts:76:8 › signup → KYC force-failure surfaces › face-match liveness-fail surfaces "Verification paused"
+  ✓  197 [webkit] › e2e/specs/flows/settings-change-password.spec.ts:88:3 › settings → set / change password (distributor — see header note) › set password → flip title → sign out → sign in with password (5.3s)
+[db] subscribers.email for s-0001: e2e-1785684051976@example.com → e2e-1787478634516@example.com
+  ✓  198 [webkit] › e2e/specs/flows/subscriber-edit-profile.spec.ts:58:3 › subscriber → edit profile (UI + DB) › saving a new email updates the DB and the UI reflects it (6.0s)
+  ✘  199 [webkit] › e2e/specs/flows/subscriber-signin-with-password.spec.ts:78:3 › subscriber → sign in with password › A) signs in with password after fresh signup (29.3s)
+◇ injected env (0) from .env.local // tip: ◈ secrets for agents [www.dotenvx.com]
+◇ injected env (0) from .env.local // tip: ◈ secrets for agents [www.dotenvx.com]
+  ✓  200 [webkit] › e2e/specs/flows/subscriber-signin-with-password.spec.ts:147:3 › subscriber → sign in with password › B) seeded subscriber password attempt falls back to OTP CTA (2.5s)
+  ✘  201 [webkit] › e2e/specs/flows/subscriber-signup-to-contribute.spec.ts:116:3 › subscriber → signup wizard → first contribution (UI + DB) › completes 9-step signup + contribution and writes the subscriber chain (28.5s)
+◇ injected env (0) from .env.local // tip: ⌘ suppress logs { quiet: true }
+◇ injected env (0) from .env.local // tip: ⌘ multiple files { path: ['.env.local', '.env'] }
+  ✓  202 [webkit] › e2e/specs/regression/employer-kyc-nudge.spec.ts:55:3 › employer pending KYC — routed page + nudge channels › the route renders in place — it does NOT redirect away (1.3s)
+  ✓  203 [webkit] › e2e/specs/regression/employer-kyc-nudge.spec.ts:62:3 › employer pending KYC — routed page + nudge channels › offers Email, SMS and WhatsApp once someone is selected (1.7s)
+  ✓  204 [webkit] › e2e/specs/regression/employer-kyc-nudge.spec.ts:77:3 › employer pending KYC — routed page + nudge channels › sending marks the invitee as reminded (3.0s)
+  ✓  205 [webkit] › e2e/specs/regression/employer-kyc-nudge.spec.ts:89:3 › employer pending KYC — routed page + nudge channels › unticking every channel blocks the send (1.7s)
+  ✓  206 [webkit] › e2e/specs/regression/empty-states.spec.ts:36:3 › ViewBranches empty states › filter-mismatch surface renders the adjust-filters copy (1.3s)
+  -  207 [webkit] › e2e/specs/regression/empty-states.spec.ts:66:3 › ViewBranches empty states › zero-rows surface renders the no-data copy
+  ✘  208 [webkit] › e2e/specs/regression/map-drill.spec.ts:250:5 › map drill-down regression — distributor › clicking a region then a district drills country → region → district (23.7s)
+◇ injected env (0) from .env.local // tip: ⌘ custom filepath { path: '/custom/path/.env' }
+  ✘  209 [webkit] › e2e/specs/regression/map-drill.spec.ts:250:5 › map drill-down regression — admin › clicking a region then a district drills country → region → district (23.9s)
+◇ injected env (0) from .env.local // tip: ⌘ enable debugging { debug: true }
+◇ injected env (0) from .env.local // tip: ⌘ override existing { override: true }
+  ✓  210 [webkit] › e2e/specs/regression/modal-escape.spec.ts:59:5 › Modal Escape regression › distributor → ViewBranches confirm-status modal › Escape closes the modal, not the panel (2.2s)
+  ✘  211 [webkit] › e2e/specs/regression/modal-escape.spec.ts:224:5 › Modal Escape regression › distributor → settlement confirm modal › Escape closes the confirm modal without closing CommissionPanel (28.0s)
+◇ injected env (0) from .env.local // tip: ⌘ multiple files { path: ['.env.local', '.env'] }
+  ✓  212 [webkit] › e2e/specs/regression/subscriber-insurance-no-scroll.spec.ts:42:5 › Insurance cover — desktop fits without scrolling › fits 1440x900 (1.1s)
+  ✓  213 [webkit] › e2e/specs/regression/subscriber-insurance-no-scroll.spec.ts:42:5 › Insurance cover — desktop fits without scrolling › fits 1280x800 (1.1s)
+  ✓  214 [webkit] › e2e/specs/regression/subscriber-insurance-no-scroll.spec.ts:42:5 › Insurance cover — desktop fits without scrolling › fits 1100x800 (954ms)
+  ✓  215 [webkit] › e2e/specs/regression/subscriber-insurance-no-scroll.spec.ts:42:5 › Insurance cover — desktop fits without scrolling › fits 1024x768 (935ms)
+  ✓  216 [webkit] › e2e/specs/regression/subscriber-payment-methods.spec.ts:47:3 › subscriber contribution — payment methods › Save offers mobile money, card AND bank transfer (1.0s)
+  ✓  217 [webkit] › e2e/specs/regression/subscriber-payment-methods.spec.ts:55:3 › subscriber contribution — payment methods › choosing Card reveals the card gateway and gates the CTA until it is complete (1.0s)
+  ✓  218 [webkit] › e2e/specs/regression/subscriber-payment-methods.spec.ts:77:3 › subscriber contribution — payment methods › card number formats as you type and detects the brand (1.1s)
+  ✓  219 [webkit] › e2e/specs/regression/subscriber-payment-methods.spec.ts:88:3 › subscriber contribution — payment methods › choosing Bank transfer reveals account details and a payment reference (1.0s)
+  ✓  220 [webkit] › e2e/specs/regression/subscriber-settings-stubs.spec.ts:45:5 › subscriber settings → redirect routes › Notifications settings redirects to /dashboard/settings (1.3s)
+  ✓  221 [webkit] › e2e/specs/regression/subscriber-settings-stubs.spec.ts:45:5 › subscriber settings → redirect routes › Security settings redirects to /dashboard/settings (1.3s)
+  ✓  222 [webkit] › e2e/specs/regression/subscriber-settings-stubs.spec.ts:66:3 › subscriber nominees → sum-to-100 validation › exceeding 100% total share disables Save and offers Balance (1.1s)
+  ✓  223 [webkit] › e2e/specs/regression/subscriber-write-failures.spec.ts:77:3 › subscriber dashboard → write-failure surfaces › Profile Save shows error toast on 500 (1.4s)
+  -  224 [webkit] › e2e/specs/regression/subscriber-write-failures.spec.ts:127:3 › subscriber dashboard → write-failure surfaces › Withdraw shows error toast on 500
+  ✓  225 [webkit] › e2e/specs/regression/subscriber-write-failures.spec.ts:217:3 › subscriber dashboard → write-failure surfaces › Claim shows error toast on 500 (1.7s)
+  ✓  226 [webkit] › e2e/specs/regression/subscriber-write-failures.spec.ts:255:3 › subscriber dashboard → write-failure surfaces › Insurance shows error toast on 500 (988ms)
+  ✓  227 [webkit] › e2e/specs/regression/subscriber-write-failures.spec.ts:295:3 › subscriber dashboard → write-failure surfaces › Schedule save shows error toast on 500 (2.2s)
+  ✓  228 [webkit] › e2e/specs/regression/subscriber-write-failures.spec.ts:364:3 › subscriber dashboard → write-failure surfaces › Nominees save shows error toast on 500 (982ms)
+  ✓  229 [webkit] › e2e/specs/smoke/_health.spec.ts:18:3 › harness health › landing page returns 200 and shows hero (881ms)
+  ✓  230 [webkit] › e2e/specs/smoke/_health.spec.ts:27:5 › harness health › subscriber storageState authenticates › reaches /dashboard without being redirected to login (722ms)
+  ✓  231 [webkit] › e2e/specs/smoke/admin-dashboard.spec.ts:75:3 › admin dashboard smoke › main dashboard loads with the admin sidebar visible (2.5s)
+  ✓  232 [webkit] › e2e/specs/smoke/admin-dashboard.spec.ts:97:3 › admin dashboard smoke › Distributor Network flyout reveals its children, then Distributors panel opens (2.6s)
+  ✓  233 [webkit] › e2e/specs/smoke/admin-dashboard.spec.ts:108:3 › admin dashboard smoke › Employers panel opens (2.1s)
+  ✓  234 [webkit] › e2e/specs/smoke/admin-dashboard.spec.ts:117:3 › admin dashboard smoke › View branches panel opens (reused distributor panel, via the network flyout) (2.7s)
+  ✓  235 [webkit] › e2e/specs/smoke/admin-dashboard.spec.ts:128:3 › admin dashboard smoke › View agents panel opens (reused distributor panel, via the network flyout) (2.8s)
+  ✓  236 [webkit] › e2e/specs/smoke/admin-dashboard.spec.ts:136:3 › admin dashboard smoke › View subscribers panel opens directly (platform-wide) (2.2s)
+  ✓  237 [webkit] › e2e/specs/smoke/admin-dashboard.spec.ts:148:3 › admin dashboard smoke › Settings panel opens (2.3s)
+  ✓  238 [webkit] › e2e/specs/smoke/agent-dashboard.spec.ts:41:3 › agent dashboard smoke › Home loads (951ms)
+  ✓  239 [webkit] › e2e/specs/smoke/agent-dashboard.spec.ts:52:3 › agent dashboard smoke › Onboard loads (965ms)
+  ✓  240 [webkit] › e2e/specs/smoke/agent-dashboard.spec.ts:63:3 › agent dashboard smoke › Subscribers list loads (1.1s)
+  ✓  241 [webkit] › e2e/specs/smoke/agent-dashboard.spec.ts:74:3 › agent dashboard smoke › Subscriber detail loads (982ms)
+  ✓  242 [webkit] › e2e/specs/smoke/agent-dashboard.spec.ts:85:3 › agent dashboard smoke › Inbox loads (1.0s)
+  ✓  243 [webkit] › e2e/specs/smoke/agent-dashboard.spec.ts:98:3 › agent dashboard smoke › Analytics loads (1.1s)
+  ✓  244 [webkit] › e2e/specs/smoke/agent-dashboard.spec.ts:107:3 › agent dashboard smoke › Commissions home loads (1.1s)
+  ✓  245 [webkit] › e2e/specs/smoke/agent-dashboard.spec.ts:116:3 › agent dashboard smoke › Commissions filtered view redirects safely (1.1s)
+  ✓  246 [webkit] › e2e/specs/smoke/agent-dashboard.spec.ts:128:3 › agent dashboard smoke › Settings loads (1.0s)
+  ✓  247 [webkit] › e2e/specs/smoke/branch-dashboard.spec.ts:39:3 › branch dashboard — desktop (routed) › overview loads (7.6s)
+  ✓  248 [webkit] › e2e/specs/smoke/branch-dashboard.spec.ts:55:3 › branch dashboard — desktop (routed) › rail navigates to each routed page (3.5s)
+  ✓  249 [webkit] › e2e/specs/smoke/branch-dashboard.spec.ts:80:3 › branch dashboard — desktop (routed) › Add agent opens an in-page view (not a modal) with Single + Bulk tabs (2.2s)
+  ✓  250 [webkit] › e2e/specs/smoke/branch-dashboard.spec.ts:95:3 › branch dashboard — desktop (routed) › agent roster shows active/inactive (no "Onboarding") and drills into a detail page (2.2s)
+  ✓  251 [webkit] › e2e/specs/smoke/branch-dashboard.spec.ts:109:3 › branch dashboard — desktop (routed) › Support ticket opens a read-only thread (1.8s)
+  ✓  252 [webkit] › e2e/specs/smoke/branch-dashboard.spec.ts:120:3 › branch dashboard — desktop (routed) › deep-link to a sub-route survives a hard refresh (3.0s)
+  ✓  253 [webkit] › e2e/specs/smoke/branch-dashboard.spec.ts:144:3 › branch dashboard — mobile (panels, byte-identical) › renders the original mobile panel shell, not the routed desktop rail (3.7s)
+  ✓  254 [webkit] › e2e/specs/smoke/distributor-dashboard.spec.ts:39:3 › distributor dashboard smoke › main dashboard loads with sidebar visible (3.9s)
+  ✓  255 [webkit] › e2e/specs/smoke/distributor-dashboard.spec.ts:55:3 › distributor dashboard smoke › Create branch panel opens (2.9s)
+  ✓  256 [webkit] › e2e/specs/smoke/distributor-dashboard.spec.ts:73:3 › distributor dashboard smoke › View branches panel opens (2.9s)
+  ✓  257 [webkit] › e2e/specs/smoke/distributor-dashboard.spec.ts:85:3 › distributor dashboard smoke › View agents panel opens (2.2s)
+  ✓  258 [webkit] › e2e/specs/smoke/distributor-dashboard.spec.ts:97:3 › distributor dashboard smoke › View subscribers panel opens (2.3s)
+  ✓  259 [webkit] › e2e/specs/smoke/distributor-dashboard.spec.ts:114:3 › distributor dashboard smoke › View reports panel opens (2.3s)
+  ✓  260 [webkit] › e2e/specs/smoke/distributor-dashboard.spec.ts:123:3 › distributor dashboard smoke › Commission panel opens (2.1s)
+  ✓  261 [webkit] › e2e/specs/smoke/distributor-dashboard.spec.ts:133:3 › distributor dashboard smoke › Settings panel opens (2.2s)
+  ✓  262 [webkit] › e2e/specs/smoke/employer-dashboard.spec.ts:38:3 › employer dashboard smoke › desktop shell + rail nav render (2.3s)
+  ✓  263 [webkit] › e2e/specs/smoke/employer-dashboard.spec.ts:55:3 › employer dashboard smoke › Employees route loads (2.4s)
+  ✓  264 [webkit] › e2e/specs/smoke/employer-dashboard.spec.ts:61:3 › employer dashboard smoke › Contribution Runs route loads (2.7s)
+  ✓  265 [webkit] › e2e/specs/smoke/employer-dashboard.spec.ts:67:3 › employer dashboard smoke › Insurance route loads (3.0s)
+  ✓  266 [webkit] › e2e/specs/smoke/employer-dashboard.spec.ts:73:3 › employer dashboard smoke › Analytics route loads (2.8s)
+  ✓  267 [webkit] › e2e/specs/smoke/employer-dashboard.spec.ts:79:3 › employer dashboard smoke › Support route loads (3.2s)
+  ✓  268 [webkit] › e2e/specs/smoke/employer-dashboard.spec.ts:85:3 › employer dashboard smoke › Settings route loads (4.6s)
+  ✓  269 [webkit] › e2e/specs/smoke/employer-dashboard.spec.ts:91:3 › employer dashboard smoke › Ask AI copilot opens (2.9s)
+  ✓  270 [webkit] › e2e/specs/smoke/landing.spec.ts:12:3 › landing public routes smoke › home page renders hero (643ms)
+  ✓  271 [webkit] › e2e/specs/smoke/landing.spec.ts:20:3 › landing public routes smoke › FAQ page renders (460ms)
+  ✓  272 [webkit] › e2e/specs/smoke/landing.spec.ts:27:3 › landing public routes smoke › Contact page renders (466ms)
+  ✓  273 [webkit] › e2e/specs/smoke/landing.spec.ts:34:3 › landing public routes smoke › About page renders (442ms)
+  ✓  274 [webkit] › e2e/specs/smoke/subscriber-dashboard.spec.ts:25:3 › subscriber dashboard smoke › Home loads (/dashboard) (2.6s)
+  ✓  275 [webkit] › e2e/specs/smoke/subscriber-dashboard.spec.ts:34:3 › subscriber dashboard smoke › Save loads (/dashboard/save) (920ms)
+  ✓  276 [webkit] › e2e/specs/smoke/subscriber-dashboard.spec.ts:43:3 › subscriber dashboard smoke › Schedule loads (/dashboard/save/schedule) (3.6s)
+  ✓  277 [webkit] › e2e/specs/smoke/subscriber-dashboard.spec.ts:54:3 › subscriber dashboard smoke › Withdrawals hub loads (/dashboard/withdraw) (914ms)
+  ✓  278 [webkit] › e2e/specs/smoke/subscriber-dashboard.spec.ts:60:3 › subscriber dashboard smoke › Withdraw savings loads (/dashboard/withdraw/savings) (959ms)
+  ✓  279 [webkit] › e2e/specs/smoke/subscriber-dashboard.spec.ts:70:3 › subscriber dashboard smoke › Claim loads (/dashboard/withdraw/claim) (960ms)
+  ✓  280 [webkit] › e2e/specs/smoke/subscriber-dashboard.spec.ts:76:3 › subscriber dashboard smoke › Claim redirect resolves (/dashboard/claim -> /dashboard/withdraw/claim) (1.3s)
+  ✓  281 [webkit] › e2e/specs/smoke/subscriber-dashboard.spec.ts:83:3 › subscriber dashboard smoke › Activity loads (/dashboard/activity) (984ms)
+  ✓  282 [webkit] › e2e/specs/smoke/subscriber-dashboard.spec.ts:99:3 › subscriber dashboard smoke › Reports loads (/dashboard/reports) (993ms)
+  ✓  283 [webkit] › e2e/specs/smoke/subscriber-dashboard.spec.ts:109:3 › subscriber dashboard smoke › All Transactions report loads (/dashboard/reports/all-transactions) (1.0s)
+  ✓  284 [webkit] › e2e/specs/smoke/subscriber-dashboard.spec.ts:115:3 › subscriber dashboard smoke › Contributions Summary report loads (/dashboard/reports/contributions-summary) (1.0s)
+  ✓  285 [webkit] › e2e/specs/smoke/subscriber-dashboard.spec.ts:124:3 › subscriber dashboard smoke › Help loads (/dashboard/help) (947ms)
+  ✓  286 [webkit] › e2e/specs/smoke/subscriber-dashboard.spec.ts:130:3 › subscriber dashboard smoke › Agent loads (/dashboard/agent) (19.4s)
+  ✓  287 [webkit] › e2e/specs/smoke/subscriber-dashboard.spec.ts:161:3 › subscriber dashboard smoke › Profile tab loads (/dashboard/settings) (943ms)
+  ✓  288 [webkit] › e2e/specs/smoke/subscriber-dashboard.spec.ts:173:3 › subscriber dashboard smoke › Profile edit form loads (/dashboard/settings/profile) (920ms)
+◇ injected env (0) from .env.local // tip: ⌘ multiple files { path: ['.env.local', '.env'] }
+  ✘  289 [mobile-chromium] › e2e/specs/flows/distributor-exports-csv.spec.ts:37:3 › subscriber → /dashboard/reports/all-transactions Export CSV › downloads a CSV with BOM and header (25.7s)
+◇ injected env (0) from .env.local // tip: ◈ encrypted .env [www.dotenvx.com]
+  -  290 [mobile-chromium] › e2e/specs/flows/distributor-exports-csv.spec.ts:92:3 › distributor → commission detail Download › Commission panel exposes the CommissionPanel Download surface
+  ✘  291 [mobile-chromium] › e2e/specs/flows/distributor-exports-csv.spec.ts:141:3 › mobile UA → CSV cap notice (>5k rows) › subscriber export does NOT surface the cap toast (legacy path) (25.6s)
+◇ injected env (0) from .env.local // tip: ⌘ suppress logs { quiet: true }
+◇ injected env (0) from .env.local // tip: ⌘ suppress logs { quiet: true }
+  ✓  292 [mobile-chromium] › e2e/specs/regression/employer-kyc-nudge.spec.ts:55:3 › employer pending KYC — routed page + nudge channels › the route renders in place — it does NOT redirect away (897ms)
+  ✓  293 [mobile-chromium] › e2e/specs/regression/employer-kyc-nudge.spec.ts:62:3 › employer pending KYC — routed page + nudge channels › offers Email, SMS and WhatsApp once someone is selected (1.2s)
+  ✓  294 [mobile-chromium] › e2e/specs/regression/employer-kyc-nudge.spec.ts:77:3 › employer pending KYC — routed page + nudge channels › sending marks the invitee as reminded (2.6s)
+  ✓  295 [mobile-chromium] › e2e/specs/regression/employer-kyc-nudge.spec.ts:89:3 › employer pending KYC — routed page + nudge channels › unticking every channel blocks the send (1.3s)
+  ✓  296 [mobile-chromium] › e2e/specs/regression/subscriber-payment-methods.spec.ts:47:3 › subscriber contribution — payment methods › Save offers mobile money, card AND bank transfer (683ms)
+  ✓  297 [mobile-chromium] › e2e/specs/regression/subscriber-payment-methods.spec.ts:55:3 › subscriber contribution — payment methods › choosing Card reveals the card gateway and gates the CTA until it is complete (687ms)
+  ✓  298 [mobile-chromium] › e2e/specs/regression/subscriber-payment-methods.spec.ts:77:3 › subscriber contribution — payment methods › card number formats as you type and detects the brand (763ms)
+  ✓  299 [mobile-chromium] › e2e/specs/regression/subscriber-payment-methods.spec.ts:88:3 › subscriber contribution — payment methods › choosing Bank transfer reveals account details and a payment reference (755ms)
+  ✓  300 [mobile-chromium] › e2e/specs/smoke/_health.spec.ts:18:3 › harness health › landing page returns 200 and shows hero (342ms)
+  ✓  301 [mobile-chromium] › e2e/specs/smoke/_health.spec.ts:27:5 › harness health › subscriber storageState authenticates › reaches /dashboard without being redirected to login (426ms)
+  ✓  302 [mobile-chromium] › e2e/specs/smoke/agent-dashboard.spec.ts:41:3 › agent dashboard smoke › Home loads (586ms)
+  ✓  303 [mobile-chromium] › e2e/specs/smoke/agent-dashboard.spec.ts:52:3 › agent dashboard smoke › Onboard loads (657ms)
+  ✓  304 [mobile-chromium] › e2e/specs/smoke/agent-dashboard.spec.ts:63:3 › agent dashboard smoke › Subscribers list loads (622ms)
+  ✓  305 [mobile-chromium] › e2e/specs/smoke/agent-dashboard.spec.ts:74:3 › agent dashboard smoke › Subscriber detail loads (550ms)
+  ✓  306 [mobile-chromium] › e2e/specs/smoke/agent-dashboard.spec.ts:85:3 › agent dashboard smoke › Inbox loads (660ms)
+  ✓  307 [mobile-chromium] › e2e/specs/smoke/agent-dashboard.spec.ts:98:3 › agent dashboard smoke › Analytics loads (682ms)
+  ✓  308 [mobile-chromium] › e2e/specs/smoke/agent-dashboard.spec.ts:107:3 › agent dashboard smoke › Commissions home loads (631ms)
+  ✓  309 [mobile-chromium] › e2e/specs/smoke/agent-dashboard.spec.ts:116:3 › agent dashboard smoke › Commissions filtered view redirects safely (548ms)
+  ✓  310 [mobile-chromium] › e2e/specs/smoke/agent-dashboard.spec.ts:128:3 › agent dashboard smoke › Settings loads (636ms)
+  ✓  311 [mobile-chromium] › e2e/specs/smoke/landing.spec.ts:12:3 › landing public routes smoke › home page renders hero (325ms)
+  ✘  312 [mobile-chromium] › e2e/specs/smoke/landing.spec.ts:20:3 › landing public routes smoke › FAQ page renders (25.6s)
+◇ injected env (0) from .env.local // tip: ⌘ suppress logs { quiet: true }
+  ✘  313 [mobile-chromium] › e2e/specs/smoke/landing.spec.ts:27:3 › landing public routes smoke › Contact page renders (25.6s)
+◇ injected env (0) from .env.local // tip: ⌁ auth for agents [www.vestauth.com]
+  ✘  314 [mobile-chromium] › e2e/specs/smoke/landing.spec.ts:34:3 › landing public routes smoke › About page renders (25.6s)
+◇ injected env (0) from .env.local // tip: ⌘ multiple files { path: ['.env.local', '.env'] }
+  ✓  315 [mobile-chromium] › e2e/specs/smoke/subscriber-dashboard.spec.ts:25:3 › subscriber dashboard smoke › Home loads (/dashboard) (1.7s)
+  ✓  316 [mobile-chromium] › e2e/specs/smoke/subscriber-dashboard.spec.ts:34:3 › subscriber dashboard smoke › Save loads (/dashboard/save) (629ms)
+  ✘  317 [mobile-chromium] › e2e/specs/smoke/subscriber-dashboard.spec.ts:43:3 › subscriber dashboard smoke › Schedule loads (/dashboard/save/schedule) (25.6s)
+◇ injected env (0) from .env.local // tip: ⌘ custom filepath { path: '/custom/path/.env' }
+  ✘  318 [mobile-chromium] › e2e/specs/smoke/subscriber-dashboard.spec.ts:54:3 › subscriber dashboard smoke › Withdrawals hub loads (/dashboard/withdraw) (25.7s)
+◇ injected env (0) from .env.local // tip: ◈ encrypted .env [www.dotenvx.com]
+  ✓  319 [mobile-chromium] › e2e/specs/smoke/subscriber-dashboard.spec.ts:60:3 › subscriber dashboard smoke › Withdraw savings loads (/dashboard/withdraw/savings) (592ms)
+  ✓  320 [mobile-chromium] › e2e/specs/smoke/subscriber-dashboard.spec.ts:70:3 › subscriber dashboard smoke › Claim loads (/dashboard/withdraw/claim) (619ms)
+  ✓  321 [mobile-chromium] › e2e/specs/smoke/subscriber-dashboard.spec.ts:76:3 › subscriber dashboard smoke › Claim redirect resolves (/dashboard/claim -> /dashboard/withdraw/claim) (599ms)
+  ✓  322 [mobile-chromium] › e2e/specs/smoke/subscriber-dashboard.spec.ts:83:3 › subscriber dashboard smoke › Activity loads (/dashboard/activity) (676ms)
+  ✓  323 [mobile-chromium] › e2e/specs/smoke/subscriber-dashboard.spec.ts:99:3 › subscriber dashboard smoke › Reports loads (/dashboard/reports) (614ms)
+  ✘  324 [mobile-chromium] › e2e/specs/smoke/subscriber-dashboard.spec.ts:109:3 › subscriber dashboard smoke › All Transactions report loads (/dashboard/reports/all-transactions) (25.5s)
+◇ injected env (0) from .env.local // tip: ⌁ auth for agents [www.vestauth.com]
+  ✘  325 [mobile-chromium] › e2e/specs/smoke/subscriber-dashboard.spec.ts:115:3 › subscriber dashboard smoke › Contributions Summary report loads (/dashboard/reports/contributions-summary) (25.6s)
+◇ injected env (0) from .env.local // tip: ⌁ auth for agents [www.vestauth.com]
+  ✘  326 [mobile-chromium] › e2e/specs/smoke/subscriber-dashboard.spec.ts:124:3 › subscriber dashboard smoke › Help loads (/dashboard/help) (25.6s)
+◇ injected env (0) from .env.local // tip: ⌁ auth for agents [www.vestauth.com]
+  ✓  327 [mobile-chromium] › e2e/specs/smoke/subscriber-dashboard.spec.ts:130:3 › subscriber dashboard smoke › Agent loads (/dashboard/agent) (587ms)
+  ✓  328 [mobile-chromium] › e2e/specs/smoke/subscriber-dashboard.spec.ts:161:3 › subscriber dashboard smoke › Profile tab loads (/dashboard/settings) (637ms)
+  ✘  329 [mobile-chromium] › e2e/specs/smoke/subscriber-dashboard.spec.ts:173:3 › subscriber dashboard smoke › Profile edit form loads (/dashboard/settings/profile) (25.6s)
+◇ injected env (0) from .env.local // tip: ⌁ auth for agents [www.vestauth.com]
+  ✘  330 [mobile-webkit] › e2e/specs/flows/distributor-exports-csv.spec.ts:37:3 › subscriber → /dashboard/reports/all-transactions Export CSV › downloads a CSV with BOM and header (26.1s)
+◇ injected env (0) from .env.local // tip: ⌘ multiple files { path: ['.env.local', '.env'] }
+  -  331 [mobile-webkit] › e2e/specs/flows/distributor-exports-csv.spec.ts:92:3 › distributor → commission detail Download › Commission panel exposes the CommissionPanel Download surface
+  ✘  332 [mobile-webkit] › e2e/specs/flows/distributor-exports-csv.spec.ts:141:3 › mobile UA → CSV cap notice (>5k rows) › subscriber export does NOT surface the cap toast (legacy path) (26.0s)
+◇ injected env (0) from .env.local // tip: ⌘ multiple files { path: ['.env.local', '.env'] }
+◇ injected env (0) from .env.local // tip: ⌘ suppress logs { quiet: true }
+  ✓  333 [mobile-webkit] › e2e/specs/regression/employer-kyc-nudge.spec.ts:55:3 › employer pending KYC — routed page + nudge channels › the route renders in place — it does NOT redirect away (1.3s)
+  ✓  334 [mobile-webkit] › e2e/specs/regression/employer-kyc-nudge.spec.ts:62:3 › employer pending KYC — routed page + nudge channels › offers Email, SMS and WhatsApp once someone is selected (1.7s)
+  ✓  335 [mobile-webkit] › e2e/specs/regression/employer-kyc-nudge.spec.ts:77:3 › employer pending KYC — routed page + nudge channels › sending marks the invitee as reminded (2.9s)
+  ✓  336 [mobile-webkit] › e2e/specs/regression/employer-kyc-nudge.spec.ts:89:3 › employer pending KYC — routed page + nudge channels › unticking every channel blocks the send (1.7s)
+  ✓  337 [mobile-webkit] › e2e/specs/regression/subscriber-payment-methods.spec.ts:47:3 › subscriber contribution — payment methods › Save offers mobile money, card AND bank transfer (937ms)
+  ✓  338 [mobile-webkit] › e2e/specs/regression/subscriber-payment-methods.spec.ts:55:3 › subscriber contribution — payment methods › choosing Card reveals the card gateway and gates the CTA until it is complete (1.0s)
+  ✓  339 [mobile-webkit] › e2e/specs/regression/subscriber-payment-methods.spec.ts:77:3 › subscriber contribution — payment methods › card number formats as you type and detects the brand (1.1s)
+  ✓  340 [mobile-webkit] › e2e/specs/regression/subscriber-payment-methods.spec.ts:88:3 › subscriber contribution — payment methods › choosing Bank transfer reveals account details and a payment reference (966ms)
+  ✓  341 [mobile-webkit] › e2e/specs/smoke/_health.spec.ts:18:3 › harness health › landing page returns 200 and shows hero (516ms)
+  ✓  342 [mobile-webkit] › e2e/specs/smoke/_health.spec.ts:27:5 › harness health › subscriber storageState authenticates › reaches /dashboard without being redirected to login (621ms)
+  ✓  343 [mobile-webkit] › e2e/specs/smoke/agent-dashboard.spec.ts:41:3 › agent dashboard smoke › Home loads (1.0s)
+  ✓  344 [mobile-webkit] › e2e/specs/smoke/agent-dashboard.spec.ts:52:3 › agent dashboard smoke › Onboard loads (914ms)
+  ✓  345 [mobile-webkit] › e2e/specs/smoke/agent-dashboard.spec.ts:63:3 › agent dashboard smoke › Subscribers list loads (1.0s)
+  ✓  346 [mobile-webkit] › e2e/specs/smoke/agent-dashboard.spec.ts:74:3 › agent dashboard smoke › Subscriber detail loads (932ms)
+  ✓  347 [mobile-webkit] › e2e/specs/smoke/agent-dashboard.spec.ts:85:3 › agent dashboard smoke › Inbox loads (952ms)
+  ✓  348 [mobile-webkit] › e2e/specs/smoke/agent-dashboard.spec.ts:98:3 › agent dashboard smoke › Analytics loads (1.0s)
+  ✓  349 [mobile-webkit] › e2e/specs/smoke/agent-dashboard.spec.ts:107:3 › agent dashboard smoke › Commissions home loads (919ms)
+  ✓  350 [mobile-webkit] › e2e/specs/smoke/agent-dashboard.spec.ts:116:3 › agent dashboard smoke › Commissions filtered view redirects safely (956ms)
+  ✓  351 [mobile-webkit] › e2e/specs/smoke/agent-dashboard.spec.ts:128:3 › agent dashboard smoke › Settings loads (952ms)
+  ✓  352 [mobile-webkit] › e2e/specs/smoke/landing.spec.ts:12:3 › landing public routes smoke › home page renders hero (525ms)
+  ✘  353 [mobile-webkit] › e2e/specs/smoke/landing.spec.ts:20:3 › landing public routes smoke › FAQ page renders (25.8s)
+◇ injected env (0) from .env.local // tip: ◈ encrypted .env [www.dotenvx.com]
+  ✘  354 [mobile-webkit] › e2e/specs/smoke/landing.spec.ts:27:3 › landing public routes smoke › Contact page renders (25.9s)
+◇ injected env (0) from .env.local // tip: ◈ secrets for agents [www.dotenvx.com]
+  ✘  355 [mobile-webkit] › e2e/specs/smoke/landing.spec.ts:34:3 › landing public routes smoke › About page renders (26.1s)
+◇ injected env (0) from .env.local // tip: ⌘ enable debugging { debug: true }
+  ✓  356 [mobile-webkit] › e2e/specs/smoke/subscriber-dashboard.spec.ts:25:3 › subscriber dashboard smoke › Home loads (/dashboard) (3.8s)
+  ✓  357 [mobile-webkit] › e2e/specs/smoke/subscriber-dashboard.spec.ts:34:3 › subscriber dashboard smoke › Save loads (/dashboard/save) (1.0s)
+  ✘  358 [mobile-webkit] › e2e/specs/smoke/subscriber-dashboard.spec.ts:43:3 › subscriber dashboard smoke › Schedule loads (/dashboard/save/schedule) (26.0s)
+◇ injected env (0) from .env.local // tip: ⌁ auth for agents [www.vestauth.com]
+  ✘  359 [mobile-webkit] › e2e/specs/smoke/subscriber-dashboard.spec.ts:54:3 › subscriber dashboard smoke › Withdrawals hub loads (/dashboard/withdraw) (26.2s)
+◇ injected env (0) from .env.local // tip: ⌘ multiple files { path: ['.env.local', '.env'] }
+  ✓  360 [mobile-webkit] › e2e/specs/smoke/subscriber-dashboard.spec.ts:60:3 › subscriber dashboard smoke › Withdraw savings loads (/dashboard/withdraw/savings) (1.1s)
+  ✓  361 [mobile-webkit] › e2e/specs/smoke/subscriber-dashboard.spec.ts:70:3 › subscriber dashboard smoke › Claim loads (/dashboard/withdraw/claim) (996ms)
+  ✓  362 [mobile-webkit] › e2e/specs/smoke/subscriber-dashboard.spec.ts:76:3 › subscriber dashboard smoke › Claim redirect resolves (/dashboard/claim -> /dashboard/withdraw/claim) (908ms)
+  ✓  363 [mobile-webkit] › e2e/specs/smoke/subscriber-dashboard.spec.ts:83:3 › subscriber dashboard smoke › Activity loads (/dashboard/activity) (967ms)
+  ✓  364 [mobile-webkit] › e2e/specs/smoke/subscriber-dashboard.spec.ts:99:3 › subscriber dashboard smoke › Reports loads (/dashboard/reports) (974ms)
+  ✘  365 [mobile-webkit] › e2e/specs/smoke/subscriber-dashboard.spec.ts:109:3 › subscriber dashboard smoke › All Transactions report loads (/dashboard/reports/all-transactions) (25.9s)
+◇ injected env (0) from .env.local // tip: ⌁ auth for agents [www.vestauth.com]
+  ✘  366 [mobile-webkit] › e2e/specs/smoke/subscriber-dashboard.spec.ts:115:3 › subscriber dashboard smoke › Contributions Summary report loads (/dashboard/reports/contributions-summary) (26.1s)
+◇ injected env (0) from .env.local // tip: ⌘ enable debugging { debug: true }
+  ✘  367 [mobile-webkit] › e2e/specs/smoke/subscriber-dashboard.spec.ts:124:3 › subscriber dashboard smoke › Help loads (/dashboard/help) (26.3s)
+◇ injected env (0) from .env.local // tip: ⌘ enable debugging { debug: true }
+  ✓  368 [mobile-webkit] › e2e/specs/smoke/subscriber-dashboard.spec.ts:130:3 › subscriber dashboard smoke › Agent loads (/dashboard/agent) (1.1s)
+  ✓  369 [mobile-webkit] › e2e/specs/smoke/subscriber-dashboard.spec.ts:161:3 › subscriber dashboard smoke › Profile tab loads (/dashboard/settings) (997ms)
+  ✘  370 [mobile-webkit] › e2e/specs/smoke/subscriber-dashboard.spec.ts:173:3 › subscriber dashboard smoke › Profile edit form loads (/dashboard/settings/profile) (26.0s)
+
+
+  1) [chromium] › e2e/specs/flows/agent-onboard-subscriber.spec.ts:109:3 › agent → onboard new subscriber (UI + RPC + DB) › full wizard creates subscriber + balances via RPC 
+
+    Error: create_subscriber_from_agent_onboard RPC must succeed
+
+    [2mexpect([22m[31mreceived[39m[2m).[22mtoBe[2m([22m[32mexpected[39m[2m) // Object.is equality[22m
+
+    Expected: [32m200[39m
+    Received: [31m409[39m
+
+      316 |       rpcResponse.status(),
+      317 |       'create_subscriber_from_agent_onboard RPC must succeed',
+    > 318 |     ).toBe(200);
+          |       ^
+      319 |
+      320 |     // Once the RPC resolves, status flips to 'success' and the "Saved" pill
+      321 |     // renders alongside the "Onboard another / Close" actions.
+        at /Users/shubhang/Desktop/Projects/uganda-dashboard/e2e/specs/flows/agent-onboard-subscriber.spec.ts:318:7
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/flows-agent-onboard-subscr-98fac-subscriber-balances-via-RPC-chromium/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results/flows-agent-onboard-subscr-98fac-subscriber-balances-via-RPC-chromium/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results/flows-agent-onboard-subscr-98fac-subscriber-balances-via-RPC-chromium/error-context.md
+
+  2) [chromium] › e2e/specs/regression/modal-escape.spec.ts:224:5 › Modal Escape regression › distributor → settlement confirm modal › Escape closes the confirm modal without closing CommissionPanel 
+
+    Error: [2mexpect([22m[31mlocator[39m[2m).[22mtoBeVisible[2m([22m[2m)[22m failed
+
+    Locator: getByRole('dialog', { name: /^commissions$/i })
+    Expected: visible
+    Timeout: 25000ms
+    Error: element(s) not found
+
+    Call log:
+    [2m  - Expect "toBeVisible" with timeout 25000ms[22m
+    [2m  - waiting for getByRole('dialog', { name: /^commissions$/i })[22m
+
+
+      285 |
+      286 |       // CommissionPanel is still open (the Escape stopped at the modal).
+    > 287 |       await expect(panel).toBeVisible();
+          |                           ^
+      288 |     });
+      289 |   });
+      290 | });
+        at /Users/shubhang/Desktop/Projects/uganda-dashboard/e2e/specs/regression/modal-escape.spec.ts:287:27
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/regression-modal-escape-Mo-f2e31-out-closing-CommissionPanel-chromium/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results/regression-modal-escape-Mo-f2e31-out-closing-CommissionPanel-chromium/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results/regression-modal-escape-Mo-f2e31-out-closing-CommissionPanel-chromium/error-context.md
+
+    Error Context: test-results/regression-modal-escape-Mo-f2e31-out-closing-CommissionPanel-chromium/error-context.md
+
+  3) [webkit] › e2e/specs/flows/agent-onboard-subscriber.spec.ts:109:3 › agent → onboard new subscriber (UI + RPC + DB) › full wizard creates subscriber + balances via RPC 
+
+    Error: [2mexpect([22m[31mlocator[39m[2m).[22mtoBeEnabled[2m([22m[2m)[22m failed
+
+    Locator:  getByRole('button', { name: /take selfie/i })
+    Expected: enabled
+    Received: disabled
+    Timeout:  15000ms
+
+    Call log:
+    [2m  - Expect "toBeEnabled" with timeout 15000ms[22m
+    [2m  - waiting for getByRole('button', { name: /take selfie/i })[22m
+    [2m    33 × locator resolved to <button disabled type="button" class="_submit_6puqw_286">…</button>[22m
+    [2m       - unexpected value "disabled"[22m
+
+
+      244 |     // can land with an empty frame and faceMatch then leaves you on this screen.
+      245 |     const takeSelfie = page.getByRole('button', { name: /take selfie/i });
+    > 246 |     await expect(takeSelfie).toBeEnabled({ timeout: 15_000 });
+          |                              ^
+      247 |     await takeSelfie.click();
+      248 |
+      249 |     // ── KYC step 6 · aml (silent, auto-advances) ───────────────────────
+        at /Users/shubhang/Desktop/Projects/uganda-dashboard/e2e/specs/flows/agent-onboard-subscriber.spec.ts:246:30
+
+    Error: page.waitForResponse: Test ended.
+
+      114 |     // the full wizard (9 KYC steps + schedule) takes ~30s end-to-end on a
+      115 |     // warm dev server because each mocked KYC endpoint has 1-2.4s latency.
+    > 116 |     const rpcPromise = page.waitForResponse(
+          |                             ^
+      117 |       (r) =>
+      118 |         r.url().includes('/rest/v1/rpc/create_subscriber_from_agent_onboard') &&
+      119 |         r.request().method() === 'POST',
+        at /Users/shubhang/Desktop/Projects/uganda-dashboard/e2e/specs/flows/agent-onboard-subscriber.spec.ts:116:29
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/flows-agent-onboard-subscr-98fac-subscriber-balances-via-RPC-webkit/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results/flows-agent-onboard-subscr-98fac-subscriber-balances-via-RPC-webkit/error-context.md
+
+    attachment #3: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results/flows-agent-onboard-subscr-98fac-subscriber-balances-via-RPC-webkit/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  4) [webkit] › e2e/specs/flows/subscriber-signin-with-password.spec.ts:78:3 › subscriber → sign in with password › A) signs in with password after fresh signup 
+
+    Error: [2mexpect([22m[31mlocator[39m[2m).[22mtoBeEnabled[2m([22m[2m)[22m failed
+
+    Locator:  getByRole('button', { name: /take selfie/i })
+    Expected: enabled
+    Received: disabled
+    Timeout:  15000ms
+
+    Call log:
+    [2m  - Expect "toBeEnabled" with timeout 15000ms[22m
+    [2m  - waiting for getByRole('button', { name: /take selfie/i })[22m
+    [2m    33 × locator resolved to <button disabled type="button" class="_submit_6puqw_286">Take selfie</button>[22m
+    [2m       - unexpected value "disabled"[22m
+
+
+       at ../helpers/signup.ts:134
+
+      132 |   // can land with an empty frame and faceMatch then leaves you on this screen.
+      133 |   const takeSelfie = page.getByRole('button', { name: /take selfie/i });
+    > 134 |   await expect(takeSelfie).toBeEnabled({ timeout: 15_000 });
+          |                            ^
+      135 |   await takeSelfie.click();
+      136 |
+      137 |   // ── Step 6 · aml (silent + cleared beat) ─────────────────────────────────
+        at walkSignupToFirstContribution (/Users/shubhang/Desktop/Projects/uganda-dashboard/e2e/helpers/signup.ts:134:28)
+        at /Users/shubhang/Desktop/Projects/uganda-dashboard/e2e/specs/flows/subscriber-signin-with-password.spec.ts:82:5
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/flows-subscriber-signin-wi-c6546-password-after-fresh-signup-webkit/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results/flows-subscriber-signin-wi-c6546-password-after-fresh-signup-webkit/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results/flows-subscriber-signin-wi-c6546-password-after-fresh-signup-webkit/error-context.md
+
+  5) [webkit] › e2e/specs/flows/subscriber-signup-to-contribute.spec.ts:116:3 › subscriber → signup wizard → first contribution (UI + DB) › completes 9-step signup + contribution and writes the subscriber chain 
+
+    Error: [2mexpect([22m[31mlocator[39m[2m).[22mtoBeEnabled[2m([22m[2m)[22m failed
+
+    Locator:  getByRole('button', { name: /take selfie/i })
+    Expected: enabled
+    Received: disabled
+    Timeout:  15000ms
+
+    Call log:
+    [2m  - Expect "toBeEnabled" with timeout 15000ms[22m
+    [2m  - waiting for getByRole('button', { name: /take selfie/i })[22m
+    [2m    33 × locator resolved to <button disabled type="button" class="_submit_6puqw_286">Take selfie</button>[22m
+    [2m       - unexpected value "disabled"[22m
+
+
+      225 |     // can land with an empty frame and faceMatch then leaves you on this screen.
+      226 |     const takeSelfie = page.getByRole('button', { name: /take selfie/i });
+    > 227 |     await expect(takeSelfie).toBeEnabled({ timeout: 15_000 });
+          |                              ^
+      228 |     await takeSelfie.click();
+      229 |
+      230 |     // ── Step 6 · aml (silent + cleared beat) ─────────────────────────────
+        at /Users/shubhang/Desktop/Projects/uganda-dashboard/e2e/specs/flows/subscriber-signup-to-contribute.spec.ts:227:30
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/flows-subscriber-signup-to-6251c-writes-the-subscriber-chain-webkit/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results/flows-subscriber-signup-to-6251c-writes-the-subscriber-chain-webkit/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results/flows-subscriber-signup-to-6251c-writes-the-subscriber-chain-webkit/error-context.md
+
+  6) [webkit] › e2e/specs/regression/map-drill.spec.ts:250:5 › map drill-down regression — distributor › clicking a region then a district drills country → region → district 
+
+    Error: distributor district: 3 settled clicks did not advance the URL to /dashboard/districts/… (current: http://localhost:5173/dashboard/regions/r-western). The polygon click is not resolving name → id.
+
+      220 |   // Exhausted: the drill genuinely never happened. This is the failure the spec
+      221 |   // exists to surface (e.g. the ref fix reverted → empty name→id map).
+    > 222 |   throw new Error(
+          |         ^
+      223 |     `${label}: ${ATTEMPTS} settled clicks did not advance the URL to /dashboard/${expectSegment}/… `
+      224 |       + `(current: ${page.url()}). The polygon click is not resolving name → id.`,
+      225 |   );
+        at clickPolygonUntilUrl (/Users/shubhang/Desktop/Projects/uganda-dashboard/e2e/specs/regression/map-drill.spec.ts:222:9)
+        at /Users/shubhang/Desktop/Projects/uganda-dashboard/e2e/specs/regression/map-drill.spec.ts:265:7
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/regression-map-drill-map-d-1ca5e-country-→-region-→-district-webkit/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results/regression-map-drill-map-d-1ca5e-country-→-region-→-district-webkit/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results/regression-map-drill-map-d-1ca5e-country-→-region-→-district-webkit/error-context.md
+
+  7) [webkit] › e2e/specs/regression/map-drill.spec.ts:250:5 › map drill-down regression — admin › clicking a region then a district drills country → region → district 
+
+    Error: admin district: 3 settled clicks did not advance the URL to /dashboard/districts/… (current: http://localhost:5173/dashboard/regions/r-western). The polygon click is not resolving name → id.
+
+      220 |   // Exhausted: the drill genuinely never happened. This is the failure the spec
+      221 |   // exists to surface (e.g. the ref fix reverted → empty name→id map).
+    > 222 |   throw new Error(
+          |         ^
+      223 |     `${label}: ${ATTEMPTS} settled clicks did not advance the URL to /dashboard/${expectSegment}/… `
+      224 |       + `(current: ${page.url()}). The polygon click is not resolving name → id.`,
+      225 |   );
+        at clickPolygonUntilUrl (/Users/shubhang/Desktop/Projects/uganda-dashboard/e2e/specs/regression/map-drill.spec.ts:222:9)
+        at /Users/shubhang/Desktop/Projects/uganda-dashboard/e2e/specs/regression/map-drill.spec.ts:265:7
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/regression-map-drill-map-d-113d7-country-→-region-→-district-webkit/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results/regression-map-drill-map-d-113d7-country-→-region-→-district-webkit/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results/regression-map-drill-map-d-113d7-country-→-region-→-district-webkit/error-context.md
+
+  8) [webkit] › e2e/specs/regression/modal-escape.spec.ts:224:5 › Modal Escape regression › distributor → settlement confirm modal › Escape closes the confirm modal without closing CommissionPanel 
+
+    Error: [2mexpect([22m[31mlocator[39m[2m).[22mtoBeVisible[2m([22m[2m)[22m failed
+
+    Locator: getByRole('dialog', { name: /^commissions$/i })
+    Expected: visible
+    Timeout: 25000ms
+    Error: element(s) not found
+
+    Call log:
+    [2m  - Expect "toBeVisible" with timeout 25000ms[22m
+    [2m  - waiting for getByRole('dialog', { name: /^commissions$/i })[22m
+
+
+      285 |
+      286 |       // CommissionPanel is still open (the Escape stopped at the modal).
+    > 287 |       await expect(panel).toBeVisible();
+          |                           ^
+      288 |     });
+      289 |   });
+      290 | });
+        at /Users/shubhang/Desktop/Projects/uganda-dashboard/e2e/specs/regression/modal-escape.spec.ts:287:27
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/regression-modal-escape-Mo-f2e31-out-closing-CommissionPanel-webkit/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results/regression-modal-escape-Mo-f2e31-out-closing-CommissionPanel-webkit/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results/regression-modal-escape-Mo-f2e31-out-closing-CommissionPanel-webkit/error-context.md
+
+    Error Context: test-results/regression-modal-escape-Mo-f2e31-out-closing-CommissionPanel-webkit/error-context.md
+
+  9) [mobile-chromium] › e2e/specs/flows/distributor-exports-csv.spec.ts:37:3 › subscriber → /dashboard/reports/all-transactions Export CSV › downloads a CSV with BOM and header 
+
+    Error: [2mexpect([22m[31mlocator[39m[2m).[22mtoBeVisible[2m([22m[2m)[22m failed
+
+    Locator: getByRole('heading', { name: /all transactions/i, level: 1 })
+    Expected: visible
+    Timeout: 25000ms
+    Error: element(s) not found
+
+    Call log:
+    [2m  - Expect "toBeVisible" with timeout 25000ms[22m
+    [2m  - waiting for getByRole('heading', { name: /all transactions/i, level: 1 })[22m
+
+
+      37 |   test('downloads a CSV with BOM and header', async ({ page }) => {
+      38 |     await page.goto('/dashboard/reports/all-transactions');
+    > 39 |     await expect(page.getByRole('heading', { level: 1, name: /all transactions/i })).toBeVisible();
+         |                                                                                      ^
+      40 |     await expect(selectors.errorBoundary.fallback(page)).toHaveCount(0);
+      41 |
+      42 |     // Wait for the report to settle — either the "N of M transactions"
+        at /Users/shubhang/Desktop/Projects/uganda-dashboard/e2e/specs/flows/distributor-exports-csv.spec.ts:39:86
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/flows-distributor-exports--3250c-s-a-CSV-with-BOM-and-header-mobile-chromium/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results/flows-distributor-exports--3250c-s-a-CSV-with-BOM-and-header-mobile-chromium/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results/flows-distributor-exports--3250c-s-a-CSV-with-BOM-and-header-mobile-chromium/error-context.md
+
+  10) [mobile-chromium] › e2e/specs/flows/distributor-exports-csv.spec.ts:141:3 › mobile UA → CSV cap notice (>5k rows) › subscriber export does NOT surface the cap toast (legacy path) 
+
+    Error: [2mexpect([22m[31mlocator[39m[2m).[22mtoBeVisible[2m([22m[2m)[22m failed
+
+    Locator: getByRole('heading', { name: /all transactions/i, level: 1 })
+    Expected: visible
+    Timeout: 25000ms
+    Error: element(s) not found
+
+    Call log:
+    [2m  - Expect "toBeVisible" with timeout 25000ms[22m
+    [2m  - waiting for getByRole('heading', { name: /all transactions/i, level: 1 })[22m
+
+
+      144 |
+      145 |     await page.goto('/dashboard/reports/all-transactions');
+    > 146 |     await expect(page.getByRole('heading', { level: 1, name: /all transactions/i })).toBeVisible();
+          |                                                                                      ^
+      147 |
+      148 |     const exportBtn = page.getByRole('button', { name: /export csv/i });
+      149 |     await expect(exportBtn).toBeVisible({ timeout: 15_000 });
+        at /Users/shubhang/Desktop/Projects/uganda-dashboard/e2e/specs/flows/distributor-exports-csv.spec.ts:146:86
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/flows-distributor-exports--8a4cc--the-cap-toast-legacy-path--mobile-chromium/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results/flows-distributor-exports--8a4cc--the-cap-toast-legacy-path--mobile-chromium/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results/flows-distributor-exports--8a4cc--the-cap-toast-legacy-path--mobile-chromium/error-context.md
+
+  11) [mobile-chromium] › e2e/specs/smoke/landing.spec.ts:20:3 › landing public routes smoke › FAQ page renders 
+
+    Error: [2mexpect([22m[31mlocator[39m[2m).[22mtoBeVisible[2m([22m[2m)[22m failed
+
+    Locator: getByRole('heading', { name: /faq|frequently/i, level: 1 })
+    Expected: visible
+    Timeout: 25000ms
+    Error: element(s) not found
+
+    Call log:
+    [2m  - Expect "toBeVisible" with timeout 25000ms[22m
+    [2m  - waiting for getByRole('heading', { name: /faq|frequently/i, level: 1 })[22m
+
+
+      22 |     expect(response?.status()).toBe(200);
+      23 |     await expect(selectors.errorBoundary.fallback(page)).toHaveCount(0);
+    > 24 |     await expect(page.getByRole('heading', { level: 1, name: /faq|frequently/i })).toBeVisible();
+         |                                                                                    ^
+      25 |   });
+      26 |
+      27 |   test('Contact page renders', async ({ page }) => {
+        at /Users/shubhang/Desktop/Projects/uganda-dashboard/e2e/specs/smoke/landing.spec.ts:24:84
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/smoke-landing-landing-public-routes-smoke-FAQ-page-renders-mobile-chromium/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results/smoke-landing-landing-public-routes-smoke-FAQ-page-renders-mobile-chromium/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results/smoke-landing-landing-public-routes-smoke-FAQ-page-renders-mobile-chromium/error-context.md
+
+  12) [mobile-chromium] › e2e/specs/smoke/landing.spec.ts:27:3 › landing public routes smoke › Contact page renders 
+
+    Error: [2mexpect([22m[31mlocator[39m[2m).[22mtoBeVisible[2m([22m[2m)[22m failed
+
+    Locator: getByRole('heading', { name: /contact|get in touch/i, level: 1 })
+    Expected: visible
+    Timeout: 25000ms
+    Error: element(s) not found
+
+    Call log:
+    [2m  - Expect "toBeVisible" with timeout 25000ms[22m
+    [2m  - waiting for getByRole('heading', { name: /contact|get in touch/i, level: 1 })[22m
+
+
+      29 |     expect(response?.status()).toBe(200);
+      30 |     await expect(selectors.errorBoundary.fallback(page)).toHaveCount(0);
+    > 31 |     await expect(page.getByRole('heading', { level: 1, name: /contact|get in touch/i })).toBeVisible();
+         |                                                                                          ^
+      32 |   });
+      33 |
+      34 |   test('About page renders', async ({ page }) => {
+        at /Users/shubhang/Desktop/Projects/uganda-dashboard/e2e/specs/smoke/landing.spec.ts:31:90
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/smoke-landing-landing-publ-a1688--smoke-Contact-page-renders-mobile-chromium/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results/smoke-landing-landing-publ-a1688--smoke-Contact-page-renders-mobile-chromium/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results/smoke-landing-landing-publ-a1688--smoke-Contact-page-renders-mobile-chromium/error-context.md
+
+  13) [mobile-chromium] › e2e/specs/smoke/landing.spec.ts:34:3 › landing public routes smoke › About page renders 
+
+    Error: [2mexpect([22m[31mlocator[39m[2m).[22mtoBeVisible[2m([22m[2m)[22m failed
+
+    Locator: getByRole('heading', { name: /about/i, level: 1 })
+    Expected: visible
+    Timeout: 25000ms
+    Error: element(s) not found
+
+    Call log:
+    [2m  - Expect "toBeVisible" with timeout 25000ms[22m
+    [2m  - waiting for getByRole('heading', { name: /about/i, level: 1 })[22m
+
+
+      36 |     expect(response?.status()).toBe(200);
+      37 |     await expect(selectors.errorBoundary.fallback(page)).toHaveCount(0);
+    > 38 |     await expect(page.getByRole('heading', { level: 1, name: /about/i })).toBeVisible();
+         |                                                                           ^
+      39 |   });
+      40 | });
+      41 |
+        at /Users/shubhang/Desktop/Projects/uganda-dashboard/e2e/specs/smoke/landing.spec.ts:38:75
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/smoke-landing-landing-public-routes-smoke-About-page-renders-mobile-chromium/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results/smoke-landing-landing-public-routes-smoke-About-page-renders-mobile-chromium/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results/smoke-landing-landing-public-routes-smoke-About-page-renders-mobile-chromium/error-context.md
+
+  14) [mobile-chromium] › e2e/specs/smoke/subscriber-dashboard.spec.ts:43:3 › subscriber dashboard smoke › Schedule loads (/dashboard/save/schedule) 
+
+    Error: [2mexpect([22m[31mlocator[39m[2m).[22mtoBeVisible[2m([22m[2m)[22m failed
+
+    Locator: getByRole('heading', { name: /(set a schedule|tune your schedule)/i, level: 1 })
+    Expected: visible
+    Timeout: 25000ms
+    Error: element(s) not found
+
+    Call log:
+    [2m  - Expect "toBeVisible" with timeout 25000ms[22m
+    [2m  - waiting for getByRole('heading', { name: /(set a schedule|tune your schedule)/i, level: 1 })[22m
+
+
+      49 |     await expect(
+      50 |       page.getByRole('heading', { level: 1, name: /(set a schedule|tune your schedule)/i }),
+    > 51 |     ).toBeVisible();
+         |       ^
+      52 |   });
+      53 |
+      54 |   test('Withdrawals hub loads (/dashboard/withdraw)', async ({ page }) => {
+        at /Users/shubhang/Desktop/Projects/uganda-dashboard/e2e/specs/smoke/subscriber-dashboard.spec.ts:51:7
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/smoke-subscriber-dashboard-7ceb6-ds-dashboard-save-schedule--mobile-chromium/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results/smoke-subscriber-dashboard-7ceb6-ds-dashboard-save-schedule--mobile-chromium/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results/smoke-subscriber-dashboard-7ceb6-ds-dashboard-save-schedule--mobile-chromium/error-context.md
+
+  15) [mobile-chromium] › e2e/specs/smoke/subscriber-dashboard.spec.ts:54:3 › subscriber dashboard smoke › Withdrawals hub loads (/dashboard/withdraw) 
+
+    Error: [2mexpect([22m[31mlocator[39m[2m).[22mtoBeVisible[2m([22m[2m)[22m failed
+
+    Locator: getByRole('heading', { name: /withdrawals/i, level: 1 })
+    Expected: visible
+    Timeout: 25000ms
+    Error: element(s) not found
+
+    Call log:
+    [2m  - Expect "toBeVisible" with timeout 25000ms[22m
+    [2m  - waiting for getByRole('heading', { name: /withdrawals/i, level: 1 })[22m
+
+
+      55 |     await page.goto('/dashboard/withdraw');
+      56 |     await expect(selectors.errorBoundary.fallback(page)).toHaveCount(0);
+    > 57 |     await expect(page.getByRole('heading', { level: 1, name: /withdrawals/i })).toBeVisible();
+         |                                                                                 ^
+      58 |   });
+      59 |
+      60 |   test('Withdraw savings loads (/dashboard/withdraw/savings)', async ({ page }) => {
+        at /Users/shubhang/Desktop/Projects/uganda-dashboard/e2e/specs/smoke/subscriber-dashboard.spec.ts:57:81
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/smoke-subscriber-dashboard-99e85-b-loads-dashboard-withdraw--mobile-chromium/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results/smoke-subscriber-dashboard-99e85-b-loads-dashboard-withdraw--mobile-chromium/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results/smoke-subscriber-dashboard-99e85-b-loads-dashboard-withdraw--mobile-chromium/error-context.md
+
+  16) [mobile-chromium] › e2e/specs/smoke/subscriber-dashboard.spec.ts:109:3 › subscriber dashboard smoke › All Transactions report loads (/dashboard/reports/all-transactions) 
+
+    Error: [2mexpect([22m[31mlocator[39m[2m).[22mtoBeVisible[2m([22m[2m)[22m failed
+
+    Locator: getByRole('heading', { name: /all transactions/i, level: 1 })
+    Expected: visible
+    Timeout: 25000ms
+    Error: element(s) not found
+
+    Call log:
+    [2m  - Expect "toBeVisible" with timeout 25000ms[22m
+    [2m  - waiting for getByRole('heading', { name: /all transactions/i, level: 1 })[22m
+
+
+      110 |     await page.goto('/dashboard/reports/all-transactions');
+      111 |     await expect(selectors.errorBoundary.fallback(page)).toHaveCount(0);
+    > 112 |     await expect(page.getByRole('heading', { level: 1, name: /all transactions/i })).toBeVisible();
+          |                                                                                      ^
+      113 |   });
+      114 |
+      115 |   test('Contributions Summary report loads (/dashboard/reports/contributions-summary)', async ({ page }) => {
+        at /Users/shubhang/Desktop/Projects/uganda-dashboard/e2e/specs/smoke/subscriber-dashboard.spec.ts:112:86
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/smoke-subscriber-dashboard-6633a-d-reports-all-transactions--mobile-chromium/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results/smoke-subscriber-dashboard-6633a-d-reports-all-transactions--mobile-chromium/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results/smoke-subscriber-dashboard-6633a-d-reports-all-transactions--mobile-chromium/error-context.md
+
+  17) [mobile-chromium] › e2e/specs/smoke/subscriber-dashboard.spec.ts:115:3 › subscriber dashboard smoke › Contributions Summary report loads (/dashboard/reports/contributions-summary) 
+
+    Error: [2mexpect([22m[31mlocator[39m[2m).[22mtoBeVisible[2m([22m[2m)[22m failed
+
+    Locator: getByRole('heading', { name: /contributions summary/i, level: 1 })
+    Expected: visible
+    Timeout: 25000ms
+    Error: element(s) not found
+
+    Call log:
+    [2m  - Expect "toBeVisible" with timeout 25000ms[22m
+    [2m  - waiting for getByRole('heading', { name: /contributions summary/i, level: 1 })[22m
+
+
+      119 |     await page.goto('/dashboard/reports/contributions-summary');
+      120 |     await expect(selectors.errorBoundary.fallback(page)).toHaveCount(0);
+    > 121 |     await expect(page.getByRole('heading', { level: 1, name: /contributions summary/i })).toBeVisible();
+          |                                                                                           ^
+      122 |   });
+      123 |
+      124 |   test('Help loads (/dashboard/help)', async ({ page }) => {
+        at /Users/shubhang/Desktop/Projects/uganda-dashboard/e2e/specs/smoke/subscriber-dashboard.spec.ts:121:91
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/smoke-subscriber-dashboard-21518-orts-contributions-summary--mobile-chromium/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results/smoke-subscriber-dashboard-21518-orts-contributions-summary--mobile-chromium/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results/smoke-subscriber-dashboard-21518-orts-contributions-summary--mobile-chromium/error-context.md
+
+  18) [mobile-chromium] › e2e/specs/smoke/subscriber-dashboard.spec.ts:124:3 › subscriber dashboard smoke › Help loads (/dashboard/help) 
+
+    Error: [2mexpect([22m[31mlocator[39m[2m).[22mtoBeVisible[2m([22m[2m)[22m failed
+
+    Locator: getByRole('heading', { name: /how can we help/i, level: 1 })
+    Expected: visible
+    Timeout: 25000ms
+    Error: element(s) not found
+
+    Call log:
+    [2m  - Expect "toBeVisible" with timeout 25000ms[22m
+    [2m  - waiting for getByRole('heading', { name: /how can we help/i, level: 1 })[22m
+
+
+      125 |     await page.goto('/dashboard/help');
+      126 |     await expect(selectors.errorBoundary.fallback(page)).toHaveCount(0);
+    > 127 |     await expect(page.getByRole('heading', { level: 1, name: /how can we help/i })).toBeVisible();
+          |                                                                                     ^
+      128 |   });
+      129 |
+      130 |   test('Agent loads (/dashboard/agent)', async ({ page }) => {
+        at /Users/shubhang/Desktop/Projects/uganda-dashboard/e2e/specs/smoke/subscriber-dashboard.spec.ts:127:85
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/smoke-subscriber-dashboard-17971--Help-loads-dashboard-help--mobile-chromium/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results/smoke-subscriber-dashboard-17971--Help-loads-dashboard-help--mobile-chromium/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results/smoke-subscriber-dashboard-17971--Help-loads-dashboard-help--mobile-chromium/error-context.md
+
+  19) [mobile-chromium] › e2e/specs/smoke/subscriber-dashboard.spec.ts:173:3 › subscriber dashboard smoke › Profile edit form loads (/dashboard/settings/profile) 
+
+    Error: [2mexpect([22m[31mlocator[39m[2m).[22mtoBeVisible[2m([22m[2m)[22m failed
+
+    Locator: getByRole('heading', { name: /^profile$/i, level: 1 })
+    Expected: visible
+    Timeout: 25000ms
+    Error: element(s) not found
+
+    Call log:
+    [2m  - Expect "toBeVisible" with timeout 25000ms[22m
+    [2m  - waiting for getByRole('heading', { name: /^profile$/i, level: 1 })[22m
+
+
+      174 |     await page.goto('/dashboard/settings/profile');
+      175 |     await expect(selectors.errorBoundary.fallback(page)).toHaveCount(0);
+    > 176 |     await expect(page.getByRole('heading', { level: 1, name: /^profile$/i })).toBeVisible();
+          |                                                                               ^
+      177 |     // ProfilePage is the editable form. The "Full name" textbox is its
+      178 |     // distinguishing surface vs the account hub above (the footer CTA reads
+      179 |     // "No changes to save" until the form is dirty, so it is not a stable
+        at /Users/shubhang/Desktop/Projects/uganda-dashboard/e2e/specs/smoke/subscriber-dashboard.spec.ts:176:79
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/smoke-subscriber-dashboard-0eb17-dashboard-settings-profile--mobile-chromium/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results/smoke-subscriber-dashboard-0eb17-dashboard-settings-profile--mobile-chromium/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results/smoke-subscriber-dashboard-0eb17-dashboard-settings-profile--mobile-chromium/error-context.md
+
+  20) [mobile-webkit] › e2e/specs/flows/distributor-exports-csv.spec.ts:37:3 › subscriber → /dashboard/reports/all-transactions Export CSV › downloads a CSV with BOM and header 
+
+    Error: [2mexpect([22m[31mlocator[39m[2m).[22mtoBeVisible[2m([22m[2m)[22m failed
+
+    Locator: getByRole('heading', { name: /all transactions/i, level: 1 })
+    Expected: visible
+    Timeout: 25000ms
+    Error: element(s) not found
+
+    Call log:
+    [2m  - Expect "toBeVisible" with timeout 25000ms[22m
+    [2m  - waiting for getByRole('heading', { name: /all transactions/i, level: 1 })[22m
+
+
+      37 |   test('downloads a CSV with BOM and header', async ({ page }) => {
+      38 |     await page.goto('/dashboard/reports/all-transactions');
+    > 39 |     await expect(page.getByRole('heading', { level: 1, name: /all transactions/i })).toBeVisible();
+         |                                                                                      ^
+      40 |     await expect(selectors.errorBoundary.fallback(page)).toHaveCount(0);
+      41 |
+      42 |     // Wait for the report to settle — either the "N of M transactions"
+        at /Users/shubhang/Desktop/Projects/uganda-dashboard/e2e/specs/flows/distributor-exports-csv.spec.ts:39:86
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/flows-distributor-exports--3250c-s-a-CSV-with-BOM-and-header-mobile-webkit/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results/flows-distributor-exports--3250c-s-a-CSV-with-BOM-and-header-mobile-webkit/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results/flows-distributor-exports--3250c-s-a-CSV-with-BOM-and-header-mobile-webkit/error-context.md
+
+  21) [mobile-webkit] › e2e/specs/flows/distributor-exports-csv.spec.ts:141:3 › mobile UA → CSV cap notice (>5k rows) › subscriber export does NOT surface the cap toast (legacy path) 
+
+    Error: [2mexpect([22m[31mlocator[39m[2m).[22mtoBeVisible[2m([22m[2m)[22m failed
+
+    Locator: getByRole('heading', { name: /all transactions/i, level: 1 })
+    Expected: visible
+    Timeout: 25000ms
+    Error: element(s) not found
+
+    Call log:
+    [2m  - Expect "toBeVisible" with timeout 25000ms[22m
+    [2m  - waiting for getByRole('heading', { name: /all transactions/i, level: 1 })[22m
+
+
+      144 |
+      145 |     await page.goto('/dashboard/reports/all-transactions');
+    > 146 |     await expect(page.getByRole('heading', { level: 1, name: /all transactions/i })).toBeVisible();
+          |                                                                                      ^
+      147 |
+      148 |     const exportBtn = page.getByRole('button', { name: /export csv/i });
+      149 |     await expect(exportBtn).toBeVisible({ timeout: 15_000 });
+        at /Users/shubhang/Desktop/Projects/uganda-dashboard/e2e/specs/flows/distributor-exports-csv.spec.ts:146:86
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/flows-distributor-exports--8a4cc--the-cap-toast-legacy-path--mobile-webkit/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results/flows-distributor-exports--8a4cc--the-cap-toast-legacy-path--mobile-webkit/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results/flows-distributor-exports--8a4cc--the-cap-toast-legacy-path--mobile-webkit/error-context.md
+
+  22) [mobile-webkit] › e2e/specs/smoke/landing.spec.ts:20:3 › landing public routes smoke › FAQ page renders 
+
+    Error: [2mexpect([22m[31mlocator[39m[2m).[22mtoBeVisible[2m([22m[2m)[22m failed
+
+    Locator: getByRole('heading', { name: /faq|frequently/i, level: 1 })
+    Expected: visible
+    Timeout: 25000ms
+    Error: element(s) not found
+
+    Call log:
+    [2m  - Expect "toBeVisible" with timeout 25000ms[22m
+    [2m  - waiting for getByRole('heading', { name: /faq|frequently/i, level: 1 })[22m
+
+
+      22 |     expect(response?.status()).toBe(200);
+      23 |     await expect(selectors.errorBoundary.fallback(page)).toHaveCount(0);
+    > 24 |     await expect(page.getByRole('heading', { level: 1, name: /faq|frequently/i })).toBeVisible();
+         |                                                                                    ^
+      25 |   });
+      26 |
+      27 |   test('Contact page renders', async ({ page }) => {
+        at /Users/shubhang/Desktop/Projects/uganda-dashboard/e2e/specs/smoke/landing.spec.ts:24:84
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/smoke-landing-landing-public-routes-smoke-FAQ-page-renders-mobile-webkit/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results/smoke-landing-landing-public-routes-smoke-FAQ-page-renders-mobile-webkit/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results/smoke-landing-landing-public-routes-smoke-FAQ-page-renders-mobile-webkit/error-context.md
+
+  23) [mobile-webkit] › e2e/specs/smoke/landing.spec.ts:27:3 › landing public routes smoke › Contact page renders 
+
+    Error: [2mexpect([22m[31mlocator[39m[2m).[22mtoBeVisible[2m([22m[2m)[22m failed
+
+    Locator: getByRole('heading', { name: /contact|get in touch/i, level: 1 })
+    Expected: visible
+    Timeout: 25000ms
+    Error: element(s) not found
+
+    Call log:
+    [2m  - Expect "toBeVisible" with timeout 25000ms[22m
+    [2m  - waiting for getByRole('heading', { name: /contact|get in touch/i, level: 1 })[22m
+
+
+      29 |     expect(response?.status()).toBe(200);
+      30 |     await expect(selectors.errorBoundary.fallback(page)).toHaveCount(0);
+    > 31 |     await expect(page.getByRole('heading', { level: 1, name: /contact|get in touch/i })).toBeVisible();
+         |                                                                                          ^
+      32 |   });
+      33 |
+      34 |   test('About page renders', async ({ page }) => {
+        at /Users/shubhang/Desktop/Projects/uganda-dashboard/e2e/specs/smoke/landing.spec.ts:31:90
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/smoke-landing-landing-publ-a1688--smoke-Contact-page-renders-mobile-webkit/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results/smoke-landing-landing-publ-a1688--smoke-Contact-page-renders-mobile-webkit/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results/smoke-landing-landing-publ-a1688--smoke-Contact-page-renders-mobile-webkit/error-context.md
+
+  24) [mobile-webkit] › e2e/specs/smoke/landing.spec.ts:34:3 › landing public routes smoke › About page renders 
+
+    Error: [2mexpect([22m[31mlocator[39m[2m).[22mtoBeVisible[2m([22m[2m)[22m failed
+
+    Locator: getByRole('heading', { name: /about/i, level: 1 })
+    Expected: visible
+    Timeout: 25000ms
+    Error: element(s) not found
+
+    Call log:
+    [2m  - Expect "toBeVisible" with timeout 25000ms[22m
+    [2m  - waiting for getByRole('heading', { name: /about/i, level: 1 })[22m
+
+
+      36 |     expect(response?.status()).toBe(200);
+      37 |     await expect(selectors.errorBoundary.fallback(page)).toHaveCount(0);
+    > 38 |     await expect(page.getByRole('heading', { level: 1, name: /about/i })).toBeVisible();
+         |                                                                           ^
+      39 |   });
+      40 | });
+      41 |
+        at /Users/shubhang/Desktop/Projects/uganda-dashboard/e2e/specs/smoke/landing.spec.ts:38:75
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/smoke-landing-landing-public-routes-smoke-About-page-renders-mobile-webkit/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results/smoke-landing-landing-public-routes-smoke-About-page-renders-mobile-webkit/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results/smoke-landing-landing-public-routes-smoke-About-page-renders-mobile-webkit/error-context.md
+
+  25) [mobile-webkit] › e2e/specs/smoke/subscriber-dashboard.spec.ts:43:3 › subscriber dashboard smoke › Schedule loads (/dashboard/save/schedule) 
+
+    Error: [2mexpect([22m[31mlocator[39m[2m).[22mtoBeVisible[2m([22m[2m)[22m failed
+
+    Locator: getByRole('heading', { name: /(set a schedule|tune your schedule)/i, level: 1 })
+    Expected: visible
+    Timeout: 25000ms
+    Error: element(s) not found
+
+    Call log:
+    [2m  - Expect "toBeVisible" with timeout 25000ms[22m
+    [2m  - waiting for getByRole('heading', { name: /(set a schedule|tune your schedule)/i, level: 1 })[22m
+
+
+      49 |     await expect(
+      50 |       page.getByRole('heading', { level: 1, name: /(set a schedule|tune your schedule)/i }),
+    > 51 |     ).toBeVisible();
+         |       ^
+      52 |   });
+      53 |
+      54 |   test('Withdrawals hub loads (/dashboard/withdraw)', async ({ page }) => {
+        at /Users/shubhang/Desktop/Projects/uganda-dashboard/e2e/specs/smoke/subscriber-dashboard.spec.ts:51:7
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/smoke-subscriber-dashboard-7ceb6-ds-dashboard-save-schedule--mobile-webkit/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results/smoke-subscriber-dashboard-7ceb6-ds-dashboard-save-schedule--mobile-webkit/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results/smoke-subscriber-dashboard-7ceb6-ds-dashboard-save-schedule--mobile-webkit/error-context.md
+
+  26) [mobile-webkit] › e2e/specs/smoke/subscriber-dashboard.spec.ts:54:3 › subscriber dashboard smoke › Withdrawals hub loads (/dashboard/withdraw) 
+
+    Error: [2mexpect([22m[31mlocator[39m[2m).[22mtoBeVisible[2m([22m[2m)[22m failed
+
+    Locator: getByRole('heading', { name: /withdrawals/i, level: 1 })
+    Expected: visible
+    Timeout: 25000ms
+    Error: element(s) not found
+
+    Call log:
+    [2m  - Expect "toBeVisible" with timeout 25000ms[22m
+    [2m  - waiting for getByRole('heading', { name: /withdrawals/i, level: 1 })[22m
+
+
+      55 |     await page.goto('/dashboard/withdraw');
+      56 |     await expect(selectors.errorBoundary.fallback(page)).toHaveCount(0);
+    > 57 |     await expect(page.getByRole('heading', { level: 1, name: /withdrawals/i })).toBeVisible();
+         |                                                                                 ^
+      58 |   });
+      59 |
+      60 |   test('Withdraw savings loads (/dashboard/withdraw/savings)', async ({ page }) => {
+        at /Users/shubhang/Desktop/Projects/uganda-dashboard/e2e/specs/smoke/subscriber-dashboard.spec.ts:57:81
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/smoke-subscriber-dashboard-99e85-b-loads-dashboard-withdraw--mobile-webkit/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results/smoke-subscriber-dashboard-99e85-b-loads-dashboard-withdraw--mobile-webkit/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results/smoke-subscriber-dashboard-99e85-b-loads-dashboard-withdraw--mobile-webkit/error-context.md
+
+  27) [mobile-webkit] › e2e/specs/smoke/subscriber-dashboard.spec.ts:109:3 › subscriber dashboard smoke › All Transactions report loads (/dashboard/reports/all-transactions) 
+
+    Error: [2mexpect([22m[31mlocator[39m[2m).[22mtoBeVisible[2m([22m[2m)[22m failed
+
+    Locator: getByRole('heading', { name: /all transactions/i, level: 1 })
+    Expected: visible
+    Timeout: 25000ms
+    Error: element(s) not found
+
+    Call log:
+    [2m  - Expect "toBeVisible" with timeout 25000ms[22m
+    [2m  - waiting for getByRole('heading', { name: /all transactions/i, level: 1 })[22m
+
+
+      110 |     await page.goto('/dashboard/reports/all-transactions');
+      111 |     await expect(selectors.errorBoundary.fallback(page)).toHaveCount(0);
+    > 112 |     await expect(page.getByRole('heading', { level: 1, name: /all transactions/i })).toBeVisible();
+          |                                                                                      ^
+      113 |   });
+      114 |
+      115 |   test('Contributions Summary report loads (/dashboard/reports/contributions-summary)', async ({ page }) => {
+        at /Users/shubhang/Desktop/Projects/uganda-dashboard/e2e/specs/smoke/subscriber-dashboard.spec.ts:112:86
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/smoke-subscriber-dashboard-6633a-d-reports-all-transactions--mobile-webkit/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results/smoke-subscriber-dashboard-6633a-d-reports-all-transactions--mobile-webkit/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results/smoke-subscriber-dashboard-6633a-d-reports-all-transactions--mobile-webkit/error-context.md
+
+  28) [mobile-webkit] › e2e/specs/smoke/subscriber-dashboard.spec.ts:115:3 › subscriber dashboard smoke › Contributions Summary report loads (/dashboard/reports/contributions-summary) 
+
+    Error: [2mexpect([22m[31mlocator[39m[2m).[22mtoBeVisible[2m([22m[2m)[22m failed
+
+    Locator: getByRole('heading', { name: /contributions summary/i, level: 1 })
+    Expected: visible
+    Timeout: 25000ms
+    Error: element(s) not found
+
+    Call log:
+    [2m  - Expect "toBeVisible" with timeout 25000ms[22m
+    [2m  - waiting for getByRole('heading', { name: /contributions summary/i, level: 1 })[22m
+
+
+      119 |     await page.goto('/dashboard/reports/contributions-summary');
+      120 |     await expect(selectors.errorBoundary.fallback(page)).toHaveCount(0);
+    > 121 |     await expect(page.getByRole('heading', { level: 1, name: /contributions summary/i })).toBeVisible();
+          |                                                                                           ^
+      122 |   });
+      123 |
+      124 |   test('Help loads (/dashboard/help)', async ({ page }) => {
+        at /Users/shubhang/Desktop/Projects/uganda-dashboard/e2e/specs/smoke/subscriber-dashboard.spec.ts:121:91
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/smoke-subscriber-dashboard-21518-orts-contributions-summary--mobile-webkit/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results/smoke-subscriber-dashboard-21518-orts-contributions-summary--mobile-webkit/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results/smoke-subscriber-dashboard-21518-orts-contributions-summary--mobile-webkit/error-context.md
+
+  29) [mobile-webkit] › e2e/specs/smoke/subscriber-dashboard.spec.ts:124:3 › subscriber dashboard smoke › Help loads (/dashboard/help) 
+
+    Error: [2mexpect([22m[31mlocator[39m[2m).[22mtoBeVisible[2m([22m[2m)[22m failed
+
+    Locator: getByRole('heading', { name: /how can we help/i, level: 1 })
+    Expected: visible
+    Timeout: 25000ms
+    Error: element(s) not found
+
+    Call log:
+    [2m  - Expect "toBeVisible" with timeout 25000ms[22m
+    [2m  - waiting for getByRole('heading', { name: /how can we help/i, level: 1 })[22m
+
+
+      125 |     await page.goto('/dashboard/help');
+      126 |     await expect(selectors.errorBoundary.fallback(page)).toHaveCount(0);
+    > 127 |     await expect(page.getByRole('heading', { level: 1, name: /how can we help/i })).toBeVisible();
+          |                                                                                     ^
+      128 |   });
+      129 |
+      130 |   test('Agent loads (/dashboard/agent)', async ({ page }) => {
+        at /Users/shubhang/Desktop/Projects/uganda-dashboard/e2e/specs/smoke/subscriber-dashboard.spec.ts:127:85
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/smoke-subscriber-dashboard-17971--Help-loads-dashboard-help--mobile-webkit/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results/smoke-subscriber-dashboard-17971--Help-loads-dashboard-help--mobile-webkit/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results/smoke-subscriber-dashboard-17971--Help-loads-dashboard-help--mobile-webkit/error-context.md
+
+  30) [mobile-webkit] › e2e/specs/smoke/subscriber-dashboard.spec.ts:173:3 › subscriber dashboard smoke › Profile edit form loads (/dashboard/settings/profile) 
+
+    Error: [2mexpect([22m[31mlocator[39m[2m).[22mtoBeVisible[2m([22m[2m)[22m failed
+
+    Locator: getByRole('heading', { name: /^profile$/i, level: 1 })
+    Expected: visible
+    Timeout: 25000ms
+    Error: element(s) not found
+
+    Call log:
+    [2m  - Expect "toBeVisible" with timeout 25000ms[22m
+    [2m  - waiting for getByRole('heading', { name: /^profile$/i, level: 1 })[22m
+
+
+      174 |     await page.goto('/dashboard/settings/profile');
+      175 |     await expect(selectors.errorBoundary.fallback(page)).toHaveCount(0);
+    > 176 |     await expect(page.getByRole('heading', { level: 1, name: /^profile$/i })).toBeVisible();
+          |                                                                               ^
+      177 |     // ProfilePage is the editable form. The "Full name" textbox is its
+      178 |     // distinguishing surface vs the account hub above (the footer CTA reads
+      179 |     // "No changes to save" until the form is dirty, so it is not a stable
+        at /Users/shubhang/Desktop/Projects/uganda-dashboard/e2e/specs/smoke/subscriber-dashboard.spec.ts:176:79
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/smoke-subscriber-dashboard-0eb17-dashboard-settings-profile--mobile-webkit/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results/smoke-subscriber-dashboard-0eb17-dashboard-settings-profile--mobile-webkit/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results/smoke-subscriber-dashboard-0eb17-dashboard-settings-profile--mobile-webkit/error-context.md
+
+  30 failed
+    [chromium] › e2e/specs/flows/agent-onboard-subscriber.spec.ts:109:3 › agent → onboard new subscriber (UI + RPC + DB) › full wizard creates subscriber + balances via RPC 
+    [chromium] › e2e/specs/regression/modal-escape.spec.ts:224:5 › Modal Escape regression › distributor → settlement confirm modal › Escape closes the confirm modal without closing CommissionPanel 
+    [webkit] › e2e/specs/flows/agent-onboard-subscriber.spec.ts:109:3 › agent → onboard new subscriber (UI + RPC + DB) › full wizard creates subscriber + balances via RPC 
+    [webkit] › e2e/specs/flows/subscriber-signin-with-password.spec.ts:78:3 › subscriber → sign in with password › A) signs in with password after fresh signup 
+    [webkit] › e2e/specs/flows/subscriber-signup-to-contribute.spec.ts:116:3 › subscriber → signup wizard → first contribution (UI + DB) › completes 9-step signup + contribution and writes the subscriber chain 
+    [webkit] › e2e/specs/regression/map-drill.spec.ts:250:5 › map drill-down regression — distributor › clicking a region then a district drills country → region → district 
+    [webkit] › e2e/specs/regression/map-drill.spec.ts:250:5 › map drill-down regression — admin › clicking a region then a district drills country → region → district 
+    [webkit] › e2e/specs/regression/modal-escape.spec.ts:224:5 › Modal Escape regression › distributor → settlement confirm modal › Escape closes the confirm modal without closing CommissionPanel 
+    [mobile-chromium] › e2e/specs/flows/distributor-exports-csv.spec.ts:37:3 › subscriber → /dashboard/reports/all-transactions Export CSV › downloads a CSV with BOM and header 
+    [mobile-chromium] › e2e/specs/flows/distributor-exports-csv.spec.ts:141:3 › mobile UA → CSV cap notice (>5k rows) › subscriber export does NOT surface the cap toast (legacy path) 
+    [mobile-chromium] › e2e/specs/smoke/landing.spec.ts:20:3 › landing public routes smoke › FAQ page renders 
+    [mobile-chromium] › e2e/specs/smoke/landing.spec.ts:27:3 › landing public routes smoke › Contact page renders 
+    [mobile-chromium] › e2e/specs/smoke/landing.spec.ts:34:3 › landing public routes smoke › About page renders 
+    [mobile-chromium] › e2e/specs/smoke/subscriber-dashboard.spec.ts:43:3 › subscriber dashboard smoke › Schedule loads (/dashboard/save/schedule) 
+    [mobile-chromium] › e2e/specs/smoke/subscriber-dashboard.spec.ts:54:3 › subscriber dashboard smoke › Withdrawals hub loads (/dashboard/withdraw) 
+    [mobile-chromium] › e2e/specs/smoke/subscriber-dashboard.spec.ts:109:3 › subscriber dashboard smoke › All Transactions report loads (/dashboard/reports/all-transactions) 
+    [mobile-chromium] › e2e/specs/smoke/subscriber-dashboard.spec.ts:115:3 › subscriber dashboard smoke › Contributions Summary report loads (/dashboard/reports/contributions-summary) 
+    [mobile-chromium] › e2e/specs/smoke/subscriber-dashboard.spec.ts:124:3 › subscriber dashboard smoke › Help loads (/dashboard/help) 
+    [mobile-chromium] › e2e/specs/smoke/subscriber-dashboard.spec.ts:173:3 › subscriber dashboard smoke › Profile edit form loads (/dashboard/settings/profile) 
+    [mobile-webkit] › e2e/specs/flows/distributor-exports-csv.spec.ts:37:3 › subscriber → /dashboard/reports/all-transactions Export CSV › downloads a CSV with BOM and header 
+    [mobile-webkit] › e2e/specs/flows/distributor-exports-csv.spec.ts:141:3 › mobile UA → CSV cap notice (>5k rows) › subscriber export does NOT surface the cap toast (legacy path) 
+    [mobile-webkit] › e2e/specs/smoke/landing.spec.ts:20:3 › landing public routes smoke › FAQ page renders 
+    [mobile-webkit] › e2e/specs/smoke/landing.spec.ts:27:3 › landing public routes smoke › Contact page renders 
+    [mobile-webkit] › e2e/specs/smoke/landing.spec.ts:34:3 › landing public routes smoke › About page renders 
+    [mobile-webkit] › e2e/specs/smoke/subscriber-dashboard.spec.ts:43:3 › subscriber dashboard smoke › Schedule loads (/dashboard/save/schedule) 
+    [mobile-webkit] › e2e/specs/smoke/subscriber-dashboard.spec.ts:54:3 › subscriber dashboard smoke › Withdrawals hub loads (/dashboard/withdraw) 
+    [mobile-webkit] › e2e/specs/smoke/subscriber-dashboard.spec.ts:109:3 › subscriber dashboard smoke › All Transactions report loads (/dashboard/reports/all-transactions) 
+    [mobile-webkit] › e2e/specs/smoke/subscriber-dashboard.spec.ts:115:3 › subscriber dashboard smoke › Contributions Summary report loads (/dashboard/reports/contributions-summary) 
+    [mobile-webkit] › e2e/specs/smoke/subscriber-dashboard.spec.ts:124:3 › subscriber dashboard smoke › Help loads (/dashboard/help) 
+    [mobile-webkit] › e2e/specs/smoke/subscriber-dashboard.spec.ts:173:3 › subscriber dashboard smoke › Profile edit form loads (/dashboard/settings/profile) 
+  14 skipped
+  326 passed (24.4m)
+PLAYWRIGHT_EXIT=1

@@ -1,0 +1,382 @@
+access_requests|id|text|t|t|f
+access_requests|kind|text|t|f|f
+access_requests|org_name|text|t|f|f
+access_requests|contact_name|text|f|f|f
+access_requests|contact_email|text|f|f|f
+access_requests|contact_phone|text|f|f|f
+access_requests|sector|text|f|f|f
+access_requests|district|text|f|f|f
+access_requests|message|text|f|f|f
+access_requests|status|text|t|t|f
+access_requests|provisioned_id|text|f|f|f
+access_requests|created_at|timestamp with time zone|t|t|f
+access_requests|decided_at|timestamp with time zone|f|f|f
+access_requests|registration_no|text|f|f|f
+agent_referrals|id|text|t|f|f
+agent_referrals|ticket_id|text|t|f|f
+agent_referrals|phone|text|t|f|f
+agent_referrals|reason|text|t|f|f
+agent_referrals|stage|text|f|f|f
+agent_referrals|status|text|t|t|f
+agent_referrals|eta|text|f|f|f
+agent_referrals|created_at|timestamp with time zone|t|t|f
+agent_referrals|resolved_at|timestamp with time zone|f|f|f
+agents|id|text|t|f|f
+agents|name|text|t|f|f
+agents|gender|text|f|f|f
+agents|employee_id|text|f|f|f
+agents|branch_id|text|t|f|f
+agents|center_lng|numeric|f|f|f
+agents|center_lat|numeric|f|f|f
+agents|phone|text|f|f|f
+agents|email|text|f|f|f
+agents|rating|numeric|f|f|f
+agents|performance|integer|f|f|f
+agents|status|text|t|t|f
+agents|languages|jsonb|t|t|f
+agents|specialties|jsonb|t|t|f
+agents|tenure_months|integer|f|f|f
+agents|joined_date|date|f|f|f
+agents|created_at|timestamp with time zone|t|t|f
+agents|coverage_rate|integer|t|t|f
+branches|id|text|t|f|f
+branches|name|text|t|f|f
+branches|district_id|text|t|f|f
+branches|center_lng|numeric|f|f|f
+branches|center_lat|numeric|f|f|f
+branches|manager_name|text|f|f|f
+branches|manager_phone|text|f|f|f
+branches|manager_email|text|f|f|f
+branches|status|text|t|t|f
+branches|score|numeric|f|f|f
+branches|rank|integer|f|f|f
+branches|district_rank|integer|f|f|f
+branches|district_branch_count|integer|f|f|f
+branches|created_at|timestamp with time zone|t|t|f
+branches|distributor_id|text|f|f|f
+claims|id|text|t|f|f
+claims|subscriber_id|text|t|f|f
+claims|type|text|t|f|f
+claims|status|text|t|f|f
+claims|amount|numeric|t|f|f
+claims|incident_date|date|f|f|f
+claims|submitted_date|date|t|f|f
+claims|description|text|f|f|f
+claims|created_at|timestamp with time zone|t|t|f
+claims|product|text|t|f|f
+claims|discharge_date|date|f|f|f
+claims|nights|integer|f|f|f
+claims|provider|text|f|f|f
+claims|daily_benefit|numeric|f|f|f
+claims|expected_by|date|f|t|f
+commission_config|id|text|t|t|f
+commission_config|rate|numeric|t|f|f
+commission_config|cadence|text|t|f|f
+commission_config|next_run_date|date|f|f|f
+commission_config|last_updated_by|text|f|f|f
+commission_config|updated_at|timestamp with time zone|t|t|f
+commission_config|distributor_id|text|f|f|f
+commissions|id|text|t|f|f
+commissions|agent_id|text|t|f|f
+commissions|branch_id|text|f|f|f
+commissions|subscriber_id|text|t|f|f
+commissions|subscriber_name|text|f|f|f
+commissions|amount|numeric|t|f|f
+commissions|status|commission_status|t|t|f
+commissions|first_contribution_date|date|f|f|f
+commissions|due_date|date|f|f|f
+commissions|paid_date|date|f|f|f
+commissions|txn_ref|text|f|f|f
+commissions|created_at|timestamp with time zone|t|t|f
+commissions|paid_amount|numeric|f|f|f
+contact_submissions|id|text|t|f|f
+contact_submissions|name|text|t|f|f
+contact_submissions|email|text|t|f|f
+contact_submissions|message|text|t|f|f
+contact_submissions|created_at|timestamp with time zone|t|t|f
+contribution_run_uploads|nonce|text|t|f|f
+contribution_run_uploads|result|jsonb|t|f|f
+contribution_run_uploads|created_at|timestamp with time zone|t|t|f
+contribution_runs|id|text|t|f|f
+contribution_runs|employer_id|text|t|f|f
+contribution_runs|period_label|text|f|f|f
+contribution_runs|status|text|t|t|f
+contribution_runs|employer_total|numeric|t|t|f
+contribution_runs|employee_total|numeric|t|t|f
+contribution_runs|grand_total|numeric|t|t|f
+contribution_runs|run_at|timestamp with time zone|t|t|f
+contribution_runs|created_at|timestamp with time zone|t|t|f
+contribution_runs|insurance_total|numeric|t|t|f
+contribution_schedules|subscriber_id|text|t|f|f
+contribution_schedules|frequency|text|t|f|f
+contribution_schedules|amount|numeric|t|f|f
+contribution_schedules|retirement_pct|integer|t|t|f
+contribution_schedules|emergency_pct|integer|t|t|f
+contribution_schedules|include_insurance|boolean|t|t|f
+contribution_schedules|insurance_choice_made|boolean|t|t|f
+contribution_schedules|next_due_date|date|f|f|f
+contribution_schedules|updated_at|timestamp with time zone|t|t|f
+contribution_schedules|insurance_funding_mode|text|t|t|f
+contribution_schedules|insurance_premium_target|numeric|t|t|f
+contribution_schedules|insurance_premium_accrued|numeric|t|t|f
+contribution_schedules|insurance_savings_pct|numeric|t|t|f
+contribution_schedules|contribution_indexation_pct|numeric|t|t|f
+contribution_schedules|last_indexed_at|timestamp with time zone|f|f|f
+custody_transfers|id|text|t|t|f
+custody_transfers|batch_label|text|t|f|f
+custody_transfers|custodian|text|t|t|f
+custody_transfers|source|text|t|f|f
+custody_transfers|amount|numeric|t|t|f
+custody_transfers|collected_from|date|t|f|f
+custody_transfers|collected_to|date|t|f|f
+custody_transfers|due_by|date|t|f|f
+custody_transfers|transferred_at|date|f|f|f
+custody_transfers|status|text|t|t|f
+custody_transfers|bank_ref|text|f|f|f
+custody_transfers|failure_reason|text|f|f|f
+custody_transfers|created_at|timestamp with time zone|t|t|f
+demo_personas|id|text|t|f|f
+demo_personas|phone|text|t|f|f
+demo_personas|role|text|t|f|f
+demo_personas|entity_id|text|t|f|f
+demo_personas|label|text|f|f|f
+demo_personas|created_at|timestamp with time zone|t|t|f
+distributors|id|text|t|f|f
+distributors|name|text|t|f|f
+distributors|parent_id|text|t|t|f
+distributors|manager_name|text|f|f|f
+distributors|manager_phone|text|f|f|f
+distributors|manager_email|text|f|f|f
+distributors|status|text|t|t|f
+distributors|created_at|timestamp with time zone|t|t|f
+distributors|updated_at|timestamp with time zone|t|t|f
+distributors|registration_no|text|f|f|f
+districts|id|text|t|f|f
+districts|name|text|t|f|f
+districts|region_id|text|t|f|f
+districts|center_lng|numeric|f|f|f
+districts|center_lat|numeric|f|f|f
+districts|active|boolean|t|t|f
+employer_invites|token|text|t|f|f
+employer_invites|employer_id|text|t|f|f
+employer_invites|prefill|jsonb|t|t|f
+employer_invites|collect_schedule|boolean|t|t|f
+employer_invites|status|text|t|t|f
+employer_invites|subscriber_id|text|f|f|f
+employer_invites|created_at|timestamp with time zone|t|t|f
+employer_invites|expires_at|timestamp with time zone|t|t|f
+employer_invites|completed_at|timestamp with time zone|f|f|f
+employers|id|text|t|f|f
+employers|name|text|t|f|f
+employers|sector|text|f|f|f
+employers|registration_no|text|f|f|f
+employers|contact_name|text|f|f|f
+employers|contact_phone|text|f|f|f
+employers|contact_email|text|f|f|f
+employers|district|text|f|f|f
+employers|payroll_cadence|text|f|f|f
+employers|default_contribution_config|jsonb|t|t|f
+employers|created_at|timestamp with time zone|t|t|f
+employers|updated_at|timestamp with time zone|t|t|f
+employers|status|text|t|t|f
+entity_detach_log|id|bigint|t|t|f
+entity_detach_log|subscriber_id|text|t|f|f
+entity_detach_log|link_kind|text|t|f|f
+entity_detach_log|prior_value|text|t|f|f
+entity_detach_log|scope_id|text|t|f|f
+entity_detach_log|detached_at|timestamp with time zone|t|t|f
+entity_detach_log|restored_at|timestamp with time zone|f|f|f
+entity_status_log|id|bigint|t|t|f
+entity_status_log|entity_kind|text|t|f|f
+entity_status_log|entity_id|text|t|f|f
+entity_status_log|prior_status|text|t|f|f
+entity_status_log|scope_id|text|t|f|f
+entity_status_log|changed_at|timestamp with time zone|t|t|f
+entity_status_log|restored_at|timestamp with time zone|f|f|f
+insurance_policies|subscriber_id|text|t|f|f
+insurance_policies|cover|numeric|t|t|f
+insurance_policies|premium_monthly|numeric|t|t|f
+insurance_policies|policy_start|date|f|f|f
+insurance_policies|renewal_date|date|f|f|f
+insurance_policies|status|text|t|t|f
+insurance_policies|updated_at|timestamp with time zone|t|t|f
+insurance_policies|funded_by|text|t|t|f
+money_nonces|nonce|text|t|f|f
+money_nonces|subscriber_id|text|t|f|f
+money_nonces|kind|text|t|f|f
+money_nonces|result|jsonb|t|f|f
+money_nonces|created_at|timestamp with time zone|t|t|f
+nav_snapshots|id|text|t|t|f
+nav_snapshots|fund_code|text|t|t|f
+nav_snapshots|nav_date|date|t|f|f
+nav_snapshots|unit_price|numeric|t|t|f
+nav_snapshots|status|text|t|t|f
+nav_snapshots|published_at|timestamp with time zone|f|f|f
+nav_snapshots|source|text|f|f|f
+nav_snapshots|created_at|timestamp with time zone|t|t|f
+nav_snapshots|published_by|text|f|f|f
+nav_snapshots|units_in_issue|numeric|f|f|f
+nav_snapshots|aum|numeric|f|f|f
+nav_snapshots|members_priced|integer|f|f|f
+nominee_claims|id|text|t|t|f
+nominee_claims|reference|text|t|t|f
+nominee_claims|product|text|t|f|f
+nominee_claims|deceased_name|text|t|f|f
+nominee_claims|deceased_nin|text|f|f|f
+nominee_claims|deceased_phone|text|f|f|f
+nominee_claims|date_of_death|date|t|f|f
+nominee_claims|claimant_name|text|t|f|f
+nominee_claims|claimant_nin|text|f|f|f
+nominee_claims|claimant_phone|text|t|f|f
+nominee_claims|claimant_email|text|f|f|f
+nominee_claims|relationship|text|t|f|f
+nominee_claims|district|text|f|f|f
+nominee_claims|notes|text|f|f|f
+nominee_claims|status|text|t|t|f
+nominee_claims|reviewed_by|text|f|f|f
+nominee_claims|reviewed_at|timestamp with time zone|f|f|f
+nominee_claims|review_note|text|f|f|f
+nominee_claims|matched_subscriber_id|text|f|f|f
+nominee_claims|created_at|timestamp with time zone|t|t|f
+nominees|id|text|t|f|f
+nominees|subscriber_id|text|t|f|f
+nominees|type|nominee_type|t|f|f
+nominees|name|text|t|f|f
+nominees|phone|text|f|f|f
+nominees|relationship|text|f|f|f
+nominees|nin|text|f|f|f
+nominees|share|numeric|t|f|f
+nominees|created_at|timestamp with time zone|t|t|f
+notifications|id|text|t|f|f
+notifications|recipient_role|text|t|f|f
+notifications|recipient_id|text|t|f|f
+notifications|type|text|t|f|f
+notifications|title|text|t|f|f
+notifications|body|text|t|f|f
+notifications|amount|numeric|f|f|f
+notifications|ref_id|text|f|f|f
+notifications|is_read|boolean|t|t|f
+notifications|created_at|timestamp with time zone|t|t|f
+regions|id|text|t|f|f
+regions|name|text|t|f|f
+regions|parent_id|text|f|f|f
+regions|center_lng|numeric|f|f|f
+regions|center_lat|numeric|f|f|f
+settlement_batches|id|text|t|f|f
+settlement_batches|agent_id|text|t|f|f
+settlement_batches|branch_id|text|f|f|f
+settlement_batches|pending_total|numeric|t|f|f
+settlement_batches|paid_amount|numeric|t|f|f
+settlement_batches|txn_ref|text|f|f|f
+settlement_batches|paid_date|date|f|f|f
+settlement_batches|line_count|integer|t|f|f
+settlement_batches|created_at|timestamp with time zone|t|t|f
+settlement_batches|client_nonce|text|f|f|f
+settlement_uploads|nonce|text|t|f|f
+settlement_uploads|result|jsonb|t|f|f
+settlement_uploads|created_at|timestamp with time zone|t|t|f
+subscriber_balances|subscriber_id|text|t|f|f
+subscriber_balances|retirement_balance|numeric|t|t|f
+subscriber_balances|emergency_balance|numeric|t|t|f
+subscriber_balances|total_balance|numeric|t|t|f
+subscriber_balances|units|numeric|t|t|f
+subscriber_balances|updated_at|timestamp with time zone|t|t|f
+subscriber_balances|retirement_units|numeric|t|t|f
+subscriber_balances|emergency_units|numeric|t|t|f
+subscriber_balances|invested|numeric|t|t|f
+subscriber_balances|nav_as_of|date|f|f|f
+subscriber_balances_pre_nav|subscriber_id|text|f|f|f
+subscriber_balances_pre_nav|retirement_balance|numeric|f|f|f
+subscriber_balances_pre_nav|emergency_balance|numeric|f|f|f
+subscriber_balances_pre_nav|total_balance|numeric|f|f|f
+subscriber_balances_pre_nav|units|numeric|f|f|f
+subscriber_balances_pre_nav|updated_at|timestamp with time zone|f|f|f
+subscriber_balances_pre_nav|retirement_units|numeric|f|f|f
+subscriber_balances_pre_nav|emergency_units|numeric|f|f|f
+subscriber_balances_pre_nav|invested|numeric|f|f|f
+subscriber_balances_pre_nav|nav_as_of|date|f|f|f
+subscriber_balances_pre_nav|snapshot_at|timestamp with time zone|f|f|f
+subscriber_insurance_products|subscriber_id|text|t|f|f
+subscriber_insurance_products|product|text|t|f|f
+subscriber_insurance_products|cover|numeric|t|t|f
+subscriber_insurance_products|premium_monthly|numeric|t|t|f
+subscriber_insurance_products|policy_start|date|f|f|f
+subscriber_insurance_products|renewal_date|date|f|f|f
+subscriber_insurance_products|status|text|t|t|f
+subscriber_insurance_products|updated_at|timestamp with time zone|t|t|f
+subscriber_insurance_products|funded_by|text|t|t|f
+subscriber_signup_uploads|nonce|text|t|f|f
+subscriber_signup_uploads|result|jsonb|t|f|f
+subscriber_signup_uploads|created_at|timestamp with time zone|t|t|f
+subscribers|id|text|t|f|f
+subscribers|name|text|t|f|f
+subscribers|email|text|f|f|f
+subscribers|phone|text|t|f|f
+subscribers|gender|text|f|f|f
+subscribers|age|integer|f|f|f
+subscribers|dob|date|f|f|f
+subscribers|nin|text|f|f|f
+subscribers|occupation|text|f|f|f
+subscribers|agent_id|text|f|f|f
+subscribers|district_id|text|f|f|f
+subscribers|kyc_status|text|t|t|f
+subscribers|is_active|boolean|t|t|f
+subscribers|is_demo_signup|boolean|t|t|f
+subscribers|insurance_same_as_pension|boolean|t|t|f
+subscribers|registered_date|date|f|f|f
+subscribers|consent_at|timestamp with time zone|f|f|f
+subscribers|last_contribution_date|date|f|f|f
+subscribers|contribution_history|jsonb|t|t|f
+subscribers|products_held|jsonb|t|t|f
+subscribers|current_unit_value|numeric|f|f|f
+subscribers|unit_value_as_of|timestamp with time zone|f|f|f
+subscribers|created_at|timestamp with time zone|t|t|f
+subscribers|employer_id|text|f|f|f
+subscribers|compensation|numeric|t|t|f
+subscribers_unit_value_pre_nav|id|text|f|f|f
+subscribers_unit_value_pre_nav|current_unit_value|numeric|f|f|f
+subscribers_unit_value_pre_nav|unit_value_as_of|timestamp with time zone|f|f|f
+subscribers_unit_value_pre_nav|snapshot_at|timestamp with time zone|f|f|f
+transactions|id|text|t|f|f
+transactions|subscriber_id|text|t|f|f
+transactions|agent_id|text|f|f|f
+transactions|type|text|t|f|f
+transactions|amount|numeric|t|f|f
+transactions|date|timestamp with time zone|t|f|f
+transactions|status|text|f|f|f
+transactions|method|text|f|f|f
+transactions|txn_ref|text|f|f|f
+transactions|bucket|text|f|f|f
+transactions|split_retirement|numeric|f|f|f
+transactions|split_emergency|numeric|f|f|f
+transactions|created_at|timestamp with time zone|t|t|f
+transactions|source|text|t|t|f
+transactions|contribution_run_id|text|f|f|f
+users|id|text|t|f|f
+users|phone|text|t|f|f
+users|role|text|t|f|f
+users|name|text|f|f|f
+users|entity_id|text|f|f|f
+users|email|text|f|f|f
+users|last_login_at|timestamp with time zone|f|f|f
+users|created_at|timestamp with time zone|t|t|f
+users|password_hash|text|f|f|f
+v_reconciliation_exceptions|kind|text|f|f|f
+v_reconciliation_exceptions|check_code|text|f|f|f
+v_reconciliation_exceptions|issue|text|f|f|f
+v_reconciliation_exceptions|ref_id|text|f|f|f
+v_reconciliation_exceptions|who|text|f|f|f
+v_reconciliation_exceptions|subscriber_id|text|f|f|f
+v_reconciliation_exceptions|amount|numeric|f|f|f
+v_reconciliation_exceptions|occurred_on|date|f|f|f
+withdrawals|id|text|t|f|f
+withdrawals|subscriber_id|text|t|f|f
+withdrawals|amount|numeric|t|f|f
+withdrawals|bucket|text|t|f|f
+withdrawals|reason|text|f|f|f
+withdrawals|method|text|f|f|f
+withdrawals|status|text|t|t|f
+withdrawals|date|date|t|f|f
+withdrawals|reference|text|f|f|f
+withdrawals|created_at|timestamp with time zone|t|t|f
+withdrawals|expected_by|date|f|t|f

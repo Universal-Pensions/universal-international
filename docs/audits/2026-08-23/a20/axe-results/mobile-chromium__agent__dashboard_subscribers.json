@@ -1,0 +1,20 @@
+{
+  "role": "agent",
+  "route": "/dashboard/subscribers",
+  "project": "mobile-chromium",
+  "url": "http://localhost:5173/dashboard/subscribers",
+  "violations": [
+    {
+      "id": "color-contrast",
+      "impact": "serious",
+      "help": "Elements must meet minimum color contrast ratio thresholds",
+      "nodes": 5,
+      "targets": [
+        "._row_m423k_113:nth-child(1) > ._avatar_m423k_144[data-gender=\"female\"][aria-hidden=\"true\"]",
+        "._row_m423k_113:nth-child(1) > ._rowBody_m423k_162 > ._rowMeta_m423k_187 > ._statusPill_m423k_225[data-tone=\"active\"]",
+        "._row_m423k_113:nth-child(2) > ._rowBody_m423k_162 > ._rowMeta_m423k_187 > ._statusPill_m423k_225[data-tone=\"active\"]",
+        "._row_m423k_113:nth-child(3) > ._rowBody_m423k_162 > ._rowMeta_m423k_187 > ._statusPill_m423k_225[data-tone=\"active\"]"
+      ]
+    }
+  ]
+}

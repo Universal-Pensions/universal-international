@@ -1,0 +1,20 @@
+{
+  "role": "public",
+  "route": "/faq",
+  "project": "chromium",
+  "url": "http://localhost:5173/faq",
+  "violations": [
+    {
+      "id": "color-contrast",
+      "impact": "serious",
+      "help": "Elements must meet minimum color contrast ratio thresholds",
+      "nodes": 8,
+      "targets": [
+        "._regulatory_1tlk9_35",
+        "._linkGroup_1tlk9_48:nth-child(1) > h3",
+        "._linkGroup_1tlk9_48:nth-child(2) > h3",
+        "._linkGroup_1tlk9_48:nth-child(3) > h3"
+      ]
+    }
+  ]
+}

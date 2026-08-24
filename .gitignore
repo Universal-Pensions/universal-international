@@ -72,3 +72,10 @@ docs/audits/**/baseline-traces/
 # Knowledge-graph output from the /understand tooling — 16 MB of generated
 # JSON across ~228 files, rebuilt on demand via `/understand`. Local-only.
 .understand-anything/
+
+# Audit screenshots — 431 PNGs / 48 MB of Playwright captures from the
+# 2026-08-23 audit. The textual evidence (findings.json, reports, probe
+# scripts) IS tracked; the images are re-capturable and would nearly double
+# the repo. Same rationale as baseline-traces/ above.
+docs/audits/**/screenshots/
+docs/audits/**/*.png

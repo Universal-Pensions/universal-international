@@ -1,0 +1,80 @@
+[
+ {
+  "id": "A13-001",
+  "title": "Distributor Reports route unreachable on every viewport below 1024px; Menu 'Reports' tile and both routed report screens are dead",
+  "severity": "high",
+  "confidence": "confirmed",
+  "category": "broken-route",
+  "surface": "distributor mobile shell (375-1023px)",
+  "location": "src/contexts/DashboardNavContext.jsx:92 (missing !isDesktop guard on distributor arm); redirect at :110-116; orphans src/dashboard/mobile/ReportsMobile.jsx, ReportViewMobile.jsx, DistributorMobileShell.jsx:55-56, tile DistributorHubMobile.jsx:96",
+  "evidence": "Real-UI sign-in as d-001 at 375px (a13-01-dist-mobile.mjs): Menu shows 'Reports Download data' tile (menu-375.png); TAP -> URL settles http://localhost:5173/dashboard, screen is Home dashboard 'Welcome back... UGX 1.95B', Home tab active (reports-tile-tap-375.png). Deep-link /dashboard/reports -> settled url /dashboard; /dashboard/reports/contributions -> /dashboard. Band boundary (a13-09-viewband.mjs): 'W=768: bottomTabBar=1 mapRail=0 -> shell=MOBILE | /dashboard/reports settles=/dashboard' ; 'W=1024: shell=DESKTOP | /dashboard/reports settles=/dashboard (panel opens)'. So entire 375-1023 band is dead; desktop >=1024 panel works.",
+  "impact": "On any sub-1024 viewport (phone, tablet-portrait, small laptop window) a distributor taps 'Reports / Download data' and nothing happens; ReportsMobile, ReportViewMobile and all 11 report views are unreachable. A whole feature is dead on a supported viewport.",
+  "suggested_fix": "const usesReportsPanel = (role === 'distributor' || role === 'branch') && !isDesktop;  Add a 375px E2E asserting /dashboard/reports renders ReportsMobile.",
+  "roles_affected": [
+   "distributor"
+  ],
+  "repro": [
+   "Sign in as distributor d-001 (+256700000021, any 6-digit code) at 375px",
+   "Tap Menu -> tap the 'Reports' tile",
+   "Observe bounce to /dashboard (Home) instead of the reports screen",
+   "Deep-link /dashboard/reports and /dashboard/reports/contributions -> both settle at /dashboard"
+  ],
+  "demo_visible": true,
+  "effort": "S",
+  "agent": "A13"
+ },
+ {
+  "id": "A13-002",
+  "title": "Distributor mobile Branches/Agents lists show all-zero metrics (0 subs / 0 agents / 0 funds) for ~2-3s until the separate metrics query resolves",
+  "severity": "low",
+  "confidence": "confirmed",
+  "category": "loading-state",
+  "surface": "distributor mobile Branches & Agents lists (375px)",
+  "location": "src/dashboard/mobile/BranchesMobile.jsx:41-77 (list via useAllEntities, metrics via separate useAllEntitiesMetrics; spinner guard :80 covers only the list read); same pattern in AgentsMobile.jsx",
+  "evidence": "a13-branches-load.mjs: early frame (~3.5s) summary '291 Branches / 0 Agents / 0 Funds', rows 'Buikwe Central 0 subs' (branches-375.png early). By ~3s metrics land: '@3000ms summary=291/1,872/1.95B | firstRow=Bukedea Central/41/71' and list re-sorts by subscriber count. Metric fields default to 0 when branchMetrics[b.id] is still empty rather than showing a skeleton.",
+  "impact": "A rep who scrolls the Branches/Agents list in the first ~2-3s sees a network that looks empty (all zeros), then it self-corrects. Transiently misleading during a live demo.",
+  "suggested_fix": "Gate the metric count columns on useAllEntitiesMetrics isLoading (skeleton them) instead of defaulting to 0, or hold the list render until both queries resolve.",
+  "roles_affected": [
+   "distributor"
+  ],
+  "demo_visible": true,
+  "effort": "S",
+  "agent": "A13"
+ },
+ {
+  "id": "A13-003",
+  "title": "CSV export 5,000-row mobile cap is unreachable for distributors (dead safeguard)",
+  "severity": "low",
+  "confidence": "confirmed",
+  "category": "dead-code",
+  "surface": "distributor report CSV export",
+  "location": "src/utils/csvDownload.js:33 (MOBILE_ROW_CAP=5000, applied only when isMobile) via src/dashboard/reports/ReportView.jsx:72-88",
+  "evidence": "The cap fires only on a mobile UA reaching a report export, but the distributor reports route bounces on every sub-1024 viewport (A13-001) and d-001's largest export (All Subscribers) is 4,602 rows < 5,000. Desktop export verified with NO cap: a13-03-csv-map.mjs -> 'CSV DOWNLOAD file= all-subscribers-2026-08-24.csv dataRows= 4602'.",
+  "impact": "The 'cap at 5,000 + toast' safeguard can never trigger for the distributor role. Recorded so it is not mistaken for tested behaviour. (Platform total 5,064 would cap, but only admin's All-Subscribers export reaches that count.)",
+  "suggested_fix": "Once A13-001 is fixed the mobile cap becomes reachable; add an E2E on the mobile reports export asserting the cap toast at >5,000 rows (admin scope).",
+  "roles_affected": [
+   "distributor"
+  ],
+  "demo_visible": false,
+  "effort": "S",
+  "agent": "A13"
+ },
+ {
+  "id": "A13-004",
+  "title": "Desktop panel state (Commissions/Reports/etc.) is not URL-routed; a hard refresh drops the open panel back to Overview",
+  "severity": "info",
+  "confidence": "confirmed",
+  "category": "state-persistence",
+  "surface": "distributor desktop shell panels",
+  "location": "src/contexts/DashboardPanelContext.jsx (panels intentionally state-based per CLAUDE.md sec4 hard rule 2)",
+  "evidence": "a13-08-panel-drill-error.mjs: open Commissions panel -> URL stays /dashboard; hard reload -> renders Overview ('Now viewing National Overview'), not Commissions (panel-refresh-1440.png). Contrast: geo drill DOES route (/dashboard/regions/r-central).",
+  "impact": "By-design, but a rep who refreshes mid-demo on a panel (Commissions/Reports) lands on Overview; panels have no deep-link or browser-back support.",
+  "suggested_fix": "None required (documented intentional architecture). If deep-linkable panels are desired later, mirror panel state to a query param.",
+  "roles_affected": [
+   "distributor"
+  ],
+  "demo_visible": true,
+  "effort": "M",
+  "agent": "A13"
+ }
+]

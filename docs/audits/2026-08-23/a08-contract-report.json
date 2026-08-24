@@ -1,0 +1,1160 @@
+{
+  "counts": {
+    "filesScanned": 610,
+    "rpcSites": 55,
+    "rpcOk": 55,
+    "rpcMissingLive": 0,
+    "rpcArgMismatch": 0,
+    "rpcMissingRequired": 0,
+    "selectSites": 38,
+    "selectDynamic": 2,
+    "colRefsVerified": 106,
+    "colIssues": 0,
+    "embedsVerified": 18,
+    "embedIssues": 0,
+    "filterSites": 56,
+    "filtersVerified": 56,
+    "filterIssues": 0,
+    "orderIssues": 0,
+    "writeSites": 12
+  },
+  "rpcProblems": [],
+  "rpcAll": [
+    {
+      "file": "src/services/accessRequests.js",
+      "line": 20,
+      "name": "list_access_requests",
+      "verdict": "OK",
+      "passed": [
+        "p_status"
+      ],
+      "live": "p_status text",
+      "anon": false,
+      "auth": true
+    },
+    {
+      "file": "src/services/accessRequests.js",
+      "line": 28,
+      "name": "approve_access_request",
+      "verdict": "OK",
+      "passed": [
+        "p_id"
+      ],
+      "live": "p_id text",
+      "anon": false,
+      "auth": true
+    },
+    {
+      "file": "src/services/accessRequests.js",
+      "line": 36,
+      "name": "deny_access_request",
+      "verdict": "OK",
+      "passed": [
+        "p_id"
+      ],
+      "live": "p_id text",
+      "anon": false,
+      "auth": true
+    },
+    {
+      "file": "src/services/adminAttention.js",
+      "line": 78,
+      "name": "get_admin_attention",
+      "verdict": "OK",
+      "passed": [],
+      "live": "",
+      "anon": false,
+      "auth": true
+    },
+    {
+      "file": "src/services/adminAttention.js",
+      "line": 101,
+      "name": "get_admin_attention_rows",
+      "verdict": "OK",
+      "passed": [
+        "p_type",
+        "p_limit"
+      ],
+      "live": "p_type text, p_limit integer",
+      "anon": false,
+      "auth": true
+    },
+    {
+      "file": "src/services/commissions.js",
+      "line": 135,
+      "name": "get_commission_rate",
+      "verdict": "OK",
+      "passed": [],
+      "live": "",
+      "anon": false,
+      "auth": true
+    },
+    {
+      "file": "src/services/commissions.js",
+      "line": 159,
+      "name": "set_commission_rate",
+      "verdict": "OK",
+      "passed": [
+        "p_rate"
+      ],
+      "live": "p_rate numeric",
+      "anon": false,
+      "auth": true
+    },
+    {
+      "file": "src/services/commissions.js",
+      "line": 176,
+      "name": "get_commission_summary",
+      "verdict": "OK",
+      "passed": [
+        "p_branch_id"
+      ],
+      "live": "p_branch_id text",
+      "anon": false,
+      "auth": true
+    },
+    {
+      "file": "src/services/commissions.js",
+      "line": 197,
+      "name": "get_entity_commission_summary",
+      "verdict": "OK",
+      "passed": [
+        "p_level",
+        "p_entity_id"
+      ],
+      "live": "p_level text, p_entity_id text",
+      "anon": false,
+      "auth": true
+    },
+    {
+      "file": "src/services/commissions.js",
+      "line": 241,
+      "name": "get_agent_commission_list",
+      "verdict": "OK",
+      "passed": [
+        "p_status_focus"
+      ],
+      "live": "p_status_focus text",
+      "anon": false,
+      "auth": true
+    },
+    {
+      "file": "src/services/commissions.js",
+      "line": 256,
+      "name": "get_agent_commission_detail",
+      "verdict": "OK",
+      "passed": [
+        "p_agent_id"
+      ],
+      "live": "p_agent_id text",
+      "anon": false,
+      "auth": true
+    },
+    {
+      "file": "src/services/commissions.js",
+      "line": 336,
+      "name": "get_pending_dues_by_agent",
+      "verdict": "OK",
+      "passed": [],
+      "live": "",
+      "anon": false,
+      "auth": true
+    },
+    {
+      "file": "src/services/commissions.js",
+      "line": 356,
+      "name": "get_pending_dues_by_branch",
+      "verdict": "OK",
+      "passed": [],
+      "live": "",
+      "anon": false,
+      "auth": true
+    },
+    {
+      "file": "src/services/commissions.js",
+      "line": 397,
+      "name": "apply_settlement",
+      "verdict": "OK",
+      "passed": [
+        "p_rows",
+        "p_nonce"
+      ],
+      "live": "p_rows jsonb, p_nonce text",
+      "anon": false,
+      "auth": true
+    },
+    {
+      "file": "src/services/employer.js",
+      "line": 597,
+      "name": "get_employer_metrics",
+      "verdict": "OK",
+      "passed": [],
+      "live": "",
+      "anon": false,
+      "auth": true
+    },
+    {
+      "file": "src/services/employer.js",
+      "line": 628,
+      "name": "create_employer",
+      "verdict": "OK",
+      "passed": [
+        "p_name",
+        "p_sector",
+        "p_registration_no",
+        "p_contact_name",
+        "p_contact_phone",
+        "p_contact_email",
+        "p_district"
+      ],
+      "live": "p_name text, p_sector text, p_registration_no text, p_contact_name text, p_contact_phone text, p_contact_email text, p_district text, p_payroll_cadence text, p_default_contribution_config jsonb",
+      "anon": false,
+      "auth": true
+    },
+    {
+      "file": "src/services/employer.js",
+      "line": 667,
+      "name": "get_all_employers_metrics",
+      "verdict": "OK",
+      "passed": [],
+      "live": "",
+      "anon": false,
+      "auth": true
+    },
+    {
+      "file": "src/services/employer.js",
+      "line": 737,
+      "name": "create_subscriber_from_employer_onboard",
+      "verdict": "OK",
+      "passed": [
+        "payload",
+        "calling_employer_id",
+        "p_nonce"
+      ],
+      "live": "payload jsonb, calling_employer_id text, p_nonce text",
+      "anon": false,
+      "auth": true
+    },
+    {
+      "file": "src/services/employer.js",
+      "line": 757,
+      "name": "submit_employer_contribution_run",
+      "verdict": "OK",
+      "passed": [
+        "p_period_label",
+        "p_method",
+        "p_nonce"
+      ],
+      "live": "p_period_label text, p_method text, p_nonce text",
+      "anon": false,
+      "auth": true
+    },
+    {
+      "file": "src/services/employer.js",
+      "line": 786,
+      "name": "apply_group_insurance",
+      "verdict": "OK",
+      "passed": [
+        "p_cover"
+      ],
+      "live": "p_cover numeric",
+      "anon": false,
+      "auth": true
+    },
+    {
+      "file": "src/services/employer.js",
+      "line": 807,
+      "name": "remove_employer_member",
+      "verdict": "OK",
+      "passed": [
+        "p_subscriber_id"
+      ],
+      "live": "p_subscriber_id text",
+      "anon": false,
+      "auth": true
+    },
+    {
+      "file": "src/services/employer.js",
+      "line": 833,
+      "name": "update_employer_member_compensation",
+      "verdict": "OK",
+      "passed": [
+        "p_subscriber_id",
+        "p_compensation"
+      ],
+      "live": "p_subscriber_id text, p_compensation numeric",
+      "anon": false,
+      "auth": true
+    },
+    {
+      "file": "src/services/employer.js",
+      "line": 854,
+      "name": "set_employer_status",
+      "verdict": "OK",
+      "passed": [
+        "p_employer_id",
+        "p_status"
+      ],
+      "live": "p_employer_id text, p_status text",
+      "anon": false,
+      "auth": true
+    },
+    {
+      "file": "src/services/employer.js",
+      "line": 907,
+      "name": "update_employer_profile",
+      "verdict": "OK",
+      "passed": [],
+      "live": "p_patch jsonb, p_group_cover numeric, p_insurance_enabled boolean",
+      "anon": false,
+      "auth": true
+    },
+    {
+      "file": "src/services/employer.js",
+      "line": 957,
+      "name": "create_employer_invite",
+      "verdict": "OK",
+      "passed": [
+        "p_prefill"
+      ],
+      "live": "p_prefill jsonb",
+      "anon": false,
+      "auth": true
+    },
+    {
+      "file": "src/services/employer.js",
+      "line": 1068,
+      "name": "cancel_employer_invite",
+      "verdict": "OK",
+      "passed": [
+        "p_token"
+      ],
+      "live": "p_token text",
+      "anon": false,
+      "auth": true
+    },
+    {
+      "file": "src/services/entities.js",
+      "line": 778,
+      "name": "get_top_branch",
+      "verdict": "OK",
+      "passed": [
+        "p_level",
+        "p_parent_id"
+      ],
+      "live": "p_level text, p_parent_id text",
+      "anon": false,
+      "auth": true
+    },
+    {
+      "file": "src/services/entities.js",
+      "line": 797,
+      "name": "get_breadcrumb",
+      "verdict": "OK",
+      "passed": [
+        "p_level",
+        "p_ids"
+      ],
+      "live": "p_level text, p_ids jsonb",
+      "anon": false,
+      "auth": true
+    },
+    {
+      "file": "src/services/entities.js",
+      "line": 868,
+      "name": "get_entity_metrics_rollup",
+      "verdict": "OK",
+      "passed": [
+        "p_level",
+        "p_entity_ids"
+      ],
+      "live": "p_level text, p_entity_ids text[]",
+      "anon": false,
+      "auth": true
+    },
+    {
+      "file": "src/services/entities.js",
+      "line": 917,
+      "name": "get_distributor_rollup",
+      "verdict": "OK",
+      "passed": [],
+      "live": "",
+      "anon": false,
+      "auth": true
+    },
+    {
+      "file": "src/services/entities.js",
+      "line": 961,
+      "name": "get_top_entities",
+      "verdict": "OK",
+      "passed": [
+        "p_level",
+        "p_sort_key",
+        "p_limit"
+      ],
+      "live": "p_level text, p_sort_key text, p_limit integer",
+      "anon": false,
+      "auth": true
+    },
+    {
+      "file": "src/services/entities.js",
+      "line": 1013,
+      "name": "get_branch_pending_contributions",
+      "verdict": "OK",
+      "passed": [
+        "p_branch_id"
+      ],
+      "live": "p_branch_id text",
+      "anon": false,
+      "auth": true
+    },
+    {
+      "file": "src/services/entities.js",
+      "line": 1222,
+      "name": "create_distributor",
+      "verdict": "OK",
+      "passed": [
+        "p_name",
+        "p_manager_name",
+        "p_manager_phone",
+        "p_manager_email",
+        "p_parent_id",
+        "p_registration_no"
+      ],
+      "live": "p_name text, p_manager_name text, p_manager_phone text, p_manager_email text, p_parent_id text, p_registration_no text",
+      "anon": false,
+      "auth": true
+    },
+    {
+      "file": "src/services/entities.js",
+      "line": 1253,
+      "name": "set_distributor_status",
+      "verdict": "OK",
+      "passed": [
+        "p_distributor_id",
+        "p_status"
+      ],
+      "live": "p_distributor_id text, p_status text",
+      "anon": false,
+      "auth": true
+    },
+    {
+      "file": "src/services/entities.js",
+      "line": 1315,
+      "name": "get_platform_overview",
+      "verdict": "OK",
+      "passed": [],
+      "live": "",
+      "anon": false,
+      "auth": true
+    },
+    {
+      "file": "src/services/entities.js",
+      "line": 1340,
+      "name": "get_employer_geo_rollup",
+      "verdict": "OK",
+      "passed": [],
+      "live": "",
+      "anon": false,
+      "auth": true
+    },
+    {
+      "file": "src/services/entities.js",
+      "line": 1379,
+      "name": "get_employer_activity_rollup",
+      "verdict": "OK",
+      "passed": [],
+      "live": "",
+      "anon": false,
+      "auth": true
+    },
+    {
+      "file": "src/services/nav.js",
+      "line": 86,
+      "name": "get_nav_overview",
+      "verdict": "OK",
+      "passed": [
+        "p_fund_code"
+      ],
+      "live": "p_fund_code text",
+      "anon": false,
+      "auth": true
+    },
+    {
+      "file": "src/services/nav.js",
+      "line": 105,
+      "name": "list_nav_snapshots",
+      "verdict": "OK",
+      "passed": [
+        "p_fund_code",
+        "p_limit",
+        "p_offset",
+        "p_status"
+      ],
+      "live": "p_fund_code text, p_limit integer, p_offset integer, p_status text",
+      "anon": false,
+      "auth": true
+    },
+    {
+      "file": "src/services/nav.js",
+      "line": 143,
+      "name": "publish_nav_snapshot",
+      "verdict": "OK",
+      "passed": [
+        "p_nav_date",
+        "p_unit_price",
+        "p_fund_code",
+        "p_source",
+        "p_confirm_move"
+      ],
+      "live": "p_nav_date date, p_unit_price numeric, p_fund_code text, p_source text, p_confirm_move boolean",
+      "anon": false,
+      "auth": true
+    },
+    {
+      "file": "src/services/nomineeClaims.js",
+      "line": 23,
+      "name": "list_nominee_claims",
+      "verdict": "OK",
+      "passed": [
+        "p_status"
+      ],
+      "live": "p_status text",
+      "anon": false,
+      "auth": true
+    },
+    {
+      "file": "src/services/nomineeClaims.js",
+      "line": 38,
+      "name": "review_nominee_claim",
+      "verdict": "OK",
+      "passed": [
+        "p_id",
+        "p_status",
+        "p_note",
+        "p_subscriber_id"
+      ],
+      "live": "p_id text, p_status text, p_note text, p_subscriber_id text",
+      "anon": false,
+      "auth": true
+    },
+    {
+      "file": "src/services/notifications.js",
+      "line": 178,
+      "name": "mark_notifications_read",
+      "verdict": "OK",
+      "passed": [
+        "p_ids"
+      ],
+      "live": "p_ids text[]",
+      "anon": false,
+      "auth": true
+    },
+    {
+      "file": "src/services/notifications.js",
+      "line": 287,
+      "name": "admin_notify",
+      "verdict": "OK",
+      "passed": [
+        "p_recipient_role",
+        "p_recipient_id",
+        "p_type",
+        "p_title",
+        "p_body",
+        "p_ref_id",
+        "p_amount"
+      ],
+      "live": "p_recipient_role text, p_recipient_id text, p_type text, p_title text, p_body text, p_ref_id text, p_amount numeric",
+      "anon": false,
+      "auth": true
+    },
+    {
+      "file": "src/services/search.js",
+      "line": 32,
+      "name": "search_entities",
+      "verdict": "OK",
+      "passed": [
+        "p_q"
+      ],
+      "live": "p_q text",
+      "anon": false,
+      "auth": true
+    },
+    {
+      "file": "src/services/subscriber.js",
+      "line": 652,
+      "name": "get_my_employer_funding",
+      "verdict": "OK",
+      "passed": [],
+      "live": "",
+      "anon": false,
+      "auth": true
+    },
+    {
+      "file": "src/services/subscriber.js",
+      "line": 822,
+      "name": "make_contribution",
+      "verdict": "OK",
+      "passed": [
+        "p_nonce",
+        "p_amount",
+        "p_retirement_pct",
+        "p_method"
+      ],
+      "live": "p_nonce text, p_amount numeric, p_retirement_pct numeric, p_method text",
+      "anon": false,
+      "auth": true
+    },
+    {
+      "file": "src/services/subscriber.js",
+      "line": 902,
+      "name": "request_withdrawal",
+      "verdict": "OK",
+      "passed": [
+        "p_nonce",
+        "p_amount",
+        "p_bucket",
+        "p_reason",
+        "p_method",
+        "p_split_retirement",
+        "p_split_emergency"
+      ],
+      "live": "p_nonce text, p_amount numeric, p_bucket text, p_reason text, p_method text, p_split_retirement numeric, p_split_emergency numeric",
+      "anon": false,
+      "auth": true
+    },
+    {
+      "file": "src/services/subscriber.js",
+      "line": 988,
+      "name": "submit_hospital_cash_claim",
+      "verdict": "OK",
+      "passed": [
+        "p_nonce",
+        "p_admission_date",
+        "p_discharge_date",
+        "p_provider",
+        "p_description"
+      ],
+      "live": "p_nonce text, p_admission_date date, p_discharge_date date, p_provider text, p_description text",
+      "anon": false,
+      "auth": true
+    },
+    {
+      "file": "src/services/subscriber.js",
+      "line": 1097,
+      "name": "upsert_nominees",
+      "verdict": "OK",
+      "passed": [
+        "p_subscriber_id",
+        "p_pension",
+        "p_insurance"
+      ],
+      "live": "p_subscriber_id text, p_pension jsonb, p_insurance jsonb",
+      "anon": false,
+      "auth": true
+    },
+    {
+      "file": "src/services/subscriber.js",
+      "line": 1318,
+      "name": "fund_insurance_products",
+      "verdict": "OK",
+      "passed": [
+        "p_nonce",
+        "p_funding_mode",
+        "p_products",
+        "p_savings_pct",
+        "p_method"
+      ],
+      "live": "p_nonce text, p_funding_mode text, p_products jsonb, p_savings_pct numeric, p_method text",
+      "anon": false,
+      "auth": true
+    },
+    {
+      "file": "src/services/subscriber.js",
+      "line": 1496,
+      "name": "create_subscriber_from_signup",
+      "verdict": "OK",
+      "passed": [
+        "payload",
+        "p_nonce"
+      ],
+      "live": "payload jsonb, p_nonce text",
+      "anon": true,
+      "auth": true
+    },
+    {
+      "file": "src/services/subscriber.js",
+      "line": 1512,
+      "name": "get_employer_invite",
+      "verdict": "OK",
+      "passed": [
+        "p_token"
+      ],
+      "live": "p_token text",
+      "anon": true,
+      "auth": true
+    },
+    {
+      "file": "src/services/subscriber.js",
+      "line": 1531,
+      "name": "create_subscriber_from_employer_invite",
+      "verdict": "OK",
+      "passed": [
+        "payload",
+        "p_token",
+        "p_nonce"
+      ],
+      "live": "payload jsonb, p_token text, p_nonce text",
+      "anon": true,
+      "auth": true
+    },
+    {
+      "file": "src/services/subscriber.js",
+      "line": 1556,
+      "name": "create_subscriber_from_agent_onboard",
+      "verdict": "OK",
+      "passed": [
+        "payload",
+        "calling_agent_id",
+        "p_nonce"
+      ],
+      "live": "payload jsonb, calling_agent_id text, p_nonce text",
+      "anon": false,
+      "auth": true
+    }
+  ],
+  "colIssues": [],
+  "embedIssues": [],
+  "filterIssues": [],
+  "orderIssues": [],
+  "selectSites": [
+    {
+      "file": "src/services/agent.js",
+      "line": 168,
+      "table": "subscribers",
+      "selectRaw": "id, name, phone, email, gender, age, kyc_status, is_active, registered_date, last_contribution_date, products_held, contribution_history, contribution_schedules(frequency, amount, retirement_pct, emergency_pct, include_insurance, insurance_choice_made, next_due_date), subscriber_balances(total_balance, retirement_balance, emergency_balance), insurance_policies(cover, premium_monthly, status), subscriber_insurance_products(product, status)",
+      "dynamic": false,
+      "raw": "'id, name, phone, email, gender, age, kyc_status, is_active, ' + 'registered_date, last_contribution_date, products_held, contribution_history, ' + 'contribution_schedules(frequency, amount, retirement_pct, emergency_pct, ' + 'include_insurance, insurance_choice_made, next_due_date), ' + 'subscriber",
+      "empty": false
+    },
+    {
+      "file": "src/services/agent.js",
+      "line": 219,
+      "table": "transactions",
+      "selectRaw": "id, amount, date, method, subscriber_id, subscribers(name)",
+      "dynamic": false,
+      "raw": "'id, amount, date, method, subscriber_id, subscribers(name)'",
+      "empty": false
+    },
+    {
+      "file": "src/services/commissions.js",
+      "line": 283,
+      "table": "commissions",
+      "selectRaw": "subscriber_id, subscriber_name, status, first_contribution_date",
+      "dynamic": false,
+      "raw": "'subscriber_id, subscriber_name, status, first_contribution_date'",
+      "empty": false
+    },
+    {
+      "file": "src/services/commissions.js",
+      "line": 291,
+      "table": "subscribers",
+      "selectRaw": "id, name, registered_date, is_active, subscriber_balances(total_balance)",
+      "dynamic": false,
+      "raw": "'id, name, registered_date, is_active, subscriber_balances(total_balance)'",
+      "empty": false
+    },
+    {
+      "file": "src/services/commissions.js",
+      "line": 421,
+      "table": "settlement_batches",
+      "selectRaw": "id, agent_id, branch_id, pending_total, paid_amount, txn_ref, paid_date, line_count, created_at",
+      "dynamic": false,
+      "raw": "'id, agent_id, branch_id, pending_total, paid_amount, txn_ref, paid_date, line_count, created_at'",
+      "empty": false
+    },
+    {
+      "file": "src/services/commissions.js",
+      "line": 434,
+      "table": "agents",
+      "selectRaw": "id, name",
+      "dynamic": false,
+      "raw": "'id, name'",
+      "empty": false
+    },
+    {
+      "file": "src/services/commissions.js",
+      "line": 437,
+      "table": "branches",
+      "selectRaw": "id, name",
+      "dynamic": false,
+      "raw": "'id, name'",
+      "empty": false
+    },
+    {
+      "file": "src/services/employer.js",
+      "line": 375,
+      "table": "employers",
+      "selectRaw": "*",
+      "dynamic": false,
+      "raw": "'*'",
+      "empty": false
+    },
+    {
+      "file": "src/services/employer.js",
+      "line": 397,
+      "table": "subscribers",
+      "selectRaw": null,
+      "dynamic": true,
+      "raw": "MEMBER_SELECT",
+      "empty": false
+    },
+    {
+      "file": "src/services/employer.js",
+      "line": 407,
+      "table": "transactions",
+      "selectRaw": "amount, source, type",
+      "dynamic": false,
+      "raw": "'amount, source, type'",
+      "empty": false
+    },
+    {
+      "file": "src/services/employer.js",
+      "line": 433,
+      "table": "subscribers",
+      "selectRaw": null,
+      "dynamic": true,
+      "raw": "MEMBER_SELECT",
+      "empty": false
+    },
+    {
+      "file": "src/services/employer.js",
+      "line": 458,
+      "table": "contribution_runs",
+      "selectRaw": "*",
+      "dynamic": false,
+      "raw": "'*'",
+      "empty": false
+    },
+    {
+      "file": "src/services/employer.js",
+      "line": 480,
+      "table": "contribution_runs",
+      "selectRaw": "*",
+      "dynamic": false,
+      "raw": "'*'",
+      "empty": false
+    },
+    {
+      "file": "src/services/employer.js",
+      "line": 488,
+      "table": "transactions",
+      "selectRaw": "*, subscribers(name)",
+      "dynamic": false,
+      "raw": "'*, subscribers(name)'",
+      "empty": false
+    },
+    {
+      "file": "src/services/employer.js",
+      "line": 515,
+      "table": "transactions",
+      "selectRaw": "*",
+      "dynamic": false,
+      "raw": "'*'",
+      "empty": false
+    },
+    {
+      "file": "src/services/employer.js",
+      "line": 560,
+      "table": "transactions",
+      "selectRaw": "*, subscribers(name)",
+      "dynamic": false,
+      "raw": "'*, subscribers(name)'",
+      "empty": false
+    },
+    {
+      "file": "src/services/employer.js",
+      "line": 991,
+      "table": "employer_invites",
+      "selectRaw": "*",
+      "dynamic": false,
+      "raw": "'*'",
+      "empty": false
+    },
+    {
+      "file": "src/services/entities.js",
+      "line": 634,
+      "table": "subscriber_balances",
+      "selectRaw": "subscriber_id, total_balance",
+      "dynamic": false,
+      "raw": "'subscriber_id, total_balance'",
+      "empty": false
+    },
+    {
+      "file": "src/services/entities.js",
+      "line": 1066,
+      "table": "branches",
+      "selectRaw": null,
+      "dynamic": false,
+      "raw": "",
+      "empty": true
+    },
+    {
+      "file": "src/services/entities.js",
+      "line": 1102,
+      "table": "agents",
+      "selectRaw": null,
+      "dynamic": false,
+      "raw": "",
+      "empty": true
+    },
+    {
+      "file": "src/services/entities.js",
+      "line": 1135,
+      "table": "branches",
+      "selectRaw": null,
+      "dynamic": false,
+      "raw": "",
+      "empty": true
+    },
+    {
+      "file": "src/services/entities.js",
+      "line": 1187,
+      "table": "distributors",
+      "selectRaw": null,
+      "dynamic": false,
+      "raw": "",
+      "empty": true
+    },
+    {
+      "file": "src/services/entities.js",
+      "line": 1413,
+      "table": "agents",
+      "selectRaw": null,
+      "dynamic": false,
+      "raw": "",
+      "empty": true
+    },
+    {
+      "file": "src/services/notifications.js",
+      "line": 95,
+      "table": "notifications",
+      "selectRaw": "*",
+      "dynamic": false,
+      "raw": "'*'",
+      "empty": false
+    },
+    {
+      "file": "src/services/notifications.js",
+      "line": 131,
+      "table": "notifications",
+      "selectRaw": "*",
+      "dynamic": false,
+      "raw": "'*', { count: 'exact', head: true }",
+      "empty": false
+    },
+    {
+      "file": "src/services/notifications.js",
+      "line": 170,
+      "table": "notifications",
+      "selectRaw": "id",
+      "dynamic": false,
+      "raw": "'id'",
+      "empty": false
+    },
+    {
+      "file": "src/services/subscriber.js",
+      "line": 488,
+      "table": "subscribers",
+      "selectRaw": "*, subscriber_balances(*), contribution_schedules(*), insurance_policies(*), subscriber_insurance_products(*)",
+      "dynamic": false,
+      "raw": "'*, subscriber_balances(*), contribution_schedules(*), insurance_policies(*), subscriber_insurance_products(*)'",
+      "empty": false
+    },
+    {
+      "file": "src/services/subscriber.js",
+      "line": 519,
+      "table": "transactions",
+      "selectRaw": "id, subscriber_id, agent_id, type, source, amount, date, status, method, txn_ref, bucket, split_retirement, split_emergency, contribution_run_id",
+      "dynamic": false,
+      "raw": "'id, subscriber_id, agent_id, type, source, amount, date, status, method, txn_ref, bucket, split_retirement, split_emergency, contribution_run_id',",
+      "empty": false
+    },
+    {
+      "file": "src/services/subscriber.js",
+      "line": 583,
+      "table": "transactions",
+      "selectRaw": "amount, source, type",
+      "dynamic": false,
+      "raw": "'amount, source, type'",
+      "empty": false
+    },
+    {
+      "file": "src/services/subscriber.js",
+      "line": 667,
+      "table": "claims",
+      "selectRaw": "*",
+      "dynamic": false,
+      "raw": "'*'",
+      "empty": false
+    },
+    {
+      "file": "src/services/subscriber.js",
+      "line": 684,
+      "table": "withdrawals",
+      "selectRaw": "*",
+      "dynamic": false,
+      "raw": "'*'",
+      "empty": false
+    },
+    {
+      "file": "src/services/subscriber.js",
+      "line": 705,
+      "table": "nominees",
+      "selectRaw": "*",
+      "dynamic": false,
+      "raw": "'*'",
+      "empty": false
+    },
+    {
+      "file": "src/services/subscriber.js",
+      "line": 750,
+      "table": "subscribers",
+      "selectRaw": "agent_id, agents(*, branches(name))",
+      "dynamic": false,
+      "raw": "'agent_id, agents(*, branches(name))'",
+      "empty": false
+    },
+    {
+      "file": "src/services/subscriber.js",
+      "line": 1051,
+      "table": "contribution_schedules",
+      "selectRaw": null,
+      "dynamic": false,
+      "raw": "",
+      "empty": true
+    },
+    {
+      "file": "src/services/subscriber.js",
+      "line": 1213,
+      "table": "insurance_policies",
+      "selectRaw": null,
+      "dynamic": false,
+      "raw": "",
+      "empty": true
+    },
+    {
+      "file": "src/services/subscriber.js",
+      "line": 1222,
+      "table": "subscriber_insurance_products",
+      "selectRaw": null,
+      "dynamic": false,
+      "raw": "",
+      "empty": true
+    },
+    {
+      "file": "src/services/subscriber.js",
+      "line": 1455,
+      "table": "subscribers",
+      "selectRaw": "*",
+      "dynamic": false,
+      "raw": "'*'",
+      "empty": false
+    },
+    {
+      "file": "src/services/subscriber.js",
+      "line": 1465,
+      "table": "subscribers",
+      "selectRaw": "*, subscriber_balances(*), contribution_schedules(*), insurance_policies(*), subscriber_insurance_products(*)",
+      "dynamic": false,
+      "raw": "'*, subscriber_balances(*), contribution_schedules(*), insurance_policies(*), subscriber_insurance_products(*)'",
+      "empty": false
+    }
+  ],
+  "writeSites": [
+    {
+      "file": "src/services/entities.js",
+      "line": 1065,
+      "table": "branches",
+      "op": "insert",
+      "raw": "row"
+    },
+    {
+      "file": "src/services/entities.js",
+      "line": 1101,
+      "table": "agents",
+      "op": "insert",
+      "raw": "row"
+    },
+    {
+      "file": "src/services/entities.js",
+      "line": 1133,
+      "table": "branches",
+      "op": "update",
+      "raw": "row"
+    },
+    {
+      "file": "src/services/entities.js",
+      "line": 1185,
+      "table": "distributors",
+      "op": "update",
+      "raw": "row"
+    },
+    {
+      "file": "src/services/entities.js",
+      "line": 1411,
+      "table": "agents",
+      "op": "update",
+      "raw": "{ status }"
+    },
+    {
+      "file": "src/services/subscriber.js",
+      "line": 1049,
+      "table": "contribution_schedules",
+      "op": "update",
+      "raw": "patch"
+    },
+    {
+      "file": "src/services/subscriber.js",
+      "line": 1212,
+      "table": "insurance_policies",
+      "op": "upsert",
+      "raw": "{ subscriber_id: id, ...patch }, { onConflict: 'subscriber_id' }"
+    },
+    {
+      "file": "src/services/subscriber.js",
+      "line": 1219,
+      "table": "subscriber_insurance_products",
+      "op": "update",
+      "raw": "patch"
+    },
+    {
+      "file": "src/services/subscriber.js",
+      "line": 1399,
+      "table": "insurance_policies",
+      "op": "update",
+      "raw": "renewalPatch"
+    },
+    {
+      "file": "src/services/subscriber.js",
+      "line": 1403,
+      "table": "subscriber_insurance_products",
+      "op": "update",
+      "raw": "renewalPatch"
+    },
+    {
+      "file": "src/services/subscriber.js",
+      "line": 1411,
+      "table": "transactions",
+      "op": "insert",
+      "raw": "{ id: tx.id, subscriber_id: id, type: 'premium', amount, date: new Date().toISOString(), status: 'settled', method, txn_ref: reference, }"
+    },
+    {
+      "file": "src/services/subscriber.js",
+      "line": 1463,
+      "table": "subscribers",
+      "op": "update",
+      "raw": "patch"
+    }
+  ]
+}

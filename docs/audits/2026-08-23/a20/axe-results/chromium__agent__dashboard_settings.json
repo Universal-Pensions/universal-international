@@ -1,0 +1,17 @@
+{
+  "role": "agent",
+  "route": "/dashboard/settings",
+  "project": "chromium",
+  "url": "http://localhost:5173/dashboard/settings",
+  "violations": [
+    {
+      "id": "color-contrast",
+      "impact": "serious",
+      "help": "Elements must meet minimum color contrast ratio thresholds",
+      "nodes": 1,
+      "targets": [
+        "._headBadge_9tu42_49"
+      ]
+    }
+  ]
+}

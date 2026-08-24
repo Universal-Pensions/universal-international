@@ -1,0 +1,7 @@
+{
+  "role": "admin",
+  "route": "/dashboard/access-requests",
+  "project": "mobile-chromium",
+  "url": "http://localhost:5173/dashboard/access-requests",
+  "violations": []
+}

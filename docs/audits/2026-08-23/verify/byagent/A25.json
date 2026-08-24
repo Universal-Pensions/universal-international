@@ -1,0 +1,255 @@
+[
+ {
+  "id": "A25-001",
+  "title": "Baseline Playwright suite ships RED with 30 deterministic failures (28 reproduced), not flake",
+  "severity": "high",
+  "confidence": "confirmed",
+  "category": "test-reliability",
+  "surface": "e2e",
+  "location": "e2e/specs/smoke/subscriber-dashboard.spec.ts; e2e/specs/smoke/landing.spec.ts; e2e/specs/flows/distributor-exports-csv.spec.ts; e2e/specs/flows/agent-onboard-subscriber.spec.ts:109; e2e/specs/regression/map-drill.spec.ts:250",
+  "evidence": "a25/flake-diff.txt: 'REPRODUCED in both runs -> deterministic defect (28)'; baseline/playwright-full.txt: 326 passed / 30 failed / 14 skipped (exit 1); a25/baseline-failures.txt lists all 30 verbatim. Cluster: subscriber-dashboard 12 (both mobile engines), landing 6 (both mobile engines), distributor-exports-csv 4 (both mobile engines), agent-onboard:109 (chromium+webkit), map-drill:250 (webkit x2), webkit-only signin:78 + signup:116.",
+  "impact": "The committed baseline fails CI (exit 1) with 30 deterministic failures. 22 land on real mobile device projects and reproduce on BOTH mobile engines -> subscriber dashboard sub-routes and public landing pages do not render on a phone, the exact surfaces a rep demos on mobile. These are real product defects masquerading as a test-health problem.",
+  "suggested_fix": "Treat the 28 reproduced failures as product defects and route root-cause to A10/A16/A18/A19 (mobile subscriber-dashboard/landing render; WebKit agent-onboard/map-drill/signin/signup). Do not quarantine as flaky. Get the suite green before it gates merges.",
+  "demo_visible": true,
+  "effort": "L",
+  "roles_affected": [
+   "subscriber",
+   "agent",
+   "distributor",
+   "public"
+  ],
+  "repro": [
+   "cd /Users/shubhang/Desktop/Projects/uganda-dashboard",
+   "cat docs/audits/2026-08-23/a25/flake-diff.txt   # 28 reproduced in both full runs",
+   "cat docs/audits/2026-08-23/baseline/playwright-full.txt   # 326/30/14 exit 1"
+  ],
+  "agent": "A25"
+ },
+ {
+  "id": "A25-004",
+  "title": "E2E teardown leaks fixture rows into the LIVE demo DB, incl. 'E2E Branch' rows under d-001",
+  "severity": "high",
+  "confidence": "confirmed",
+  "category": "test-hygiene",
+  "surface": "e2e",
+  "location": "e2e/specs/db/rls-isolation.spec.ts:216-217; e2e/specs/db/deactivate-entities.spec.ts:163-169; e2e/specs/flows/distributor-apply-settlement.spec.ts:108-109 (19 fire-and-forget deletes across 8 spec files)",
+  "evidence": "Live this session: psql \"$SUPABASE_DB_URL\" -c \"SELECT id,name,distributor_id,created_at FROM branches WHERE id LIKE 'b-new-%' OR name ~* '^(E2E|TST)'\" -> b-new-1785700420016|E2E Branch 1785700415857|d-001|2026-08-02, b-new-1785753024670|E2E Branch 1785753020590|d-001|2026-08-03, tst-branch-msc7w8vm|TST throwaway branch. And subscribers probe -> 5 leaked rows (tst-sub-tree/emp/retag-msc7vzsc, tst-sub-tree-msd3855c, s-e2e-emp-foreign-1785752999757), all dated 2026-08-02/03. Detail in a25/fixture-leak.md.",
+  "impact": "A sales rep signs in as d-001 (the primary demo distributor) and its branch list shows fabricated rows literally named 'E2E Branch 1785700415857'. This is the source of the 4-row subscribers-vs-subscriber_balances gap (invariant M1). Root cause: every teardown delete is fire-and-forget and none checks the returned PostgREST error, so a refused delete reports green.",
+  "suggested_fix": "1) expect(error).toBeNull() on every teardown delete. 2) A globalTeardown sweep of id LIKE 'tst-%' OR name ~* '^(TST|E2E)' that FAILS the run if it deleted anything (leak detector). 3) A returns-to-baseline count(*) assertion in globalSetup/globalTeardown. 4) Manually purge the 8 existing leaked rows from the demo DB (left in place here per report-only scope; they are the finding evidence).",
+  "demo_visible": true,
+  "effort": "M",
+  "roles_affected": [
+   "distributor",
+   "admin",
+   "subscriber"
+  ],
+  "repro": [
+   "cd /Users/shubhang/Desktop/Projects/uganda-dashboard && set -a; . ./.env.local >/dev/null 2>&1; set +a",
+   "psql \"$SUPABASE_DB_URL\" -X -q -At -F'|' -c \"SELECT id,name,distributor_id,created_at FROM branches WHERE id LIKE 'b-new-%' OR name ~* '^(E2E|TST)' ORDER BY created_at;\""
+  ],
+  "agent": "A25"
+ },
+ {
+  "id": "A25-002",
+  "title": "Mobile E2E coverage is 0-8% for 4 of 6 roles, exactly where the product breaks (mobile runs 7/38 specs but caused 22/30 failures)",
+  "severity": "medium",
+  "confidence": "confirmed",
+  "category": "test-coverage",
+  "surface": "e2e",
+  "location": "playwright.config.ts:123-134 (mobile-chromium testMatch), :142-154 (mobile-webkit testMatch)",
+  "evidence": "find e2e/specs -name '*.spec.ts' | wc -l -> 38. Both mobile projects testMatch = 7 specs (landing, subscriber-dashboard, agent-dashboard, _health, distributor-exports-csv, subscriber-payment-methods, employer-kyc-nudge). Route-matrix (a25/route-matrix.md) real-device mobile coverage: admin 0/22=0%, branch 0/12, distributor 1/14=7.1%, employer 1/12=8.3%. a25/flake-diff.txt per-spec rollup: 22 of 30 failures are on mobile-chromium/mobile-webkit.",
+  "impact": "The least-tested surface (7/38 specs on mobile) is simultaneously the most-broken (22/30 baseline failures). Admin NAV publishing, nominee-claims and access-requests have zero mobile E2E coverage; subscriber 'policies' has zero coverage at any viewport.",
+  "suggested_fix": "Expand the two mobile testMatch lists to include each role's home landing and primary sub-routes on at least one mobile engine, prioritising admin NAV-publish and the subscriber dashboard sub-routes that currently fail.",
+  "demo_visible": false,
+  "effort": "M",
+  "roles_affected": [
+   "admin",
+   "branch",
+   "distributor",
+   "employer",
+   "subscriber"
+  ],
+  "agent": "A25"
+ },
+ {
+  "id": "A25-003",
+  "title": "Four 'contract' tests grep migration TEXT and never touch the DB, proving text not deployed behaviour",
+  "severity": "medium",
+  "confidence": "confirmed",
+  "category": "false-confidence",
+  "surface": "unit",
+  "location": "src/test/jwt-claim-contract.test.js; src/test/employer-split-contract.test.js; src/test/login-identity-contract.test.js; src/test/nav-pricing-contract.test.js",
+  "evidence": "grep -n 'supabase|createClient|psql|fetch(' src/test/*contract*.test.js -> only MIGRATIONS_DIR filesystem paths. node a25/proof-text-vs-live.mjs -> the tests' own latestDefinitionOf() resolver returns a full 'newest definition' for 19/19 function names that have ZERO OIDs live. Re-running all 25 assertions against live pg_get_functiondef: 25/25 agree today (guards not lying now). Detail a25/contract-tests.md.",
+  "impact": "All 25 assertions pass with the database paused, restored to a different snapshot, or pointed at another project. They cannot detect the exact regression their headers cite (0095 silently un-shipping 0090 via an un-applied CREATE OR REPLACE), a hand-edit over psql, or apply_migration against the wrong project.",
+  "suggested_fix": "Add one ~40-line behavioural twin under e2e/specs/db/ that runs the identical regex battery against pg_get_functiondef(p.oid) and asserts count(oid)=1 per name; it inherits the CI section 15-M1 executed-not-skipped guard. Keep the text greps as a cheap pre-merge lint on the migration a dev is writing.",
+  "demo_visible": false,
+  "effort": "S",
+  "roles_affected": [
+   "all"
+  ],
+  "agent": "A25"
+ },
+ {
+  "id": "A25-005",
+  "title": "Money engine's live invariants are essentially unguarded; 2 are violated right now with no test to notice",
+  "severity": "medium",
+  "confidence": "confirmed",
+  "category": "test-coverage",
+  "surface": "e2e",
+  "location": "e2e/specs/db/invariants.spec.ts (8 assertions, 2 about money); e2e/specs/db/money-idempotency.spec.ts (2 assertions)",
+  "evidence": "psql UNION probe (a25/money-invariants.md): units_total_mismatch|1 (s-0005 units 203.99 vs retirement+emergency 210.35, delta -6.3637), subscribers_without_balance|4. 10 total money-adjacent assertions over 29,027 transactions / 5,060 balances / 1,246 NAV snapshots.",
+  "impact": "s-0005 shows a ~10,000 UGX disagreement between two unit figures on the same subscriber screen; 4 subscribers have no balance row. No test in the repo reconciles a balance, a unit count, or a price. (Data-defect ownership is A04/A06; the QA finding is the unguarded class.)",
+  "suggested_fix": "Add behavioural specs under e2e/specs/db/ for M1 (every subscriber has exactly one balance), M2 (units = retirement_units + emergency_units), M8 (apply_settlement idempotency), M12 (function-deployment contract) first; they inherit the section 15-M1 guard.",
+  "demo_visible": false,
+  "effort": "M",
+  "roles_affected": [
+   "subscriber",
+   "admin"
+  ],
+  "agent": "A25"
+ },
+ {
+  "id": "A25-006",
+  "title": "api/, server/, e2e/ TypeScript (100 files) is not linted at all",
+  "severity": "medium",
+  "confidence": "confirmed",
+  "category": "lint-gap",
+  "surface": "backend",
+  "location": "eslint.config.js (files globs: src/**/*.jsx and **/*.{js,jsx} \u2014 no .ts/.tsx block)",
+  "evidence": "npx eslint . --format json | (count by ext) -> {cjs:3,mjs:68,js:180,jsx:433}, zero .ts. Unlinted: api/ 48, e2e/ 46, server/ 5, playwright.config.ts 1 = 100 files. Detail a25/lint-type-gaps.md.",
+  "impact": "no-unused-vars, no-console and react-hooks/* never run over the entire backend or the entire test harness; a whole class of defect is invisible to CI.",
+  "suggested_fix": "Add a flat-config block: { files: ['api/**/*.ts','server/**/*.ts','e2e/**/*.ts','*.config.ts'], languageOptions:{ parser: tseslint.parser, globals: globals.node }, plugins:{'@typescript-eslint':tseslint.plugin}, extends:[tseslint.configs.recommended], rules:{'no-console':'off'} }.",
+  "demo_visible": false,
+  "effort": "S",
+  "roles_affected": [
+   "all"
+  ],
+  "agent": "A25"
+ },
+ {
+  "id": "A25-007",
+  "title": "No typecheck script; tsc checks 32 of 100 .ts files and skips all tests + all e2e",
+  "severity": "medium",
+  "confidence": "confirmed",
+  "category": "type-gap",
+  "surface": "backend",
+  "location": "package.json (no 'typecheck'); server/tsconfig.json (exclude: api/**/*.test.ts, ./**/*.test.ts); no root tsconfig.json",
+  "evidence": "The only tsc is build:api (tsc -p server/tsconfig.json). tsc --listFiles walks 32 files (27 api + 5 server). Never checked: 21 api/*.test.ts + 46 e2e/**/*.ts + playwright.config.ts = 68. ls tsconfig* -> no matches. Detail a25/lint-type-gaps.md.",
+  "impact": "68 of 100 TypeScript files are never type-checked; src/ is never checked even with checkJs. A broken spec type ships forever with no gate.",
+  "suggested_fix": "Add e2e/tsconfig.json (extends server, include ['**/*.ts','../playwright.config.ts']), add \"typecheck\": \"tsc -p server/tsconfig.json --noEmit && tsc -p e2e/tsconfig.json --noEmit\", drop the *.test.ts excludes under --noEmit, run typecheck in the lint-and-unit CI job.",
+  "demo_visible": false,
+  "effort": "S",
+  "roles_affected": [
+   "all"
+  ],
+  "agent": "A25"
+ },
+ {
+  "id": "A25-009",
+  "title": "All 34 jsx-a11y rules forced to 'warn' and lint has no --max-warnings; 311 a11y warnings hide in a green build",
+  "severity": "medium",
+  "confidence": "confirmed",
+  "category": "lint-gap",
+  "surface": "frontend",
+  "location": "eslint.config.js (jsxA11yWarnRules = Object.fromEntries(keys.map(r => [r,'warn']))); package.json \"lint\": \"eslint .\"",
+  "evidence": "Baseline: 323 warnings, 311 jsx-a11y (96%), npm run lint exits 0. No --max-warnings. Detail a25/lint-type-gaps.md.",
+  "impact": "The a11y backlog is unbounded: a PR can add 50 more jsx-a11y warnings and CI stays green. a11y blockers accumulate silently.",
+  "suggested_fix": "1) Pin the ceiling now: \"lint\": \"eslint . --max-warnings=323\" (ratchet down only). 2) Promote to 'error' the 25 of 34 recommended a11y rules with zero current violations, leaving only the 9 with hits at 'warn'.",
+  "demo_visible": false,
+  "effort": "S",
+  "roles_affected": [
+   "all"
+  ],
+  "agent": "A25"
+ },
+ {
+  "id": "A25-011",
+  "title": "CI section 15-M1 'executed-not-skipped' guard runs only on push-to-main, not on PRs \u2014 the surface that gates merges",
+  "severity": "medium",
+  "confidence": "confirmed",
+  "category": "ci-gap",
+  "surface": "infra",
+  "location": ".github/workflows/test.yml:148-173 (guard condition: github.event_name == 'push' && github.ref == 'refs/heads/main')",
+  "evidence": "The PR step deliberately includes e2e/specs/db (comment: catch security/money regressions before merge, section 15-H1), but the guard proving those specs actually executed is push-main-only. All four db specs gate on test.skip(!hasEnv) -> reported as skipped, never expected. Detail a25/ci-guard.md.",
+  "impact": "A fork PR, or one run while a secret is rotating/unset, silently loses every cross-tenant RLS and money-idempotency guard and still shows a green check \u2014 the failure the guard exists to prevent is fully reachable on the merge-gating surface.",
+  "suggested_fix": "Change the guard step to if: always() (or drop the condition); optionally tighten 'expected < 1' to 'expected < 13' so a partially-skipped db suite is caught, not only a wholly-skipped one.",
+  "demo_visible": false,
+  "effort": "S",
+  "roles_affected": [
+   "all"
+  ],
+  "agent": "A25"
+ },
+ {
+  "id": "A25-012",
+  "title": "Coverage gate is statements-only at 23% (10 points below actual); branch/function/line ungated",
+  "severity": "medium",
+  "confidence": "confirmed",
+  "category": "test-coverage",
+  "surface": "unit",
+  "location": "vite.config.js (test.coverage.thresholds = { statements: 23 }); no vitest.config.*",
+  "evidence": "a25/coverage-agg.txt threshold check: configured statements 23; measured 32.94; headroom 9.94; branches/functions/lines: NO THRESHOLD CONFIGURED. Byte-identical across coverage-raw.txt and coverage-run2.txt (deterministic).",
+  "impact": "Tests can be deleted until statement coverage falls to 23% and the gate still passes; branch coverage (already the weakest at 28.95%), function (27.49%) and line coverage have no floor at all. The gate ratchets nothing.",
+  "suggested_fix": "Raise statements to the current floor (~32) and add branch/function/line thresholds at measured minus 1, so all four metrics ratchet upward only.",
+  "demo_visible": false,
+  "effort": "S",
+  "roles_affected": [
+   "all"
+  ],
+  "agent": "A25"
+ },
+ {
+  "id": "A25-008",
+  "title": "No stylelint, no import-boundary rule, no pre-commit hooks",
+  "severity": "low",
+  "confidence": "confirmed",
+  "category": "tooling-gap",
+  "surface": "repo",
+  "location": "repo root (no stylelint/prettier/husky/lint-staged config); .git/hooks (samples only)",
+  "evidence": "ls -a | grep -iE 'stylelint|prettier|husky|lint-staged' -> nothing. ls .git/hooks | grep -v sample -> nothing. 229 .module.css files ship unlinted. Detail a25/lint-type-gaps.md.",
+  "impact": "No design-token contract enforcement on 229 CSS modules (raw hex vs var(--...)), nothing blocks cross-role imports among the six per-role trees, and no gate runs before a commit lands.",
+  "suggested_fix": "stylelint + declaration-property-value-allowed-list for color/background restricted to var(--...); import/no-restricted-paths zones forbidding cross-role imports; husky + lint-staged. Ship as --max-warnings ratchets after burning down the existing backlog.",
+  "demo_visible": false,
+  "effort": "M",
+  "roles_affected": [
+   "all"
+  ],
+  "agent": "A25"
+ },
+ {
+  "id": "A25-010",
+  "title": "ESLint lints 66 untracked/.gitignored files; no-unused-vars is 'error', so a stray scratch file can fail the gate",
+  "severity": "low",
+  "confidence": "confirmed",
+  "category": "lint-gap",
+  "surface": "repo",
+  "location": "eslint.config.js (globalIgnores omits docs/** and .understand-anything/**; flat config does not read .gitignore)",
+  "evidence": "npx eslint . 'by top dir' -> docs:63, .understand-anything:3 (the latter is on .gitignore:74). no-unused-vars is configured as 'error'. Detail a25/lint-type-gaps.md.",
+  "impact": "npm run lint's pass/fail depends on files that are not part of the project; a single untracked scratch .mjs with an unused variable fails the gate.",
+  "suggested_fix": "globalIgnores(['docs/**','.understand-anything/**']) or includeIgnoreFile(fileURLToPath(new URL('.gitignore', import.meta.url))) from @eslint/compat so lint scope tracks the repo's own ignore rules.",
+  "demo_visible": false,
+  "effort": "S",
+  "roles_affected": [
+   "all"
+  ],
+  "agent": "A25"
+ },
+ {
+  "id": "A25-013",
+  "title": "Exactly one genuinely flaky spec in the whole suite; the predicted 'prime flake candidates' are real defects",
+  "severity": "info",
+  "confidence": "confirmed",
+  "category": "test-reliability",
+  "surface": "e2e",
+  "location": "e2e/specs/regression/modal-escape.spec.ts:224",
+  "evidence": "a25/flake-diff.txt: 'BASELINE ONLY (passed on re-run) -> flaky (2)' = modal-escape:224 on chromium + webkit. The plan's predicted flake candidates (subscriber-signin:78, subscriber-signup:116, map-drill:250 x2) all REPRODUCED -> real WebKit defects, not flake. The 19 'rerun-only' failures were A22/A24 concurrency artifacts (isolated rerun a25/pw-rerun3-targeted.txt shows all pass).",
+  "impact": "None user-visible. Recorded so modal-escape:224 is not conflated with the 28 real defects, and so the collision-caused 'rerun-only' failures are not mistaken for flake.",
+  "suggested_fix": "Stabilise modal-escape:224 (single true flake). Run cross-agent E2E in isolation to avoid shared-dev-server collision that produced the 19 spurious rerun failures.",
+  "demo_visible": false,
+  "effort": "S",
+  "roles_affected": [
+   "distributor"
+  ],
+  "agent": "A25"
+ }
+]

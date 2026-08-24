@@ -1,0 +1,27 @@
+### npm test
+
+> universal-pensions-uganda@1.0.0 test
+> vitest run
+
+
+ RUN  v4.1.4 /Users/shubhang/Desktop/Projects/uganda-dashboard
+
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: navigation to another Document
+Not implemented: navigation to another Document
+
+ Test Files  140 passed (140)
+      Tests  2010 passed (2010)
+   Start at  15:00:55
+   Duration  22.71s (transform 3.97s, setup 5.08s, import 21.02s, tests 101.03s, environment 58.78s)
+
+EXIT=0

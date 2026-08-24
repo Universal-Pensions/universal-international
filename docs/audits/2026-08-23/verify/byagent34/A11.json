@@ -1,0 +1,163 @@
+[
+ {
+  "id": "A11-001",
+  "title": "Agent Commissions shows E2E test residue as real settlement history + two contradictory outstanding figures (verifies + escalates A05-002)",
+  "severity": "critical",
+  "confidence": "confirmed",
+  "category": "wrong-money",
+  "surface": "agent /dashboard/commissions",
+  "location": "src/agent-dashboard/pages/CommissionsPage.jsx:124 (SettlementMismatchBanner) + settlement-history table; live public.settlement_batches",
+  "evidence": "Signed in via UI as a-001. On-screen (screenshots/agent/commissions-1440.png, commissions-375.png): banner 'UGX 5K paid against UGX 20K due \u2014 UGX 15K is still outstanding (ref sb-8598ef12...)' sits directly above tile 'OWED UGX 20K \u00b7 4 awaiting'. Settlement history lists 6 rows, 5 of them E2E-PARTIAL/E2E-FULL artifacts. SQL: `psql \"$SUPABASE_DB_URL\" -c \"select id,txn_ref,line_count,pending_total,paid_amount,to_char(paid_date,'YYYY-MM-DD') from settlement_batches where agent_id='a-001' order by created_at;\"` returns sb-seed-0001|MM-SEED-0001|9|45000|45000|2026-07-16 ; four E2E-PARTIAL/E2E-FULL rows incl. two NEW ones dated 2026-08-24 (E2E-FULL-1787558947624 4/20000, E2E-PARTIAL-1787558955623 1/pending20000/paid5000). A05-002 captured 4 batches; it is now 6 \u2014 the residue accretes each Playwright run.",
+  "impact": "A rep opening the agent's headline Commissions tab sees fabricated payment history and two conflicting 'outstanding' totals (banner UGX 15K vs tile UGX 20K) in one frame \u2014 visibly wrong money on a demo.",
+  "suggested_fix": "Delete the five E2E-* settlement_batches (and their notifications) from live; make distributor-apply-settlement.spec register cleanup ids by txn_ref BEFORE its assertions; point settlement specs at a dedicated fixture agent, not the a-001 demo persona. (DB fix owned by A05.)",
+  "demo_visible": true,
+  "roles_affected": [
+   "agent",
+   "distributor"
+  ],
+  "effort": "S",
+  "repro": [
+   "Sign in as agent a-001 (/distributors -> Agent -> 700000001 -> any 6-digit code)",
+   "Open /dashboard/commissions",
+   "Observe the partial-settlement banner (UGX 15K outstanding) directly above the OWED tile (UGX 20K), and 5 E2E-* rows in Settlement history"
+  ],
+  "agent": "A11"
+ },
+ {
+  "id": "A11-002",
+  "title": "Agent onboarding wizard cannot complete \u2014 final create RPC returns 409 (mock OCR's constant NIN collides with a unique index), trapping the rep on a 'Not saved' screen",
+  "severity": "critical",
+  "confidence": "confirmed",
+  "category": "demo-blocker",
+  "surface": "agent /dashboard/onboard (OnboardKycFlow + OnboardingComplete)",
+  "location": "api/kyc/id-ocr.ts:46 (constant nin 'CF92018AB3CD45') -> public.create_subscriber_from_agent_onboard -> unique index ux_subscribers_nin; UI src/agent-dashboard/onboarding/OnboardingComplete.jsx",
+  "evidence": "`npx playwright test flows/agent-onboard-subscriber.spec.ts --project=chromium` => 'create_subscriber_from_agent_onboard RPC must succeed / Expected: 200 Received: 409'. Root cause SQL: `select id,name,agent_id,nin from subscribers where nin='CF92018AB3CD45'` => s-100117|Namukasa Sarah Kintu|a-001|CF92018AB3CD45 (created 2026-08-07); `select indexdef from pg_indexes where indexname='ux_subscribers_nin'` => CREATE UNIQUE INDEX ... ON subscribers(nin) WHERE nin IS NOT NULL. The ID-OCR mock returns this same NIN every time. OnboardingComplete.jsx sets status='error' -> title 'Couldn't save Namukasa's record', Record 'Not saved', 'Try again' re-issues the same 409, and BOTH 'Onboard another' and 'Close' are disabled while status!=='success'. Screenshot screenshots/agent/onboard-wizard-409-failure.png. Wizard renders/steps on both form factors (onboard-kyc-idupload-1440.png/-375.png: 'Step 1 of 8').",
+  "impact": "The flagship 'watch an agent enrol a new member' demo completes ~30s of KYC + schedule + pay, then hard-fails at save and strands the rep on an error card with no forward action. Succeeds at most once ever, and the winning NIN row already exists permanently on the demo agent's own roster. Reconciles the baseline agent-onboard-subscriber:109 failure on both desktop engines.",
+  "suggested_fix": "Make the mock ID-OCR mint a fresh NIN per call (or per session), OR have create_subscriber_from_agent_onboard upsert-by-NIN in the demo flow, OR delete s-100117 AND randomise the mock \u2014 deleting alone only defers the collision to the next onboard.",
+  "demo_visible": true,
+  "roles_affected": [
+   "agent"
+  ],
+  "effort": "S",
+  "repro": [
+   "Sign in as agent a-001; go to /dashboard/onboard",
+   "Answer the 5 awareness points; upload any >=20KiB front/back ID",
+   "Walk review->nira->otp(1234)->liveness->aml->beneficiaries->consent, then set a plan and Pay",
+   "OnboardingComplete fires create_subscriber_from_agent_onboard -> 409; screen shows 'Couldn't save \u2026 / Not saved', both action buttons disabled"
+  ],
+  "agent": "A11"
+ },
+ {
+  "id": "A11-005",
+  "title": "Agent member detail shows 'Life cover \u00b7 Active' for members whose own dashboard shows 'Expired' (verifies A06-004 on the agent surface)",
+  "severity": "high",
+  "confidence": "confirmed",
+  "category": "data-integrity",
+  "surface": "agent /dashboard/subscribers/:id (INSURANCE block)",
+  "location": "src/services/agent.js:26-35 (reads stored status flag) vs src/utils/policies.js:56-60 (recomputes from MOCK_NOW); live public.insurance_policies",
+  "evidence": "On-screen for s-0003 Patrick Nsubuga (a-001 roster): 'INSURANCE  Life cover ACTIVE  Hospital cash ACTIVE  Funeral cover ACTIVE' (screenshots/agent/subscriber-detail-s0003-full-1440.png). SQL: `select ip.subscriber_id,s.name,ip.status,to_char(ip.renewal_date,'YYYY-MM-DD') from insurance_policies ip join subscribers s on s.id=ip.subscriber_id where s.agent_id='a-001' and ip.status='active' and ip.renewal_date<date '2026-07-01'` => s-0009 (2025-01-17), s-0010 (2025-09-19), s-0003 (2026-04-16). s-0003's renewal 2026-04-16 < MOCK_NOW 2026-07-01, so the subscriber page derives 'Expired' from the same row. 3 such members on a-001; 1284 platform-wide (A06-004).",
+  "impact": "An agent tells a member their life cover is active when the member's own app says it lapsed \u2014 contradictory cover status across roles in live demo data.",
+  "suggested_fix": "Have the agent policy view derive status from renewal_date via the same clock as the subscriber page (or reconcile the stored status flag), so both roles agree. DB fix owned by A06-004.",
+  "demo_visible": true,
+  "roles_affected": [
+   "agent",
+   "subscriber"
+  ],
+  "effort": "M",
+  "repro": [
+   "Sign in as agent a-001; open /dashboard/subscribers/s-0003",
+   "See INSURANCE 'Life cover ACTIVE' though renewal_date is 2026-04-16 (< MOCK_NOW 2026-07-01)"
+  ],
+  "agent": "A11"
+ },
+ {
+  "id": "A11-003",
+  "title": "Desktop agent home shows scheduled monthly-equivalent (UGX 331K) but labels it 'What members saved this month'; mobile shows actual collected (UGX 291K)",
+  "severity": "medium",
+  "confidence": "confirmed",
+  "category": "misleading-data",
+  "surface": "agent /dashboard (home) desktop vs mobile",
+  "location": "src/agent-dashboard/home/HomeDesktop.jsx:183-185 (summary.monthly, context 'What members saved this month') + agentHomeSummary.js:18 (monthlyEquivalent); vs HomeMobile.jsx:82-83,144 (collected)",
+  "evidence": "Desktop home 'MONTHLY CONTRIBUTIONS UGX 331K \u00b7 What members saved this month' (home-1440.png); mobile home 'This month UGX 291K \u00b7 Collected \u00b7 10 payments' (home-375.png); Contributions page 'TOTAL RECEIVED UGX 290,855 \u00b7 10 payments \u00b7 June 2026' (contributions-1440.png). SQL actual: `select count(*),sum(amount) from transactions t join subscribers s on s.id=t.subscriber_id where s.agent_id='a-001' and t.type='contribution' and t.date>=date '2026-06-01' and t.date<date '2026-07-01'` => 10|290855. Sum of monthlyEquivalent over a-001 schedules \u2248 331,333 \u2014 matching the desktop 331K, i.e. the scheduled expectation, not savings.",
+  "impact": "Same 'this month' metric reads UGX 40K apart between phone and laptop, and the desktop caption presents a projection as realised savings.",
+  "suggested_fix": "On desktop use the actual collected figure (as mobile does) for a 'saved this month' tile, or relabel 331K as 'Expected monthly (from schedules)'.",
+  "demo_visible": true,
+  "roles_affected": [
+   "agent"
+  ],
+  "effort": "S",
+  "agent": "A11"
+ },
+ {
+  "id": "A11-004",
+  "title": "Agent Settings renders a malformed phone with a double country code (+256 256 711 443975)",
+  "severity": "medium",
+  "confidence": "confirmed",
+  "category": "formatting",
+  "surface": "agent /dashboard/settings (both viewports)",
+  "location": "src/agent-dashboard/pages/SettingsDesktop.jsx:14-20,120 and SettingsPage.jsx:15,101",
+  "evidence": "Settings header shows 'Dorothy Kiiza  +256 256 711 443975' at 1440 (settings-1440.png) and 375 (settings-375.png); Profile page shows the correct '+256711443975' (profile-1440.png). The local formatPhone groups the full 12-digit stored '256711443975' as '256 711 443975' and the JSX prepends a literal '+256 '. Before the agents query resolves it falls back to the login phone and renders '+256 256 700 000001'. The correct helper formatUGPhone (utils/phone.js) parses the local part but is not used here.",
+  "impact": "A garbled phone number on the agent Settings page \u2014 a surface reps show during onboarding/handover.",
+  "suggested_fix": "Replace the local formatPhone + literal '+256 ' with formatUGPhone(phone) (utils/phone.js) in both SettingsDesktop.jsx and SettingsPage.jsx.",
+  "demo_visible": true,
+  "roles_affected": [
+   "agent"
+  ],
+  "effort": "S",
+  "agent": "A11"
+ },
+ {
+  "id": "A11-006",
+  "title": "'Yet to contribute' flashes the entire roster (11) before the contributions query resolves, then settles to the correct 1 \u2014 no loading gate on the dependency",
+  "severity": "medium",
+  "confidence": "confirmed",
+  "category": "loading-state",
+  "surface": "agent /dashboard/yet-to-contribute (and /onboarded-this-month)",
+  "location": "src/agent-dashboard/pages/YetToContributePage.jsx:33-52 (loading = isLoading && subscribers.length===0 ignores useAgentContributions; pendingContributors(subscribers, []) returns all)",
+  "evidence": "Mobile 375, first (cold) navigation captured mid-flash: 'YET TO CONTRIBUTE 11 members \u2026 Select all 11' with all 11 listed (yet-to-contribute-375.png), while the home tile says '1'. Timed probe: +300ms empty, +800ms..+5000ms settle to '1 member' (yet-to-contribute-375-settled.png). Desktop settles to 1 too. onboarded-this-month shows a brief '\u2014/Loading' variant of the same gap.",
+  "impact": "The page shows a materially wrong, final-looking count (all members 'yet to contribute') that contradicts the home tile, with no skeleton to signal it is still loading; the baseline documents real cold-start latency that widens the window.",
+  "suggested_fix": "Gate the list render on the contributions query too (show the skeleton until useAgentContributions has resolved), so the count never renders from an empty contributions array.",
+  "demo_visible": true,
+  "roles_affected": [
+   "agent"
+  ],
+  "effort": "S",
+  "agent": "A11"
+ },
+ {
+  "id": "A11-007",
+  "title": "'This month' resolves to two different calendar months on the same agent dashboard (Contributions=June 2026, Onboarded=August 2026)",
+  "severity": "low",
+  "confidence": "confirmed",
+  "category": "consistency",
+  "surface": "agent /dashboard (home) + drill-down tiles",
+  "location": "src/agent-dashboard/home/agentHomeSummary.js deriveMonthAnchors (data-anchored) vs onboarded-this-month using created_at (real clock)",
+  "evidence": "Contributions page 'Payments logged \u00b7 June 2026' (contributions-1440.png) vs Onboarded-this-month 'New subscribers \u00b7 August 2026' (onboarded-this-month-1440.png), both reached from the same agent home. Cross-references the A06 multi-clock findings.",
+  "impact": "Two 'this month' tiles cite different months side by side, which reads as a data glitch in a demo.",
+  "suggested_fix": "Anchor all 'this month' agent surfaces to one clock (the data-anchor or the MOCK_NOW clock consistently).",
+  "demo_visible": true,
+  "roles_affected": [
+   "agent"
+  ],
+  "effort": "S",
+  "agent": "A11"
+ },
+ {
+  "id": "A11-008",
+  "title": "Agent commissions error card surfaces a raw 'TypeError: Failed to fetch' string",
+  "severity": "info",
+  "confidence": "confirmed",
+  "category": "copy",
+  "surface": "agent /dashboard/commissions (error state)",
+  "location": "src/agent-dashboard/pages/CommissionsPage.jsx (ErrorCard message={error})",
+  "evidence": "Forced the commission fetch to fail via Playwright route-abort: ErrorCard renders 'We couldn't load your commissions / TypeError: Failed to fetch / Try again' (screenshots/agent/commissions-error-1440.png). The error STATE is otherwise well-handled; subscribers/:id for a missing id shows a clean 'Subscriber not found' (subscriber-detail-missing-1440.png).",
+  "impact": "A field agent could momentarily see a JS exception string if the API blips during a demo.",
+  "suggested_fix": "Map fetch/network errors to a plain-language message before passing to ErrorCard.",
+  "demo_visible": true,
+  "roles_affected": [
+   "agent"
+  ],
+  "effort": "S",
+  "agent": "A11"
+ }
+]

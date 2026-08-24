@@ -1,0 +1,102 @@
+=== OVERALL ===
+statements   32.94%  (7005/21262)
+branches     28.95%  (6300/21758)
+functions    27.49%  (1661/6042)
+lines        34.26%  (6234/18196)
+
+=== BY DIRECTORY (sorted by uncovered statements, desc) ===
+dir                            files  stmts%  br%  fn%  lines%  uncov-stmts
+src/dashboard                     60    10.0  10.5   6.7    11.2         3193
+src/employer-dashboard            63    17.5  14.0  16.3    18.1         1816
+src/subscriber-dashboard          44    23.2  19.3  15.3    24.6         1539
+src/branch-dashboard              37    10.7   9.3   8.4    10.7         1536
+src/agent-dashboard               64     9.0  10.1   7.1     9.7         1533
+src/services                      20    64.2  54.7  73.0    67.7          943
+src/signup                        22    31.0  33.5  30.9    32.4          923
+src/admin-dashboard               35    40.0  39.6  36.7    42.3          838
+src/components                    46    38.0  39.6  38.0    39.6          786
+src/pages                         32    48.7  44.8  38.7    49.3          441
+src/contexts                      13    39.5  25.9  43.0    40.0          222
+src/hooks                         16    72.0  52.7  67.6    72.8          169
+api                                4    42.0  44.0  61.5    41.9          138
+src/utils                         21    90.8  84.5  93.6    91.2           67
+src                                2     0.0   0.0   0.0     0.0           58
+src/constants                      7    78.7  61.8  69.2    83.0           23
+src/pwa                            1     0.0   0.0   0.0     0.0           19
+api/_lib                           6    93.3  87.0 100.0    98.4            5
+api/auth                           8    98.3  94.6 100.0    98.3            4
+api/kyc                            9    98.7  87.5 100.0   100.0            2
+src/config                         1    86.7  87.5 100.0    92.9            2
+
+=== LARGEST 0%-STATEMENT MODULES (by statement count) ===
+  264 src/dashboard/map/UgandaMap.jsx
+  246 src/dashboard/branch/ViewBranches.jsx
+  237 src/dashboard/commissions/CommissionPanel.jsx
+  178 src/admin-dashboard/sidebar/AdminSidebar.jsx
+  175 src/dashboard/agent/ViewAgents.jsx
+  164 src/dashboard/settings/Settings.jsx
+  150 src/dashboard/branch/CreateBranch.jsx
+  141 src/dashboard/subscriber/ViewSubscribers.jsx
+  140 src/employer-dashboard/employees/OnboardStaffBody.jsx
+  136 src/employer-dashboard/desktop/AnalyticsDesktop.jsx
+  116 src/branch-dashboard/mobile/AnalyticsMobile.jsx
+  115 src/components/TimeJourney.jsx
+  111 src/branch-dashboard/desktop/AnalyticsDesktop.jsx
+  106 src/dashboard/tickets/ViewTickets.jsx
+  106 src/subscriber-dashboard/pages/NomineesPage.jsx
+  102 src/subscriber-dashboard/pages/ClaimPage.jsx
+  101 src/employer-dashboard/runs/runViews.jsx
+   99 src/subscriber-dashboard/pages/AgentPage.jsx
+   97 src/employer-dashboard/desktop/SupportDesktop.jsx
+   96 src/dashboard/reports/ReportsHub.jsx
+   94 src/employer-dashboard/mobile/SupportMobile.jsx
+   93 src/subscriber-dashboard/pages/WithdrawPage.jsx
+   91 src/branch-dashboard/desktop/OverviewDesktop.jsx
+   90 src/employer-dashboard/mobile/AnalyticsMobile.jsx
+   86 src/branch-dashboard/agent/BulkOnboardAgents.jsx
+   84 src/agent-dashboard/pages/InboxPage.jsx
+   82 src/branch-dashboard/shell/BranchCopilotPanel.jsx
+   82 src/dashboard/overlay/TopBar.jsx
+   82 src/subscriber-dashboard/pages/PoliciesPage.jsx
+   81 src/employer-dashboard/shell/EmployerCopilotPanel.jsx
+
+=== src/services + src/hooks ranked by uncovered statements ===
+  321 28.5%s 20.7%b 35.3%f       src/services/entities.js
+  213 54.9%s 54.9%b 60.9%f       src/services/subscriber.js
+   92 69.5%s 43.0%b 75.3%f       src/services/commissions.js
+   83 78.0%s 55.6%b 89.8%f       src/services/employer.js
+   65 57.8%s 35.4%b 54.3%f       src/hooks/useEntity.js
+   43 46.3%s 40.5%b 75.0%f       src/services/notifications.js
+   42 78.3%s 76.9%b 100.0%f      src/services/chat.js
+   39 65.8%s 44.1%b 58.6%f       src/hooks/useTickets.js
+   25 77.1%s 69.2%b 66.1%f       src/hooks/useEmployer.js
+   25 7.4%s 0.0%b 0.0%f          src/services/nav.js
+   18 0.0%s 0.0%b 0.0%f          src/services/accessRequests.js
+   18 73.9%s 48.9%b 85.7%f       src/services/supabaseClient.js
+   17 79.3%s 43.8%b 72.3%f       src/hooks/useSubscriber.js
+   17 5.5%s 0.0%b 0.0%f          src/services/adminAttention.js
+   17 83.8%s 81.1%b 100.0%f      src/services/kyc.js
+   14 0.0%s 0.0%b 0.0%f          src/services/nomineeClaim.js
+   12 0.0%s 0.0%b 0.0%f          src/services/nomineeClaims.js
+   11 0.0%s 0.0%b 0.0%f          src/services/requestAccess.js
+    9 40.0%s 38.5%b 50.0%f       src/hooks/useCountUp.js
+    8 92.8%s 87.6%b 78.9%f       src/services/api.js
+    5 66.7%s 100.0%b 70.0%f      src/hooks/useNotifications.js
+    5 97.5%s 86.2%b 94.2%f       src/services/tickets.js
+    4 83.3%s 75.0%b 81.0%f       src/hooks/useCommission.js
+    3 0.0%s 0.0%b 0.0%f          src/hooks/useAdminAttention.js
+    2 90.5%s 72.7%b 81.8%f       src/hooks/useAgent.js
+    1 98.1%s 83.0%b 100.0%f      src/services/agent.js
+    1 98.9%s 94.3%b 100.0%f      src/services/auth.js
+    1 90.9%s 66.7%b 100.0%f      src/services/contact.js
+    1 95.2%s 91.7%b 100.0%f      src/services/search.js
+    0 100.0%s 100.0%b 100.0%f    src/hooks/useAccessRequests.js
+    0 100.0%s 100.0%b 100.0%f    src/hooks/useDebouncedValue.js
+    0 100.0%s 100.0%b 100.0%f    src/hooks/useIsDesktop.js
+    0 100.0%s 100.0%b 100.0%f    src/hooks/useIsMobile.js
+    0 100.0%s 100.0%b 100.0%f    src/hooks/useNav.js
+    0 100.0%s 100.0%b 100.0%f    src/hooks/useNomineeClaims.js
+    0 100.0%s 87.5%b 100.0%f     src/hooks/useOutsideClick.js
+
+=== threshold check ===
+configured: statements 23 (vite.config.js). measured: 32.94. headroom before CI fails: 9.94 points. branches/functions/lines: NO THRESHOLD CONFIGURED.

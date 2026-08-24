@@ -1,0 +1,73 @@
+[
+ {
+  "id": "A16-001",
+  "title": "Mobile public pages (FAQ/Contact/About/Request-access) render with no <h1>; About starts at <h3>",
+  "severity": "medium",
+  "confidence": "confirmed",
+  "category": "accessibility",
+  "surface": "Public/onboarding \u2014 phone shell (<=768px)",
+  "location": "src/pages/landing/mobile/FAQMobile.jsx:26, ContactMobile.jsx:70, AboutMobile.jsx:9, RequestAccessMobile.jsx:87 (rendered by LandingMobileShell)",
+  "demo_visible": true,
+  "effort": "S",
+  "roles_affected": [
+   "public/anonymous"
+  ],
+  "evidence": "Command: node docs/audits/2026-08-23/scratch/a16/walk.mjs (Playwright, 375px, iPhone12 UA). Verbatim: '/faq -> h1=NO firstHead=h2:\"Frequently asked questions.\"' ; '/contact -> h1=NO firstHead=h2:\"Contact us.\"' ; '/about -> h1=NO firstHead=h3:\"About Universal Pensions\" counts={\"h1\":0,\"h2\":0,\"h3\":1,\"h4\":3}' ; '/request-access -> h1=NO firstHead=h2:\"Set up Universal Pensions for your team\"' ; '/request-access?type=distributor -> h1=NO firstHead=h2:\"Become a Universal Pensions partner\"'. Same routes at 1440px all report h1=YES. grep confirms AboutMobile.jsx:9 opens with <h3>About Universal Pensions</h3> then <h4> sub-heads (heading-level skip). 0 console errors / 0 error-boundary on every route. This is the root cause of baseline Playwright failures smoke/landing.spec.ts:20,27,34 on both mobile-chromium and mobile-webkit (each asserts getByRole('heading',{level:1})).",
+  "impact": "On the primary rep-demo viewport (phone), the entire public support surface has no page-title landmark for screen readers, and About violates heading-order (h1/h2 skipped, opens at h3). WCAG 2.4.6 + 1.3.1. Pages remain visually usable, but the automated a11y/heading gate stays red (6 deterministic mobile test failures). Desktop equivalents are correct, so this is a mobile-shell-only regression.",
+  "suggested_fix": "Promote the top heading of each *Mobile screen to <h1> (AboutMobile h3->h1 and demote its sub-sections one level; FAQMobile/ContactMobile/RequestAccessMobile h2->h1). Give AdminLogin and ComingSoon an <h1> too (they lack one at all viewports).",
+  "repro": [
+   "Open http://localhost:5173/about at 375px width (iPhone UA)",
+   "Query document headings: no <h1> exists; first heading is <h3> 'About Universal Pensions'",
+   "Repeat for /faq, /contact, /request-access \u2014 none has an <h1>",
+   "Same routes at 1440px each expose a correct <h1>"
+  ],
+  "agent": "A16"
+ },
+ {
+  "id": "A16-002",
+  "title": "FAQ/Contact/About have no signup CTA in the 769-920px band; Navbar hamburger drawer is dead code",
+  "severity": "low",
+  "confidence": "confirmed",
+  "category": "responsive-ux",
+  "surface": "Public support pages (legacy Navbar)",
+  "location": "src/components/Navbar.module.css:220 (.cta display:none <=920) and :236 (.burger display:flex only <=768); Navbar.jsx imported only by FAQ.jsx/Contact.jsx/About.jsx",
+  "demo_visible": true,
+  "effort": "S",
+  "roles_affected": [
+   "public/anonymous"
+  ],
+  "evidence": "Command: node docs/audits/2026-08-23/scratch/a16/nav-band.mjs on /faq. Verbatim: width=950 startSaving.visible=true burger=false; width=900 startSaving.visible=false burger=false; width=800 startSaving.visible=false burger=false; width=769 startSaving.visible=false burger=false (signIn=true throughout). grep: Navbar imported only by FAQ/Contact/About; .burger's display:flex sits inside @media(max-width:768px). LandingLayout swaps the whole Navbar for LandingMobileShell at <=768px (useIsMobile MQ '(max-width:768px)'), so the burger breakpoint never actually renders.",
+  "impact": "In the 769-920px band (real iPad-portrait widths 820/834), FAQ/Contact/About show neither the 'Start saving' CTA (hidden <=920) nor a menu button (burger only <=768, where the mobile shell replaces the header), and these page bodies carry no signup CTA. The Navbar's mobile drawer is unreachable dead code. Signup stays reachable via nav links -> home and 'Sign in' remains, so it is degraded-conversion polish, not a dead end. The in-code claim that the CTA 'stays reachable from the drawer' is structurally false on these routes.",
+  "suggested_fix": "Keep .cta visible below 920px (it fits \u2014 the CSS 'measured' note is stale), or raise the .burger breakpoint to 920px so the drawer covers the gap. Alternatively remove the now-unreachable Navbar drawer entirely.",
+  "repro": [
+   "Open http://localhost:5173/faq at 834px width",
+   "Header shows nav links + 'Sign in' but no 'Start saving' CTA and no hamburger button",
+   "Widen to 950px: 'Start saving' reappears; narrow to 768px: page becomes the mobile shell (which has its own action-bar CTA)"
+  ],
+  "agent": "A16"
+ },
+ {
+  "id": "A16-003",
+  "title": "All seeded employer invites are expired; /invite/:token entry flow is not demoable from seed data",
+  "severity": "info",
+  "confidence": "confirmed",
+  "category": "data-staleness",
+  "surface": "Employer-invite onboarding",
+  "location": "live table public.employer_invites (4 rows)",
+  "demo_visible": true,
+  "effort": "S",
+  "roles_affected": [
+   "public/anonymous",
+   "employer"
+  ],
+  "evidence": "Command: psql \"$SUPABASE_DB_URL\" -c \"SELECT status,count(*),max(expires_at) FROM employer_invites GROUP BY status;\" => 'pending | 4 | 2026-08-14 12:09:42+00' (today 2026-08-24). Browser: node docs/audits/2026-08-23/scratch/a16/invite.mjs against a real seeded token => screen 'Invite unavailable' / body 'invite expired' (get_employer_invite RPC 400). get_employer_invite prosrc raises 'invite expired' when expires_at<=now().",
+  "impact": "A rep who opens any of the 4 seeded /invite/<token> links hits the 'Invite unavailable \u2014 invite expired' screen. No UI surfaces these seed tokens, so normal demo flow mints a fresh invite (7-day window) from the employer dashboard, which works \u2014 hence info-level. Flag for whoever refreshes demo data before an invite-onboarding demo.",
+  "suggested_fix": "Re-seed at least one employer_invites row with expires_at in the future (or bump the existing rows' expires_at) as part of demo-data refresh.",
+  "repro": [
+   "psql: SELECT token FROM employer_invites WHERE status='pending' LIMIT 1",
+   "Open http://localhost:5173/invite/<that token>/",
+   "Screen shows 'Invite unavailable' / 'invite expired'"
+  ],
+  "agent": "A16"
+ }
+]

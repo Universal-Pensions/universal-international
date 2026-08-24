@@ -1,0 +1,43 @@
+◇ injected env (8) from .env.local // tip: ⌘ enable debugging { debug: true }
+◇ injected env (0) from .env.local // tip: ⌘ custom filepath { path: '/custom/path/.env' }
+
+Running 100 tests using 1 worker
+
+◇ injected env (0) from .env.local // tip: ◈ secrets for agents [www.dotenvx.com]
+◇ injected env (0) from .env.local // tip: ◈ secrets for agents [www.dotenvx.com]
+  ✓    1 [chromium] › e2e/specs/db/deactivate-entities.spec.ts:172:3 › deactivate-entities enforcement (0060 + 0061) › 0060: INSERT a subscriber tagged to an INACTIVE employer raises (254ms)
+  ✓    2 [chromium] › e2e/specs/db/deactivate-entities.spec.ts:190:3 › deactivate-entities enforcement (0060 + 0061) › 0061: UPDATE-re-tag to an INACTIVE employer raises; detach + active re-tag pass (522ms)
+  ✓    3 [chromium] › e2e/specs/db/deactivate-entities.spec.ts:224:3 › deactivate-entities enforcement (0060 + 0061) › set_employer_status: deactivate flips status + detaches members; reactivate re-links them (906ms)
+  ✓    4 [chromium] › e2e/specs/db/deactivate-entities.spec.ts:275:3 › deactivate-entities enforcement (0060 + 0061) › set_distributor_status: deactivate flips distributor + branches + agents and detaches the agent tree (1.3s)
+  ✓    5 [chromium] › e2e/specs/db/invariants.spec.ts:71:3 › DB invariants (ilkhfnoyxlxwqadebnkp) › no duplicate agent emails (132ms)
+  ✓    6 [chromium] › e2e/specs/db/invariants.spec.ts:97:3 › DB invariants (ilkhfnoyxlxwqadebnkp) › no duplicate subscriber NIns (104ms)
+  ✓    7 [chromium] › e2e/specs/db/invariants.spec.ts:119:3 › DB invariants (ilkhfnoyxlxwqadebnkp) › every commission carries a valid two-state status (due | paid) (191ms)
+  ✓    8 [chromium] › e2e/specs/db/invariants.spec.ts:137:3 › DB invariants (ilkhfnoyxlxwqadebnkp) › paid commissions carry paid_date + paid_amount; due rows carry no paid_date (363ms)
+  ✓    9 [chromium] › e2e/specs/db/invariants.spec.ts:168:3 › DB invariants (ilkhfnoyxlxwqadebnkp) › no schedules with next_due_date < MOCK_NOW (seed anchor) (227ms)
+  ✓   10 [chromium] › e2e/specs/db/invariants.spec.ts:189:3 › DB invariants (ilkhfnoyxlxwqadebnkp) › distributors table is live and d-001 row exists (160ms)
+  ✓   11 [chromium] › e2e/specs/db/invariants.spec.ts:198:3 › DB invariants (ilkhfnoyxlxwqadebnkp) › settlement write RPCs (apply_settlement + mark_notifications_read) exist in pg_proc (332ms)
+  ✓   12 [chromium] › e2e/specs/db/invariants.spec.ts:257:3 › DB invariants (ilkhfnoyxlxwqadebnkp) › no seeded subscriber is orphaned from an agent that still bills for it (207ms)
+  ✓   13 [chromium] › e2e/specs/db/money-idempotency.spec.ts:132:3 › money RPC idempotency + atomicity (DB layer) › make_contribution is idempotent: same nonce twice credits exactly once (1.7s)
+  ✓   14 [chromium] › e2e/specs/db/money-idempotency.spec.ts:182:3 › money RPC idempotency + atomicity (DB layer) › request_withdrawal over the balance RAISEs and leaves no orphaned debit (1.0s)
+  ✓   15 [chromium] › e2e/specs/db/rls-isolation.spec.ts:61:3 › cross-tenant RLS isolation (DB layer) › agent A's JWT cannot read agent B's commissions (430ms)
+  ✓   16 [chromium] › e2e/specs/db/rls-isolation.spec.ts:101:3 › cross-tenant RLS isolation (DB layer) › subscriber A cannot read subscriber B's balance (428ms)
+  ✓   17 [chromium] › e2e/specs/db/rls-isolation.spec.ts:134:3 › cross-tenant RLS isolation (DB layer) › employer A's JWT cannot read employer B's tagged subscribers (1.0s)
+  ✓   18 [chromium] › e2e/specs/flows/agent-dashboard-drill-to-subscriber.spec.ts:44:3 › agent → drill subscribers (regression baseline) › subscribers list page loads scoped to this agent (742ms)
+  ✓   19 [chromium] › e2e/specs/flows/agent-dashboard-drill-to-subscriber.spec.ts:54:3 › agent → drill subscribers (regression baseline) › a known scoped subscriber renders on the list (938ms)
+  ✓   20 [chromium] › e2e/specs/flows/agent-dashboard-drill-to-subscriber.spec.ts:85:3 › agent → drill subscribers (regression baseline) › subscriber detail and schedule pages load for an in-scope subscriber (1.1s)
+  ✓   21 [chromium] › e2e/specs/flows/agent-dashboard-drill-to-subscriber.spec.ts:102:3 › agent → drill subscribers (regression baseline) › a subscriber belonging to a different agent does not leak (538ms)
+  ✓   22 [chromium] › e2e/specs/flows/branch-dashboard-drill-to-subscriber.spec.ts:82:3 › branch admin → drill agent → subscriber (scoped) › agents panel shows only agents belonging to this branch (1.1s)
+  ✓   23 [chromium] › e2e/specs/flows/branch-dashboard-drill-to-subscriber.spec.ts:106:3 › branch admin → drill agent → subscriber (scoped) › AgentDetail inside the branch shell exposes a "View subscribers" CTA (1.4s)
+  ✓   24 [chromium] › e2e/specs/flows/branch-dashboard-drill-to-subscriber.spec.ts:122:3 › branch admin → drill agent → subscriber (scoped) › branch overview reports the authoritative branch-scoped subscriber total (1.4s)
+  ✓   25 [chromium] › e2e/specs/flows/distributor-apply-settlement.spec.ts:116:3 › distributor → apply settlement (UI → RPC → DB → notifications) › full payment flips due→paid, records a batch, notifies agent + branch (2.9s)
+  ✓   26 [chromium] › e2e/specs/flows/distributor-apply-settlement.spec.ts:230:3 › distributor → apply settlement (UI → RPC → DB → notifications) › the settled agent sees an unread NotificationBell badge (3.2s)
+  ✓   27 [chromium] › e2e/specs/flows/distributor-apply-settlement.spec.ts:296:3 › distributor → apply settlement (UI → RPC → DB → notifications) › partial payment settles only the lines the amount covers; the rest stay due (0032) (2.2s)
+  ✓   28 [chromium] › e2e/specs/flows/distributor-apply-settlement.spec.ts:368:3 › distributor → apply settlement (UI → RPC → DB → notifications) › per-line paid_amount reconciles with the batch total (0032) (4.2s)
+  -   29 [chromium] › e2e/specs/flows/distributor-apply-settlement.spec.ts:426:8 › distributor → apply settlement (UI → RPC → DB → notifications) › idempotency: re-submitting the same upload nonce records no second batch (0032)
+  ✓   30 [chromium] › e2e/specs/flows/distributor-commission-drill-subscribers.spec.ts:94:3 › distributor → commission drill → agent → subscribers (real data) › the agent → subscribers drill loads real rows (no 400/42703) (3.0s)
+[db] branches row inserted: id=b-new-1787560217927 name=E2E Branch 1787560214725 district=d-kampala
+  ✓   31 [chromium] › e2e/specs/flows/distributor-create-branch.spec.ts:48:3 › distributor → create branch (UI + DB) › submitting the form inserts a branch row (3.9s)
+[perf] distributor chrome visible in 429ms (SLA target 3000ms)
+[metrics] subscribers=4602 agents=1872
+  ✓   32 [chromium] › e2e/specs/flows/distributor-renders-data.spec.ts:40:3 › distributor → renders live data (UI + DB) › dashboard chrome renders within 5s with non-zero metrics (1.3s)
+[count] rollup Subscribers tile = 4602

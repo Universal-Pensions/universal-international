@@ -1,0 +1,86 @@
+tablename,indexname,indexdef
+access_requests,access_requests_pkey,CREATE UNIQUE INDEX access_requests_pkey ON public.access_requests USING btree (id)
+access_requests,access_requests_status_idx,"CREATE INDEX access_requests_status_idx ON public.access_requests USING btree (status, created_at DESC)"
+agent_referrals,agent_referrals_pkey,CREATE UNIQUE INDEX agent_referrals_pkey ON public.agent_referrals USING btree (id)
+agent_referrals,agent_referrals_ticket_id_key,CREATE UNIQUE INDEX agent_referrals_ticket_id_key ON public.agent_referrals USING btree (ticket_id)
+agents,agents_branch_id_idx,CREATE INDEX agents_branch_id_idx ON public.agents USING btree (branch_id)
+agents,agents_pkey,CREATE UNIQUE INDEX agents_pkey ON public.agents USING btree (id)
+agents,ux_agents_email,CREATE UNIQUE INDEX ux_agents_email ON public.agents USING btree (email) WHERE (email IS NOT NULL)
+branches,branches_distributor_id_idx,CREATE INDEX branches_distributor_id_idx ON public.branches USING btree (distributor_id)
+branches,branches_district_id_idx,CREATE INDEX branches_district_id_idx ON public.branches USING btree (district_id)
+branches,branches_pkey,CREATE UNIQUE INDEX branches_pkey ON public.branches USING btree (id)
+claims,claims_pkey,CREATE UNIQUE INDEX claims_pkey ON public.claims USING btree (id)
+claims,claims_subscriber_id_idx,CREATE INDEX claims_subscriber_id_idx ON public.claims USING btree (subscriber_id)
+claims,claims_subscriber_product_date_idx,"CREATE INDEX claims_subscriber_product_date_idx ON public.claims USING btree (subscriber_id, product, incident_date DESC)"
+commission_config,commission_config_distributor_key,CREATE UNIQUE INDEX commission_config_distributor_key ON public.commission_config USING btree (distributor_id) WHERE (distributor_id IS NOT NULL)
+commission_config,commission_config_pkey,CREATE UNIQUE INDEX commission_config_pkey ON public.commission_config USING btree (id)
+commissions,commissions_branch_id_status_idx,"CREATE INDEX commissions_branch_id_status_idx ON public.commissions USING btree (branch_id, status)"
+commissions,commissions_pkey,CREATE UNIQUE INDEX commissions_pkey ON public.commissions USING btree (id)
+commissions,commissions_subscriber_id_idx,CREATE INDEX commissions_subscriber_id_idx ON public.commissions USING btree (subscriber_id)
+commissions,idx_commissions_status,CREATE INDEX idx_commissions_status ON public.commissions USING btree (status)
+commissions,ux_commissions_agent_subscriber,"CREATE UNIQUE INDEX ux_commissions_agent_subscriber ON public.commissions USING btree (agent_id, subscriber_id)"
+contact_submissions,contact_submissions_pkey,CREATE UNIQUE INDEX contact_submissions_pkey ON public.contact_submissions USING btree (id)
+contribution_run_uploads,contribution_run_uploads_pkey,CREATE UNIQUE INDEX contribution_run_uploads_pkey ON public.contribution_run_uploads USING btree (nonce)
+contribution_runs,contribution_runs_employer_id_idx,CREATE INDEX contribution_runs_employer_id_idx ON public.contribution_runs USING btree (employer_id)
+contribution_runs,contribution_runs_pkey,CREATE UNIQUE INDEX contribution_runs_pkey ON public.contribution_runs USING btree (id)
+contribution_schedules,contribution_schedules_pkey,CREATE UNIQUE INDEX contribution_schedules_pkey ON public.contribution_schedules USING btree (subscriber_id)
+custody_transfers,custody_transfers_pkey,CREATE UNIQUE INDEX custody_transfers_pkey ON public.custody_transfers USING btree (id)
+custody_transfers,custody_transfers_status_due_idx,"CREATE INDEX custody_transfers_status_due_idx ON public.custody_transfers USING btree (status, due_by)"
+demo_personas,demo_personas_phone_role_key,"CREATE UNIQUE INDEX demo_personas_phone_role_key ON public.demo_personas USING btree (phone, role)"
+demo_personas,demo_personas_phone_role_unique,"CREATE UNIQUE INDEX demo_personas_phone_role_unique ON public.demo_personas USING btree (phone, role)"
+demo_personas,demo_personas_pkey,CREATE UNIQUE INDEX demo_personas_pkey ON public.demo_personas USING btree (id)
+distributors,distributors_pkey,CREATE UNIQUE INDEX distributors_pkey ON public.distributors USING btree (id)
+districts,districts_pkey,CREATE UNIQUE INDEX districts_pkey ON public.districts USING btree (id)
+districts,districts_region_id_idx,CREATE INDEX districts_region_id_idx ON public.districts USING btree (region_id)
+employer_invites,employer_invites_employer_id_idx,CREATE INDEX employer_invites_employer_id_idx ON public.employer_invites USING btree (employer_id)
+employer_invites,employer_invites_pkey,CREATE UNIQUE INDEX employer_invites_pkey ON public.employer_invites USING btree (token)
+employer_invites,employer_invites_subscriber_id_idx,CREATE INDEX employer_invites_subscriber_id_idx ON public.employer_invites USING btree (subscriber_id)
+employers,employers_pkey,CREATE UNIQUE INDEX employers_pkey ON public.employers USING btree (id)
+entity_detach_log,entity_detach_log_open_idx,"CREATE INDEX entity_detach_log_open_idx ON public.entity_detach_log USING btree (link_kind, scope_id) WHERE (restored_at IS NULL)"
+entity_detach_log,entity_detach_log_pkey,CREATE UNIQUE INDEX entity_detach_log_pkey ON public.entity_detach_log USING btree (id)
+entity_detach_log,entity_detach_log_subscriber_idx,CREATE INDEX entity_detach_log_subscriber_idx ON public.entity_detach_log USING btree (subscriber_id) WHERE (restored_at IS NULL)
+entity_status_log,entity_status_log_open_idx,"CREATE INDEX entity_status_log_open_idx ON public.entity_status_log USING btree (scope_id, entity_kind) WHERE (restored_at IS NULL)"
+entity_status_log,entity_status_log_pkey,CREATE UNIQUE INDEX entity_status_log_pkey ON public.entity_status_log USING btree (id)
+insurance_policies,insurance_policies_pkey,CREATE UNIQUE INDEX insurance_policies_pkey ON public.insurance_policies USING btree (subscriber_id)
+money_nonces,money_nonces_pkey,CREATE UNIQUE INDEX money_nonces_pkey ON public.money_nonces USING btree (nonce)
+nav_snapshots,nav_snapshots_date_idx,"CREATE INDEX nav_snapshots_date_idx ON public.nav_snapshots USING btree (fund_code, nav_date DESC)"
+nav_snapshots,nav_snapshots_fund_date_key,"CREATE UNIQUE INDEX nav_snapshots_fund_date_key ON public.nav_snapshots USING btree (fund_code, nav_date)"
+nav_snapshots,nav_snapshots_pending_idx,"CREATE INDEX nav_snapshots_pending_idx ON public.nav_snapshots USING btree (status, nav_date) WHERE (status = 'pending'::text)"
+nav_snapshots,nav_snapshots_pkey,CREATE UNIQUE INDEX nav_snapshots_pkey ON public.nav_snapshots USING btree (id)
+nominee_claims,nominee_claims_matched_subscriber_idx,CREATE INDEX nominee_claims_matched_subscriber_idx ON public.nominee_claims USING btree (matched_subscriber_id)
+nominee_claims,nominee_claims_pkey,CREATE UNIQUE INDEX nominee_claims_pkey ON public.nominee_claims USING btree (id)
+nominee_claims,nominee_claims_reference_key,CREATE UNIQUE INDEX nominee_claims_reference_key ON public.nominee_claims USING btree (reference)
+nominee_claims,nominee_claims_status_idx,"CREATE INDEX nominee_claims_status_idx ON public.nominee_claims USING btree (status, created_at DESC)"
+nominees,nominees_pkey,CREATE UNIQUE INDEX nominees_pkey ON public.nominees USING btree (id)
+nominees,nominees_subscriber_id_idx,CREATE INDEX nominees_subscriber_id_idx ON public.nominees USING btree (subscriber_id)
+nominees,nominees_subscriber_id_type_unique,"CREATE UNIQUE INDEX nominees_subscriber_id_type_unique ON public.nominees USING btree (subscriber_id, type, nin) WHERE (nin IS NOT NULL)"
+notifications,notifications_created_at_idx,CREATE INDEX notifications_created_at_idx ON public.notifications USING btree (created_at DESC)
+notifications,notifications_pkey,CREATE UNIQUE INDEX notifications_pkey ON public.notifications USING btree (id)
+notifications,notifications_recipient_idx,"CREATE INDEX notifications_recipient_idx ON public.notifications USING btree (recipient_role, recipient_id, is_read)"
+notifications,notifications_ref_id_idx,CREATE INDEX notifications_ref_id_idx ON public.notifications USING btree (ref_id)
+regions,regions_pkey,CREATE UNIQUE INDEX regions_pkey ON public.regions USING btree (id)
+settlement_batches,settlement_batches_agent_id_idx,CREATE INDEX settlement_batches_agent_id_idx ON public.settlement_batches USING btree (agent_id)
+settlement_batches,settlement_batches_branch_id_idx,CREATE INDEX settlement_batches_branch_id_idx ON public.settlement_batches USING btree (branch_id)
+settlement_batches,settlement_batches_created_at_idx,CREATE INDEX settlement_batches_created_at_idx ON public.settlement_batches USING btree (created_at DESC)
+settlement_batches,settlement_batches_pkey,CREATE UNIQUE INDEX settlement_batches_pkey ON public.settlement_batches USING btree (id)
+settlement_uploads,settlement_uploads_pkey,CREATE UNIQUE INDEX settlement_uploads_pkey ON public.settlement_uploads USING btree (nonce)
+subscriber_balances,subscriber_balances_pkey,CREATE UNIQUE INDEX subscriber_balances_pkey ON public.subscriber_balances USING btree (subscriber_id)
+subscriber_insurance_products,subscriber_insurance_products_pkey,"CREATE UNIQUE INDEX subscriber_insurance_products_pkey ON public.subscriber_insurance_products USING btree (subscriber_id, product)"
+subscriber_signup_uploads,subscriber_signup_uploads_pkey,CREATE UNIQUE INDEX subscriber_signup_uploads_pkey ON public.subscriber_signup_uploads USING btree (nonce)
+subscribers,idx_subscribers_agent_id,CREATE INDEX idx_subscribers_agent_id ON public.subscribers USING btree (agent_id)
+subscribers,subscribers_agent_id_id_idx,"CREATE INDEX subscribers_agent_id_id_idx ON public.subscribers USING btree (agent_id, id)"
+subscribers,subscribers_district_id_idx,CREATE INDEX subscribers_district_id_idx ON public.subscribers USING btree (district_id)
+subscribers,subscribers_employer_id_idx,CREATE INDEX subscribers_employer_id_idx ON public.subscribers USING btree (employer_id)
+subscribers,subscribers_phone_unique_non_demo_idx,CREATE UNIQUE INDEX subscribers_phone_unique_non_demo_idx ON public.subscribers USING btree (phone) WHERE (is_demo_signup = false)
+subscribers,subscribers_pkey,CREATE UNIQUE INDEX subscribers_pkey ON public.subscribers USING btree (id)
+subscribers,ux_subscribers_nin,CREATE UNIQUE INDEX ux_subscribers_nin ON public.subscribers USING btree (nin) WHERE (nin IS NOT NULL)
+transactions,idx_transactions_date,CREATE INDEX idx_transactions_date ON public.transactions USING btree (date)
+transactions,idx_transactions_type_date,"CREATE INDEX idx_transactions_type_date ON public.transactions USING btree (type, date) WHERE (type = ANY (ARRAY['contribution'::text, 'withdrawal'::text]))"
+transactions,transactions_agent_id_idx,CREATE INDEX transactions_agent_id_idx ON public.transactions USING btree (agent_id)
+transactions,transactions_contribution_run_id_idx,CREATE INDEX transactions_contribution_run_id_idx ON public.transactions USING btree (contribution_run_id)
+transactions,transactions_pkey,CREATE UNIQUE INDEX transactions_pkey ON public.transactions USING btree (id)
+transactions,transactions_subscriber_id_date_idx,"CREATE INDEX transactions_subscriber_id_date_idx ON public.transactions USING btree (subscriber_id, date DESC)"
+users,users_phone_role_unique,"CREATE UNIQUE INDEX users_phone_role_unique ON public.users USING btree (phone, role)"
+users,users_pkey,CREATE UNIQUE INDEX users_pkey ON public.users USING btree (id)
+withdrawals,withdrawals_pkey,CREATE UNIQUE INDEX withdrawals_pkey ON public.withdrawals USING btree (id)
+withdrawals,withdrawals_subscriber_id_idx,CREATE INDEX withdrawals_subscriber_id_idx ON public.withdrawals USING btree (subscriber_id)

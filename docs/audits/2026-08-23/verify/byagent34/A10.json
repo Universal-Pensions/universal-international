@@ -1,0 +1,93 @@
+[
+ {
+  "id": "A10-001",
+  "title": "All Transactions and Annual Tax Statement reports show no data / all zeros in live mode (currentSubscriber never carries transactions)",
+  "severity": "high",
+  "confidence": "confirmed",
+  "category": "correctness",
+  "surface": "subscriber /dashboard/reports/all-transactions and /dashboard/reports/annual-statement",
+  "location": "src/services/subscriber.js:488 (getCurrentSubscriber select omits transactions) + mapSubscriberRow (no transactions key); consumers AllTransactions.jsx:81, AnnualStatement.jsx:20",
+  "evidence": "psql: s-0001 has 11 transactions (9 contributions=1,400,137; 1 premium=24,000; 1 withdrawal). node scratch/a10-tx-empty.mjs: ALL-TX screen '0 of 0 transactions | MONEY IN \u2014 | NET \u2014'; ANNUAL screen 'No statement yet.'; ACTIVITY control (useSubscriberTransactions) 'THIS YEAR UGX 1,376,137 | \u2191UGX 1.4M in'. annual-statement CSV = 'Contributions 2026,0 | ... | Net inflow,0'; AllTransactions CSV = header only, 0 data rows. Persists past 12s; mapSubscriberRow keys dump has no 'transactions'. Screens a10-alltx-empty-d.png, a10-annual-zeros-d.png.",
+  "impact": "Two of the five named subscriber reports render empty; the Annual TAX STATEMENT reports UGX 0 contributions (and its CSV literally exports 'Contributions 2026,0') for a member who contributed UGX 1.4M. Systematic across every live subscriber. Borderline critical on the wrong-money CSV; presents as an empty-state on screen.",
+  "suggested_fix": "Point AllTransactions and AnnualStatement at useSubscriberTransactions(sub.id) (as ActivityPage/WithdrawalsHistory already do), or add a transactions field to getCurrentSubscriber + mapSubscriberRow.",
+  "demo_visible": true,
+  "roles_affected": [
+   "subscriber"
+  ],
+  "repro": [
+   "Sign in as any subscriber (live Supabase mode)",
+   "Open /dashboard/reports/all-transactions -> '0 of 0 transactions'",
+   "Open /dashboard/reports/annual-statement -> 'No statement yet'",
+   "Export either CSV -> blank / all zeros"
+  ],
+  "effort": "S",
+  "agent": "A10"
+ },
+ {
+  "id": "A10-002",
+  "title": "Insurance settings shows '0 beneficiaries on file' when a beneficiary exists (currentSubscriber never carries nominees)",
+  "severity": "medium",
+  "confidence": "confirmed",
+  "category": "correctness",
+  "surface": "subscriber /dashboard/settings/insurance",
+  "location": "src/subscriber-dashboard/pages/InsurancePage.jsx:65,443 (sub?.nominees?.insurance); root cause mapSubscriberRow has no nominees key",
+  "evidence": "psql: nominees s-0001 = pension Robert Kasozi 50, pension Lillian Namutebi 50, insurance Samuel Babirye 100. node scratch/a10-benef-discrepancy.mjs: 'NOMINEES page \u2014 Insurance count: 1' but 'INSURANCE page \u2014 beneficiaries \"on file\": 0'. InsurancePage reads sub.nominees.insurance which is undefined->[] because currentSubscriber never selects/maps nominees. Screens a10-insurance-settings-d.png, a10-nominees-d.png.",
+  "impact": "The Insurance card says 'Insurance beneficiaries \u00b7 0 on file' under copy 'These people receive your life insurance benefit', implying nobody is named, while the Nominees tab and DB show 1. Two subscriber settings screens contradict each other about who receives the death benefit.",
+  "suggested_fix": "Read useSubscriberNominees(sub.id) inside InsurancePage (as NomineesPage does), or map nominees onto the currentSubscriber object.",
+  "demo_visible": true,
+  "roles_affected": [
+   "subscriber"
+  ],
+  "repro": [
+   "Sign in as s-0001",
+   "Open /dashboard/settings/nominees -> Insurance tab badge shows 1",
+   "Open /dashboard/settings/insurance -> 'Insurance beneficiaries 0 on file'"
+  ],
+  "effort": "S",
+  "agent": "A10"
+ },
+ {
+  "id": "A10-004",
+  "title": "On mobile, all 5 report sub-views share the same <h1> ('Analytics')",
+  "severity": "low",
+  "confidence": "confirmed",
+  "category": "accessibility",
+  "surface": "subscriber /dashboard/reports/* at <=768px",
+  "location": "src/subscriber-dashboard/pages/ReportsPage.jsx (mobile app-bar title) / shell app-bar",
+  "evidence": "375px sweep: /dashboard/reports/all-transactions, /contributions-summary, /withdrawals-history, /insurance-statement, /annual-statement all render h1='Analytics'; the report name appears only as an eyebrow (e.g. 'EVERY MOVEMENT IN YOUR ACCOUNT'). Desktop gives each view a distinct h1.",
+  "impact": "Distinct pages sharing one h1 is a minor screen-reader / heading-navigation wrinkle on mobile; non-blocking.",
+  "suggested_fix": "Set the mobile app-bar h1 to the active report's title on report sub-views.",
+  "demo_visible": false,
+  "roles_affected": [
+   "subscriber"
+  ],
+  "repro": [
+   "At 375px open each /dashboard/reports/* view",
+   "Inspect the h1 \u2014 always 'Analytics'"
+  ],
+  "effort": "S",
+  "agent": "A10"
+ },
+ {
+  "id": "A10-003",
+  "title": "The 6 baseline mobile subscriber-dashboard Playwright failures are title-divergence (test brittleness), not product defects",
+  "severity": "info",
+  "confidence": "confirmed",
+  "category": "test-coverage",
+  "surface": "e2e/specs/smoke/subscriber-dashboard.spec.ts (mobile projects)",
+  "location": "e2e/specs/smoke/subscriber-dashboard.spec.ts:43,54,109,115,124,173",
+  "evidence": "375px sweep renders every flagged route cleanly (0 ErrorBoundary, content present, 0 console errors). Failures are getByRole('heading',{level:1,name:/<desktop title>/}) not matching the mobile shell's shorter h1: Schedule mobile h1 'Contribution settings' vs asserted /tune your schedule/; Withdraw hub 'Withdraw' vs /withdrawals/; All Transactions/Contributions 'Analytics' vs the report name; Help 'Help' vs /how can we help/; Profile edit 'Edit profile' vs /^profile$/.",
+  "impact": "No user-facing defect \u2014 the pages work at 375. The baseline's 'element genuinely never appeared' is because the desktop-titled h1 does not exist on mobile. For A25 to relax assertions.",
+  "suggested_fix": "Relax the smoke assertions to accept the mobile app-bar titles, or anchor on a title-agnostic identity element.",
+  "demo_visible": false,
+  "roles_affected": [
+   "subscriber"
+  ],
+  "repro": [
+   "Run subscriber-dashboard.spec.ts on mobile-chromium/webkit",
+   "Failures at :43,:54,:109,:115,:124,:173 \u2014 mobile h1 differs from asserted desktop title"
+  ],
+  "effort": "S",
+  "agent": "A10"
+ }
+]

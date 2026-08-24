@@ -1,0 +1,154 @@
+{
+ "e2e/specs/db/deactivate-entities.spec.ts": [],
+ "e2e/specs/db/invariants.spec.ts": [],
+ "e2e/specs/db/money-idempotency.spec.ts": [],
+ "e2e/specs/db/rls-isolation.spec.ts": [],
+ "e2e/specs/flows/admin-create-employer.spec.ts": [
+  "/dashboard"
+ ],
+ "e2e/specs/flows/agent-dashboard-drill-to-subscriber.spec.ts": [
+  "/dashboard/subscribers",
+  "/dashboard/subscribers/${outsider!.id}",
+  "/dashboard/subscribers/${sub.id}",
+  "/dashboard/subscribers/${sub.id}/schedule"
+ ],
+ "e2e/specs/flows/agent-onboard-subscriber.spec.ts": [
+  "/dashboard/onboard"
+ ],
+ "e2e/specs/flows/auth-otp-retry-lockout.spec.ts": [
+  "/"
+ ],
+ "e2e/specs/flows/branch-dashboard-drill-to-subscriber.spec.ts": [
+  "/dashboard",
+  "/dashboard/agents/${probeAgentId}"
+ ],
+ "e2e/specs/flows/distributor-apply-settlement.spec.ts": [
+  "/dashboard"
+ ],
+ "e2e/specs/flows/distributor-commission-drill-subscribers.spec.ts": [
+  "/dashboard"
+ ],
+ "e2e/specs/flows/distributor-create-branch.spec.ts": [
+  "/dashboard"
+ ],
+ "e2e/specs/flows/distributor-drill-agent-to-subscriber.spec.ts": [
+  "/dashboard/agents/${agentId}"
+ ],
+ "e2e/specs/flows/distributor-drill-branch-to-subscriber.spec.ts": [
+  "/dashboard/branches/${branchId}"
+ ],
+ "e2e/specs/flows/distributor-exports-csv.spec.ts": [
+  "/dashboard",
+  "/dashboard/reports/all-transactions"
+ ],
+ "e2e/specs/flows/distributor-renders-data.spec.ts": [
+  "/dashboard",
+  "/dashboard/agents/${agent!.id}",
+  "/dashboard/branches/${branch!.id}",
+  "/dashboard/districts/${district!.id}",
+  "/dashboard/regions/${region!.id}"
+ ],
+ "e2e/specs/flows/employer-contribution-run.spec.ts": [
+  "/dashboard"
+ ],
+ "e2e/specs/flows/kyc-failure-paths.spec.ts": [
+  "/signup"
+ ],
+ "e2e/specs/flows/settings-change-password.spec.ts": [
+  "/dashboard",
+  "/distributors"
+ ],
+ "e2e/specs/flows/subscriber-edit-profile.spec.ts": [
+  "/dashboard/settings/profile"
+ ],
+ "e2e/specs/flows/subscriber-signin-with-password.spec.ts": [
+  "/",
+  "/dashboard/settings"
+ ],
+ "e2e/specs/flows/subscriber-signup-to-contribute.spec.ts": [
+  "/signup"
+ ],
+ "e2e/specs/regression/employer-kyc-nudge.spec.ts": [
+  "/dashboard/pending-kyc"
+ ],
+ "e2e/specs/regression/empty-states.spec.ts": [
+  "/dashboard"
+ ],
+ "e2e/specs/regression/map-drill.spec.ts": [
+  "/dashboard"
+ ],
+ "e2e/specs/regression/modal-escape.spec.ts": [
+  "/dashboard"
+ ],
+ "e2e/specs/regression/subscriber-insurance-no-scroll.spec.ts": [
+  "/dashboard/settings/insurance"
+ ],
+ "e2e/specs/regression/subscriber-payment-methods.spec.ts": [
+  "/dashboard/save"
+ ],
+ "e2e/specs/regression/subscriber-settings-stubs.spec.ts": [
+  "/dashboard/settings/nominees"
+ ],
+ "e2e/specs/regression/subscriber-write-failures.spec.ts": [
+  "/dashboard/save/schedule",
+  "/dashboard/settings/insurance",
+  "/dashboard/settings/nominees",
+  "/dashboard/settings/profile",
+  "/dashboard/withdraw/claim",
+  "/dashboard/withdraw/savings"
+ ],
+ "e2e/specs/smoke/_health.spec.ts": [
+  "/",
+  "/dashboard"
+ ],
+ "e2e/specs/smoke/admin-dashboard.spec.ts": [
+  "/dashboard"
+ ],
+ "e2e/specs/smoke/agent-dashboard.spec.ts": [
+  "/dashboard",
+  "/dashboard/analytics",
+  "/dashboard/commissions",
+  "/dashboard/commissions/due",
+  "/dashboard/inbox",
+  "/dashboard/onboard",
+  "/dashboard/settings",
+  "/dashboard/subscribers",
+  "/dashboard/subscribers/s-0001"
+ ],
+ "e2e/specs/smoke/branch-dashboard.spec.ts": [
+  "/dashboard",
+  "/dashboard/agents",
+  "/dashboard/analytics",
+  "/dashboard/commissions",
+  "/dashboard/support"
+ ],
+ "e2e/specs/smoke/distributor-dashboard.spec.ts": [
+  "/dashboard"
+ ],
+ "e2e/specs/smoke/employer-dashboard.spec.ts": [
+  "/dashboard"
+ ],
+ "e2e/specs/smoke/landing.spec.ts": [
+  "/",
+  "/about",
+  "/contact",
+  "/faq"
+ ],
+ "e2e/specs/smoke/subscriber-dashboard.spec.ts": [
+  "/dashboard",
+  "/dashboard/activity",
+  "/dashboard/agent",
+  "/dashboard/claim",
+  "/dashboard/help",
+  "/dashboard/reports",
+  "/dashboard/reports/all-transactions",
+  "/dashboard/reports/contributions-summary",
+  "/dashboard/save",
+  "/dashboard/save/schedule",
+  "/dashboard/settings",
+  "/dashboard/settings/profile",
+  "/dashboard/withdraw",
+  "/dashboard/withdraw/claim",
+  "/dashboard/withdraw/savings"
+ ]
+}

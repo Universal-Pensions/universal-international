@@ -1,0 +1,168 @@
+{
+  "config": {
+    "configFile": "/Users/shubhang/Desktop/Projects/uganda-dashboard/playwright.config.ts",
+    "rootDir": "/Users/shubhang/Desktop/Projects/uganda-dashboard/e2e/specs",
+    "forbidOnly": false,
+    "fullyParallel": true,
+    "globalSetup": "/Users/shubhang/Desktop/Projects/uganda-dashboard/e2e/global-setup.ts",
+    "globalTeardown": null,
+    "globalTimeout": 0,
+    "grep": {},
+    "grepInvert": null,
+    "maxFailures": 0,
+    "metadata": {},
+    "preserveOutput": "always",
+    "projects": [
+      {
+        "outputDir": "/Users/shubhang/Desktop/Projects/uganda-dashboard/test-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {},
+        "id": "chromium",
+        "name": "chromium",
+        "testDir": "/Users/shubhang/Desktop/Projects/uganda-dashboard/e2e/specs",
+        "testIgnore": [],
+        "testMatch": [
+          "**/*.@(spec|test).?(c|m)[jt]s?(x)"
+        ],
+        "timeout": 75000
+      },
+      {
+        "outputDir": "/Users/shubhang/Desktop/Projects/uganda-dashboard/test-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {},
+        "id": "webkit",
+        "name": "webkit",
+        "testDir": "/Users/shubhang/Desktop/Projects/uganda-dashboard/e2e/specs",
+        "testIgnore": [],
+        "testMatch": [
+          "**/*.@(spec|test).?(c|m)[jt]s?(x)"
+        ],
+        "timeout": 75000
+      },
+      {
+        "outputDir": "/Users/shubhang/Desktop/Projects/uganda-dashboard/test-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {},
+        "id": "mobile-chromium",
+        "name": "mobile-chromium",
+        "testDir": "/Users/shubhang/Desktop/Projects/uganda-dashboard/e2e/specs",
+        "testIgnore": [],
+        "testMatch": [
+          "**/smoke/landing.spec.ts",
+          "**/smoke/subscriber-dashboard.spec.ts",
+          "**/smoke/agent-dashboard.spec.ts",
+          "**/smoke/_health.spec.ts",
+          "**/flows/distributor-exports-csv.spec.ts",
+          "**/regression/subscriber-payment-methods.spec.ts",
+          "**/regression/employer-kyc-nudge.spec.ts"
+        ],
+        "timeout": 75000
+      },
+      {
+        "outputDir": "/Users/shubhang/Desktop/Projects/uganda-dashboard/test-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {},
+        "id": "mobile-webkit",
+        "name": "mobile-webkit",
+        "testDir": "/Users/shubhang/Desktop/Projects/uganda-dashboard/e2e/specs",
+        "testIgnore": [],
+        "testMatch": [
+          "**/smoke/landing.spec.ts",
+          "**/smoke/subscriber-dashboard.spec.ts",
+          "**/smoke/agent-dashboard.spec.ts",
+          "**/smoke/_health.spec.ts",
+          "**/flows/distributor-exports-csv.spec.ts",
+          "**/regression/subscriber-payment-methods.spec.ts",
+          "**/regression/employer-kyc-nudge.spec.ts"
+        ],
+        "timeout": 75000
+      }
+    ],
+    "quiet": false,
+    "reporter": [
+      [
+        "json"
+      ]
+    ],
+    "reportSlowTests": {
+      "max": 5,
+      "threshold": 300000
+    },
+    "shard": null,
+    "tags": [],
+    "updateSnapshots": "missing",
+    "updateSourceMethod": "patch",
+    "version": "1.60.0",
+    "workers": 1,
+    "webServer": {
+      "command": "npm run dev:all",
+      "url": "http://localhost:5173",
+      "timeout": 120000,
+      "reuseExistingServer": true,
+      "env": {
+        "VITE_API_BASE_URL": "http://localhost:3001/api"
+      },
+      "stdout": "ignore",
+      "stderr": "pipe"
+    }
+  },
+  "suites": [],
+  "errors": [
+    {
+      "message": "Error: SUPABASE_SERVICE_ROLE_KEY is required for E2E DB verification. Check .env.local.",
+      "stack": "Error: SUPABASE_SERVICE_ROLE_KEY is required for E2E DB verification. Check .env.local.\n    at getAdminClient (/Users/shubhang/Desktop/Projects/uganda-dashboard/e2e/fixtures/db.ts:28:11)\n    at /Users/shubhang/Desktop/Projects/uganda-dashboard/e2e/fixtures/db.ts:36:30",
+      "location": {
+        "file": "/Users/shubhang/Desktop/Projects/uganda-dashboard/e2e/fixtures/db.ts",
+        "column": 11,
+        "line": 28
+      },
+      "snippet": "\u001b[90m   at \u001b[39m../fixtures/db.ts:28\n\n  26 |   }\n  27 |   if (!serviceRoleKey) {\n> 28 |     throw new Error('SUPABASE_SERVICE_ROLE_KEY is required for E2E DB verification. Check .env.local.');\n     |           ^\n  29 |   }\n  30 |   cachedClient = createClient(url, serviceRoleKey, {\n  31 |     auth: { persistSession: false, autoRefreshToken: false },"
+    },
+    {
+      "message": "Error: SUPABASE_SERVICE_ROLE_KEY is required for E2E DB verification. Check .env.local.",
+      "stack": "Error: SUPABASE_SERVICE_ROLE_KEY is required for E2E DB verification. Check .env.local.\n    at getAdminClient (/Users/shubhang/Desktop/Projects/uganda-dashboard/e2e/fixtures/db.ts:28:11)\n    at /Users/shubhang/Desktop/Projects/uganda-dashboard/e2e/fixtures/db.ts:36:30",
+      "location": {
+        "file": "/Users/shubhang/Desktop/Projects/uganda-dashboard/e2e/fixtures/db.ts",
+        "column": 11,
+        "line": 28
+      },
+      "snippet": "\u001b[90m   at \u001b[39m../fixtures/db.ts:28\n\n  26 |   }\n  27 |   if (!serviceRoleKey) {\n> 28 |     throw new Error('SUPABASE_SERVICE_ROLE_KEY is required for E2E DB verification. Check .env.local.');\n     |           ^\n  29 |   }\n  30 |   cachedClient = createClient(url, serviceRoleKey, {\n  31 |     auth: { persistSession: false, autoRefreshToken: false },"
+    },
+    {
+      "message": "Error: SUPABASE_SERVICE_ROLE_KEY is required for E2E DB verification. Check .env.local.",
+      "stack": "Error: SUPABASE_SERVICE_ROLE_KEY is required for E2E DB verification. Check .env.local.\n    at getAdminClient (/Users/shubhang/Desktop/Projects/uganda-dashboard/e2e/fixtures/db.ts:28:11)\n    at /Users/shubhang/Desktop/Projects/uganda-dashboard/e2e/fixtures/db.ts:36:30",
+      "location": {
+        "file": "/Users/shubhang/Desktop/Projects/uganda-dashboard/e2e/fixtures/db.ts",
+        "column": 11,
+        "line": 28
+      },
+      "snippet": "\u001b[90m   at \u001b[39m../fixtures/db.ts:28\n\n  26 |   }\n  27 |   if (!serviceRoleKey) {\n> 28 |     throw new Error('SUPABASE_SERVICE_ROLE_KEY is required for E2E DB verification. Check .env.local.');\n     |           ^\n  29 |   }\n  30 |   cachedClient = createClient(url, serviceRoleKey, {\n  31 |     auth: { persistSession: false, autoRefreshToken: false },"
+    },
+    {
+      "message": "Error: SUPABASE_SERVICE_ROLE_KEY is required for E2E DB verification. Check .env.local.",
+      "stack": "Error: SUPABASE_SERVICE_ROLE_KEY is required for E2E DB verification. Check .env.local.\n    at getAdminClient (/Users/shubhang/Desktop/Projects/uganda-dashboard/e2e/fixtures/db.ts:28:11)\n    at /Users/shubhang/Desktop/Projects/uganda-dashboard/e2e/fixtures/db.ts:36:30",
+      "location": {
+        "file": "/Users/shubhang/Desktop/Projects/uganda-dashboard/e2e/fixtures/db.ts",
+        "column": 11,
+        "line": 28
+      },
+      "snippet": "\u001b[90m   at \u001b[39m../fixtures/db.ts:28\n\n  26 |   }\n  27 |   if (!serviceRoleKey) {\n> 28 |     throw new Error('SUPABASE_SERVICE_ROLE_KEY is required for E2E DB verification. Check .env.local.');\n     |           ^\n  29 |   }\n  30 |   cachedClient = createClient(url, serviceRoleKey, {\n  31 |     auth: { persistSession: false, autoRefreshToken: false },"
+    },
+    {
+      "message": "Error: No tests found.\nMake sure that arguments are regular expressions matching test files.\nYou may need to escape symbols like \"$\" or \"*\" and quote the arguments.",
+      "stack": "Error: No tests found.\nMake sure that arguments are regular expressions matching test files.\nYou may need to escape symbols like \"$\" or \"*\" and quote the arguments."
+    }
+  ],
+  "stats": {
+    "startTime": "2026-08-24T08:28:05.872Z",
+    "duration": 81.86700000000002,
+    "expected": 0,
+    "skipped": 0,
+    "unexpected": 0,
+    "flaky": 0
+  }
+}

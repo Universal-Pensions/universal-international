@@ -1,0 +1,31 @@
+import { chromium } from 'playwright';
+import { signIn } from './lib.mjs';
+const b = await chromium.launch();
+const p = await (await b.newContext()).newPage();
+await signIn(p, { landingPath: '/', phone: '+256711000001' });
+await p.goto('http://localhost:5173/dashboard/agent', { waitUntil: 'domcontentloaded' });
+await p.waitForTimeout(7000);
+const state = async () => (await p.evaluate(() => {
+  const t = document.body.innerText.replace(/\s+/g,' ');
+  return { open: (t.match(/Open (\d+)/)||[])[1], hasProbe: t.includes('AUDIT A22 DEMO TICKET') };
+}));
+console.log('BEFORE:', JSON.stringify(await state()));
+await p.getByRole('button', { name: /Raise an issue/ }).click();
+await p.waitForTimeout(1200);
+await p.locator('input[placeholder*="When can I withdraw"]').fill('AUDIT A22 DEMO TICKET');
+await p.getByRole('button', { name: /^Contributions$/ }).first().click().catch(()=>{});
+await p.locator('textarea').first().fill('Audit A22 probe — in-memory ticket store durability check.');
+await p.getByRole('button', { name: /Send to my agent/ }).click();
+await p.waitForTimeout(3000);
+console.log('AFTER CREATE:', JSON.stringify(await state()));
+const alerts = await p.locator('[role="alert"],[role="status"]').allInnerTexts().catch(()=>[]);
+console.log('confirmation shown:', JSON.stringify(alerts));
+await p.screenshot({ path:'docs/audits/2026-08-23/scratch/ticket-created.png' });
+// now the rep refreshes the page mid-demo
+await p.reload({ waitUntil: 'domcontentloaded' });
+await p.waitForTimeout(8000);
+console.log('AFTER RELOAD:', JSON.stringify(await state()));
+const txt = (await p.evaluate(()=>document.body.innerText)).replace(/\s+/g,' ');
+console.log('any "missing"/error copy after reload:', /missing|not found|error|could not/i.test(txt));
+await p.screenshot({ path:'docs/audits/2026-08-23/scratch/ticket-after-reload.png' });
+await b.close(); process.exit(0);

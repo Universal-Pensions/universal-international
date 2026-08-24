@@ -1,0 +1,126 @@
+### src/App.jsx
+    employers
+    distributors
+    admin
+    faq
+    contact
+    about
+    request-access
+    /claim
+    /coming-soon
+    /admin/login
+    /dashboard/*
+    *
+    index routes: 1
+
+### src/subscriber-dashboard/SubscriberDashboardShell.jsx
+    save
+    save/schedule
+    withdraw
+    withdraw/savings
+    withdraw/claim
+    claim
+    activity
+    reports
+    reports/:reportId
+    policies
+    help
+    agent
+    settings
+    settings/profile
+    settings/nominees
+    settings/insurance
+    settings/notifications
+    settings/security
+    *
+    index routes: 1
+
+### src/agent-dashboard/AgentDashboardShell.jsx
+    onboard
+    subscribers
+    subscribers/:id
+    subscribers/:id/schedule
+    inbox
+    analytics
+    commissions
+    commissions/:view
+    contributions
+    onboarded-this-month
+    yet-to-contribute
+    insured
+    uninsured
+    settings
+    profile
+    help
+    *
+    index routes: 1
+
+### src/branch-dashboard/shell/BranchDesktopShell.jsx
+    attention/:type
+    agents
+    agents/:agentId
+    agents/:agentId/subscribers
+    commissions
+    analytics
+    reports
+    support
+    settings
+    *
+    index routes: 1
+
+### src/branch-dashboard/shell/BranchMobileShell.jsx
+    attention/:type
+    agents/new
+    agents/:agentId
+    agents
+    commissions
+    analytics
+    reports
+    support/:ticketId
+    support
+    menu
+    settings
+    *
+    index routes: 1
+
+### src/dashboard/shell/DistributorMobileShell.jsx
+    branches/:branchId
+    branches
+    agents/:agentId
+    agents
+    commissions
+    subscribers/:subscriberId
+    subscribers
+    reports/:reportId
+    reports
+    support/:ticketId
+    support
+    settings
+    menu
+    *
+    index routes: 1
+
+### src/admin-dashboard/shell/AdminMobileShell.jsx
+    distributors/:distributorId
+    distributors
+    employers/:employerId
+    employers
+    access-requests
+    nav
+    nominee-claims
+    attention/:type
+    network
+    branches/:branchId
+    branches
+    agents/:agentId
+    agents
+    subscribers/:subscriberId
+    subscribers
+    reports/:reportId
+    reports
+    support/:ticketId
+    support
+    settings
+    menu
+    *
+    index routes: 1

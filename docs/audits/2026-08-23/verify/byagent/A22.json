@@ -1,0 +1,192 @@
+[
+ {
+  "id": "A22-001",
+  "title": "Cross-tenant cache bleed: login never clears the React Query cache, so an in-SPA role switch shows the previous role's RLS-scoped money",
+  "severity": "critical",
+  "confidence": "confirmed",
+  "category": "state-cache-bleed",
+  "surface": "auth / react-query cache",
+  "location": "src/contexts/AuthContext.jsx:56-66 (login; contrast logout queryClient.clear() at :91)",
+  "evidence": "node docs/audits/2026-08-23/scratch/a22b-13-admin-to-dist-bleed.mjs \u2192 'A) ADMIN: UGX 2.45B \u2026 321 branches \u2026 5,064' then 'B) DISTRIBUTOR d-002 after switch: 1 region \u00b7 321 branches \u2026 UGX 2.45B Across 1 region \u00b7 321 branches \u2026 5,001 | rollup(country,[ug]) reqs phase B: 0 | doc loads total: 1' with stored session distributorId:d-002. Sanctioned path clean: a22-01-bleed.mjs shows Log out \u2192 token null, admin refetches (2 rollup calls). Screenshot scratch/a22b-admin-to-dist-bleed.png.",
+  "impact": "Distributor d-002 (Busoga; ~27 branches / ~0.2B) renders the platform total UGX 2.45B across 321 branches \u2014 another tenant's money \u2014 because login sets token/user but never clears the query cache (only logout does). 0 refetch + 1 doc-load proves the new role read the prior role's cached rollup. Wrong money and cross-tenant data displayed in a live demo whenever a rep signs into a second role in the same tab without clicking Log out and without a hard reload.",
+  "suggested_fix": "Call queryClient.clear() (or removeQueries) inside AuthContext.login as well as logout \u2014 clear the cache on any identity change.",
+  "demo_visible": true,
+  "effort": "S",
+  "roles_affected": [
+   "admin",
+   "distributor",
+   "employer",
+   "branch",
+   "agent",
+   "subscriber"
+  ],
+  "repro": [
+   "Open one browser tab; sign in as admin at /admin (see UGX 2.45B / 321 branches)",
+   "Browser-back to a landing page (SPA nav, no full reload)",
+   "Open the Distributor landing and sign in as d-002 WITHOUT clicking Log out",
+   "Distributor hero shows the admin platform totals (UGX 2.45B / 321 branches), not d-002's Busoga scope"
+  ],
+  "failure_scenario": "admin session cached get_entity_metrics_rollup(country,[ug]) with platform-wide data \u2192 login as d-002 does not clear cache \u2192 d-002 dashboard reads the cached platform rollup and displays UGX 2.45B / 321 branches instead of its RLS-scoped figures.",
+  "agent": "A22"
+ },
+ {
+  "id": "A22-002",
+  "title": "Primary dashboard hero money reads have no error/retry state \u2014 a read failure renders 'FUNDS UNDER MANAGEMENT \u2014' / 0 subscribers / 'Health Score 0 Needs work' silently",
+  "severity": "high",
+  "confidence": "confirmed",
+  "category": "error-handling",
+  "surface": "admin/distributor/branch overview hero",
+  "location": "shared dashboard hero component (renders 'FUNDS UNDER MANAGEMENT') + src/main.jsx:69 (no QueryCache.onError)",
+  "evidence": "node docs/audits/2026-08-23/scratch/a22-19-error-badge-check.mjs \u2192 'admin/get_platform_overview 500: FUM shown \"\u2014 \"; \"Metrics unavailable\" present: false; retry button: false; role=status/alert: []' and 'distributor/get_entity_metrics_rollup 500: FUM shown \"\u2014 \"; false; false'. a22-06-silent-read-failure.mjs shows admin hero 'FUNDS UNDER MANAGEMENT \u2014 \u2026 SUBSCRIBERS 0 \u2026 Platform Health Score 0 Needs work'. Services throw on error (entities.js:1316, :877) yet the hero swallows to 0.",
+  "impact": "A single failed overview read (network blip on demo wifi, RPC error) turns the admin/distributor home into a fully-zeroed 'Needs work' screen showing '\u2014' for AUM, with no error message and no retry \u2014 only a manual page reload recovers. Reads as wrong money during a live demo. The one isError 'Metrics unavailable' badge (AdminCountryOverview.jsx:115) is on a secondary Summary card and never surfaces on the mounted hero.",
+  "suggested_fix": "Give the shared hero an isError branch (message + Retry calling refetch()); add a global QueryClient QueryCache.onError toast so no read can fail entirely silently.",
+  "demo_visible": true,
+  "effort": "M",
+  "roles_affected": [
+   "admin",
+   "distributor",
+   "branch"
+  ],
+  "repro": [
+   "Sign in as admin at /admin",
+   "Cause get_platform_overview to fail (route-fulfill 500, or a real network drop)",
+   "Overview hero shows FUNDS UNDER MANAGEMENT \u2014, SUBSCRIBERS 0, Health Score 0 Needs work with no error and no retry"
+  ],
+  "failure_scenario": "get_platform_overview returns 500 \u2192 usePlatformOverview throws \u2192 component does overview ?? {} then every field ?? 0 \u2192 hero renders \u2014 / 0 / 'Needs work' with no isError guard on the mounted hero.",
+  "agent": "A22"
+ },
+ {
+  "id": "A22-003",
+  "title": "Mid-session JWT expiry on the direct-Supabase path never re-logs-in; forwardSupabaseAuthError is dead code (0 call sites)",
+  "severity": "medium",
+  "confidence": "confirmed",
+  "category": "auth-expiry",
+  "surface": "supabase data path / session lifecycle",
+  "location": "src/services/supabaseClient.js (forwardSupabaseAuthError / isSupabaseAuthError exported, 0 call sites in the 14 services)",
+  "evidence": "grep -rn 'forwardSupabaseAuthError|isSupabaseAuthError' src/services src/hooks \u2192 only test files reference PGRST301. node docs/audits/2026-08-23/scratch/a22-05-auth-expiry.mjs 4b \u2192 responses ['200 districts','200 regions','401 agents'], screen '0 agents \u00b7 0 SUBSCRIBERS \u00b7 0 AUM', 'token = STILL PRESENT' (no logout). 4a startup gate PASSES (localStorage keys=[], routed to /).",
+  "impact": "Once the 24h JWT lapses mid-session, every direct-PostgREST read (all dashboards) silently downgrades to the anon key (isJwtExpired treats the expired token as absent) and shows zeros; the user stays 'logged in' with a dead session and no re-login prompt. Only the /api 401 channel and the startup gate handle expiry. Not a live-demo trigger (needs a day-old session), hence medium.",
+  "suggested_fix": "Call forwardSupabaseAuthError(error) on every .rpc/.from result (or centralise it in fetchWithAuth by inspecting response status) so a PostgREST 401/PGRST301 drives the same logout+redirect as the /api path.",
+  "demo_visible": false,
+  "effort": "M",
+  "roles_affected": [
+   "admin",
+   "distributor",
+   "branch",
+   "agent",
+   "employer",
+   "subscriber"
+  ],
+  "repro": [
+   "Sign in as any role",
+   "Replace localStorage upensions_token with an expired JWT (simulates 24h lapse)",
+   "Navigate to a tab that fires a Supabase read \u2192 dashboard shows 0/empty, user is NOT logged out"
+  ],
+  "failure_scenario": "expired token \u2192 isJwtExpired true \u2192 fetchWithAuth sends anon key \u2192 agents read RLS-denied 401 \u2192 no service forwards the auth error \u2192 dashboard renders 0 agents / 0 AUM with the stale session still active.",
+  "agent": "A22"
+ },
+ {
+  "id": "A22-004",
+  "title": "Raw technical error strings ('TypeError: Failed to fetch', raw Postgres exception text) leak into user toasts on writes; the friendly fallback never wins",
+  "severity": "medium",
+  "confidence": "confirmed",
+  "category": "error-copy",
+  "surface": "write toasts (money + profile)",
+  "location": "src/subscriber-dashboard/pages/SavePage.jsx:204, WithdrawPage.jsx:142, ProfilePage.jsx:102, src/employer-dashboard/runs/runViews.jsx:361 (pattern addToast('error', err?.message || 'Could not \u2026'))",
+  "evidence": "node docs/audits/2026-08-23/scratch/a22-14-money-writes.mjs \u2192 toasts 'unexpected error while executing make_contribution', 'TypeError: Failed to fetch', 'amount must be greater than zero'. a22b-16 / 14 \u2192 'injected server error', 'injected failure (audit A22)'. err.message is always populated by createApiError/supabase, so '|| Could not \u2026' never runs.",
+  "impact": "On a flaky demo network a prospect sees 'TypeError: Failed to fetch' (or a raw Postgres exception) on a money action \u2014 looks broken and unprofessional. The friendly copy the authors wrote is effectively dead because err.message is never empty.",
+  "suggested_fix": "Map known err.code values to friendly copy and default to the fallback for anything unrecognised; never render a bare err.message in a user toast.",
+  "demo_visible": true,
+  "effort": "M",
+  "roles_affected": [
+   "subscriber",
+   "employer",
+   "admin"
+  ],
+  "repro": [
+   "Sign in as subscriber, open /dashboard/save (Top up)",
+   "Drop the network (or 500 make_contribution) and confirm the payment",
+   "Toast shows the raw string 'TypeError: Failed to fetch' instead of 'Could not complete the top-up.'"
+  ],
+  "failure_scenario": "network drop on make_contribution \u2192 fetchWithAuth throws TypeError \u2192 err.message='Failed to fetch' \u2192 addToast('error', err.message || fallback) renders 'TypeError: Failed to fetch' to the user.",
+  "agent": "A22"
+ },
+ {
+  "id": "A22-005",
+  "title": "Access-request approve/reject does not invalidate adminAttention, so the 'Pending access requests' count stays stale up to 5 minutes",
+  "severity": "medium",
+  "confidence": "confirmed",
+  "category": "stale-cache-invalidation",
+  "surface": "admin Needs-attention card",
+  "location": "src/hooks/useAccessRequests.js:22-41 (useApproveAccessRequest / useRejectAccessRequest)",
+  "evidence": "node docs/audits/2026-08-23/scratch/15-invalidation-probe.mjs \u2192 after approve_access_request, refetched=[list_access_requests, get_platform_overview]; on returning to Overview refetched=[]; 'get_admin_attention refetched? false'. get_admin_attention counts pendingAccessRequests (src/services/adminAttention.js:35). usePublishNav (useNav.js:73) correctly invalidates adminAttention; these two do not.",
+  "impact": "Admin approves or denies an access request, then the Needs-attention 'Pending access requests' chip on the home keeps the old count for up to the 5-min staleTime (refetchOnWindowFocus is off) \u2014 visibly stale during a demo and inconsistent with the NAV publish flow.",
+  "suggested_fix": "Add queryClient.invalidateQueries({ queryKey: ['adminAttention'] }) and ['adminAttentionRows'] to both useApproveAccessRequest and useRejectAccessRequest onSuccess.",
+  "demo_visible": true,
+  "effort": "S",
+  "roles_affected": [
+   "admin"
+  ],
+  "repro": [
+   "Sign in as admin, note the 'Pending access requests' count on the Needs-attention card",
+   "Go to Access requests, Approve one",
+   "Return to Overview \u2014 the count is unchanged (get_admin_attention not refetched)"
+  ],
+  "failure_scenario": "approve_access_request succeeds \u2192 useApproveAccessRequest invalidates accessRequests/platformOverview/entities but not adminAttention \u2192 the cached get_admin_attention (staleTime 5min) keeps the pre-approval pendingAccessRequests count on screen.",
+  "agent": "A22"
+ },
+ {
+  "id": "A22-006",
+  "title": "Support ticket confirms 'sent to your agent' then silently vanishes on refresh (Open 3\u21922, no error copy)",
+  "severity": "low",
+  "confidence": "confirmed",
+  "category": "demo-data-durability",
+  "surface": "subscriber support inbox",
+  "location": "src/services/tickets.js (module-level Map re-seeded on load)",
+  "evidence": "node docs/audits/2026-08-23/scratch/18-ticket-refresh-loss.mjs \u2192 BEFORE Open 2; AFTER CREATE Open 3, confirmation 'Your issue has been sent to your agent.'; AFTER RELOAD Open 2, hasProbe false, 'any missing/error copy after reload: false'.",
+  "impact": "The in-memory reset is by-design demo scope (excluded), but the reportable slice is the visible mid-demo loss: a rep creates a ticket, sees a delivery-implying success toast, refreshes, and the ticket silently disappears (count reverts) with no explanation.",
+  "suggested_fix": "Demo-scope: persist the demo tickets to sessionStorage so a refresh keeps them, or soften the confirmation copy so it does not promise delivery.",
+  "demo_visible": true,
+  "effort": "S",
+  "roles_affected": [
+   "subscriber",
+   "agent",
+   "branch",
+   "distributor",
+   "employer"
+  ],
+  "repro": [
+   "Sign in as subscriber, open the agent/support page",
+   "Raise an issue; see toast 'Your issue has been sent to your agent.' and Open count +1",
+   "Refresh the page \u2014 the ticket is gone and the Open count reverts, with no message"
+  ],
+  "failure_scenario": "createTicket writes to the module-level Map \u2192 success toast \u2192 page reload rebuilds the module and re-seeds the Map \u2192 the just-created ticket is absent and the Open count drops with no error.",
+  "agent": "A22"
+ },
+ {
+  "id": "A22-007",
+  "title": "No global QueryCache.onError \u2014 every read failure is silent unless the consuming component individually guards isError",
+  "severity": "info",
+  "confidence": "confirmed",
+  "category": "error-handling",
+  "surface": "react-query root config",
+  "location": "src/main.jsx:69 (new QueryClient \u2014 no QueryCache/MutationCache onError)",
+  "evidence": "grep -n 'QueryCache|onError|MutationCache' src/main.jsx \u2192 none. Architectural root of A22-002 and A22-003: reads that no component guards fail invisibly.",
+  "impact": "No user-visible surface for a read that a component does not explicitly guard. Recorded for context; the concrete user-visible manifestation and fix are folded into A22-002.",
+  "suggested_fix": "Add a QueryCache onError handler on the root QueryClient that shows a non-blocking toast for unexpected read failures (excluding auth-expiry, which routes to logout).",
+  "demo_visible": false,
+  "effort": "S",
+  "roles_affected": [
+   "admin",
+   "distributor",
+   "branch",
+   "agent",
+   "employer",
+   "subscriber"
+  ],
+  "repro": [
+   "Inspect src/main.jsx QueryClient defaultOptions \u2014 no queryCache/onError is configured"
+  ],
+  "failure_scenario": "any read query rejects in a component that does not read isError \u2192 nothing renders an error \u2192 the UI shows loading-then-empty with no signal to the user.",
+  "agent": "A22"
+ }
+]

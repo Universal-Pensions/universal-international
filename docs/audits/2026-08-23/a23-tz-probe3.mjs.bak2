@@ -1,0 +1,26 @@
+// A23 — READ-ONLY. Render the subscriber home (recent activity list) under two
+// viewer timezones and diff the calendar days shown. Navigation + text reads only.
+import { chromium } from '@playwright/test';
+const BASE = 'http://localhost:5173';
+const STATE = '/Users/shubhang/Desktop/Projects/uganda-dashboard/e2e/.auth/subscriber.json';
+
+async function run(tz) {
+  const b = await chromium.launch();
+  const ctx = await b.newContext({ storageState: STATE, timezoneId: tz, viewport: { width: 1440, height: 950 } });
+  const p = await ctx.newPage();
+  const fails = [];
+  p.on('response', (r) => { if (r.status() >= 400) fails.push(`${r.status()} ${r.url().slice(0, 110)}`); });
+  await p.goto(BASE + '/dashboard', { waitUntil: 'domcontentloaded' });
+  await p.waitForTimeout(12000);
+  const txt = await p.locator('body').innerText();
+  const days = [...txt.matchAll(/\b(\d{1,2} [A-Z][a-z]{2})(?: \d{4})?\b/g)].map((m) => m[0]);
+  await b.close();
+  return { days, fails, txt };
+}
+
+const a = await run('Africa/Kampala');
+const c = await run('America/Los_Angeles');
+console.log('HTTP >=400 (Kampala run):', a.fails.length ? a.fails.join(' | ') : 'none');
+console.log('Africa/Kampala      dates:', JSON.stringify(a.days.slice(0, 14)));
+console.log('America/Los_Angeles dates:', JSON.stringify(c.days.slice(0, 14)));
+console.log('identical:', JSON.stringify(a.days) === JSON.stringify(c.days));

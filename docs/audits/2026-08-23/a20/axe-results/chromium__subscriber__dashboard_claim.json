@@ -1,0 +1,7 @@
+{
+  "role": "subscriber",
+  "route": "/dashboard/claim",
+  "project": "chromium",
+  "url": "http://localhost:5173/dashboard/withdraw/claim",
+  "violations": []
+}

@@ -1,0 +1,136 @@
+[
+ {
+  "id": "A03-001",
+  "title": "Anon invite-completion RPC is not bound to the invited phone \u2192 cross-tenant subscriber re-tag + compensation overwrite via a shareable token",
+  "severity": "high",
+  "confidence": "plausible",
+  "category": "authz-tenant-isolation",
+  "surface": "database-rpc",
+  "location": "public.create_subscriber_from_employer_invite (prosrc lines 15-24, 77-79)",
+  "evidence": "anon has EXECUTE (has_function_privilege('anon',oid,'EXECUTE')=t). Live prosrc keys entirely on payload->>'phone' (caller-controlled, line 15) and looks up an existing subscriber by that phone (lines 16-18); branch 22-24 runs an UNCONDITIONAL `UPDATE subscribers SET employer_id = v_inv.employer_id WHERE id = v_existing_id`, then lines 77-79 unconditionally overwrite compensation with v_inv.prefill->>'compensation'. Proof the invited phone is never consulted: `SELECT (prosrc ~* 'prefill[^;]*phone')::int, regexp_count(prosrc,'prefill')` => `0 | 1` (prefill referenced once, at line 78, reading compensation only). Read-only proof the branch resolves to a real victim: running the RPC's own selection SELECT for caller phone '715408207' => `s-0006 | (null)` (employer_id IS NULL => re-tag branch fires). Blast radius: `SELECT count(*) FILTER (WHERE employer_id IS NULL) FROM subscribers WHERE phone<>''` => 5006 eligible. The literal UPDATE was NOT observed committing \u2014 the BEGIN...ROLLBACK reproduction was blocked by the auto-mode write classifier \u2014 so confidence is plausible (deterministic branch).",
+  "impact": "A holder of any single valid, non-expired invite token (invite links are shared over SMS/WhatsApp) can supply the phone of any of 5006 unaffiliated live subscribers and silently re-home that real subscriber into an employer that never invited them (they appear on that employer's roster) AND overwrite their monthly compensation with the invite's prefill value; or create a brand-new subscriber tagged to that employer for a person never invited. All 4 live invites are currently expired (not exploitable this instant), but any employer minting a new invite (a routine action) opens a 7-day window. Cross-entity data mutation gated only by a shareable token, no authenticated session required.",
+  "suggested_fix": "In the re-tag and create branches, bind completion to the invited phone: require right(regexp_replace(v_inv.prefill->>'phone','[^0-9]','','g'),9) = v_phone_norm, and reject a payload phone that differs from the phone the invite was minted for.",
+  "roles_affected": [
+   "employer",
+   "subscriber"
+  ],
+  "demo_visible": false,
+  "effort": "S",
+  "repro": [
+   "psql: confirm has_function_privilege('anon', 'public.create_subscriber_from_employer_invite(jsonb,text,text)'::regprocedure, 'EXECUTE') = t",
+   "psql: read prosrc; confirm regexp_count(prosrc,'prefill')=1 and (prosrc ~* 'prefill[^;]*phone')=false",
+   "psql (read-only): WITH payload AS (SELECT '<any-unaffiliated-subscriber-phone>' AS caller_phone) SELECT s.id, s.employer_id FROM subscribers s, payload WHERE right(regexp_replace(s.phone,'[^0-9]','','g'),9)=right(regexp_replace(payload.caller_phone,'[^0-9]','','g'),9) ORDER BY created_at DESC LIMIT 1  -> returns a real row with employer_id NULL (branch 22-24 = UPDATE)",
+   "End-to-end (BLOCKED by write classifier this session; deterministic): mint a pending invite for employer B whose prefill.phone differs, then POST /rest/v1/rpc/create_subscriber_from_employer_invite {payload:{phone:<victim phone>}, p_token:<invite>, p_nonce:null} as anon -> victim.employer_id becomes B and victim.compensation is overwritten"
+  ],
+  "agent": "A03"
+ },
+ {
+  "id": "A03-002",
+  "title": "Anon signup RPC trusts the client for phone canonicalization; a non-canonical phone makes the created account unreachable at login (falls to s-0001 default)",
+  "severity": "low",
+  "confidence": "confirmed",
+  "category": "input-validation",
+  "surface": "database-rpc",
+  "location": "public._validate_signup_payload:32 + public._insert_subscriber_chain:78; api/auth/_lib/personas.ts:76,118",
+  "evidence": "_validate_signup_payload line 32 accepts `^(\\+?256)?[0-9]{9}$` (bare 9-digit allowed); _insert_subscriber_chain line 78 inserts `p_payload ->> 'phone'` verbatim. Login canonicalizes: api/_lib/phone.ts toCanonicalUGPhone -> '+256'+local9; api/auth/_lib/personas.ts:76 resolveSubscriber does .eq('phone', canonicalPhone).maybeSingle(); :118 on no match returns ROLE_DEFAULTS[role] = 's-0001'. A row stored as bare '799900001' never equals '+256799900001'. Anon PostgREST probe reaches the body (proving EXECUTE) and validation raises pre-write with subscriber count unchanged at 5064.",
+  "impact": "An account minted directly via the anon RPC with a bare/non-canonical phone is permanently unreachable by its owner \u2014 every login lands on the s-0001 demo default. NOT reachable through the demo UI: src/signup/contribution/ContributionRoute.jsx:78 canonicalizes via toCanonicalUGPhone before calling the RPC, so a live demo is not broken. Server-side hardening gap in the atomic-write authority only.",
+  "suggested_fix": "Canonicalize the phone inside the RPC (store +256XXXXXXXXX) rather than trusting the caller-supplied form, so the stored value always matches the login lookup.",
+  "roles_affected": [
+   "subscriber"
+  ],
+  "demo_visible": false,
+  "effort": "S",
+  "repro": [
+   "psql: read _validate_signup_payload (regex accepts bare 9-digit) and _insert_subscriber_chain:78 (stores payload->>'phone' verbatim)",
+   "psql: read api/auth/_lib/personas.ts resolveSubscriber (.eq('phone', canonicalPhone)) and ROLE_DEFAULTS.subscriber='s-0001'",
+   "Conclude: a subscriber row with a non-canonical phone can never be resolved at login"
+  ],
+  "agent": "A03"
+ },
+ {
+  "id": "A03-003",
+  "title": "No length cap on subscriber text fields; anon signup RPC persists unbounded field values",
+  "severity": "low",
+  "confidence": "confirmed",
+  "category": "input-validation",
+  "surface": "database-rpc",
+  "location": "public._insert_subscriber_chain (INSERT INTO subscribers, fullName/phone/nin verbatim); subscribers.name/phone/nin/occupation/email columns",
+  "evidence": "information_schema.columns: subscribers.name/email/phone/nin/occupation are all data_type=text with character_maximum_length = NULL (no cap). Neither _validate_signup_payload nor _insert_subscriber_chain caps length; the chain writes `p_payload ->> 'fullName'|'phone'|'nin'` verbatim. Round-1 (00d / round1-backup \u00a74b B6a) observed a 1,000,009-char name persist through this exact anon path; the write reproduction was classifier-blocked this round so the finding is code-confirmed, not re-reproduced.",
+  "impact": "An unauthenticated caller (anon EXECUTE on create_subscriber_from_signup) can store arbitrarily large text values in subscriber rows, bloating the table without bound. DoS-adjacent. The rate-limit/OTP absence is EXCLUDED as demo scope; the unbounded field size is a distinct server-side gap.",
+  "suggested_fix": "Add explicit length guards in _validate_signup_payload (e.g. name/nin/occupation <= reasonable bounds) or column-level constraints on subscribers text fields.",
+  "roles_affected": [
+   "subscriber"
+  ],
+  "demo_visible": false,
+  "effort": "S",
+  "repro": [
+   "psql: SELECT column_name, character_maximum_length FROM information_schema.columns WHERE table_name='subscribers' AND column_name IN ('name','phone','nin','occupation','email') -> all NULL (no cap)",
+   "psql: read _insert_subscriber_chain -> inserts payload->>'fullName'|'phone'|'nin' with no length check"
+  ],
+  "agent": "A03"
+ },
+ {
+  "id": "A03-004",
+  "title": "commission_id_seq and subscriber_id_seq retain Supabase-default anon/authenticated rwU (nextval/setval)",
+  "severity": "info",
+  "confidence": "confirmed",
+  "category": "least-privilege",
+  "surface": "database-sequence",
+  "location": "public.commission_id_seq, public.subscriber_id_seq",
+  "evidence": "psql: has_sequence_privilege('anon', 'public.subscriber_id_seq', 'USAGE')=t and 'UPDATE'=t; relacl shows anon=rwU authenticated=rwU service_role=rwU for both commission_id_seq and subscriber_id_seq. The two *_log sequences (entity_detach_log_id_seq, entity_status_log_id_seq) are correctly revoked (anon usage/update = f), per migration 0080.",
+  "impact": "None reachable. PostgREST never exposes nextval/setval and anon has no direct SQL channel; the signup nextval runs inside SECURITY DEFINER functions as the owner. The anon grant is redundant and unreachable. Recorded as a least-privilege observation.",
+  "suggested_fix": "Optionally REVOKE USAGE, UPDATE ON SEQUENCE public.commission_id_seq, public.subscriber_id_seq FROM anon, authenticated to match the *_log sequences (defense in depth; no functional effect).",
+  "roles_affected": [],
+  "demo_visible": false,
+  "effort": "S",
+  "agent": "A03"
+ },
+ {
+  "id": "A03-005",
+  "title": "Dead commission-run migration 0021_commission_rpcs_app_role.sql retained in repo with no down-migration",
+  "severity": "info",
+  "confidence": "confirmed",
+  "category": "dead-code",
+  "surface": "migration",
+  "location": "supabase/migrations/0021_commission_rpcs_app_role.sql",
+  "evidence": "File present, 39,576 bytes; no matching *0021*.down.sql. The 16 functions it defines are dropped by 0029_commission_simplify.sql and absent live: SELECT count(*) FROM pg_proc WHERE proname IN (open_run, cancel_run, ... mark_branch_reviewed) => 0; SELECT count(*) FROM pg_proc WHERE prosrc ILIKE '%commission_runs%' OR '%commission_lines%' => 0; run/dispute tables do not exist (only contribution_runs/contribution_run_uploads).",
+  "impact": "No runtime effect (the code is not applied live). Cleanup / clarity item \u2014 a large dead migration and its absent down-file mislead future readers about the live surface.",
+  "suggested_fix": "Remove or clearly deprecate 0021_commission_rpcs_app_role.sql; note that 0029 supersedes it.",
+  "roles_affected": [],
+  "demo_visible": false,
+  "effort": "S",
+  "agent": "A03"
+ },
+ {
+  "id": "A03-006",
+  "title": "34 anon-readable tables are RLS-only (no table-grant backstop) \u2014 a dropped policy fails to deny, not to leak",
+  "severity": "info",
+  "confidence": "confirmed",
+  "category": "architecture-observation",
+  "surface": "rls",
+  "location": "public.* (34 tables granting anon SELECT)",
+  "evidence": "No blanket REVOKE SELECT ON ALL TABLES FROM anon in supabase/migrations (only targeted revokes: users/0081, entity_detach_log+entity_status_log/0080, v_reconciliation_exceptions/0096). 34 of 37 tables grant anon SELECT and ALL 34 are RLS enabled+forced: SELECT relrowsecurity, relforcerowsecurity, count(*) ... WHERE has_table_privilege('anon',oid,'SELECT') GROUP BY 1,2 => t|t|34. Live anon PostgREST reads of subscribers/transactions/commissions/subscriber_balances/agents/distributors/branches all return HTTP 401 (RLS predicate calls a DEFINER helper anon can't run); employers returns HTTP 200 [] (zero rows).",
+  "impact": "Confidentiality holds under the current posture: dropping any single policy yields default-deny (availability failure \u2014 empty demo data), not a leak. A leak would require RLS to be DISABLED on a table or a permissive USING(true) policy to be added. Standard Supabase posture; recorded as an architectural note, not a defect.",
+  "suggested_fix": "No action required. If defense-in-depth is desired, replace anon table-SELECT grants with explicit REVOKE + view-based access, but this is not necessary given RLS is enabled+forced everywhere.",
+  "roles_affected": [],
+  "demo_visible": false,
+  "effort": "M",
+  "agent": "A03"
+ },
+ {
+  "id": "A03-007",
+  "title": "get_employer_invite exposes a token-existence oracle and returns HTTP 500 for not-found tokens",
+  "severity": "info",
+  "confidence": "confirmed",
+  "category": "api-hygiene",
+  "surface": "database-rpc",
+  "location": "public.get_employer_invite (ERRCODE P0002 vs P0001)",
+  "evidence": "Anon PostgREST: expired real token => HTTP 400 {code:P0001,'invite expired'}; nonexistent/empty/null token => HTTP 500 {code:P0002,'invite not found'}. Distinct codes distinguish existing-but-invalid from nonexistent; but tokens are 122-bit gen_random_uuid() values so enumeration is infeasible. The not-found path returns 500 (server error) rather than 400/404.",
+  "impact": "Negligible. The existence oracle is unusable against 122-bit random tokens. The 500-on-not-found is a minor status-code inconsistency with no security or demo impact.",
+  "suggested_fix": "Return a uniform 400/404 for both not-found and expired, and map P0002 to a 4xx status; optional.",
+  "roles_affected": [],
+  "demo_visible": false,
+  "effort": "S",
+  "agent": "A03"
+ }
+]

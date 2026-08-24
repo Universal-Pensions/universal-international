@@ -1,0 +1,17 @@
+{
+  "role": "distributor",
+  "route": "/dashboard/reports",
+  "project": "chromium",
+  "url": "http://localhost:5173/dashboard",
+  "violations": [
+    {
+      "id": "color-contrast",
+      "impact": "serious",
+      "help": "Elements must meet minimum color contrast ratio thresholds",
+      "nodes": 1,
+      "targets": [
+        "._trend_15411_109"
+      ]
+    }
+  ]
+}

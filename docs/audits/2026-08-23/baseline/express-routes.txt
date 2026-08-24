@@ -1,0 +1,63 @@
+=== ACTUAL route mounts in server/index.ts ===
+// ─── 9. 14 route mounts (B5) — `app.all` is REQUIRED. Every handler
+// performs its own method check + emits `{ code: 'method_not_allowed' }`
+// with `Allow: POST` for non-POST traffic. `app.post` would silently
+// route non-POSTs to Express's default 404 HTML page, breaking the
+// documented 405 JSON envelope the e2e suite asserts against.
+app.all('/api/auth/send-otp', toExpress(sendOtp));
+app.all('/api/auth/verify-otp', authLimiter, toExpress(verifyOtp)); // G18 — write + JWT mint
+app.all('/api/auth/verify-password', authLimiter, toExpress(verifyPassword)); // G18 — bcrypt CPU + credential-stuffing vector
+app.all('/api/auth/change-password', authLimiter, toExpress(changePassword)); // G18 / BL-17 — bcrypt CPU + current-password brute-force surface for an already-authenticated caller
+app.all('/api/kyc/otp-send', toExpress(kycOtpSend));
+app.all('/api/kyc/otp-verify', toExpress(kycOtpVerify));
+app.all('/api/kyc/id-ocr', toExpress(idOcr));
+app.all('/api/kyc/id-quality', toExpress(idQuality));
+app.all('/api/kyc/face-match', toExpress(faceMatch));
+app.all('/api/kyc/aml-screen', toExpress(amlScreen));
+app.all('/api/kyc/nira-verify', toExpress(niraVerify));
+app.all('/api/kyc/agent-referral', writeLimiter, toExpress(agentReferral)); // G18 — DB insert (spam to agent_referrals)
+app.all('/api/contact', writeLimiter, toExpress(contact)); // G18 — DB insert (spam to contact_submissions)
+app.all('/api/access-request', writeLimiter, toExpress(accessRequest)); // DB insert (public employer/distributor lead form — spam vector)
+app.all('/api/nominee-claim', writeLimiter, toExpress(nomineeClaim));   // DB insert (public bereavement claim form — spam vector)
+app.all('/api/chat', chatLimiter, toExpress(chat)); // G18 / 2b.5 — unauthenticated keyword chain; cost/DoS vector once wired to a real LLM
+
+// ─── 10. Sentry error handler — MUST come after routes, before custom error
+// handlers. Captures any error that bubbled through `next(err)` from the
+// adapter. In @sentry/node v8 the API moved from `Sentry.Handlers.errorHandler()`
+// to `Sentry.setupExpressErrorHandler(app)` (it internally registers the
+// error middleware).
+if (process.env.SENTRY_DSN) {
+  Sentry.setupExpressErrorHandler(app);
+}
+
+// ─── 11. Final 404 — catches anything that didn't match a route mount.
+app.use((_req, res) => {
+  res.status(404).json({ code: 'not_found' });
+});
+
+// ─── 12. Final error handler — last line of defense. Logs to stdout (Render
+// captures it) and emits the same `{ code: 'unexpected_error' }` shape the
+// frontend already maps. Guarded against double-send (Sentry's handler may
+// have already responded).
+app.use(
+
+=== handler imports count ===
+16
+
+=== api/ source handlers (excl _lib, tests) ===
+api/access-request.ts
+api/auth/change-password.ts
+api/auth/send-otp.ts
+api/auth/verify-otp.ts
+api/auth/verify-password.ts
+api/chat.ts
+api/contact.ts
+api/kyc/agent-referral.ts
+api/kyc/aml-screen.ts
+api/kyc/face-match.ts
+api/kyc/id-ocr.ts
+api/kyc/id-quality.ts
+api/kyc/nira-verify.ts
+api/kyc/otp-send.ts
+api/kyc/otp-verify.ts
+api/nominee-claim.ts

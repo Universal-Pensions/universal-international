@@ -1,0 +1,188 @@
+[
+ {
+  "id": "A19-001",
+  "title": "Refresh loses the current view on distributor + admin desktop (reverts to overview)",
+  "severity": "medium",
+  "confidence": "confirmed",
+  "category": "unrouted-state-loss",
+  "surface": "distributor desktop shell, admin desktop shell",
+  "location": "src/dashboard/DashboardShell.jsx:265 + src/contexts/DashboardPanelContext.jsx; src/admin-dashboard/AdminDashboardShell.jsx:312 + src/contexts/AdminPanelContext.jsx:64",
+  "evidence": "node scratchpad/a19-repro.mjs (storageState d-001, 1440px): STEP1 URL /dashboard heading 'Universal Pensions Uganda \u2014 National'; STEP2 after clicking Commissions URL still /dashboard; STEP3 after reload URL /dashboard, heading back to 'Universal Pensions Uganda \u2014 National' (reverted to overview). Admin (scratchpad/a19-repro3.mjs): open Distributors panel -> URL /dashboard; after reload -> heading 'Now viewing National Overview / PLATFORM \u00b7 NATIONAL OVERVIEW'. Rail/panel selection lives in useState booleans (DashboardPanelContext/AdminPanelContext), none persisted or URL-synced; parsePath re-derives country/map on reload.",
+  "impact": "A rep viewing any non-overview rail destination (Commissions, Reports, a Subscribers/Agents list, Distributors, Unit-price, a Needs-attention drill) who reloads the tab is silently dropped back to the National/Platform Overview. Whole-shell dash/map mode also resets to 'dash', so a map district drill (whose id IS in the URL) reloads as a dash-mode summary panel, not the map.",
+  "suggested_fix": "Reflect the active rail destination + mode in the URL (a query param or path segment) and rehydrate panel booleans from it on mount; or persist the last panel/mode to sessionStorage. Report-only.",
+  "failure_scenario": "Distributor rep on the Commissions view presses F5 mid-demo; app reloads to the National Overview with no indication of where they were.",
+  "demo_visible": true,
+  "effort": "M",
+  "roles_affected": [
+   "distributor",
+   "admin"
+  ],
+  "repro": [
+   "Log in as distributor (d-001), open /dashboard on desktop (>=1024px)",
+   "Click the Commissions rail item (note URL stays /dashboard)",
+   "Reload the tab -> lands on National Overview, not Commissions"
+  ],
+  "agent": "A19"
+ },
+ {
+  "id": "A19-002",
+  "title": "Distributor + admin panel/rail views are not deep-linkable or shareable (all render at /dashboard)",
+  "severity": "medium",
+  "confidence": "confirmed",
+  "category": "unrouted-deeplink",
+  "surface": "distributor desktop shell, admin desktop shell",
+  "location": "src/dashboard/DashboardShell.jsx:354-400; src/admin-dashboard/AdminDashboardShell.jsx:421-460; src/contexts/AdminPanelContext.jsx:64",
+  "evidence": "node scratchpad/a19-repro.mjs / a19-repro3.mjs: URL is 'http://localhost:5173/dashboard' for the overview, after clicking Commissions, after clicking Reports (distributor), and after opening the Distributors panel (admin) \u2014 identical in every case. Only the map geographic drill mirrors to the URL (DashboardNavContext.jsx drillDown -> navigate('/dashboard/regions/:id')).",
+  "impact": "Every distributor/admin rail destination shares one URL (/dashboard). A rep cannot paste a colleague a link to 'the Commissions view' or 'the Unit-price page' \u2014 the link only reopens the overview. Directly answers the spec's 'can a rep share a URL to a specific view?' -> No.",
+  "suggested_fix": "Give each rail destination a routed path (or query param) as the four routed shells already do, so views are addressable. Report-only.",
+  "failure_scenario": "Admin wants to send a teammate a direct link to the Unit-price (NAV) page; the only URL available is /dashboard, which opens the overview.",
+  "demo_visible": true,
+  "effort": "L",
+  "roles_affected": [
+   "distributor",
+   "admin"
+  ],
+  "agent": "A19"
+ },
+ {
+  "id": "A19-003",
+  "title": "Browser Back exits the dashboard instead of undoing a panel switch",
+  "severity": "medium",
+  "confidence": "confirmed",
+  "category": "unrouted-history",
+  "surface": "distributor desktop shell, admin desktop shell",
+  "location": "src/contexts/DashboardPanelContext.jsx (setters push no history); src/dashboard/DashboardShell.jsx:322-343",
+  "evidence": "node scratchpad/a19-repro.mjs: after opening panels via the rail, 'STEP4 URL after browser BACK: about:blank (was http://localhost:5173/dashboard)'. Panel navigation calls no navigate()/pushState, so no history entry is added per rail click; Back leaves /dashboard entirely.",
+  "impact": "Pressing Back after opening a panel does not return to the previous panel \u2014 it leaves /dashboard to whatever preceded the SPA entry (about:blank in-harness; the login/landing route in a real session). A rep who hits Back by muscle memory mid-demo lands on a blank/login screen. Same unrouted root cause as the pre-registered distributor-Reports High in 00b.",
+  "suggested_fix": "Route panel navigation (per A19-002) so Back traverses panel history naturally; or intercept popstate to close the top panel instead of unwinding to the pre-dashboard page. Report-only.",
+  "failure_scenario": "Distributor rep drills into Reports, hits browser Back to 'go back to the list', and is instead thrown out of the dashboard onto the login/blank page.",
+  "demo_visible": true,
+  "effort": "L",
+  "roles_affected": [
+   "distributor",
+   "admin"
+  ],
+  "agent": "A19"
+ },
+ {
+  "id": "A19-004",
+  "title": "Distributor + admin Subscribers (~4,602) / Agents (~2,046) lists defeat their virtualizer in dash mode",
+  "severity": "medium",
+  "confidence": "confirmed",
+  "category": "virtualization-inert",
+  "surface": "distributor + admin desktop 'Subscribers' and 'Agents' rail panels (dash mode, default)",
+  "location": "src/dashboard/subscriber/ViewSubscribers.jsx:323-327 (getScrollElement: () => bodyRef.current); src/dashboard/agent/ViewAgents.jsx:325-327; src/dashboard/subscriber/ViewSubscribers.module.css:364 (.body flex:1; overflow-y:auto); src/dashboard/DashboardShell.module.css:253 (.dashHost inset:0; overflow-y:auto)",
+  "evidence": "node scratchpad/a19-virt.mjs (dash mode, d-001, 1440px): {\"totalButtons\":4606,\"dataIndexRows\":4602,\"virtualListHeight\":\"450044px\"} \u2014 every one of the 4,602 rows is in the DOM. node scratchpad/a19-body.mjs: the virtualizer's scroll element (.body) has clientHeight 450075 == scrollHeight 450075 (unbounded == full content height), while the REAL scroll viewport .dashHost has clientHeight 900, scrollHeight 450474. Because .body is not height-bounded in fullPage layout, @tanstack/react-virtual sees the whole list as visible and windows nothing. ViewAgents uses the identical getScrollElement+.body pattern.",
+  "impact": "The default distributor/admin Subscribers view mounts ~4,600 <button> rows (each with an avatar div + several spans -> tens of thousands of DOM nodes) at once; Agents mounts ~2,046. Heavy initial mount and scroll on a demo laptop, and it worsens as the live subscriber count (already 5,064) grows. The virtualizer optimisation is present but silently inert.",
+  "suggested_fix": "Point getScrollElement at the actual scroll viewport in fullPage mode (the .dashHost element, e.g. bodyRef.current?.closest('[data-dash-host]')), or give the fullPage .panel/.body a bounded height so .body remains the overflow container. Report-only.",
+  "failure_scenario": "Distributor opens Subscribers on a demo laptop; the browser stutters mounting 4,600 rows and scrolling is janky.",
+  "demo_visible": true,
+  "effort": "M",
+  "roles_affected": [
+   "distributor",
+   "admin"
+  ],
+  "repro": [
+   "Log in as distributor (d-001), open /dashboard on desktop",
+   "Click the Subscribers rail item (dash mode)",
+   "Inspect the list: document.querySelectorAll('[data-index]').length === 4602 (all rows rendered, not a ~30-row window)"
+  ],
+  "agent": "A19"
+ },
+ {
+  "id": "A19-005",
+  "title": "Distributor + admin Ask-AI Copilot declares aria-modal but does not trap focus",
+  "severity": "medium",
+  "confidence": "confirmed",
+  "category": "a11y-focus-trap",
+  "surface": "distributor + admin desktop 'Ask AI' Copilot (DataCopilotPanel)",
+  "location": "src/dashboard/overlay/DataCopilotPanel.jsx:157-161",
+  "evidence": "Panel renders role=\"dialog\" aria-modal=\"true\" with a backdrop but no Tab handler; inert={!open} only inerts the panel when closed, not the background when open. node scratchpad/a19-repro3.mjs: on open focus is on the INPUT (inDialog:true), but the first Tab escapes \u2014 trail: OUT:BODY OUT:A OUT:BUTTON(Collapse menu) OUT:BUTTON(Map view) OUT:BUTTON(Overview) OUT:BUTTON(Branches) ... 'escaped-to-background at Tab #: 1'. Focus walks the entire background sidebar while the modal dialog is open.",
+  "impact": "Broken aria-modal contract for keyboard and screen-reader users on the two map-theme desktop shells: focus is not contained within the dialog and the background is neither inert nor aria-hidden. Contrast Modal.jsx and EmployerSlidePanel.jsx, which trap correctly, and the four routed-shell copilots, which are correctly non-modal.",
+  "suggested_fix": "Either add a Tab/Shift+Tab trap + background inert while open (matching Modal.jsx), or drop role=dialog/aria-modal and make it a non-modal side panel like the four routed copilots. Report-only.",
+  "failure_scenario": "A keyboard user opens the distributor Copilot and Tabs; focus silently lands on the sidebar behind the 'modal', with no visual indication focus left the dialog.",
+  "demo_visible": false,
+  "effort": "S",
+  "roles_affected": [
+   "distributor",
+   "admin"
+  ],
+  "agent": "A19"
+ },
+ {
+  "id": "A19-006",
+  "title": "Distributor + admin Copilot does not restore focus to its trigger on close",
+  "severity": "low",
+  "confidence": "confirmed",
+  "category": "a11y-focus-restore",
+  "surface": "distributor + admin desktop 'Ask AI' Copilot",
+  "location": "src/dashboard/DashboardShell.jsx:346-349 (onClose={() => setCopilotOpen(false)}); src/admin-dashboard/AdminDashboardShell.jsx:412-416",
+  "evidence": "node scratchpad/a19-repro3.mjs: after pressing Escape to close the Copilot, 'focus after close -> BUTTON \"Subscribers\u2026\"' \u2014 focus is left on a background sidebar button, not returned to the Ask-AI trigger. The four routed shells restore focus via askAiRef.current?.focus() in closeCopilot; the map-theme shells pass a bare setter with no restoration.",
+  "impact": "Keyboard/screen-reader users lose their place when the Copilot closes; focus is stranded wherever Tab last moved it in the background.",
+  "suggested_fix": "Capture the trigger element and call trigger.focus() on close, as the routed shells already do. Report-only.",
+  "failure_scenario": "A keyboard user closes the Copilot with Escape and the next Tab continues from an arbitrary background control.",
+  "demo_visible": false,
+  "effort": "S",
+  "roles_affected": [
+   "distributor",
+   "admin"
+  ],
+  "agent": "A19"
+ },
+ {
+  "id": "A19-007",
+  "title": "Two divergent Copilot interaction models across the six roles",
+  "severity": "low",
+  "confidence": "confirmed",
+  "category": "design-system-inconsistency",
+  "surface": "all six desktop shells (Ask-AI Copilot)",
+  "location": "src/subscriber-dashboard/shell/SubscriberCopilotPanel.jsx:147-148 (non-modal) vs src/dashboard/overlay/DataCopilotPanel.jsx:157-161 (modal)",
+  "evidence": "grep across the copilot components: SubscriberCopilotPanel/AgentCopilotPanel/BranchCopilotPanel/EmployerCopilotPanel render a non-modal aside (no role=dialog, no aria-modal; inert={!open}+aria-hidden when closed; part of the CSS grid third column). DataCopilotPanel (distributor+admin) renders role=\"dialog\" aria-modal=\"true\" with a dimming backdrop over the map.",
+  "impact": "The same 'Ask AI' feature behaves differently (grid-push side panel vs modal backdrop drawer) and carries different a11y contracts across roles \u2014 noticeable to anyone switching roles in one session, and the source of A19-005/006.",
+  "suggested_fix": "Standardise the Copilot on one interaction model (the non-modal grid-push panel is the cleaner, more consistent choice) across all six shells. Report-only.",
+  "failure_scenario": "A rep demos subscriber (side panel) then admin (modal drawer) and the Ask-AI affordance behaves inconsistently.",
+  "demo_visible": true,
+  "effort": "M",
+  "roles_affected": [
+   "subscriber",
+   "agent",
+   "branch",
+   "employer",
+   "distributor",
+   "admin"
+  ],
+  "agent": "A19"
+ },
+ {
+  "id": "A19-I1",
+  "title": "Ultrawide (2560px) shows large but symmetric intentional gutters \u2014 no defect (recorded to prevent re-flagging)",
+  "severity": "info",
+  "confidence": "confirmed",
+  "category": "layout-intentional",
+  "surface": "all six desktop shells",
+  "location": "src/subscriber-dashboard/shell/SubscriberDesktopShell.module.css:152 (.page max-width 880 / .pageWide 1240); agent/branch/employer .page max-width 1280; all margin:0 auto",
+  "evidence": "Screenshots scratchpad/a19-dist-subs-{1024,1440,1920,2560}.png and a19-sub-overview-2560.png: content caps ~1035-1280px and centres with symmetric ~640px gutters at 2560; clean and consistent 1024->2560, no overflow or broken columns.",
+  "impact": "None \u2014 the centred reading column is a deliberate, consistent choice. Recorded so the ultrawide 'waste' is not mistaken for a defect.",
+  "suggested_fix": "No change needed.",
+  "failure_scenario": "N/A \u2014 no failure; documented as intentional.",
+  "demo_visible": false,
+  "effort": "S",
+  "agent": "A19"
+ },
+ {
+  "id": "A19-I2",
+  "title": "Historical map onEachFeature empty-name->id race is fixed (refuted)",
+  "severity": "info",
+  "confidence": "confirmed",
+  "category": "refuted-historical-bug",
+  "surface": "distributor + admin map mode (UgandaMap)",
+  "location": "src/dashboard/map/UgandaMap.jsx:396-404",
+  "evidence": "onRegionClick/onDistrictClick resolve name->id via a ref map and guard the drill: 'const id = ...Ref.current[name]; if (id) drillDown(level, id);'. An empty/unknown feature name resolves to undefined -> if(id) false -> silent no-op, never a drill to a wrong id. Tooltip built via document.createElement/textContent (no HTML-string injection).",
+  "impact": "None \u2014 the historical empty-name->id race is guarded. Recorded as refuted.",
+  "suggested_fix": "No change needed.",
+  "failure_scenario": "N/A \u2014 race no longer reproduces; guarded no-op.",
+  "demo_visible": false,
+  "effort": "S",
+  "agent": "A19"
+ }
+]

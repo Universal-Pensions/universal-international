@@ -1,0 +1,28 @@
+// A23 — READ-ONLY. Download the subscriber "All Transactions" CSV and show how
+// the Date column is written. No writes.
+import { chromium } from '@playwright/test';
+const STATE = '/Users/shubhang/Desktop/Projects/uganda-dashboard/e2e/.auth/subscriber.json';
+const b = await chromium.launch();
+const ctx = await b.newContext({ storageState: STATE, timezoneId: 'Africa/Kampala', viewport: { width: 1440, height: 950 }, acceptDownloads: true });
+const p = await ctx.newPage();
+await p.goto('http://localhost:5173/dashboard/reports/all-transactions', { waitUntil: 'domcontentloaded' });
+await p.waitForTimeout(15000);
+const heading = await p.locator('h1').first().textContent().catch(() => null);
+console.log('h1:', JSON.stringify(heading));
+const btn = p.getByRole('button', { name: /export|download|csv/i }).first();
+console.log('export button visible:', await btn.isVisible().catch(() => false));
+const [dl] = await Promise.all([
+  p.waitForEvent('download', { timeout: 20000 }).catch(() => null),
+  btn.click().catch((e) => console.log('click failed:', e.message.slice(0, 80))),
+]);
+if (dl) {
+  const path = await dl.path();
+  const { readFileSync } = await import('node:fs');
+  const txt = readFileSync(path, 'utf8');
+  console.log('--- CSV first 6 lines ---');
+  console.log(JSON.stringify(txt.slice(0, 700)));
+} else {
+  console.log('no download captured');
+  console.log((await p.locator('body').innerText()).slice(0, 600));
+}
+await b.close();

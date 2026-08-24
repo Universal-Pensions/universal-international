@@ -1,0 +1,223 @@
+[
+ {
+  "id": "A12-001",
+  "title": "Branch collections charts drift against the demo clock \u2014 wall-clock month labels over MOCK_NOW-anchored data",
+  "severity": "medium",
+  "confidence": "confirmed",
+  "category": "mock-now-drift",
+  "surface": "branch overview + analytics (desktop & mobile)",
+  "location": "src/branch-dashboard/desktop/OverviewDesktop.jsx:64-72; src/branch-dashboard/analytics/deriveBranchAnalytics.js:47",
+  "evidence": "psql \"$SUPABASE_DB_URL\" -Atc \"SELECT public._demo_now();\" -> 2026-05-18 23:59:59+00. Branch 12-month contribution buckets end at May'26 (1,185,832). OverviewDesktop.jsx:66 computes labels with `const now = new Date()` (real 24 Aug 2026), so rendered x-axis is 'Sep Oct ... Jun Jul Aug' \u2014 the bar labelled Aug is really May'26 and 'Contributions this month 1.2M' is May's number. grep shows the codebase documents 3 clocks (adminAttentionDerive.js:12-13: _demo_now 2026-05-18, JS MOCK_NOW 2026-05-26, wall clock) and the subscriber dashboard (ContributionsSummary.jsx:25) anchors labels to MOCK_NOW; the branch dashboard does not.",
+  "impact": "On any real demo date (always after the frozen MOCK_NOW), the branch collections chart mislabels months by (wall-now \u2212 MOCK_NOW) and the headline 'contributions this month' shows a past month's figure. This is the drift-between-MOCK_NOW-copies the audit explicitly flags.",
+  "suggested_fix": "Pass MOCK_NOW (src/data/mockData.js) as the `now` argument to the label helpers in OverviewDesktop and deriveBranchAnalytics, as ContributionsSummary.jsx/ActivityPage.jsx already do.",
+  "demo_visible": true,
+  "effort": "S",
+  "roles_affected": [
+   "branch"
+  ],
+  "repro": [
+   "Sign in as b-kam-015 via /distributors -> Branch tab",
+   "Open /dashboard (overview) on 24 Aug 2026",
+   "Read the 'Contributions \u2014 last 12 months' x-axis: labels end at 'Aug' but the RPC series ends at May'26",
+   "Cross-check psql _demo_now() = 2026-05-18 and the May'26 bucket = 1,185,832 = the 'Aug'/'this month' value"
+  ],
+  "agent": "A12"
+ },
+ {
+  "id": "A12-002",
+  "title": "Agent-detail gender donut prints percentages as a subscriber count ('100 subscribers')",
+  "severity": "medium",
+  "confidence": "confirmed",
+  "category": "data-correctness",
+  "surface": "branch desktop agent detail",
+  "location": "src/branch-dashboard/desktop/AgentDetailDesktop.jsx:48-52,220",
+  "evidence": "Line 52 `total: male + female` where male/female are genderRatio PERCENTAGES; line 220 renders tag `${gender.total} subscribers`. psql: agent a-087 has 7 male + 4 female = 11 subscribers -> genderRatio 64/36 -> sum 100. Rendered d-agentdetail-1440.png: 'SUBSCRIBERS 11 91% active' at top, 'Subscriber gender 100 SUBSCRIBERS Male 64% Female 36%' below \u2014 11 vs 100 on the same page.",
+  "impact": "A branch admin drilling into any agent sees a gender card claiming ~100 subscribers regardless of the real count, visibly contradicting the correct 'Subscribers N' tile above it. Donut proportions are correct; only the count label is wrong.",
+  "suggested_fix": "Use metrics.totalSubscribers for the section tag, not the sum of the two percentages.",
+  "demo_visible": true,
+  "effort": "S",
+  "roles_affected": [
+   "branch"
+  ],
+  "repro": [
+   "Sign in as b-kam-015",
+   "Open /dashboard/agents/a-087 on desktop",
+   "Compare the 'Subscribers 11' tile with the 'Subscriber gender' card header reading '100 subscribers'"
+  ],
+  "agent": "A12"
+ },
+ {
+  "id": "A12-003",
+  "title": "District rank computed from a stale stored score, not the 'recomputed daily' gauge (84 live vs 77 stored)",
+  "severity": "medium",
+  "confidence": "confirmed",
+  "category": "data-consistency",
+  "surface": "branch overview health score + district rank",
+  "location": "src/branch-dashboard/overview/branchOverviewDerive.js (calcScore, live) vs src/branch-dashboard/desktop/OverviewDesktop.jsx:236 (branch.districtRank <- branches.district_rank)",
+  "evidence": "psql \"SELECT id,score,rank,district_rank,district_branch_count FROM branches WHERE id='b-kam-015'\" -> score 77, district_rank 3, district_branch_count 8. District peers by district_rank: Kawempe 81(#1), Makindye 78(#2), Kampala Central 77(#3). Rendered overview gauge labelled 'RECOMPUTED DAILY' shows 84 GOOD; rank chip shows '#3 of 8 in district'. Live calcScore hand-check = 84; stored = 77.",
+  "impact": "The branch's live health score (84) would out-rank peers stored at 78/81, but the frozen rank still shows #3. Cross-surface the distributor branch list (ViewBranches.jsx:175/entities.js:113) shows this branch as 77 while its own overview shows 84 \u2014 two scores for one branch. The 'RECOMPUTED DAILY' claim is misleading (recomputed per-render, never daily; the ranking score is never recomputed).",
+  "suggested_fix": "Rank branches on the same live score the gauge shows, or drop the 'recomputed daily' claim and stop deriving a rank from a stale branches.score column.",
+  "demo_visible": true,
+  "effort": "M",
+  "roles_affected": [
+   "branch",
+   "distributor"
+  ],
+  "repro": [
+   "Sign in as b-kam-015",
+   "Read overview gauge 84 GOOD + '#3 of 8 in district'",
+   "psql the branches row: stored score 77 drives district_rank 3, not the displayed 84"
+  ],
+  "agent": "A12"
+ },
+ {
+  "id": "A12-005",
+  "title": "Per-agent subscriber list is desktop-only \u2014 unreachable on mobile",
+  "severity": "medium",
+  "confidence": "confirmed",
+  "category": "route-parity",
+  "surface": "branch agent detail -> subscribers",
+  "location": "desktop route BranchDesktopShell.jsx (agents/:agentId/subscribers -> BranchAgentSubscribers); absent in BranchMobileShell.jsx",
+  "evidence": "Desktop /dashboard/agents/a-087/subscribers renders 'Subscribers 11 \u00b7 10 ACTIVE \u00b7 5.3M BALANCE' (d-agentsubs-1440.png). Mobile /dashboard/agents/a-087/subscribers FINAL URL = /dashboard (m-agentsubs-375.png shows the overview) \u2014 no such route, so the catch-all bounces it. AgentDetailMobile.jsx has only 'Call' + 'Back to team', no subscriber drill (grep: no NavLink to /subscribers).",
+  "impact": "A branch supervisor on a phone (375, supported viewport) cannot open a specific agent's subscriber list, a capability present on desktop. The agent's subscriber count is still visible on mobile, so it is a degraded capability rather than total loss.",
+  "suggested_fix": "Add the agents/:agentId/subscribers route (and a 'View subscribers' affordance in AgentDetailMobile) to BranchMobileShell, mirroring desktop.",
+  "demo_visible": true,
+  "effort": "M",
+  "roles_affected": [
+   "branch"
+  ],
+  "repro": [
+   "Sign in as b-kam-015 at 375px",
+   "Open /dashboard/agents/a-087 -> no 'View subscribers' link",
+   "Hard-navigate to /dashboard/agents/a-087/subscribers -> bounces to /dashboard"
+  ],
+  "agent": "A12"
+ },
+ {
+  "id": "A12-004",
+  "title": "Mobile 'reports' redirect lands on the overview instead of analytics (desktop is correct)",
+  "severity": "low",
+  "confidence": "confirmed",
+  "category": "route-parity",
+  "surface": "branch reports redirect (mobile)",
+  "location": "src/branch-dashboard/shell/BranchMobileShell.jsx:37-63 (AnimatePresence mode=\"wait\" + <Routes location={location}> containing reports Navigate)",
+  "evidence": "Desktop direct /dashboard/reports FINAL URL = /dashboard/analytics. Mobile direct /dashboard/reports FINAL URL = /dashboard. URL-hop trace (a12-reports-trace.mjs): ['/dashboard/reports','/dashboard/reports','/dashboard/analytics','/dashboard','/dashboard/analytics','/dashboard'] FINAL /dashboard \u2014 the reports->analytics Navigate oscillates against the '*'->/dashboard catch-all and the catch-all wins.",
+  "impact": "Low \u2014 no in-app nav links to /dashboard/reports on either shell, so only a stale external deep link reaches it and it lands on a valid page (overview) rather than analytics. Confirmed parity defect and a latent fragility for any future in-route mobile redirect.",
+  "suggested_fix": "Do not pass an animation-lagged location to a <Routes> that contains <Navigate> redirects; move the reports redirect outside the AnimatePresence subtree.",
+  "demo_visible": false,
+  "effort": "M",
+  "roles_affected": [
+   "branch"
+  ],
+  "repro": [
+   "Sign in as b-kam-015 at 375px",
+   "Navigate to /dashboard/reports",
+   "Observe final URL /dashboard (overview) instead of /dashboard/analytics"
+  ],
+  "agent": "A12"
+ },
+ {
+  "id": "A12-006",
+  "title": "Bulk agent onboarding (Excel/CSV) is desktop-only",
+  "severity": "low",
+  "confidence": "confirmed",
+  "category": "route-parity",
+  "surface": "branch create-agent",
+  "location": "src/branch-dashboard/desktop/AgentsDesktop.jsx:10-11,62-78 (BulkOnboardAgents) vs src/branch-dashboard/mobile/CreateAgentMobile.jsx",
+  "evidence": "Desktop create mode has single + bulk tabs (CreateAgentForm + BulkOnboardAgents). Mobile /dashboard/agents/new is single-agent only: grep -i 'bulk|csv|excel|upload' CreateAgentMobile.jsx returns nothing.",
+  "impact": "Low \u2014 bulk-onboarding agents from a spreadsheet is possible only on desktop; a reasonable phone omission but a genuine capability asymmetry between the two route tables.",
+  "suggested_fix": "Either add a bulk-upload entry to CreateAgentMobile or document the desktop-only scope; no correctness impact.",
+  "demo_visible": false,
+  "effort": "M",
+  "roles_affected": [
+   "branch"
+  ],
+  "repro": [
+   "Desktop: /dashboard/agents -> Add agent -> single + bulk tabs",
+   "Mobile: /dashboard/agents/new -> single form only"
+  ],
+  "agent": "A12"
+ },
+ {
+  "id": "A12-007",
+  "title": "Branch Settings 'Save changes' and mobile 'Update password' fabricate success without persisting",
+  "severity": "low",
+  "confidence": "confirmed",
+  "category": "ux-honesty",
+  "surface": "branch settings (desktop & mobile)",
+  "location": "src/branch-dashboard/desktop/SettingsDesktop.jsx:35; src/branch-dashboard/mobile/SettingsMobile.jsx:65,83",
+  "evidence": "handleSave = e.preventDefault(); addToast('success','Branch profile saved.') \u2014 no mutation/RPC. Mobile handleSaveProfile -> 'Branch profile saved.', handleUpdatePassword -> 'Password updated.' both toast-only. Edits revert on reload.",
+  "impact": "Low \u2014 branch profile editing is not a headline demo flow and matches the demo's mock-write pattern, but the toast claims a save that did not happen; a rep who edits the manager name and reloads finds it reverted.",
+  "suggested_fix": "Wire a real update_branch mutation, or change the copy/CTA to indicate preview-only.",
+  "demo_visible": true,
+  "effort": "S",
+  "roles_affected": [
+   "branch"
+  ],
+  "repro": [
+   "Sign in as b-kam-015 -> Settings",
+   "Edit Manager name, click Save changes -> 'Branch profile saved.'",
+   "Reload -> edit is gone"
+  ],
+  "agent": "A12"
+ },
+ {
+  "id": "A12-008",
+  "title": "Absurd '\u25b2 14903% over the year' on the branch overview & analytics",
+  "severity": "low",
+  "confidence": "confirmed",
+  "category": "data-credibility",
+  "surface": "branch overview + analytics contributions card",
+  "location": "src/branch-dashboard/overview/branchOverviewDerive.js:87-91 (monthlyContribStat.yoyPct)",
+  "evidence": "yoyPct = (current - firstNonZero)/firstNonZero where firstNonZero is the seed ramp-up first month = 7,904 UGX (Jun'25) and current = 1,185,832 (May'26) -> 14,903%. Rendered on d-overview-1440.png ('UGX 1.2M \u25b2 14903% over the year') and m-analytics-375.png.",
+  "impact": "Low \u2014 technically the true ratio, but a '\u25b214903%' badge reads as broken in a live demo.",
+  "suggested_fix": "Clamp/guard YoY when the base month is negligible, or compute YoY against a same-month-last-year value instead of the first non-zero bucket.",
+  "demo_visible": true,
+  "effort": "S",
+  "roles_affected": [
+   "branch"
+  ],
+  "repro": [
+   "Sign in as b-kam-015",
+   "Read overview 'Contributions \u2014 last 12 months' card: '\u25b2 14903% over the year'"
+  ],
+  "agent": "A12"
+ },
+ {
+  "id": "A12-I01",
+  "title": "Two E2E-leftover branches pollute the Kampala district in live data",
+  "severity": "info",
+  "confidence": "confirmed",
+  "category": "data-hygiene",
+  "surface": "branches table (district d-kampala)",
+  "location": "public.branches (b-new-1785700420016, b-new-1785753024670)",
+  "evidence": "psql: district d-kampala has 10 branch rows; 8 have scores/ranks; 2 are 'E2E Branch ...' with NULL score and NULL district_rank. district_branch_count=8 excludes them so the '#3 of 8' chip is internally consistent.",
+  "impact": "None user-visible on the branch surface (excluded from the count), but stale E2E writes remain in live demo data. Flagged for A06 (data integrity).",
+  "suggested_fix": "Remove the E2E-created branch rows from live demo data; add cleanup to the E2E teardown.",
+  "demo_visible": false,
+  "effort": "S",
+  "roles_affected": [
+   "distributor",
+   "admin"
+  ],
+  "agent": "A12"
+ },
+ {
+  "id": "A12-I02",
+  "title": "Manager-name vs persona-name inconsistency across branch surfaces",
+  "severity": "info",
+  "confidence": "confirmed",
+  "category": "consistency",
+  "surface": "branch overview (desktop) vs hub (mobile)",
+  "location": "src/branch-dashboard/desktop/OverviewDesktop.jsx:184 vs src/branch-dashboard/mobile/BranchHubMobile.jsx",
+  "evidence": "Desktop overview: 'Welcome back, Default branch (Kampala Central)' (JWT persona name). Mobile hub (m-menu-375.png): 'Isaac Asiimwe \u00b7 Branch Admin' (branches.manager_name). Two names for the same signed-in user.",
+  "impact": "Cosmetic \u2014 the branch admin is greeted by different names on desktop vs mobile.",
+  "suggested_fix": "Pick one source (persona name or manager_name) for the signed-in identity across both shells.",
+  "demo_visible": true,
+  "effort": "S",
+  "roles_affected": [
+   "branch"
+  ],
+  "agent": "A12"
+ }
+]

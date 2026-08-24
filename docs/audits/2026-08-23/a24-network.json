@@ -1,0 +1,6190 @@
+[
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/dashboard",
+  "type": "document"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/@vite/client",
+  "type": "script"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/main.jsx",
+  "type": "script"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "fonts.googleapis.com",
+  "url": "https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400&family=Inter:wght@300;400;500;600&display=swap",
+  "type": "stylesheet"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/@react-refresh",
+  "type": "script"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/node_modules/.vite/deps/react_jsx-dev-runtime.js?v=54ecb1b2",
+  "type": "script"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/node_modules/.vite/deps/react.js?v=54ecb1b2",
+  "type": "script"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=54ecb1b2",
+  "type": "script"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/node_modules/.vite/deps/react-router-dom.js?v=54ecb1b2",
+  "type": "script"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/node_modules/.vite/deps/@tanstack_react-query.js?v=54ecb1b2",
+  "type": "script"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/node_modules/.vite/deps/framer-motion.js?v=54ecb1b2",
+  "type": "script"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/node_modules/.vite/deps/@sentry_react.js?v=54ecb1b2",
+  "type": "script"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/contexts/AuthContext.jsx",
+  "type": "script"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/contexts/ToastContext.jsx",
+  "type": "script"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/components/Toast.jsx",
+  "type": "script"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/components/WarmupBanner.jsx",
+  "type": "script"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/components/ErrorBoundary.jsx",
+  "type": "script"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/utils/sentryScrub.js",
+  "type": "script"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/pwa/registerSW.js",
+  "type": "script"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/index.css",
+  "type": "script"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/App.jsx",
+  "type": "script"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/node_modules/vite/dist/client/env.mjs",
+  "type": "script"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/node_modules/.vite/deps/chunk-TWWNSZ4E.js?v=54ecb1b2",
+  "type": "script"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/node_modules/.vite/deps/chunk-SNAQBZPT.js?v=54ecb1b2",
+  "type": "script"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/services/api.js",
+  "type": "script"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/services/supabaseClient.js",
+  "type": "script"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/node_modules/.vite/deps/chunk-6AN2RC5X.js?v=54ecb1b2",
+  "type": "script"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/components/Toast.module.css",
+  "type": "script"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/components/ErrorBoundary.module.css",
+  "type": "script"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/config/env.js",
+  "type": "script"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/node_modules/.vite/deps/chunk-J5FXBWH4.js?v=54ecb1b2",
+  "type": "script"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/contexts/SignInContext.jsx",
+  "type": "script"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/components/SignInModal.jsx",
+  "type": "script"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/pages/landing/SubscribersPage.jsx",
+  "type": "script"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/pages/landing/EmployersPage.jsx",
+  "type": "script"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/pages/landing/DistributorsPage.jsx",
+  "type": "script"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/pages/landing/AdminPage.jsx",
+  "type": "script"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/components/ScrollToTop.jsx",
+  "type": "script"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/services/auth.js",
+  "type": "script"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/pages/FAQ.jsx",
+  "type": "script"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/pages/Contact.jsx",
+  "type": "script"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/pages/About.jsx",
+  "type": "script"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/pages/AdminLogin.jsx",
+  "type": "script"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/pages/RequestAccess.jsx",
+  "type": "script"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/pages/NomineeClaim.jsx",
+  "type": "script"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/pages/landing/shell/LandingLayout.jsx",
+  "type": "script"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/node_modules/.vite/deps/@supabase_postgrest-js.js?v=54ecb1b2",
+  "type": "script"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/components/signin/RoleSelect.jsx",
+  "type": "script"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/components/signin/DistributorSelect.jsx",
+  "type": "script"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/components/signin/PhoneEntry.jsx",
+  "type": "script"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/components/signin/OtpVerify.jsx",
+  "type": "script"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/components/signin/PasswordEntry.jsx",
+  "type": "script"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/assets/logo-white.png?import",
+  "type": "script"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/utils/motion.js",
+  "type": "script"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/components/SignInModal.module.css",
+  "type": "script"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/components/Footer.jsx",
+  "type": "script"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/pages/landing/LandingNav.jsx",
+  "type": "script"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/pages/landing/LandingLoginCard.jsx",
+  "type": "script"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/pages/landing/motion.jsx",
+  "type": "script"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/hooks/useIsMobile.js",
+  "type": "script"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/pages/landing/landing.module.css",
+  "type": "script"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/components/Navbar.jsx",
+  "type": "script"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/pages/FAQ.module.css",
+  "type": "script"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/services/contact.js",
+  "type": "script"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/pages/Contact.module.css",
+  "type": "script"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/pages/About.module.css",
+  "type": "script"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/components/signin/useLoginFlow.js",
+  "type": "script"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/pages/AdminLogin.module.css",
+  "type": "script"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/pages/landing/shell/LandingMobileShell.jsx",
+  "type": "script"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/assets/logo.png?import",
+  "type": "script"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/services/nomineeClaim.js",
+  "type": "script"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/pages/landing/validateNomineeClaim.js",
+  "type": "script"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/utils/phone.js",
+  "type": "script"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/pages/NomineeClaim.module.css",
+  "type": "script"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/components/signin/RoleSelect.module.css",
+  "type": "script"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/components/signin/PhoneEntry.module.css",
+  "type": "script"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/services/requestAccess.js",
+  "type": "script"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/pages/landing/validateAccessRequest.js",
+  "type": "script"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/constants/districts.js",
+  "type": "script"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/pages/RequestAccess.module.css",
+  "type": "script"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/components/signin/OtpVerify.module.css",
+  "type": "script"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/components/signin/PasswordEntry.module.css",
+  "type": "script"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/components/signin/DistributorSelect.module.css",
+  "type": "script"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/components/Footer.module.css",
+  "type": "script"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/components/Navbar.module.css",
+  "type": "script"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/pages/landing/shell/installPrompt.jsx",
+  "type": "script"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/pages/landing/shell/LandingMenuSheet.jsx",
+  "type": "script"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/pages/landing/shell/LandingInstallSheet.jsx",
+  "type": "script"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/pages/landing/shell/CalculatorSheet.jsx",
+  "type": "script"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/pages/landing/shell/InstallBanner.jsx",
+  "type": "script"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/pages/landing/mobile/SubscribersMobile.jsx",
+  "type": "script"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/pages/landing/mobile/EmployersMobile.jsx",
+  "type": "script"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/pages/landing/mobile/DistributorsMobile.jsx",
+  "type": "script"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/pages/landing/mobile/AdminMobile.jsx",
+  "type": "script"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/pages/landing/mobile/AboutMobile.jsx",
+  "type": "script"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/pages/landing/mobile/FAQMobile.jsx",
+  "type": "script"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/pages/landing/mobile/ContactMobile.jsx",
+  "type": "script"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/pages/landing/mobile/RequestAccessMobile.jsx",
+  "type": "script"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/pages/landing/mobile/landingMobile.module.css",
+  "type": "script"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/pages/landing/shell/BottomSheet.jsx",
+  "type": "script"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/pages/landing/mobile/calc.js",
+  "type": "script"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/node_modules/.vite/deps/react-dom.js?v=54ecb1b2",
+  "type": "script"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/pages/landing/shell/BottomSheet.module.css",
+  "type": "script"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/admin-dashboard/AdminDashboardShell.jsx",
+  "type": "script"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/readyz",
+  "type": "fetch"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/readyz",
+  "type": "fetch"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/contexts/DashboardContext.jsx",
+  "type": "script"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/contexts/AdminPanelContext.jsx",
+  "type": "script"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/contexts/DataScopeContext.jsx",
+  "type": "script"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/hooks/useEntity.js",
+  "type": "script"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/hooks/useIsDesktop.js",
+  "type": "script"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/admin-dashboard/sidebar/AdminSidebar.jsx",
+  "type": "script"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/admin-dashboard/shell/AdminMobileShell.jsx",
+  "type": "script"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/dashboard/overlay/OverlayPanel.jsx",
+  "type": "script"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/dashboard/overlay/DataCopilotPanel.jsx",
+  "type": "script"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/dashboard/overlay/Breadcrumb.jsx",
+  "type": "script"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/dashboard/cards/MetricsRow.jsx",
+  "type": "script"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/dashboard/overlay/TopBar.jsx",
+  "type": "script"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/dashboard/branch/ViewBranches.jsx",
+  "type": "script"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/dashboard/agent/ViewAgents.jsx",
+  "type": "script"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/dashboard/subscriber/ViewSubscribers.jsx",
+  "type": "script"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/dashboard/reports/ViewReports.jsx",
+  "type": "script"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/dashboard/settings/Settings.jsx",
+  "type": "script"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/dashboard/tickets/ViewTickets.jsx",
+  "type": "script"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/admin-dashboard/AdminCountryOverview.jsx",
+  "type": "script"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/admin-dashboard/overview/AdminOverview.jsx",
+  "type": "script"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/admin-dashboard/attention/AdminAttentionDesktop.jsx",
+  "type": "script"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/admin-dashboard/distributors/ViewDistributors.jsx",
+  "type": "script"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/admin-dashboard/distributors/CreateDistributor.jsx",
+  "type": "script"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/admin-dashboard/employers/ViewEmployers.jsx",
+  "type": "script"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/admin-dashboard/employers/CreateEmployer.jsx",
+  "type": "script"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/admin-dashboard/employers/ViewEmployerDetail.jsx",
+  "type": "script"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/admin-dashboard/access-requests/ViewAccessRequests.jsx",
+  "type": "script"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/admin-dashboard/nominee-claims/ViewNomineeClaims.jsx",
+  "type": "script"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/admin-dashboard/nav/AdminNavDesktop.jsx",
+  "type": "script"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/components/notifications/NotificationBell.jsx",
+  "type": "script"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/dashboard/DashboardShell.module.css",
+  "type": "script"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/admin-dashboard/adminChrome.module.css",
+  "type": "script"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/contexts/DashboardNavContext.jsx",
+  "type": "script"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/contexts/DashboardPanelContext.jsx",
+  "type": "script"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/constants/scopes.js",
+  "type": "script"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/services/entities.js",
+  "type": "script"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/services/search.js",
+  "type": "script"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/services/chat.js",
+  "type": "script"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/dashboard/overlay/platformCopilotContext.js",
+  "type": "script"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/employer-dashboard/desktop/icons.jsx",
+  "type": "script"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/dashboard/overlay/DataCopilotPanel.module.css",
+  "type": "script"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/admin-dashboard/shell/AdminMobileAppBar.jsx",
+  "type": "script"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/admin-dashboard/shell/AdminBottomTabBar.jsx",
+  "type": "script"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/admin-dashboard/shell/adminAppBarContext.js",
+  "type": "script"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/admin-dashboard/mobile/AdminHomeMobile.jsx",
+  "type": "script"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/admin-dashboard/mobile/DistributorsMobile.jsx",
+  "type": "script"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/admin-dashboard/mobile/DistributorDetailMobile.jsx",
+  "type": "script"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/admin-dashboard/mobile/EmployersMobile.jsx",
+  "type": "script"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/admin-dashboard/mobile/EmployerDetailMobile.jsx",
+  "type": "script"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/admin-dashboard/mobile/AdminNetworkMobile.jsx",
+  "type": "script"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/admin-dashboard/mobile/AdminSettingsMobile.jsx",
+  "type": "script"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/admin-dashboard/mobile/AdminAccessRequestsMobile.jsx",
+  "type": "script"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/admin-dashboard/mobile/AdminNavMobile.jsx",
+  "type": "script"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/admin-dashboard/mobile/AdminNomineeClaimsMobile.jsx",
+  "type": "script"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/admin-dashboard/attention/AdminAttentionMobile.jsx",
+  "type": "script"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/admin-dashboard/mobile/AdminHubMobile.jsx",
+  "type": "script"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/dashboard/mobile/BranchesMobile.jsx",
+  "type": "script"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/dashboard/mobile/BranchDetailMobile.jsx",
+  "type": "script"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/dashboard/mobile/AgentsMobile.jsx",
+  "type": "script"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/dashboard/mobile/AgentDetailMobile.jsx",
+  "type": "script"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/dashboard/mobile/SubscribersMobile.jsx",
+  "type": "script"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/dashboard/mobile/SubscriberDetailMobile.jsx",
+  "type": "script"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/dashboard/mobile/ReportsMobile.jsx",
+  "type": "script"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/dashboard/mobile/ReportViewMobile.jsx",
+  "type": "script"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/dashboard/mobile/SupportMobile.jsx",
+  "type": "script"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/dashboard/mobile/ThreadMobile.jsx",
+  "type": "script"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/dashboard/shell/DistributorMobileShell.module.css",
+  "type": "script"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/utils/currency.js",
+  "type": "script"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/dashboard/sidebar/Sidebar.module.css",
+  "type": "script"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/hooks/useCommission.js",
+  "type": "script"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/constants/levels.js",
+  "type": "script"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/hooks/useDebouncedValue.js",
+  "type": "script"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/dashboard/overlay/OverlayPanel.module.css",
+  "type": "script"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/dashboard/cards/MetricsRow.module.css",
+  "type": "script"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/utils/csv.js",
+  "type": "script"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/hooks/useOutsideClick.js",
+  "type": "script"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/dashboard/overlay/TopBar.module.css",
+  "type": "script"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/dashboard/overlay/Breadcrumb.module.css",
+  "type": "script"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/node_modules/.vite/deps/@tanstack_react-virtual.js?v=54ecb1b2",
+  "type": "script"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/utils/dashboard.js",
+  "type": "script"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/dashboard/shared/Stars.jsx",
+  "type": "script"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/dashboard/shared/Icons.jsx",
+  "type": "script"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/dashboard/shared/TrendArrow.jsx",
+  "type": "script"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/dashboard/shared/MiniChart.jsx",
+  "type": "script"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/dashboard/shared/KpiCard.jsx",
+  "type": "script"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/dashboard/shared/Demographics.jsx",
+  "type": "script"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/components/Modal.jsx",
+  "type": "script"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/components/SkeletonRow.jsx",
+  "type": "script"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/components/EmptyState.jsx",
+  "type": "script"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/dashboard/branch/ViewBranches.module.css",
+  "type": "script"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/contexts/BranchScopeContext.jsx",
+  "type": "script"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/dashboard/reports/ReportsHub.jsx",
+  "type": "script"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/dashboard/reports/ViewReports.module.css",
+  "type": "script"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/hooks/useSubscriber.js",
+  "type": "script"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/utils/date.js",
+  "type": "script"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/dashboard/subscriber/ViewSubscribers.module.css",
+  "type": "script"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/dashboard/settings/Settings.module.css",
+  "type": "script"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/hooks/useTickets.js",
+  "type": "script"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/data/ticketsSeed.js",
+  "type": "script"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/components/PillChip.jsx",
+  "type": "script"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/components/feedback/ErrorCard.jsx",
+  "type": "script"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/components/tickets/TicketListRow.jsx",
+  "type": "script"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/components/tickets/ThreadView.jsx",
+  "type": "script"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/dashboard/tickets/ViewTickets.module.css",
+  "type": "script"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/dashboard/agent/ViewAgents.module.css",
+  "type": "script"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/hooks/useAdminAttention.js",
+  "type": "script"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/admin-dashboard/overview/NeedsAttentionCard.jsx",
+  "type": "script"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/admin-dashboard/overview/adminAttentionDerive.js",
+  "type": "script"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/dashboard/overview/DistributorOverview.module.css",
+  "type": "script"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/admin-dashboard/overview/NeedsAttentionCard.module.css",
+  "type": "script"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/employer-dashboard/desktop/ui.jsx",
+  "type": "script"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/employer-dashboard/desktop/ui.module.css",
+  "type": "script"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/admin-dashboard/attention/attentionMeta.js",
+  "type": "script"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/admin-dashboard/attention/useAttentionDrill.js",
+  "type": "script"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/admin-dashboard/attention/NotifyComposer.jsx",
+  "type": "script"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/admin-dashboard/attention/AdminAttentionDesktop.module.css",
+  "type": "script"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/admin-dashboard/adminPanels.module.css",
+  "type": "script"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/admin-dashboard/AdminCountryOverview.module.css",
+  "type": "script"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/hooks/useEmployer.js",
+  "type": "script"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/admin-dashboard/employers/ViewEmployerDetail.module.css",
+  "type": "script"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/hooks/useNotifications.js",
+  "type": "script"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/components/notifications/NotificationList.jsx",
+  "type": "script"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/components/notifications/Notifications.module.css",
+  "type": "script"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/hooks/useAccessRequests.js",
+  "type": "script"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/hooks/useNomineeClaims.js",
+  "type": "script"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/utils/policies.js",
+  "type": "script"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/admin-dashboard/nominee-claims/reviewCopy.js",
+  "type": "script"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/node_modules/.vite/deps/recharts.js?v=54ecb1b2",
+  "type": "script"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/hooks/useNav.js",
+  "type": "script"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/employer-dashboard/reports/chartConfig.jsx",
+  "type": "script"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/admin-dashboard/nav/AdminNavDesktop.module.css",
+  "type": "script"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/data/mockData.js",
+  "type": "script"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "fonts.gstatic.com",
+  "url": "https://fonts.gstatic.com/s/inter/v20/UcC73FwrK3iLTeHuS_nVMrMxCp50SjIa1ZL7W0Q5nw.woff2",
+  "type": "font"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/dashboard/shell/DistributorBottomTabBar.module.css",
+  "type": "script"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/dashboard/shell/DistributorMobileAppBar.module.css",
+  "type": "script"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/dashboard/mobile/distributorMobile.module.css",
+  "type": "script"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/branch-dashboard/shell/BottomSheet.jsx",
+  "type": "script"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/admin-dashboard/attention/AdminAttentionMobile.module.css",
+  "type": "script"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/dashboard/mobile/VirtualRows.jsx",
+  "type": "script"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/services/commissions.js",
+  "type": "script"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/dashboard/shared/Stars.module.css",
+  "type": "script"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/dashboard/shared/TrendArrow.module.css",
+  "type": "script"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/dashboard/shared/MiniChart.module.css",
+  "type": "script"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/dashboard/shared/Demographics.module.css",
+  "type": "script"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/components/Modal.module.css",
+  "type": "script"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/components/SkeletonRow.module.css",
+  "type": "script"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/components/EmptyState.module.css",
+  "type": "script"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/contexts/createScopeContext.jsx",
+  "type": "script"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/dashboard/shared/KpiCard.module.css",
+  "type": "script"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/dashboard/reports/ReportsHub.module.css",
+  "type": "script"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/services/tickets.js",
+  "type": "script"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/services/subscriber.js",
+  "type": "script"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/components/PillChip.module.css",
+  "type": "script"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/components/feedback/ErrorCard.module.css",
+  "type": "script"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/components/tickets/TicketStatusBadge.jsx",
+  "type": "script"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/components/tickets/TicketListRow.module.css",
+  "type": "script"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/components/tickets/MessageBubble.jsx",
+  "type": "script"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/components/tickets/ThreadView.module.css",
+  "type": "script"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/services/adminAttention.js",
+  "type": "script"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/admin-dashboard/attention/NotifyComposer.module.css",
+  "type": "script"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/services/notifications.js",
+  "type": "script"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/services/employer.js",
+  "type": "script"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/services/accessRequests.js",
+  "type": "script"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/services/nomineeClaims.js",
+  "type": "script"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/constants/savings.js",
+  "type": "script"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/services/nav.js",
+  "type": "script"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/employer-dashboard/reports/chartConfig.module.css",
+  "type": "script"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/data/mockGeo.js",
+  "type": "script"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/data/mockBranchDefs.js",
+  "type": "script"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/branch-dashboard/shell/BottomSheet.module.css",
+  "type": "script"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/components/tickets/TicketStatusBadge.module.css",
+  "type": "script"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/components/tickets/MessageBubble.module.css",
+  "type": "script"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/utils/finance.js",
+  "type": "script"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/utils/hospitalCash.js",
+  "type": "script"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/utils/periodSettlement.js",
+  "type": "script"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/utils/contributionModel.js",
+  "type": "script"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/data/employerSeed.js",
+  "type": "script"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/utils/settlement.js",
+  "type": "script"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/utils/groupInsurance.js",
+  "type": "script"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/constants/nudge.js",
+  "type": "script"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/assets/logo.png",
+  "type": "image"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "POST",
+  "host": "ilkhfnoyxlxwqadebnkp.supabase.co",
+  "url": "https://ilkhfnoyxlxwqadebnkp.supabase.co/rest/v1/rpc/get_platform_overview",
+  "type": "fetch"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "POST",
+  "host": "ilkhfnoyxlxwqadebnkp.supabase.co",
+  "url": "https://ilkhfnoyxlxwqadebnkp.supabase.co/rest/v1/rpc/get_entity_metrics_rollup",
+  "type": "fetch"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "ilkhfnoyxlxwqadebnkp.supabase.co",
+  "url": "https://ilkhfnoyxlxwqadebnkp.supabase.co/rest/v1/regions?select=id%2Cname%2Cparent_id%2Ccenter_lng%2Ccenter_lat&parent_id=eq.ug",
+  "type": "fetch"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "POST",
+  "host": "ilkhfnoyxlxwqadebnkp.supabase.co",
+  "url": "https://ilkhfnoyxlxwqadebnkp.supabase.co/rest/v1/rpc/get_top_entities",
+  "type": "fetch"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "POST",
+  "host": "ilkhfnoyxlxwqadebnkp.supabase.co",
+  "url": "https://ilkhfnoyxlxwqadebnkp.supabase.co/rest/v1/rpc/get_admin_attention",
+  "type": "fetch"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "POST",
+  "host": "ilkhfnoyxlxwqadebnkp.supabase.co",
+  "url": "https://ilkhfnoyxlxwqadebnkp.supabase.co/rest/v1/rpc/get_employer_geo_rollup",
+  "type": "fetch"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "HEAD",
+  "host": "ilkhfnoyxlxwqadebnkp.supabase.co",
+  "url": "https://ilkhfnoyxlxwqadebnkp.supabase.co/rest/v1/notifications?select=*&recipient_role=eq.admin&is_read=eq.false",
+  "type": "fetch"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "fonts.gstatic.com",
+  "url": "https://fonts.gstatic.com/s/plusjakartasans/v12/LDIoaomQNQcsA88c7O9yZ4KMCoOg4Ko20yygg_vb.woff2",
+  "type": "font"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "POST",
+  "host": "ilkhfnoyxlxwqadebnkp.supabase.co",
+  "url": "https://ilkhfnoyxlxwqadebnkp.supabase.co/rest/v1/rpc/get_platform_overview",
+  "type": "fetch"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "POST",
+  "host": "ilkhfnoyxlxwqadebnkp.supabase.co",
+  "url": "https://ilkhfnoyxlxwqadebnkp.supabase.co/rest/v1/rpc/get_entity_metrics_rollup",
+  "type": "fetch"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "GET",
+  "host": "ilkhfnoyxlxwqadebnkp.supabase.co",
+  "url": "https://ilkhfnoyxlxwqadebnkp.supabase.co/rest/v1/regions?select=id%2Cname%2Cparent_id%2Ccenter_lng%2Ccenter_lat&parent_id=eq.ug",
+  "type": "fetch"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "POST",
+  "host": "ilkhfnoyxlxwqadebnkp.supabase.co",
+  "url": "https://ilkhfnoyxlxwqadebnkp.supabase.co/rest/v1/rpc/get_entity_metrics_rollup",
+  "type": "fetch"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "POST",
+  "host": "ilkhfnoyxlxwqadebnkp.supabase.co",
+  "url": "https://ilkhfnoyxlxwqadebnkp.supabase.co/rest/v1/rpc/list_access_requests",
+  "type": "fetch"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "POST",
+  "host": "ilkhfnoyxlxwqadebnkp.supabase.co",
+  "url": "https://ilkhfnoyxlxwqadebnkp.supabase.co/rest/v1/rpc/list_access_requests",
+  "type": "fetch"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "POST",
+  "host": "ilkhfnoyxlxwqadebnkp.supabase.co",
+  "url": "https://ilkhfnoyxlxwqadebnkp.supabase.co/rest/v1/rpc/list_nominee_claims",
+  "type": "fetch"
+ },
+ {
+  "label": "desktop-admin",
+  "method": "POST",
+  "host": "ilkhfnoyxlxwqadebnkp.supabase.co",
+  "url": "https://ilkhfnoyxlxwqadebnkp.supabase.co/rest/v1/rpc/list_nominee_claims",
+  "type": "fetch"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/dashboard/access-requests",
+  "type": "document"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/@vite/client",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/main.jsx",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "fonts.googleapis.com",
+  "url": "https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400&family=Inter:wght@300;400;500;600&display=swap",
+  "type": "stylesheet"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/@react-refresh",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/node_modules/.vite/deps/react_jsx-dev-runtime.js?v=54ecb1b2",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/node_modules/.vite/deps/react.js?v=54ecb1b2",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=54ecb1b2",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/node_modules/.vite/deps/react-router-dom.js?v=54ecb1b2",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/node_modules/.vite/deps/@tanstack_react-query.js?v=54ecb1b2",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/node_modules/.vite/deps/framer-motion.js?v=54ecb1b2",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/node_modules/.vite/deps/@sentry_react.js?v=54ecb1b2",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/contexts/AuthContext.jsx",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/contexts/ToastContext.jsx",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/components/Toast.jsx",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/components/WarmupBanner.jsx",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/components/ErrorBoundary.jsx",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/utils/sentryScrub.js",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/pwa/registerSW.js",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/index.css",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/App.jsx",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/node_modules/vite/dist/client/env.mjs",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/node_modules/.vite/deps/chunk-TWWNSZ4E.js?v=54ecb1b2",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/node_modules/.vite/deps/chunk-SNAQBZPT.js?v=54ecb1b2",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/services/api.js",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/services/supabaseClient.js",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/node_modules/.vite/deps/chunk-6AN2RC5X.js?v=54ecb1b2",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/components/Toast.module.css",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/config/env.js",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/components/ErrorBoundary.module.css",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/contexts/SignInContext.jsx",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/components/SignInModal.jsx",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/pages/landing/SubscribersPage.jsx",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/pages/landing/EmployersPage.jsx",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/pages/landing/DistributorsPage.jsx",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/pages/landing/AdminPage.jsx",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/components/ScrollToTop.jsx",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/services/auth.js",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/pages/FAQ.jsx",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/pages/Contact.jsx",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/pages/About.jsx",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/pages/AdminLogin.jsx",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/pages/RequestAccess.jsx",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/pages/NomineeClaim.jsx",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/pages/landing/shell/LandingLayout.jsx",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/node_modules/.vite/deps/chunk-J5FXBWH4.js?v=54ecb1b2",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/node_modules/.vite/deps/@supabase_postgrest-js.js?v=54ecb1b2",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/components/signin/RoleSelect.jsx",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/components/signin/DistributorSelect.jsx",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/components/signin/PhoneEntry.jsx",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/components/signin/OtpVerify.jsx",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/components/signin/PasswordEntry.jsx",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/assets/logo-white.png?import",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/utils/motion.js",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/components/SignInModal.module.css",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/components/Footer.jsx",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/pages/landing/LandingNav.jsx",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/pages/landing/LandingLoginCard.jsx",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/pages/landing/motion.jsx",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/hooks/useIsMobile.js",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/pages/landing/landing.module.css",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/components/Navbar.jsx",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/pages/FAQ.module.css",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/services/contact.js",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/pages/Contact.module.css",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/pages/About.module.css",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/components/signin/useLoginFlow.js",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/pages/AdminLogin.module.css",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/assets/logo.png?import",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/services/requestAccess.js",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/pages/landing/validateAccessRequest.js",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/utils/phone.js",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/constants/districts.js",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/pages/RequestAccess.module.css",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/services/nomineeClaim.js",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/pages/landing/validateNomineeClaim.js",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/pages/NomineeClaim.module.css",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/pages/landing/shell/LandingMobileShell.jsx",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/components/signin/DistributorSelect.module.css",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/components/signin/PhoneEntry.module.css",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/components/signin/OtpVerify.module.css",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/components/signin/PasswordEntry.module.css",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/components/signin/RoleSelect.module.css",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/components/Footer.module.css",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/components/Navbar.module.css",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/pages/landing/shell/installPrompt.jsx",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/pages/landing/shell/LandingMenuSheet.jsx",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/pages/landing/shell/LandingInstallSheet.jsx",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/pages/landing/shell/CalculatorSheet.jsx",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/pages/landing/shell/InstallBanner.jsx",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/pages/landing/mobile/SubscribersMobile.jsx",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/pages/landing/mobile/EmployersMobile.jsx",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/pages/landing/mobile/DistributorsMobile.jsx",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/pages/landing/mobile/AdminMobile.jsx",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/pages/landing/mobile/AboutMobile.jsx",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/pages/landing/mobile/FAQMobile.jsx",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/pages/landing/mobile/ContactMobile.jsx",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/pages/landing/mobile/RequestAccessMobile.jsx",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/pages/landing/mobile/landingMobile.module.css",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/pages/landing/shell/BottomSheet.jsx",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/pages/landing/mobile/calc.js",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/node_modules/.vite/deps/react-dom.js?v=54ecb1b2",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/pages/landing/shell/BottomSheet.module.css",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/admin-dashboard/AdminDashboardShell.jsx",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/readyz",
+  "type": "fetch"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/readyz",
+  "type": "fetch"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/contexts/DashboardContext.jsx",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/contexts/AdminPanelContext.jsx",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/contexts/DataScopeContext.jsx",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/hooks/useEntity.js",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/hooks/useIsDesktop.js",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/admin-dashboard/sidebar/AdminSidebar.jsx",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/admin-dashboard/shell/AdminMobileShell.jsx",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/dashboard/overlay/OverlayPanel.jsx",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/dashboard/overlay/DataCopilotPanel.jsx",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/dashboard/overlay/Breadcrumb.jsx",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/dashboard/cards/MetricsRow.jsx",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/dashboard/overlay/TopBar.jsx",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/dashboard/branch/ViewBranches.jsx",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/dashboard/agent/ViewAgents.jsx",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/dashboard/subscriber/ViewSubscribers.jsx",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/dashboard/reports/ViewReports.jsx",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/dashboard/settings/Settings.jsx",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/dashboard/tickets/ViewTickets.jsx",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/admin-dashboard/AdminCountryOverview.jsx",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/admin-dashboard/overview/AdminOverview.jsx",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/admin-dashboard/attention/AdminAttentionDesktop.jsx",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/admin-dashboard/distributors/ViewDistributors.jsx",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/admin-dashboard/distributors/CreateDistributor.jsx",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/admin-dashboard/employers/ViewEmployers.jsx",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/admin-dashboard/employers/CreateEmployer.jsx",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/admin-dashboard/employers/ViewEmployerDetail.jsx",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/admin-dashboard/access-requests/ViewAccessRequests.jsx",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/admin-dashboard/nominee-claims/ViewNomineeClaims.jsx",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/admin-dashboard/nav/AdminNavDesktop.jsx",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/components/notifications/NotificationBell.jsx",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/dashboard/DashboardShell.module.css",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/admin-dashboard/adminChrome.module.css",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/contexts/DashboardNavContext.jsx",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/contexts/DashboardPanelContext.jsx",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/constants/scopes.js",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/services/entities.js",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/services/search.js",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/services/chat.js",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/dashboard/overlay/platformCopilotContext.js",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/employer-dashboard/desktop/icons.jsx",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/dashboard/overlay/DataCopilotPanel.module.css",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/admin-dashboard/shell/AdminMobileAppBar.jsx",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/admin-dashboard/shell/AdminBottomTabBar.jsx",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/admin-dashboard/shell/adminAppBarContext.js",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/admin-dashboard/mobile/AdminHomeMobile.jsx",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/admin-dashboard/mobile/DistributorsMobile.jsx",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/admin-dashboard/mobile/DistributorDetailMobile.jsx",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/admin-dashboard/mobile/EmployersMobile.jsx",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/admin-dashboard/mobile/EmployerDetailMobile.jsx",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/admin-dashboard/mobile/AdminNetworkMobile.jsx",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/admin-dashboard/mobile/AdminSettingsMobile.jsx",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/admin-dashboard/mobile/AdminAccessRequestsMobile.jsx",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/admin-dashboard/mobile/AdminNavMobile.jsx",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/admin-dashboard/mobile/AdminNomineeClaimsMobile.jsx",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/admin-dashboard/attention/AdminAttentionMobile.jsx",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/admin-dashboard/mobile/AdminHubMobile.jsx",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/dashboard/mobile/BranchesMobile.jsx",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/dashboard/mobile/BranchDetailMobile.jsx",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/dashboard/mobile/AgentsMobile.jsx",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/dashboard/mobile/AgentDetailMobile.jsx",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/dashboard/mobile/SubscribersMobile.jsx",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/dashboard/mobile/SubscriberDetailMobile.jsx",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/dashboard/mobile/ReportsMobile.jsx",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/dashboard/mobile/ReportViewMobile.jsx",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/dashboard/mobile/SupportMobile.jsx",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/dashboard/mobile/ThreadMobile.jsx",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/dashboard/shell/DistributorMobileShell.module.css",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/utils/currency.js",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/dashboard/sidebar/Sidebar.module.css",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/hooks/useCommission.js",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/constants/levels.js",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/hooks/useDebouncedValue.js",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/dashboard/overlay/OverlayPanel.module.css",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/utils/csv.js",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/hooks/useOutsideClick.js",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/dashboard/overlay/TopBar.module.css",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/dashboard/cards/MetricsRow.module.css",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/node_modules/.vite/deps/@tanstack_react-virtual.js?v=54ecb1b2",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/utils/dashboard.js",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/dashboard/shared/Stars.jsx",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/dashboard/shared/Icons.jsx",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/dashboard/shared/TrendArrow.jsx",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/dashboard/shared/MiniChart.jsx",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/dashboard/shared/KpiCard.jsx",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/dashboard/shared/Demographics.jsx",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/components/Modal.jsx",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/components/SkeletonRow.jsx",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/components/EmptyState.jsx",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/dashboard/branch/ViewBranches.module.css",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/contexts/BranchScopeContext.jsx",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/dashboard/agent/ViewAgents.module.css",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/dashboard/overlay/Breadcrumb.module.css",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/hooks/useSubscriber.js",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/dashboard/settings/Settings.module.css",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/dashboard/reports/ReportsHub.jsx",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/dashboard/reports/ViewReports.module.css",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/hooks/useTickets.js",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/data/ticketsSeed.js",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/components/PillChip.jsx",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/components/feedback/ErrorCard.jsx",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/components/tickets/TicketListRow.jsx",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/components/tickets/ThreadView.jsx",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/dashboard/tickets/ViewTickets.module.css",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/employer-dashboard/desktop/ui.jsx",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/employer-dashboard/desktop/ui.module.css",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/admin-dashboard/attention/attentionMeta.js",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/admin-dashboard/attention/useAttentionDrill.js",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/admin-dashboard/attention/NotifyComposer.jsx",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/admin-dashboard/attention/AdminAttentionDesktop.module.css",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/utils/date.js",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/dashboard/subscriber/ViewSubscribers.module.css",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/admin-dashboard/adminPanels.module.css",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/admin-dashboard/AdminCountryOverview.module.css",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/hooks/useAdminAttention.js",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/admin-dashboard/overview/NeedsAttentionCard.jsx",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/admin-dashboard/overview/adminAttentionDerive.js",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/dashboard/overview/DistributorOverview.module.css",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/admin-dashboard/overview/NeedsAttentionCard.module.css",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/hooks/useEmployer.js",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/admin-dashboard/employers/ViewEmployerDetail.module.css",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/hooks/useAccessRequests.js",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/hooks/useNomineeClaims.js",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/utils/policies.js",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/admin-dashboard/nominee-claims/reviewCopy.js",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/hooks/useNotifications.js",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/components/notifications/NotificationList.jsx",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/components/notifications/Notifications.module.css",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/node_modules/.vite/deps/recharts.js?v=54ecb1b2",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/hooks/useNav.js",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/employer-dashboard/reports/chartConfig.jsx",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/admin-dashboard/nav/AdminNavDesktop.module.css",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/data/mockData.js",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/dashboard/shell/DistributorMobileAppBar.module.css",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/dashboard/mobile/distributorMobile.module.css",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/dashboard/shell/DistributorBottomTabBar.module.css",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/branch-dashboard/shell/BottomSheet.jsx",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/admin-dashboard/attention/AdminAttentionMobile.module.css",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/dashboard/mobile/VirtualRows.jsx",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/services/commissions.js",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/dashboard/shared/Stars.module.css",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/dashboard/shared/TrendArrow.module.css",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/dashboard/shared/KpiCard.module.css",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/dashboard/shared/Demographics.module.css",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/components/Modal.module.css",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/components/SkeletonRow.module.css",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/dashboard/shared/MiniChart.module.css",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/contexts/createScopeContext.jsx",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/components/EmptyState.module.css",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/dashboard/reports/ReportsHub.module.css",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/services/subscriber.js",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/components/PillChip.module.css",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/components/tickets/TicketStatusBadge.jsx",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/components/tickets/TicketListRow.module.css",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/components/feedback/ErrorCard.module.css",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/services/tickets.js",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/components/tickets/MessageBubble.jsx",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/components/tickets/ThreadView.module.css",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/admin-dashboard/attention/NotifyComposer.module.css",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/services/adminAttention.js",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/services/employer.js",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/constants/savings.js",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/services/accessRequests.js",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/services/nomineeClaims.js",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/services/nav.js",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/services/notifications.js",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/employer-dashboard/reports/chartConfig.module.css",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "fonts.gstatic.com",
+  "url": "https://fonts.gstatic.com/s/inter/v20/UcC73FwrK3iLTeHuS_nVMrMxCp50SjIa1ZL7W0Q5nw.woff2",
+  "type": "font"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/data/mockGeo.js",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/data/mockBranchDefs.js",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/branch-dashboard/shell/BottomSheet.module.css",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/components/tickets/TicketStatusBadge.module.css",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/utils/finance.js",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/utils/hospitalCash.js",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/utils/periodSettlement.js",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/utils/contributionModel.js",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/data/employerSeed.js",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/components/tickets/MessageBubble.module.css",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/utils/groupInsurance.js",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/constants/nudge.js",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/utils/settlement.js",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "fonts.gstatic.com",
+  "url": "https://fonts.gstatic.com/s/plusjakartasans/v12/LDIoaomQNQcsA88c7O9yZ4KMCoOg4Ko20yygg_vb.woff2",
+  "type": "font"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "POST",
+  "host": "ilkhfnoyxlxwqadebnkp.supabase.co",
+  "url": "https://ilkhfnoyxlxwqadebnkp.supabase.co/rest/v1/rpc/list_access_requests",
+  "type": "fetch"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "POST",
+  "host": "ilkhfnoyxlxwqadebnkp.supabase.co",
+  "url": "https://ilkhfnoyxlxwqadebnkp.supabase.co/rest/v1/rpc/get_platform_overview",
+  "type": "fetch"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "POST",
+  "host": "ilkhfnoyxlxwqadebnkp.supabase.co",
+  "url": "https://ilkhfnoyxlxwqadebnkp.supabase.co/rest/v1/rpc/get_entity_metrics_rollup",
+  "type": "fetch"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/dashboard/nominee-claims",
+  "type": "document"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/@vite/client",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/main.jsx",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "fonts.googleapis.com",
+  "url": "https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400&family=Inter:wght@300;400;500;600&display=swap",
+  "type": "stylesheet"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/@react-refresh",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/node_modules/.vite/deps/react_jsx-dev-runtime.js?v=54ecb1b2",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/node_modules/.vite/deps/react.js?v=54ecb1b2",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=54ecb1b2",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/node_modules/.vite/deps/react-router-dom.js?v=54ecb1b2",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/node_modules/.vite/deps/@tanstack_react-query.js?v=54ecb1b2",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/node_modules/.vite/deps/framer-motion.js?v=54ecb1b2",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/node_modules/.vite/deps/@sentry_react.js?v=54ecb1b2",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/contexts/AuthContext.jsx",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/contexts/ToastContext.jsx",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/components/Toast.jsx",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/components/WarmupBanner.jsx",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/components/ErrorBoundary.jsx",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/utils/sentryScrub.js",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/pwa/registerSW.js",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/index.css",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/App.jsx",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/node_modules/.vite/deps/chunk-TWWNSZ4E.js?v=54ecb1b2",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/node_modules/.vite/deps/chunk-SNAQBZPT.js?v=54ecb1b2",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/node_modules/.vite/deps/chunk-J5FXBWH4.js?v=54ecb1b2",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/node_modules/.vite/deps/chunk-6AN2RC5X.js?v=54ecb1b2",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/node_modules/vite/dist/client/env.mjs",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/services/api.js",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/services/supabaseClient.js",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/components/Toast.module.css",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/config/env.js",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/components/ErrorBoundary.module.css",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/contexts/SignInContext.jsx",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/components/SignInModal.jsx",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/pages/landing/SubscribersPage.jsx",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/pages/landing/EmployersPage.jsx",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/pages/landing/DistributorsPage.jsx",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/pages/landing/AdminPage.jsx",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/components/ScrollToTop.jsx",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/services/auth.js",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/pages/FAQ.jsx",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/pages/Contact.jsx",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/pages/About.jsx",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/pages/AdminLogin.jsx",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/pages/RequestAccess.jsx",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/pages/NomineeClaim.jsx",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/pages/landing/shell/LandingLayout.jsx",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/node_modules/.vite/deps/@supabase_postgrest-js.js?v=54ecb1b2",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/components/signin/RoleSelect.jsx",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/components/signin/DistributorSelect.jsx",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/components/signin/PhoneEntry.jsx",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/components/signin/OtpVerify.jsx",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/components/signin/PasswordEntry.jsx",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/assets/logo-white.png?import",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/utils/motion.js",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/components/SignInModal.module.css",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/components/Footer.jsx",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/pages/landing/LandingNav.jsx",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/pages/landing/LandingLoginCard.jsx",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/pages/landing/motion.jsx",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/hooks/useIsMobile.js",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/pages/landing/landing.module.css",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "fonts.gstatic.com",
+  "url": "https://fonts.gstatic.com/s/inter/v20/UcC73FwrK3iLTeHuS_nVMrMxCp50SjIa1ZL7W0Q5nw.woff2",
+  "type": "font"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "fonts.gstatic.com",
+  "url": "https://fonts.gstatic.com/s/plusjakartasans/v12/LDIoaomQNQcsA88c7O9yZ4KMCoOg4Ko20yygg_vb.woff2",
+  "type": "font"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/components/Navbar.jsx",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/pages/FAQ.module.css",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/services/contact.js",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/pages/Contact.module.css",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/components/signin/useLoginFlow.js",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/pages/AdminLogin.module.css",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/pages/About.module.css",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/assets/logo.png?import",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/services/requestAccess.js",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/pages/landing/validateAccessRequest.js",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/utils/phone.js",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/constants/districts.js",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/pages/RequestAccess.module.css",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/services/nomineeClaim.js",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/pages/landing/validateNomineeClaim.js",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/pages/NomineeClaim.module.css",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/pages/landing/shell/LandingMobileShell.jsx",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/components/signin/RoleSelect.module.css",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/components/signin/DistributorSelect.module.css",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/components/signin/PhoneEntry.module.css",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/components/signin/OtpVerify.module.css",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/components/signin/PasswordEntry.module.css",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/components/Footer.module.css",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/components/Navbar.module.css",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/pages/landing/shell/installPrompt.jsx",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/pages/landing/shell/LandingMenuSheet.jsx",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/pages/landing/shell/LandingInstallSheet.jsx",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/pages/landing/shell/CalculatorSheet.jsx",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/pages/landing/shell/InstallBanner.jsx",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/pages/landing/mobile/SubscribersMobile.jsx",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/pages/landing/mobile/EmployersMobile.jsx",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/pages/landing/mobile/DistributorsMobile.jsx",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/pages/landing/mobile/AdminMobile.jsx",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/pages/landing/mobile/AboutMobile.jsx",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/pages/landing/mobile/FAQMobile.jsx",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/pages/landing/mobile/ContactMobile.jsx",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/pages/landing/mobile/RequestAccessMobile.jsx",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/pages/landing/mobile/landingMobile.module.css",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/pages/landing/shell/BottomSheet.jsx",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/pages/landing/mobile/calc.js",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/node_modules/.vite/deps/react-dom.js?v=54ecb1b2",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/pages/landing/shell/BottomSheet.module.css",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/admin-dashboard/AdminDashboardShell.jsx",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/readyz",
+  "type": "fetch"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/readyz",
+  "type": "fetch"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/contexts/DashboardContext.jsx",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/contexts/AdminPanelContext.jsx",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/contexts/DataScopeContext.jsx",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/hooks/useEntity.js",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/hooks/useIsDesktop.js",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/admin-dashboard/sidebar/AdminSidebar.jsx",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/admin-dashboard/shell/AdminMobileShell.jsx",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/dashboard/overlay/OverlayPanel.jsx",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/dashboard/overlay/DataCopilotPanel.jsx",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/dashboard/overlay/Breadcrumb.jsx",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/dashboard/cards/MetricsRow.jsx",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/dashboard/overlay/TopBar.jsx",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/dashboard/branch/ViewBranches.jsx",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/dashboard/agent/ViewAgents.jsx",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/dashboard/subscriber/ViewSubscribers.jsx",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/dashboard/reports/ViewReports.jsx",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/dashboard/settings/Settings.jsx",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/dashboard/tickets/ViewTickets.jsx",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/admin-dashboard/AdminCountryOverview.jsx",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/admin-dashboard/overview/AdminOverview.jsx",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/admin-dashboard/attention/AdminAttentionDesktop.jsx",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/admin-dashboard/distributors/ViewDistributors.jsx",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/admin-dashboard/distributors/CreateDistributor.jsx",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/admin-dashboard/employers/ViewEmployers.jsx",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/admin-dashboard/employers/CreateEmployer.jsx",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/admin-dashboard/employers/ViewEmployerDetail.jsx",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/admin-dashboard/access-requests/ViewAccessRequests.jsx",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/admin-dashboard/nominee-claims/ViewNomineeClaims.jsx",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/admin-dashboard/nav/AdminNavDesktop.jsx",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/components/notifications/NotificationBell.jsx",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/dashboard/DashboardShell.module.css",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/admin-dashboard/adminChrome.module.css",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/contexts/DashboardNavContext.jsx",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/contexts/DashboardPanelContext.jsx",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/constants/scopes.js",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/admin-dashboard/shell/AdminMobileAppBar.jsx",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/admin-dashboard/shell/AdminBottomTabBar.jsx",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/admin-dashboard/shell/adminAppBarContext.js",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/admin-dashboard/mobile/AdminHomeMobile.jsx",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/admin-dashboard/mobile/DistributorsMobile.jsx",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/admin-dashboard/mobile/DistributorDetailMobile.jsx",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/admin-dashboard/mobile/EmployersMobile.jsx",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/admin-dashboard/mobile/EmployerDetailMobile.jsx",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/admin-dashboard/mobile/AdminNetworkMobile.jsx",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/admin-dashboard/mobile/AdminSettingsMobile.jsx",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/admin-dashboard/mobile/AdminAccessRequestsMobile.jsx",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/admin-dashboard/mobile/AdminNavMobile.jsx",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/admin-dashboard/mobile/AdminNomineeClaimsMobile.jsx",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/admin-dashboard/attention/AdminAttentionMobile.jsx",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/admin-dashboard/mobile/AdminHubMobile.jsx",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/dashboard/mobile/BranchesMobile.jsx",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/dashboard/mobile/BranchDetailMobile.jsx",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/dashboard/mobile/AgentsMobile.jsx",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/dashboard/mobile/AgentDetailMobile.jsx",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/dashboard/mobile/SubscribersMobile.jsx",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/dashboard/mobile/SubscriberDetailMobile.jsx",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/dashboard/mobile/ReportsMobile.jsx",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/dashboard/mobile/ReportViewMobile.jsx",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/dashboard/mobile/SupportMobile.jsx",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/dashboard/mobile/ThreadMobile.jsx",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/dashboard/shell/DistributorMobileShell.module.css",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/services/chat.js",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/dashboard/overlay/platformCopilotContext.js",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/employer-dashboard/desktop/icons.jsx",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/dashboard/overlay/DataCopilotPanel.module.css",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/dashboard/overlay/Breadcrumb.module.css",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/utils/currency.js",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/dashboard/sidebar/Sidebar.module.css",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/constants/levels.js",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/utils/csv.js",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/hooks/useOutsideClick.js",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/dashboard/overlay/TopBar.module.css",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/services/entities.js",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/services/search.js",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/dashboard/cards/MetricsRow.module.css",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/contexts/BranchScopeContext.jsx",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/dashboard/reports/ReportsHub.jsx",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/dashboard/reports/ViewReports.module.css",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/components/PillChip.jsx",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/dashboard/overlay/OverlayPanel.module.css",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/admin-dashboard/AdminCountryOverview.module.css",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/hooks/useCommission.js",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/hooks/useDebouncedValue.js",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/node_modules/.vite/deps/@tanstack_react-virtual.js?v=54ecb1b2",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/utils/dashboard.js",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/dashboard/shared/Stars.jsx",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/dashboard/shared/Icons.jsx",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/dashboard/shared/TrendArrow.jsx",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/dashboard/shared/MiniChart.jsx",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/dashboard/shared/KpiCard.jsx",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/dashboard/shared/Demographics.jsx",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/components/Modal.jsx",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/components/SkeletonRow.jsx",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/components/EmptyState.jsx",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/dashboard/branch/ViewBranches.module.css",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/hooks/useTickets.js",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/data/ticketsSeed.js",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/components/feedback/ErrorCard.jsx",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/components/tickets/TicketListRow.jsx",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/components/tickets/ThreadView.jsx",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/dashboard/tickets/ViewTickets.module.css",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/dashboard/agent/ViewAgents.module.css",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/hooks/useSubscriber.js",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/dashboard/settings/Settings.module.css",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/utils/date.js",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/dashboard/subscriber/ViewSubscribers.module.css",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/employer-dashboard/desktop/ui.jsx",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/employer-dashboard/desktop/ui.module.css",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/admin-dashboard/attention/attentionMeta.js",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/admin-dashboard/attention/useAttentionDrill.js",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/admin-dashboard/attention/NotifyComposer.jsx",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/admin-dashboard/attention/AdminAttentionDesktop.module.css",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/admin-dashboard/adminPanels.module.css",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/hooks/useEmployer.js",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/hooks/useAdminAttention.js",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/admin-dashboard/overview/NeedsAttentionCard.jsx",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/admin-dashboard/overview/adminAttentionDerive.js",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/dashboard/overview/DistributorOverview.module.css",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/admin-dashboard/overview/NeedsAttentionCard.module.css",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/hooks/useAccessRequests.js",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/hooks/useNomineeClaims.js",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/utils/policies.js",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/admin-dashboard/nominee-claims/reviewCopy.js",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/hooks/useNotifications.js",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/components/notifications/NotificationList.jsx",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/components/notifications/Notifications.module.css",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/admin-dashboard/employers/ViewEmployerDetail.module.css",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/node_modules/.vite/deps/recharts.js?v=54ecb1b2",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/hooks/useNav.js",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/employer-dashboard/reports/chartConfig.jsx",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/admin-dashboard/nav/AdminNavDesktop.module.css",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/dashboard/shell/DistributorMobileAppBar.module.css",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/dashboard/shell/DistributorBottomTabBar.module.css",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/dashboard/mobile/distributorMobile.module.css",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/branch-dashboard/shell/BottomSheet.jsx",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/admin-dashboard/attention/AdminAttentionMobile.module.css",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/dashboard/mobile/VirtualRows.jsx",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/data/mockData.js",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/contexts/createScopeContext.jsx",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/components/PillChip.module.css",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/dashboard/reports/ReportsHub.module.css",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/services/commissions.js",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/dashboard/shared/Stars.module.css",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/dashboard/shared/TrendArrow.module.css",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/dashboard/shared/MiniChart.module.css",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/dashboard/shared/KpiCard.module.css",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/dashboard/shared/Demographics.module.css",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/components/Modal.module.css",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/components/SkeletonRow.module.css",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/components/EmptyState.module.css",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/components/feedback/ErrorCard.module.css",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/components/tickets/TicketStatusBadge.jsx",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/components/tickets/TicketListRow.module.css",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/services/tickets.js",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/components/tickets/MessageBubble.jsx",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/components/tickets/ThreadView.module.css",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/services/subscriber.js",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/admin-dashboard/attention/NotifyComposer.module.css",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/services/adminAttention.js",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/services/employer.js",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/services/accessRequests.js",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/services/nomineeClaims.js",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/constants/savings.js",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/services/notifications.js",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/services/nav.js",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/employer-dashboard/reports/chartConfig.module.css",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/branch-dashboard/shell/BottomSheet.module.css",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/data/mockGeo.js",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/data/mockBranchDefs.js",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/components/tickets/TicketStatusBadge.module.css",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/components/tickets/MessageBubble.module.css",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/utils/settlement.js",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/utils/finance.js",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/utils/groupInsurance.js",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/utils/contributionModel.js",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/constants/nudge.js",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/data/employerSeed.js",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/utils/hospitalCash.js",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "GET",
+  "host": "localhost:5173",
+  "url": "http://localhost:5173/src/utils/periodSettlement.js",
+  "type": "script"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "POST",
+  "host": "ilkhfnoyxlxwqadebnkp.supabase.co",
+  "url": "https://ilkhfnoyxlxwqadebnkp.supabase.co/rest/v1/rpc/list_nominee_claims",
+  "type": "fetch"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "POST",
+  "host": "ilkhfnoyxlxwqadebnkp.supabase.co",
+  "url": "https://ilkhfnoyxlxwqadebnkp.supabase.co/rest/v1/rpc/get_platform_overview",
+  "type": "fetch"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "POST",
+  "host": "ilkhfnoyxlxwqadebnkp.supabase.co",
+  "url": "https://ilkhfnoyxlxwqadebnkp.supabase.co/rest/v1/rpc/get_entity_metrics_rollup",
+  "type": "fetch"
+ },
+ {
+  "label": "mobile-admin",
+  "method": "POST",
+  "host": "ilkhfnoyxlxwqadebnkp.supabase.co",
+  "url": "https://ilkhfnoyxlxwqadebnkp.supabase.co/rest/v1/rpc/list_nominee_claims",
+  "type": "fetch"
+ }
+]

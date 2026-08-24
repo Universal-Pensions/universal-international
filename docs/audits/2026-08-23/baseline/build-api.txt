@@ -1,0 +1,6 @@
+### npm run build:api
+
+> universal-pensions-uganda@1.0.0 build:api
+> tsc -p server/tsconfig.json
+
+EXIT=0

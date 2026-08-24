@@ -1,0 +1,7 @@
+{
+  "role": "admin",
+  "route": "/dashboard/nav",
+  "project": "mobile-chromium",
+  "url": "http://localhost:5173/dashboard/nav",
+  "violations": []
+}

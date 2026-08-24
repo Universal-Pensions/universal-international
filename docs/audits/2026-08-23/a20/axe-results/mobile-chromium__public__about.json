@@ -1,0 +1,7 @@
+{
+  "role": "public",
+  "route": "/about",
+  "project": "mobile-chromium",
+  "url": "http://localhost:5173/about",
+  "violations": []
+}

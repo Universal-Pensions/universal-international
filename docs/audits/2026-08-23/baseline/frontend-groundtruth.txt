@@ -1,0 +1,46 @@
+=== breakpoints ===
+useIsDesktop importers: 74
+useIsMobile importers:  21
+src/hooks/useIsDesktop.js:3:const MQ = '(min-width: 1024px)';
+src/hooks/useIsMobile.js:3:const MQ = '(max-width: 768px)';
+
+=== BottomSheet copies ===
+src/agent-dashboard/shell/BottomSheet.jsx
+src/branch-dashboard/shell/BottomSheet.jsx
+src/employer-dashboard/shell/BottomSheet.jsx
+src/pages/landing/shell/BottomSheet.jsx
+src/subscriber-dashboard/shell/BottomSheet.jsx
+css: 5
+
+=== duplicated components ===
+ReportTable: 2
+    src/components/reports/ReportTable.jsx
+    src/dashboard/reports/ReportTable.jsx
+FilterSelect: 2
+    src/dashboard/reports/FilterSelect.jsx
+    src/components/reports/FilterSelect.jsx
+SearchFilter: 2
+    src/dashboard/reports/SearchFilter.jsx
+    src/components/reports/SearchFilter.jsx
+
+=== invalid role="agent" ===
+src/components/notifications/NotificationBell.jsx:27: * (role="agent") and branch (role="branch") shells; the only inputs are the
+src/agent-dashboard/shell/AgentDesktopShell.jsx:134:          <NotificationBell role="agent" entityId={agentId} align="right" portal />
+src/agent-dashboard/shell/AgentMobileAppBar.jsx:115:          {agentId && <NotificationBell role="agent" entityId={agentId} align="right" />}
+src/agent-dashboard/shell/SideNav.jsx:103:            <NotificationBell role="agent" entityId={agentId} align="left" />
+
+=== design tokens in index.css ===
+lines:      332
+custom properties: 87
+
+=== role=dialog / aria-modal / focus-trap ===
+role=dialog: 19
+aria-modal:  21
+focus trap util: 0 files
+aria-live:   20
+
+=== locale drift ===
+en-GB: 0
+en-US: 0
+en-UG: 0
+Africa/Kampala: 0

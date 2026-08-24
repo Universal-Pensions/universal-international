@@ -1,0 +1,408 @@
+[
+ {
+  "id": "A26-001",
+  "title": "Four documents assert that RLS blocks direct client writes; it does not, and the shipped frontend writes directly",
+  "severity": "high",
+  "confidence": "confirmed",
+  "category": "doc-accuracy-security-claim",
+  "surface": "docs",
+  "location": "CLAUDE.md:126 (\u00a77.3), CLAUDE.md:107 (\u00a75 anti-pattern 6), docs/api-contracts.md:9, docs/role-permissions.md:250",
+  "demo_visible": false,
+  "effort": "S",
+  "roles_affected": [
+   "subscriber",
+   "agent",
+   "branch",
+   "distributor",
+   "employer",
+   "admin"
+  ],
+  "evidence": "CLAUDE.md:126 reads: \"All writes flow through SECURITY DEFINER RPCs ... never write directly to a table from the client. RLS would block it\". docs/api-contracts.md:9 reads: \"PostgREST direct table reads governed by row-level security policies (no writes - writes always go through RPCs)\".\n\n$ grep -rn '\\.insert(\\|\\.update(\\|\\.upsert(' src/services/*.js | grep -v 'rpc('\nsrc/services/entities.js:1065:    .insert(row)\nsrc/services/entities.js:1101:    .insert(row)\nsrc/services/entities.js:1133:    .update(row)\nsrc/services/entities.js:1185:    .update(row)\nsrc/services/entities.js:1411:    .update({ status })\nsrc/services/subscriber.js:1049:      .update(patch)\nsrc/services/subscriber.js:1212:        .upsert({ subscriber_id: id, ...patch }, { onConflict: 'subscriber_id' })\nsrc/services/subscriber.js:1219:        .update(patch)\nsrc/services/subscriber.js:1399:      await supabase.from('insurance_policies').update(renewalPatch).eq('subscriber_id', id);\nsrc/services/subscriber.js:1463:      .update(patch)\n\n$ sed -n '1411,1414p' src/services/subscriber.js\n      await supabase.from('transactions').insert({\n        id: tx.id,\n        subscriber_id: id,\n        type: 'premium',\n\nA02 (docs/audits/2026-08-23/02-rls-matrix.md \u00a75) independently reproduced 13 direct client-write successes against live RLS, including A02-001 (a subscriber JWT minting arbitrary money by POSTing /rest/v1/transactions).",
+  "impact": "The false claim is load-bearing, not cosmetic. A02 derived expected=DENY for all 666 write cells of its 1,036-cell RLS matrix from these exact lines (02-rls-matrix.md:93-97 cites BACKEND.md:46/:601 and role-permissions.md:250). Any future reviewer reading CLAUDE.md \u00a77.3 will conclude the client write surface is closed and skip auditing it. The documentation is the contract a security audit measured against, and the contract is aspirational rather than descriptive.",
+  "suggested_fix": "Replace the assertion with the intent plus a pointer to measured reality. CLAUDE.md:126 -> \"Writes are *supposed* to flow through SECURITY DEFINER RPCs. As of 2026-08-23 RLS does NOT block direct client writes on every table - see docs/audits/2026-08-23/02-rls-matrix.md \u00a75 (13 direct-write successes). Do not rely on 'RLS would block it' as a security argument.\" Equivalent edits for CLAUDE.md:107, api-contracts.md:9 and role-permissions.md:250 are drafted verbatim in DOC-CORRECTIONS.md \u00a72, \u00a76 and \u00a78.",
+  "repro": [
+   "cd /Users/shubhang/Desktop/Projects/uganda-dashboard",
+   "sed -n '126p' CLAUDE.md",
+   "sed -n '9p' docs/api-contracts.md",
+   "grep -rn '\\.insert(\\|\\.update(\\|\\.upsert(' src/services/*.js | grep -v 'rpc('",
+   "sed -n '1411,1414p' src/services/subscriber.js",
+   "cross-check docs/audits/2026-08-23/02-rls-matrix.md \u00a75 (13 direct-write successes)"
+  ],
+  "agent": "A26"
+ },
+ {
+  "id": "A26-002",
+  "title": "api-contracts.md instructs an agent to apply migration 0092 to live; it is already applied",
+  "severity": "high",
+  "confidence": "confirmed",
+  "category": "doc-accuracy-destructive-directive",
+  "surface": "docs",
+  "location": "docs/api-contracts.md:240",
+  "demo_visible": false,
+  "effort": "S",
+  "roles_affected": [
+   "employer",
+   "admin"
+  ],
+  "evidence": "docs/api-contracts.md:240 reads: \"| Migrations | 0001-0092 | ... **Applied state:** 0001-0091 are live on the Singapore DB (the tracked supabase_migrations ledger stops at 0084; 0085-0091 were applied directly against the project). WARNING: 0092_unified_contribution_config is written but NOT yet applied - apply it out of band, never via supabase db push |\"\n\nRefuted three independent ways against live:\n\n$ psql \"$SUPABASE_DB_URL\" -X -q -At -c \"SELECT proname FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace WHERE n.nspname='public' AND proname IN ('_normalize_contribution_config','get_my_employer_funding');\"\n_normalize_contribution_config\nget_my_employer_funding\n\n$ psql \"$SUPABASE_DB_URL\" -X -q -At -c \"SELECT count(*) FROM employers WHERE default_contribution_config ? 'mode';\"\n0\n\n$ psql \"$SUPABASE_DB_URL\" -X -q -At -c \"SELECT DISTINCT jsonb_object_keys(default_contribution_config) FROM employers ORDER BY 1;\"\nemployeePct\nemployerPct\ngroupCoverAmount\ngroupInsuranceProducts\ninsuranceEnabled\n\nThe same line's other two claims are also false:\n$ psql \"$SUPABASE_DB_URL\" -X -q -At -c \"SELECT version||' '||coalesce(name,'') FROM supabase_migrations.schema_migrations ORDER BY version DESC LIMIT 1;\"\n20260811100047 0108_nominee_claims_seed\n$ ls supabase/migrations/*.sql | grep -v '\\.down\\.sql' | wc -l\n108",
+  "impact": "This is the only line in the entire documentation corpus that is a DIRECTIVE rather than a description, and it directs a destructive action against live demo data: re-running a config-rewriting migration over 8 employer rows and every tagged member's funding config. 0092 introduced _normalize_contribution_config and rewrote submit_employer_contribution_run; 0093 then backfilled the retired mode/employerMatchPct keys out of every row. Re-applying 0092 on top of 0093's output is untested. The line also mis-states the applied range (0001-0091 vs 0001-0108) and the ledger head (0084 vs 0108_nominee_claims_seed).",
+  "suggested_fix": "Replace row 240 entirely: \"| Migrations | 0001-0108 | supabase/migrations/*.sql. Applied state: all 108 are live on the Singapore DB; the ledger head is 0108_nominee_claims_seed. WARNING: the ledger versions rows as TIMESTAMPS, not 0001_* prefixes - do not attempt a version-level diff, and never run supabase db push against live. |\" Full text in DOC-CORRECTIONS.md \u00a76.",
+  "repro": [
+   "cd /Users/shubhang/Desktop/Projects/uganda-dashboard && set -a; . ./.env.local >/dev/null 2>&1; set +a",
+   "sed -n '240p' docs/api-contracts.md",
+   "psql \"$SUPABASE_DB_URL\" -X -q -At -c \"SELECT proname FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace WHERE n.nspname='public' AND proname IN ('_normalize_contribution_config','get_my_employer_funding');\"",
+   "psql \"$SUPABASE_DB_URL\" -X -q -At -c \"SELECT count(*) FROM employers WHERE default_contribution_config ? 'mode';\"",
+   "psql \"$SUPABASE_DB_URL\" -X -q -At -c \"SELECT version||' '||name FROM supabase_migrations.schema_migrations ORDER BY version DESC LIMIT 1;\""
+  ],
+  "agent": "A26"
+ },
+ {
+  "id": "A26-003",
+  "title": "MOCK_NOW documented as 2026-05-26 in four docs; the real value is 2026-07-01, and two code copies drifted 36 days from it",
+  "severity": "high",
+  "confidence": "confirmed",
+  "category": "doc-accuracy-constant-drift",
+  "surface": "docs",
+  "location": "CLAUDE.md:201, docs/BACKEND.md:880, docs/FRONTEND.md:301, docs/FRONTEND.md:1412 (docs); scripts/seed-supabase.mjs:169, e2e/specs/db/invariants.spec.ts:52 (code copies)",
+  "demo_visible": false,
+  "effort": "S",
+  "roles_affected": [
+   "subscriber",
+   "agent",
+   "branch",
+   "distributor",
+   "employer",
+   "admin"
+  ],
+  "evidence": "$ grep -rn 'MOCK_NOW *=' src/ e2e/ scripts/\nsrc/data/mockData.js:25:export const MOCK_NOW = new Date(2026, 6, 1); // 2026-07-01\nscripts/seed-supabase.mjs:169:const MOCK_NOW = new Date(2026, 4, 26); // 2026-05-26 - mirror of mockData.MOCK_NOW\n\n$ sed -n '166p' scripts/seed-supabase.mjs\n// MOCK_NOW MUST mirror src/data/mockData.js (`new Date(2026, 4, 26)` = 2026-05-26).\n\n$ grep -n 'MOCK_NOW' e2e/specs/db/invariants.spec.ts\n52:// Seed anchor - mirrors `MOCK_NOW = new Date(2026, 4, 26)` (2026-05-26) in\n\nDoc claims, all wrong:\nCLAUDE.md:201   -> \"MOCK_NOW = new Date(2026, 4, 26) (2026-05-26) in src/data/mockData.js\"\nBACKEND.md:880  -> \"MOCK_NOW = new Date(2026, 4, 26) (= 2026-05-26) at src/data/mockData.js:25. The wall-clock date is now past this (2026-06-05)\"\nFRONTEND.md:301  -> \"JS MOCK_NOW 2026-05-26\"\nFRONTEND.md:1412 -> \"MOCK_NOW = new Date(2026, 4, 26) ... (currently 2026-05-26 - synced with today)\"\n\nFRONTEND.md:641 in the SAME file contradicts them and is the only correct reference: \"MOCK_NOW made a just-sent reminder read 'Reminded 1 Jul'\".\n\nThird independent clock, documented correctly at FRONTEND.md:301:\n$ psql \"$SUPABASE_DB_URL\" -X -q -At -c \"SELECT public._demo_now();\"\n2026-05-18 23:59:59+00",
+  "impact": "The frozen clock existing is by design (demo scope, explicitly excluded); its copies disagreeing is not, and the audit brief singles out MOCK_NOW drift as reportable. scripts/seed-supabase.mjs carries a comment asserting the constant MUST mirror mockData.js and then hardcodes a value 36 days behind it, so the next `npm run seed` writes a ledger anchored 36 days before the anchor every mock-mode surface renders against. Four documents would hand the operator the wrong constant while they debugged that. e2e/specs/db/invariants.spec.ts:52 documents the same stale anchor to future spec authors.",
+  "suggested_fix": "Docs (A26 scope): CLAUDE.md:201 -> \"MOCK_NOW = new Date(2026, 6, 1) (2026-07-01) in src/data/mockData.js:25 ... WARNING: two copies have NOT been rolled forward - scripts/seed-supabase.mjs:169 and e2e/specs/db/invariants.spec.ts:52. A third, independent frozen clock public._demo_now() = 2026-05-18 also exists.\" Same correction at BACKEND.md:880, FRONTEND.md:301 and :1412; reconcile with the already-correct FRONTEND.md:641. Code (seed/data-agent, out of A26 remit): re-sync scripts/seed-supabase.mjs:169 to new Date(2026, 6, 1) or, better, import MOCK_NOW from src/data/mockData.js so the two cannot drift again. Full text in DOC-CORRECTIONS.md \u00a72, \u00a74, \u00a75, \u00a713.",
+  "repro": [
+   "cd /Users/shubhang/Desktop/Projects/uganda-dashboard",
+   "grep -rn 'MOCK_NOW *=' src/ e2e/ scripts/",
+   "sed -n '166,169p' scripts/seed-supabase.mjs",
+   "sed -n '201p' CLAUDE.md; sed -n '880p' docs/BACKEND.md; sed -n '301p;641p;1412p' docs/FRONTEND.md",
+   "set -a; . ./.env.local >/dev/null 2>&1; set +a; psql \"$SUPABASE_DB_URL\" -X -q -At -c 'SELECT public._demo_now();'"
+  ],
+  "agent": "A26"
+ },
+ {
+  "id": "A26-004",
+  "title": "docs/role-permissions.md disagrees with the measured RLS matrix in seven places, twice contradicting itself",
+  "severity": "high",
+  "confidence": "confirmed",
+  "category": "doc-accuracy-authorization-contract",
+  "surface": "docs",
+  "location": "docs/role-permissions.md:60-62, :250, :315, :340, :341-343, :348, :349",
+  "demo_visible": false,
+  "effort": "M",
+  "roles_affected": [
+   "subscriber",
+   "agent",
+   "branch",
+   "distributor",
+   "employer",
+   "admin"
+  ],
+  "evidence": "Seven disagreements against docs/audits/2026-08-23/02-rls-matrix.md \u00a71.1 and live pg_policies:\n\n1. :340 \"distributor | All entities, all levels\" vs A02 measured d-001 at 4605/5064 subscribers, 1872/2046 agents, 291/321 branches. SELF-CONTRADICTION: :49 of the same file says \"Visibility (since 0081): its OWN network only\".\n2. :348 \"Distributor: No scoping applied - all data visible.\" SELF-CONTRADICTION with :49.\n3. :349 \"All authenticated roles read distributors: distributors_select USING (true)\". Live:\n$ psql \"$SUPABASE_DB_URL\" -X -q -At -F'|' -c \"SELECT policyname||' | '||cmd FROM pg_policies WHERE schemaname='public' AND tablename='distributors' ORDER BY policyname;\"\ndistributors_select_admin | SELECT\ndistributors_select_self | SELECT\ndistributors_update_self | UPDATE\n4. :341/:342/:343 branch/agent/subscriber each \"(+ read-only of the singleton distributors row)\" vs A02 pivot: distributors -> subscriber 0, agent 0, branch 0, employer 0 (A02-007).\n5. :60-62 \"Still platform-wide, pending 0084: agents / branches (single shared *_select_authenticated policy)\". Live has no *_select_authenticated policy; 0084 and 0094 both shipped:\n$ psql \"$SUPABASE_DB_URL\" -X -q -At -F'|' -c \"SELECT tablename||' | '||policyname||' | '||permissive FROM pg_policies WHERE schemaname='public' AND tablename IN ('agents','branches') ORDER BY 1;\"\nagents | agents_scope_distributor | RESTRICTIVE\nagents | agents_select_admin | PERMISSIVE\nagents | agents_select_branch | PERMISSIVE\nagents | agents_select_distributor | PERMISSIVE\nagents | agents_select_self | PERMISSIVE\nagents | agents_select_subscriber | PERMISSIVE\n(+ agents_insert_branch, agents_update_branch; branches mirrors the same shape)\n6. :315 admin SELECT on contribution_run_lines. SELF-CONTRADICTION with :211 of the same file, and refuted live:\n$ psql \"$SUPABASE_DB_URL\" -X -q -At -c \"SELECT to_regclass('public.contribution_run_lines');\"\n(empty - relation does not exist)\n7. :250 \"Writes go through the employer SECURITY DEFINER RPCs ... no client write policies\" vs A02 \u00a75: 13 direct-write successes across transactions, insurance_policies, contribution_schedules, withdrawals, nominees, agents, branches, distributors (A02-001..A02-005).",
+  "impact": "This file is the platform's authorization contract and A02 built the `expected` column of its 1,036-cell matrix from it, so every wrong row silently degrades the RLS audit that reads it. Errors 1-5 describe the platform as MORE OPEN than it is, which under-sells the 0081-0094 distributor-scoping work a reviewer would otherwise verify. Error 7 errs the other way, describing the write surface as locked down when it is not - the dangerous direction. Errors 1, 2 and 6 contradict other lines in the same document, so a reader cannot resolve them without querying the DB.",
+  "suggested_fix": ":340 -> \"distributor | Its OWN network only (branches.distributor_id -> agents.branch_id -> subscribers.agent_id) | Own-network commissions | All 11 reports, network-scoped\". :348 -> describe the three DEFINER helpers (distributor_branch_ids/agent_ids/subscriber_ids) across 12 tables plus the RESTRICTIVE *_scope_distributor overlays. :349 -> \"Only admin and the owning distributor read distributors: distributors_select_admin + distributors_select_self (0081)\". :341-343 -> delete the parentheticals and note that no non-admin role can read distributors (A02-007). :60-62 -> \"Closed by 0084 + 0094\". :315 -> drop contribution_run_lines. :250 -> append the measured-reality warning. Full text in DOC-CORRECTIONS.md \u00a78.",
+  "repro": [
+   "cd /Users/shubhang/Desktop/Projects/uganda-dashboard && set -a; . ./.env.local >/dev/null 2>&1; set +a",
+   "sed -n '49p;60,62p;250p;315p;340,343p;348,349p' docs/role-permissions.md",
+   "psql \"$SUPABASE_DB_URL\" -X -q -At -F'|' -c \"SELECT policyname||' | '||cmd FROM pg_policies WHERE schemaname='public' AND tablename='distributors' ORDER BY policyname;\"",
+   "psql \"$SUPABASE_DB_URL\" -X -q -At -c \"SELECT to_regclass('public.contribution_run_lines');\"",
+   "psql \"$SUPABASE_DB_URL\" -X -q -At -F'|' -c \"SELECT tablename||'|'||policyname FROM pg_policies WHERE schemaname='public' AND tablename IN ('agents','branches') ORDER BY 1;\"",
+   "cross-check docs/audits/2026-08-23/02-rls-matrix.md \u00a71.1 pivot and \u00a75"
+  ],
+  "agent": "A26"
+ },
+ {
+  "id": "A26-005",
+  "title": "Twelve of CLAUDE.md's thirteen 'binding' rules have no mechanical enforcement; one is already violated",
+  "severity": "medium",
+  "confidence": "confirmed",
+  "category": "process-enforcement-gap",
+  "surface": "docs",
+  "location": "CLAUDE.md:89-108 (\u00a74 rules 1-6, \u00a75 anti-patterns 1-7); enforcement surface eslint.config.js, absent stylelint config, absent .husky/, .github/workflows/test.yml",
+  "demo_visible": false,
+  "effort": "M",
+  "roles_affected": [],
+  "evidence": "CLAUDE.md:1 states the rules are \"binding, not advisory\". Enforcement surface, measured:\n\n$ grep -n 'rules:' -A 6 eslint.config.js | tail -8\n    rules: {\n      'no-console': ['warn', { allow: ['warn', 'error'] }],\n      'no-unused-vars': ['error', { varsIgnorePattern: '^[A-Z_]|^motion$', destructuredArrayIgnorePattern: '^_' }],\n      'react-refresh/only-export-components': ['warn', { ... }],\n    },\n(no no-restricted-imports, no no-restricted-syntax, no custom rule; the only other block force-downgrades every jsx-a11y rule to 'warn')\n\n$ ls .stylelintrc* stylelint.config.* 2>/dev/null; echo '(none)'\n(none)\n$ ls .husky 2>/dev/null; grep -n 'lint-staged\\|husky\\|pre-commit' package.json; echo '(none)'\n(none)\n\nOnly real gate:\n$ grep -n 'it(\\|describe(' src/test/jwt-claim-contract.test.js\n42:describe('JWT claim contract across migrations', () => {\n47:    it('discovers migration files', () => {\n54:    it(`${file} reads app_role (not role) for app-level gates`, () => {\n(asserts no migration after 0007 reads ->> 'role'; does NOT check auth.uid())\n\nPer-rule verdict: \u00a74.1 NONE (holds: grep -rln 'data/mockData' src/ --include='*.jsx' -> 0 hits) \u00b7 \u00a74.2 NONE \u00b7 \u00a74.3 NONE \u00b7 \u00a74.4 NONE (holds: only onrender.com literal in src/ is the error string at src/config/env.js:21) \u00b7 \u00a74.5 NONE \u00b7 \u00a74.6 PARTIAL (finance.test.js tests the function, nothing asserts call sites) \u00b7 \u00a75.1 NONE \u00b7 \u00a75.2 NONE (holds: 0 hand-rolled fetch to /api outside services/api.js) \u00b7 \u00a75.3 NONE, no stylelint exists, 115 'outline: none' occurrences in src/**/*.css \u00b7 \u00a75.4 NONE, no stylelint exists (holds: all 3 'transition: all' grep hits are comments citing the rule) \u00b7 \u00a75.5 NONE \u00b7 \u00a75.6 NONE and VIOLATED (11 direct .insert/.update/.upsert sites in src/services/{subscriber,entities}.js) \u00b7 \u00a75.7 HALF (role half only).",
+  "impact": "A change violating \u00a74.1, \u00a75.2, \u00a75.3, \u00a75.4 or \u00a75.6 passes `npm run lint`, `npm test`, `npm run build`, `npm run build:api` and the full CI pipeline. Four of those five hold today by convention alone - one bad merge from silent regression with nothing to catch it - and the fifth (\u00a75.6, 'every database write goes through a SECURITY DEFINER RPC') is already breached in shipped code. The document tells every reader and every agent these rules are binding; they are aspirational. This is the highest-leverage documentation gap in the corpus because it explains how the other findings accumulated.",
+  "suggested_fix": "Immediate (doc): insert after CLAUDE.md:108 an 'Enforcement reality' note naming which rules are mechanically gated and which are prose only - full text drafted in DOC-CORRECTIONS.md \u00a72 last row. Durable (code, separate approval): add an ESLint no-restricted-imports block for \u00a74.1/\u00a75.1 (patterns src/data/mockData and @/data/mockData, scoped to src/**/*.jsx and src/*-dashboard/**), a no-restricted-syntax rule for \u00a75.2, a minimal stylelint config for \u00a75.3/\u00a75.4, and extend src/test/jwt-claim-contract.test.js to also grep migrations for auth.uid(). The four existing src/test/*-contract.test.js specs are the proven template.",
+  "repro": [
+   "cd /Users/shubhang/Desktop/Projects/uganda-dashboard",
+   "sed -n '89,108p' CLAUDE.md",
+   "cat eslint.config.js",
+   "ls .stylelintrc* stylelint.config.* 2>/dev/null; ls .husky 2>/dev/null",
+   "grep -n 'lint-staged\\|husky\\|pre-commit' package.json",
+   "grep -rn 'auth.uid' src/test/*.test.js",
+   "grep -rn '\\.insert(\\|\\.update(' src/services/subscriber.js src/services/entities.js | grep -v 'rpc('"
+  ],
+  "agent": "A26"
+ },
+ {
+  "id": "A26-006",
+  "title": "Every schema and architecture census in ARCHITECTURE.md and BACKEND.md is stale by 30-90 percent",
+  "severity": "medium",
+  "confidence": "confirmed",
+  "category": "doc-accuracy-counts",
+  "surface": "docs",
+  "location": "docs/ARCHITECTURE.md:23,:32,:52-58,:79,:80,:81,:84-86,:387,:540,:661; docs/BACKEND.md:37,:38,:39,:44,:329,:343,:428,:441,:459,:565,:625,:653,:1036",
+  "demo_visible": false,
+  "effort": "M",
+  "roles_affected": [],
+  "evidence": "$ psql \"$SUPABASE_DB_URL\" -X -q -At -F'|' -c \"SELECT 'tables', count(*) FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname='public' AND c.relkind='r' UNION ALL SELECT 'fn_names', count(DISTINCT proname) FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace WHERE n.nspname='public' UNION ALL SELECT 'definer', count(*) FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace WHERE n.nspname='public' AND p.prosecdef UNION ALL SELECT 'policies', count(*) FROM pg_policies WHERE schemaname='public';\"\ntables|37\nfn_names|89\ndefiner|70\npolicies|109\n$ psql ... triggers (NOT tgisinternal) -> 10\n$ psql ... has_function_privilege('authenticated', oid, 'EXECUTE') -> 87\n$ ls supabase/migrations/*.sql | grep -v '.down.sql' | wc -l -> 108\n$ ls -d src/*dashboard* src/dashboard -> 6 shells\n$ ls src/services/*.js | grep -v test | wc -l -> 20\n\nDoc vs measured: ARCHITECTURE.md:79 '28 tables ... 5 triggers' -> 37/10 \u00b7 :80 '40 functions (29 DEFINER + 11 INVOKER)' -> 89 (70 DEFINER + 19 INVOKER) \u00b7 :81 '~90 RLS policies' -> 109 \u00b7 :84-86 '57 migrations ... 0001 -> 0057 ... no ledger drift' -> 108, 0001-0108, ledger structurally unjoinable \u00b7 :23 '4 role-scoped dashboard shells' -> 6 \u00b7 :32 'services (11 files)' -> 20 \u00b7 :387 '1221 tests across 76 files' -> 2010/140 \u00b7 :540 'all 14 routes' -> 16 \u00b7 :661 '0001 -> 0057 (57 migrations)' -> 0001-0108 (108).\nBACKEND.md:37 '29 tables ... 8 triggers' -> 37/10 \u00b7 :38 '53 functions' -> 89 \u00b7 :39 + :44 '99 RLS policies' -> 109 \u00b7 :329 + :565 '~90 policies' -> 109 \u00b7 :428 'all 46 app RPCs still executable by authenticated' -> 87 \u00b7 :459 '29 tables total' -> 37 \u00b7 :625 'pg_proc holds 53 functions' -> 89 \u00b7 :1036 'the 14 routes, the 21 RPCs' -> 16 routes / 89 functions.\n\nTwo further specifics:\n$ for f in supabase/migrations/0[01]*.sql; do case \"$f\" in *.down.sql) continue;; esac; b=\"${f%.sql}\"; [ -f \"${b}.down.sql\" ] || echo \"NO-DOWN: $(basename $f)\"; done | wc -l\n22\nBACKEND.md:343 names only 0001-0015 + 0019 as down-less; it omits 0017, 0018, 0020, 0021, 0027, 0028, and stops the with-downs range at 0076 instead of 0108.\nBACKEND.md:653 describes 0075 're-scoping distributors_select off USING(true)' - 0081 subsequently DROPPED that policy entirely (live: distributors_select_admin + distributors_select_self only).",
+  "impact": "These ASCII boxes and census sentences are what an agent reads to size the system before touching it, and they are quoted downstream. ARCHITECTURE.md at least discloses a May-2026 pin at line 1 and line 9; BACKEND.md:44 claims 'Live census (verified 2026-07-08)', which reads as current authority and is wrong on all five numbers. BACKEND.md:625's '53 functions' understates the live surface by 36 and gives no hint that 20 names present in the migration text (the 0021 commission family, dropped by 0029) are absent from pg_proc entirely.",
+  "suggested_fix": "Refresh both censuses to the measured values and add the unjoinable-ledger warning to the ARCHITECTURE.md migration box. 28 corrections drafted verbatim in DOC-CORRECTIONS.md \u00a73 and \u00a74, including the corrected down-migration accounting (86 downs for 108 forwards; the 22 without are 0001-0015, 0017, 0018, 0019, 0020, 0021, 0027, 0028) and the 0081-supersedes-0075 note for BACKEND.md:653.",
+  "repro": [
+   "cd /Users/shubhang/Desktop/Projects/uganda-dashboard && set -a; . ./.env.local >/dev/null 2>&1; set +a",
+   "sed -n '79,86p' docs/ARCHITECTURE.md; sed -n '37,39p' docs/BACKEND.md",
+   "psql \"$SUPABASE_DB_URL\" -X -q -At -F'|' -c \"SELECT 'tables',count(*) FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname='public' AND c.relkind='r' UNION ALL SELECT 'fn',count(*) FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace WHERE n.nspname='public' UNION ALL SELECT 'pol',count(*) FROM pg_policies WHERE schemaname='public';\"",
+   "psql \"$SUPABASE_DB_URL\" -X -q -At -c \"SELECT count(*) FROM pg_trigger t JOIN pg_class c ON c.oid=t.tgrelid JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname='public' AND NOT t.tgisinternal;\"",
+   "ls supabase/migrations/*.sql | grep -v '.down.sql' | wc -l"
+  ],
+  "agent": "A26"
+ },
+ {
+  "id": "A26-007",
+  "title": "Migration ledger head documented as 0076 in five places; the ledger's structural unjoinability is documented nowhere and is mis-framed as '6 missing rows'",
+  "severity": "medium",
+  "confidence": "confirmed",
+  "category": "doc-accuracy-ops-runbook",
+  "surface": "docs",
+  "location": "docs/BACKEND.md:44, :358, :1013, :1015, :1019; docs/api-contracts.md:240; docs/render-operational.md:36",
+  "demo_visible": false,
+  "effort": "S",
+  "roles_affected": [],
+  "evidence": "$ psql \"$SUPABASE_DB_URL\" -X -q -At -F'|' -c \"SELECT version||' '||coalesce(name,'') FROM supabase_migrations.schema_migrations ORDER BY version DESC LIMIT 5;\"\n20260811100047 0108_nominee_claims_seed\n20260808170000 0107_nav_avg_growth_per_member\n20260808160000 0106_nav_publish_where_clause\n20260808150000 0105_nav_backfill\n20260808140000 0104_nav_pricing_rpcs\n$ psql \"$SUPABASE_DB_URL\" -X -q -At -c \"SELECT count(*) FROM supabase_migrations.schema_migrations;\"\n96\n$ ls supabase/migrations/*.sql | grep -v '.down.sql' | wc -l\n108\n\nBACKEND.md \u00a716 heading at :1013 reads 'Migration ledger - live head 0076, one out-of-band episode (since reconciled) (BL-6)'; :1015 and :1019 repeat 'head ... 0076_subscribers_column_scoped_update (verified 2026-07-08)'. :44 and :358 repeat it.\n\ndocs/render-operational.md:36 reads: 'the live schema_migrations ledger is missing 6 local migrations (0022/0023/0024/0025/0027/0028) whose effects are already applied' - a statement that presupposes a shared key between the timestamp-versioned ledger rows and the 0001_*-named files. A00 \u00a77 establishes the two namespaces share no key at all, so a filename-prefix comparison reports all 108 as missing (an artifact, not a fact).",
+  "impact": "BACKEND.md \u00a716 is the section an operator opens before touching live schema. It reports the head as 0076 when 32 further migrations are applied, and frames the drift as '6 missing rows, since reconciled' when the true state is that ledger and files cannot be diffed by version at all. Anyone acting on the render-operational.md:36 framing would attempt a version-level reconciliation that cannot succeed, and might conclude the schema is behind when it is not - the exact reasoning error the audit plan's own \u00a75 made.",
+  "suggested_fix": "Replace all five BACKEND.md occurrences with: 'live head 0108_nominee_claims_seed (version 20260811100047), 96 rows. WARNING: the ledger versions rows as TIMESTAMPS while the files are named 0001_*-0108_*; the two namespaces share no key, so a filename-prefix diff reports all 108 as missing. Establish applied state by introspecting live objects (pg_proc.prosrc, pg_policies, information_schema), not by diffing versions.' Rewrite render-operational.md:36 to the same framing. Full text in DOC-CORRECTIONS.md \u00a74 and \u00a710.",
+  "repro": [
+   "cd /Users/shubhang/Desktop/Projects/uganda-dashboard && set -a; . ./.env.local >/dev/null 2>&1; set +a",
+   "psql \"$SUPABASE_DB_URL\" -X -q -At -F'|' -c \"SELECT version||' '||name FROM supabase_migrations.schema_migrations ORDER BY version DESC LIMIT 3;\"",
+   "psql \"$SUPABASE_DB_URL\" -X -q -At -c 'SELECT count(*) FROM supabase_migrations.schema_migrations;'",
+   "grep -n '0076' docs/BACKEND.md | head",
+   "sed -n '36p' docs/render-operational.md"
+  ],
+  "agent": "A26"
+ },
+ {
+  "id": "A26-008",
+  "title": ".claude/skills/qa.md misdescribes the suite it operates: 13 wrong claims, a 'known bug' that is fixed, a runtime off by 12x, and silence on 30 real failures",
+  "severity": "medium",
+  "confidence": "confirmed",
+  "category": "doc-accuracy-qa-harness",
+  "surface": "docs",
+  "location": ".claude/skills/qa.md:12, :14, :15, :16, :28, :40, :146-155, :149, :152, :173, :179",
+  "demo_visible": false,
+  "effort": "M",
+  "roles_affected": [],
+  "evidence": "$ ls e2e/specs/flows/ | wc -l\n18\n$ find e2e -name '*branch-create-agent*'\n(no output - qa.md:14 lists this spec; it does not exist)\n$ grep -rn 'test.fail\\|test.fixme' e2e/specs/\ne2e/specs/regression/empty-states.spec.ts:100:      // Step 4: ALWAYS restore - even on test failure. afterEach would run\ne2e/specs/flows/distributor-apply-settlement.spec.ts:426:  test.fixme(\n(qa.md:14 and :149 claim distributor-create-branch is marked test.fail - no test.fail exists anywhere)\n$ ls e2e/specs/db/\ndeactivate-entities.spec.ts  invariants.spec.ts  money-idempotency.spec.ts  rls-isolation.spec.ts\n(qa.md:15 lists 3; deactivate-entities is undocumented)\n$ ls e2e/specs/regression/\nemployer-kyc-nudge.spec.ts  empty-states.spec.ts  map-drill.spec.ts  modal-escape.spec.ts  subscriber-insurance-no-scroll.spec.ts  subscriber-payment-methods.spec.ts  subscriber-settings-stubs.spec.ts  subscriber-write-failures.spec.ts\n(qa.md:16 names a 'mobile drawer' spec that does not exist; subscriber-insurance-no-scroll is undocumented)\n$ grep -n 'handleConfirm\\|useCreateBranch\\|mutateAsync' src/dashboard/branch/CreateBranch.jsx\n3:import { useAllEntities, useCreateBranch } from '../../hooks/useEntity';\n155:  const createBranch = useCreateBranch();\n257:  async function handleConfirm() {\n260:      await createBranch.mutateAsync({\n(qa.md:149 bug #2 claims handleConfirm at line 253 'never invokes useCreateBranch' - FIXED, and the line number is wrong)\n$ grep -rn 'VALID_VIEWS =' src/agent-dashboard/\nsrc/agent-dashboard/pages/commissions/commissionsConfig.jsx:14:export const VALID_VIEWS = new Set(['earned', 'owed']);\n(qa.md:152 cites CommissionsPage.jsx:26; the substance holds, the location does not)\n\nRuntime: qa.md:12 '~78-test baseline' and :40 '/qa all ... ~2 min total' vs A00 \u00a710 measured 370 cases, 326 pass / 30 fail / 14 skip, 24.4 min, exit 1. qa.md:173 'Phase 1 - Smoke specs (44 tests across all 4 dashboards)' vs 6 role dashboards. qa.md:146-155 known-bugs list makes no mention of the 30 deterministic failures.",
+  "impact": "/qa is a slash command an agent invokes and then reasons about the result of. Reading this file it will budget 2 minutes for a 24-minute run, hunt for a spec (branch-create-agent) that was never written, re-fix an already-wired CreateBranch panel, miss two whole spec files (deactivate-entities, subscriber-insurance-no-scroll), and - worst - treat 30 reproducible failures as unexpected because the section whose job is enumerating known bugs does not mention them. Every QA pass pays this cost.",
+  "suggested_fix": "Refresh the coverage map from the tree (18 flows, 4 db, 8 regression, 8 smoke), delete bug #2 and the test.fail annotation, correct bug #5's path to src/agent-dashboard/pages/commissions/commissionsConfig.jsx:14, restate the runtime as ~24 min at --workers=1, drop the two completed roadmap items, and add a 'Currently failing (measured 2026-08-23) - 30 of 370, deterministic' section pointing at 00-baseline.md \u00a710. 13 corrections drafted in DOC-CORRECTIONS.md \u00a712.",
+  "repro": [
+   "cd /Users/shubhang/Desktop/Projects/uganda-dashboard",
+   "ls e2e/specs/flows/ | wc -l; ls e2e/specs/db/; ls e2e/specs/regression/",
+   "find e2e -name '*branch-create-agent*'",
+   "grep -rn 'test.fail' e2e/specs/",
+   "grep -n 'useCreateBranch\\|handleConfirm\\|mutateAsync' src/dashboard/branch/CreateBranch.jsx",
+   "grep -rn 'VALID_VIEWS =' src/agent-dashboard/",
+   "cross-check docs/audits/2026-08-23/00-baseline.md \u00a710 (326/30/14 of 370, 24.4 min)"
+  ],
+  "agent": "A26"
+ },
+ {
+  "id": "A26-009",
+  "title": "docs/data-model.md field tables diverge from the live schema, and the Employer section opens by stating the retired model in the present tense",
+  "severity": "medium",
+  "confidence": "confirmed",
+  "category": "doc-accuracy-schema",
+  "surface": "docs",
+  "location": "docs/data-model.md:5, :48-58, :67, :69, :190-208, :241, :243-254, :294, :406-417, :428-447",
+  "demo_visible": false,
+  "effort": "M",
+  "roles_affected": [
+   "subscriber",
+   "employer",
+   "distributor",
+   "admin"
+  ],
+  "evidence": "$ awk -F, -v t=subscribers '$1==t{print $2}' docs/audits/2026-08-23/baseline/columns.csv | tr '\\n' ' '\nid name email phone gender age dob nin occupation agent_id district_id kyc_status is_active is_demo_signup insurance_same_as_pension registered_date consent_at last_contribution_date contribution_history products_held current_unit_value unit_value_as_of created_at employer_id compensation\n(doc :190-208 lists parentId and totalWithdrawals - neither is a column, the FK is agent_id - and never mentions dob, nin, occupation, district_id, is_demo_signup, insurance_same_as_pension, consent_at, last_contribution_date, current_unit_value, unit_value_as_of, created_at)\n\n$ awk -F, -v t=employers '$1==t{print $2}' docs/audits/2026-08-23/baseline/columns.csv | tr '\\n' ' '\nid name sector registration_no contact_name contact_phone contact_email district payroll_cadence default_contribution_config created_at updated_at status\n(doc :243-254 omits `status`, added by 0060, which drives deactivate/reactivate and the login gate)\n\n$ awk -F, -v t=contribution_runs '$1==t{print $2}' docs/audits/2026-08-23/baseline/columns.csv | tr '\\n' ' '\nid employer_id period_label status employer_total employee_total grand_total run_at created_at insurance_total\n(doc :406-417 omits insurance_total)\n\n$ awk -F, -v t=distributors '$1==t{print $2}' docs/audits/2026-08-23/baseline/columns.csv | tr '\\n' ' '\nid name parent_id manager_name manager_phone manager_email status created_at updated_at registration_no\n(doc :48-58 omits registration_no)\n\n$ psql \"$SUPABASE_DB_URL\" -X -q -At -c \"SELECT to_regclass('public.employees');\"\n(empty)\n$ psql \"$SUPABASE_DB_URL\" -X -q -At -c \"SELECT to_regclass('public.contribution_run_lines');\"\n(empty)\n$ psql \"$SUPABASE_DB_URL\" -X -q -At -F'|' -c \"SELECT tablename||'|'||policyname FROM pg_policies WHERE schemaname='public' AND tablename IN ('employers','employer_invites') ORDER BY 1;\"\nemployer_invites|employer_invites_select_admin\nemployer_invites|employer_invites_select_employer\nemployers|employer_self_select\nemployers|employers_select_admin\n(doc :294 names employer_invites_self_select)\n\ndata-model.md:241 (first paragraph of the Employer section): 'The Employer owns a standalone staff roster (employees) that sits outside the agent->subscriber hierarchy - employees are NOT subscribers, are not in transactions/subscriber_balances' - contradicted by the doc's own model-change banner at :267.\ndata-model.md:69 asserts RLS 'distributors_select USING (true)'; live has only distributors_select_admin + distributors_select_self.\ndata-model.md:5 claims to describe 'every entity in the system': 17 entity sections vs 37 live tables (21 tables have no field-level entry, including subscriber_balances, transactions, contribution_schedules and nav_snapshots - the four that carry the money).\ndata-model.md:428 '## Contribution Run Line' is written in the present tense with no HISTORICAL banner, unlike the sibling '## Employee' section at :298 which has one.",
+  "impact": "The document's stated purpose (line 1) is to stop a reader 'treating a derived or mock-only value as stored truth' - and the Subscriber table does exactly that, presenting mock-object fields as Stored. :241 is the opening paragraph of the Employer section, so a reader who stops there leaves with the pre-0045 standalone-employees model that was dropped three months ago. The missing employers.status column is the field that gates login for a deactivated employer. The 21-table coverage gap contradicts the doc's own scope claim.",
+  "suggested_fix": "Rewrite :241 to the unified model (staff ARE subscribers tagged via subscribers.employer_id); split the Subscriber field table into 'DB column' vs 'mock-object field' provenance and add the 11 missing columns; add employers.status, contribution_runs.insurance_total, distributors.registration_no; correct the employer_invites policy name and the distributors RLS claim; give '## Contribution Run Line' the same HISTORICAL banner the Employee section has; soften :5's scope claim and point at baseline/columns.csv for the authoritative list. 11 corrections drafted in DOC-CORRECTIONS.md \u00a77.",
+  "repro": [
+   "cd /Users/shubhang/Desktop/Projects/uganda-dashboard && set -a; . ./.env.local >/dev/null 2>&1; set +a",
+   "sed -n '5p;67,69p;241p;294p;428p' docs/data-model.md",
+   "awk -F, -v t=subscribers '$1==t{print $2}' docs/audits/2026-08-23/baseline/columns.csv",
+   "awk -F, -v t=employers '$1==t{print $2}' docs/audits/2026-08-23/baseline/columns.csv",
+   "psql \"$SUPABASE_DB_URL\" -X -q -At -c \"SELECT to_regclass('public.employees'), to_regclass('public.contribution_run_lines');\"",
+   "psql \"$SUPABASE_DB_URL\" -X -q -At -F'|' -c \"SELECT tablename||'|'||policyname FROM pg_policies WHERE schemaname='public' AND tablename IN ('employers','employer_invites') ORDER BY 1;\""
+  ],
+  "agent": "A26"
+ },
+ {
+  "id": "A26-010",
+  "title": "'14 API routes' appears in eleven places across four documents and two code comments; there are sixteen, and two public write endpoints are undocumented",
+  "severity": "low",
+  "confidence": "confirmed",
+  "category": "doc-accuracy-counts",
+  "surface": "docs",
+  "location": "README.md:18, :109; docs/api-contracts.md:1, :7, :23, :57, :239; docs/ARCHITECTURE.md:52-58, :540; docs/BACKEND.md:1036; server/index.ts:61, :250",
+  "demo_visible": false,
+  "effort": "S",
+  "roles_affected": [],
+  "evidence": "$ grep -c '^app.all' server/index.ts\n16\n$ find api -name '*.ts' -not -name '*.test.ts' -not -path '*/_lib/*' | wc -l\n16\n$ grep -n 'app.all' server/index.ts | tail -4\n267:app.all('/api/contact', writeLimiter, toExpress(contact));\n268:app.all('/api/access-request', writeLimiter, toExpress(accessRequest)); // DB insert (public employer/distributor lead form - spam vector)\n269:app.all('/api/nominee-claim', writeLimiter, toExpress(nomineeClaim));   // DB insert (public bereavement claim form - spam vector)\n270:app.all('/api/chat', chatLimiter, toExpress(chat));\n\nThe two undocumented routes are POST /api/access-request and POST /api/nominee-claim, both public unauthenticated write surfaces behind writeLimiter.\n\nInternal contradiction: docs/BACKEND.md:97, :129, :130 and :283 already say 16 routes correctly, while docs/BACKEND.md:1036 says 14 - the same file disagrees with itself, and disagrees with api-contracts.md which says 14 in five places (:1, :7, :23, :57, :239).",
+  "impact": "docs/api-contracts.md is the file whose sole job is documenting request/response shapes, and it has no \u00a72 entry for either of the two missing routes - so the platform's two public unauthenticated spam-vector endpoints are absent from the contract reference. The stale comments at server/index.ts:61 and :250 mean the count is wrong in the source file a reader would check to resolve the disagreement.",
+  "suggested_fix": "Change 14 -> 16 at all eleven doc/comment sites and add \u00a72.3 request/response entries for POST /api/access-request and POST /api/nominee-claim to docs/api-contracts.md. Rows drafted in DOC-CORRECTIONS.md \u00a71, \u00a73, \u00a74, \u00a76 and \u00a713.",
+  "repro": [
+   "cd /Users/shubhang/Desktop/Projects/uganda-dashboard",
+   "grep -c '^app.all' server/index.ts",
+   "find api -name '*.ts' -not -name '*.test.ts' -not -path '*/_lib/*' | wc -l",
+   "grep -n '14' docs/api-contracts.md | grep -i route",
+   "sed -n '61p;250p' server/index.ts",
+   "sed -n '97p' docs/BACKEND.md"
+  ],
+  "agent": "A26"
+ },
+ {
+  "id": "A26-011",
+  "title": "docs/FRONTEND.md file-inventory counts are stale in six places and the document contradicts itself on the unit-test count",
+  "severity": "low",
+  "confidence": "confirmed",
+  "category": "doc-accuracy-counts",
+  "surface": "docs",
+  "location": "docs/FRONTEND.md:52, :74, :387, :717, :1138, :1165, :1519",
+  "demo_visible": false,
+  "effort": "S",
+  "roles_affected": [],
+  "evidence": "$ find src -name '*.module.css' | wc -l\n229                                  # doc :74 says 118\n$ ls src/services/*.js | grep -v test | wc -l\n20                                   # doc :387 heading says 14\n$ ls src/hooks/*.js | wc -l\n17                                   # doc :717 heading says 10\n$ ls src/utils/*.js | grep -v test | wc -l\n21                                   # doc :1138 says 18\n$ ls src/constants/*.js | grep -v test | wc -l\n7                                    # doc :1165 says 3\n\nUnit tests - the same file states two different wrong numbers:\ndocs/FRONTEND.md:52   'Vitest one-shot (1221 tests across 76 files at last sync)'\ndocs/FRONTEND.md:1519 '48 test files, 871 passing tests at last sync'\nMeasured (00-baseline.md \u00a73): 140 files / 2010 tests, all passing.\n\nThe six services with no inventory row: accessRequests.js, adminAttention.js, nav.js, nomineeClaim.js, nomineeClaims.js, requestAccess.js.",
+  "impact": "CLAUDE.md:209 makes updating FRONTEND.md in the same commit a repo rule; these counts are the evidence the rule is not being followed. Six services have no inventory row, including nav.js - the client of the NAV pricing authority that 0103-0106 introduced. A reader trying to reconcile :52 against :1519 has no way to tell which is closer to true without running the suite.",
+  "suggested_fix": "Refresh all six counts (229 / 20 / 17 / 21 / 7) and reconcile :52 and :1519 to a single figure (140 files / 2010 tests, verified 2026-08-23); add inventory rows for the six undocumented services and the nine undocumented hooks. Drafted in DOC-CORRECTIONS.md \u00a75.",
+  "repro": [
+   "cd /Users/shubhang/Desktop/Projects/uganda-dashboard",
+   "find src -name '*.module.css' | wc -l",
+   "ls src/services/*.js | grep -v test | wc -l; ls src/hooks/*.js | wc -l; ls src/utils/*.js | grep -v test | wc -l; ls src/constants/*.js | grep -v test | wc -l",
+   "sed -n '52p;74p;387p;717p;1138p;1165p;1519p' docs/FRONTEND.md"
+  ],
+  "agent": "A26"
+ },
+ {
+  "id": "A26-012",
+  "title": "README.md still lists 'hardcoded unit price' as intentional demo scope; migrations 0103-0106 retired it",
+  "severity": "low",
+  "confidence": "confirmed",
+  "category": "doc-accuracy-demo-scope",
+  "surface": "docs",
+  "location": "README.md:9",
+  "demo_visible": false,
+  "effort": "S",
+  "roles_affected": [
+   "subscriber",
+   "admin"
+  ],
+  "evidence": "README.md:9: '> This repo is a demo / sales-presentation tool ... Mocked OTP, mocked KYC, hardcoded unit price, and a 24-hour fixed JWT are intentional demo scope (see CLAUDE.md \u00a710a).'\n\nBoth specialist docs already correct it:\ndocs/BACKEND.md:900  '~~Unit price hardcoded to 1,000 UGX/unit~~ - RESOLVED by 0103-0106. ... It is no longer hardcoded and is no longer demo scope.'\ndocs/FRONTEND.md:1419 '~~Hardcoded UGX 1,000 unit price.~~ RESOLVED by 0103-0106.'\n\nLive confirmation:\n$ psql \"$SUPABASE_DB_URL\" -X -q -At -c \"SELECT proname FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace WHERE n.nspname='public' AND proname IN ('latest_nav','nav_for_date');\"\nlatest_nav\nnav_for_date\n$ psql \"$SUPABASE_DB_URL\" -X -q -At -c 'SELECT count(*) FROM nav_snapshots;'\n1246",
+  "impact": "README is the first file a new reader or agent opens, and it labels the platform's pricing authority a mock. Under this audit's own demo-scope rule ('do not propose fixing demo scope'), an agent trusting README:9 would decline to investigate a genuine NAV or balance-valuation defect as out of scope. CLAUDE.md \u00a710a - which README cites - no longer lists the unit price either, so README is the sole remaining source of the stale claim.",
+  "suggested_fix": "README.md:9 -> 'Mocked OTP, mocked KYC, and a 24-hour fixed JWT are intentional demo scope (see CLAUDE.md \u00a710a). The unit price is not demo scope - it is a real admin-published fund NAV since migrations 0103-0106.' Drafted in DOC-CORRECTIONS.md \u00a71.",
+  "repro": [
+   "cd /Users/shubhang/Desktop/Projects/uganda-dashboard && set -a; . ./.env.local >/dev/null 2>&1; set +a",
+   "sed -n '9p' README.md",
+   "sed -n '900p' docs/BACKEND.md; sed -n '1419p' docs/FRONTEND.md",
+   "psql \"$SUPABASE_DB_URL\" -X -q -At -c 'SELECT count(*) FROM nav_snapshots;'"
+  ],
+  "agent": "A26"
+ },
+ {
+  "id": "A26-013",
+  "title": "render-operational.md states the keepalive cadence wrongly in three places, carries two dead external references, and leaves a completed cutover instruction standing",
+  "severity": "low",
+  "confidence": "confirmed",
+  "category": "doc-accuracy-ops-runbook",
+  "surface": "docs",
+  "location": "docs/render-operational.md:5, :14, :38, :56, :175; README.md:121",
+  "demo_visible": false,
+  "effort": "S",
+  "roles_affected": [],
+  "evidence": "$ grep -n 'cron' .github/workflows/keepalive.yml\n3:# GitHub Actions' cron has 5-15 min real-world jitter; running every 10 min\n12:    - cron: '*/10 * * * *'   # every 10 min\n\nrender-operational.md:14  'Wake: GHA cron (14 min) + cron-job.org/UptimeRobot (5 min backup)'\nrender-operational.md:56  'The 14-min GHA keepalive keeps the service warm for ~720h/mo - under the cap with headroom.'\nrender-operational.md:175 '| Instance hours | 750/month | ~720/mo (14-min keepalive + 24/7 wake) | ~30h/mo |'\nREADME.md:121             '.github/workflows/keepalive.yml pings /healthz every 14 min'\n\n$ ls -la '/Users/shubhang/.claude/plans/dynamic-sparking-kite.md'\nls: /Users/shubhang/.claude/plans/dynamic-sparking-kite.md: No such file or directory\n$ ls -la '/Users/shubhang/Desktop/renderaudit-findings.md'\nls: /Users/shubhang/Desktop/renderaudit-findings.md: No such file or directory\n(both cited in render-operational.md:5 as 'the full plan' and 'the underlying audit findings')\n\nrender-operational.md:38 'Re-enable the gated settlement E2E. After applying 0032, remove the describe.fixme/skip on e2e/specs/flows/distributor-apply-settlement.spec.ts':\n$ grep -n 'test.fixme' e2e/specs/flows/distributor-apply-settlement.spec.ts\n426:  test.fixme(\n(0032 has been live since the 2026-06-05 cutover; the instruction was never carried out)",
+  "impact": "The 750 h/mo free-tier headroom arithmetic at :56 and :175 is derived from the wrong cadence, so the stated ~30 h/mo margin is not the real one. The two dead paths at :5 are the runbook's only cited sources, so its provenance is unrecoverable. And the un-actioned :38 means the settlement nonce-idempotency assertion - the one that proves a replayed upload does not double-record a batch - has been silently disabled since the cutover. A09 owns the operational half.",
+  "suggested_fix": "Change 14 min -> 10 min at render-operational.md:14/:56/:175 and README.md:121 and recompute the instance-hour headroom; replace the two dead paths at :5 with a pointer to docs/audits/2026-08-23/; rewrite :38 as a live TODO naming the surviving test.fixme at distributor-apply-settlement.spec.ts:426, or enable it. Drafted in DOC-CORRECTIONS.md \u00a71 and \u00a710.",
+  "repro": [
+   "cd /Users/shubhang/Desktop/Projects/uganda-dashboard",
+   "grep -n 'cron' .github/workflows/keepalive.yml",
+   "grep -n '14 min\\|14-min' docs/render-operational.md README.md",
+   "ls '/Users/shubhang/.claude/plans/dynamic-sparking-kite.md' '/Users/shubhang/Desktop/renderaudit-findings.md'",
+   "grep -n 'test.fixme' e2e/specs/flows/distributor-apply-settlement.spec.ts"
+  ],
+  "agent": "A26"
+ },
+ {
+  "id": "A26-014",
+  "title": "Seed-entity counts drifted across CLAUDE.md, SPEC.md, data-model.md and role-permissions.md; the third distributor is documented nowhere",
+  "severity": "low",
+  "confidence": "confirmed",
+  "category": "doc-accuracy-seed-data",
+  "surface": "docs",
+  "location": "CLAUDE.md:145, :146, :147, :164; docs/SPEC.md:84-91, :107-109; docs/role-permissions.md:38, :40; docs/data-model.md:67",
+  "demo_visible": false,
+  "effort": "S",
+  "roles_affected": [
+   "distributor",
+   "admin"
+  ],
+  "evidence": "$ psql \"$SUPABASE_DB_URL\" -X -q -At -F'|' -c \"SELECT id,name,status FROM distributors ORDER BY id;\"\nd-001|Universal Pensions Uganda - National|active\nd-002|Universal Pensions Uganda - Secondary|active\nd-003|Karamoja Pilot Network|active\n\n$ psql \"$SUPABASE_DB_URL\" -X -q -At -F'|' -c \"SELECT coalesce(distributor_id,'NULL'), count(*) FROM branches GROUP BY 1 ORDER BY 1;\"\nd-001|291\nd-002|27\nd-003|2\nNULL|1\n\n$ psql \"$SUPABASE_DB_URL\" -X -q -At -F'|' -c \"SELECT (SELECT count(*) FROM agents),(SELECT count(*) FROM branches),(SELECT count(*) FROM subscribers);\"\n2046|321|5064\n\nDoc claims: CLAUDE.md:147 'Distributor ... | 2 (each sees only its own network)' \u00b7 CLAUDE.md:164 'Two in the demo seed: d-001 (national - 289 branches) and d-002 (Busoga sub-region - 27 branches)' \u00b7 CLAUDE.md:145 'Agent ... ~2,049' \u00b7 CLAUDE.md:146 'Branch ... ~316' \u00b7 data-model.md:67 'Two distributors seeded ... The seed now ships two rows' \u00b7 role-permissions.md:38 'All ~316 branches' \u00b7 role-permissions.md:40 'All ~2,049 agents' \u00b7 SPEC.md:89/:107 'Branch (~316)' \u00b7 SPEC.md:90/:108 'Agent (~2,049)'.\n\nd-003 'Karamoja Pilot Network' appears in NO document. SPEC.md:84-91's hierarchy diagram (Country -> Region -> District -> Branch -> Agent -> Subscriber) omits the Distributor level entirely, though CLAUDE.md \u00a79 and data-model.md both place Distributor directly under Country.",
+  "impact": "A rep or agent counting distributors from the docs finds two and sees three in the admin Distributors panel. d-003 was almost certainly created at runtime through the access-request approval path (0095/0101), so the docs also fail to convey that entities can now be provisioned outside the seed. Worth flagging onward to the data owners: one branch carries distributor_id IS NULL and is therefore invisible to every distributor (A02-010 owns the data side of that). The agent/branch count drift (~2,049 vs 2046, ~316 vs 321) is within the '~' tolerance the docs use, but combines with the distributor error to make the whole seed section untrustworthy.",
+  "suggested_fix": "CLAUDE.md:147 -> '3'; CLAUDE.md:164 -> name all three distributors with live branch counts (291 / 27 / 2) and note the one NULL-owner branch; data-model.md:67 -> 'Three distributors live'; refresh ~2,049 -> ~2,046 and ~316 -> ~321 in all four docs; insert a Distributor level into SPEC.md's hierarchy diagram with a note that it is an ownership edge (branches.distributor_id), not a geographic one. Drafted in DOC-CORRECTIONS.md \u00a72, \u00a77, \u00a78, \u00a79.",
+  "repro": [
+   "cd /Users/shubhang/Desktop/Projects/uganda-dashboard && set -a; . ./.env.local >/dev/null 2>&1; set +a",
+   "psql \"$SUPABASE_DB_URL\" -X -q -At -F'|' -c 'SELECT id,name,status FROM distributors ORDER BY id;'",
+   "psql \"$SUPABASE_DB_URL\" -X -q -At -F'|' -c \"SELECT coalesce(distributor_id,'NULL'), count(*) FROM branches GROUP BY 1 ORDER BY 1;\"",
+   "sed -n '145,147p;164p' CLAUDE.md; sed -n '67p' docs/data-model.md; sed -n '38p;40p' docs/role-permissions.md; sed -n '84,91p' docs/SPEC.md"
+  ],
+  "agent": "A26"
+ },
+ {
+  "id": "A26-015",
+  "title": "No live doc carries a 'verified against live on <date>' line; docs/role-permissions.md has no temporal marker anywhere in 362 lines",
+  "severity": "info",
+  "confidence": "confirmed",
+  "category": "doc-hygiene",
+  "surface": "docs",
+  "location": "all 12 live docs; worst case docs/role-permissions.md",
+  "demo_visible": false,
+  "effort": "S",
+  "roles_affected": [],
+  "evidence": "$ for f in CLAUDE.md README.md docs/FRONTEND.md docs/BACKEND.md docs/ARCHITECTURE.md docs/SPEC.md docs/data-model.md docs/role-permissions.md docs/api-contracts.md docs/migrations-runbook.md docs/render-operational.md .claude/skills/qa.md; do d=$(grep -oiE '(last (updated|sync|verified)|as of|snapshot)[^.|]{0,40}' \"$f\" | head -1); echo \"$f :: ${d:-NONE}\"; done\n...\ndocs/role-permissions.md :: NONE\n\nResults: docs/migrations-runbook.md is the only file that dates AND scopes itself correctly ('the one-time apply/verify/rollback runbook for migrations 0045-0057 ... Treat it as a historical record'). docs/ARCHITECTURE.md discloses a May-2026 pin (honest). docs/BACKEND.md and docs/FRONTEND.md carry inline markers ('verified 2026-07-08' / 'at last sync') but no doc-level header date. README.md warns counts 'can lag the code' with no date. CLAUDE.md, docs/SPEC.md, docs/data-model.md, docs/api-contracts.md, docs/render-operational.md and .claude/skills/qa.md carry nothing. docs/role-permissions.md carries nothing anywhere in the file.\n\nSeparately verified for check 5's archive half - nothing to do there:\n$ for f in $(find docs/audits -maxdepth 2 -name '*.md' | grep -v 2026-08-23); do head -1 \"$f\" | grep -c 'Historical audit'; done | sort | uniq -c\n  29 1\nAll 29 archived audit files already carry the correct 'Historical audit from ..., a point-in-time snapshot, not current state' banner.",
+  "impact": "This is the cheapest structural fix in the report and it explains how every other finding accumulated: nothing in these files tells a reader when the claim was last true, so decay is invisible. BACKEND.md:44's 'Live census (verified 2026-07-08)' is the counter-example that proves the value - it is wrong, but it is dateably wrong, and a reader can weigh it. role-permissions.md, the document A02 measured its whole matrix against, offers no such handle at all.",
+  "suggested_fix": "Add one two-line block under each agent-guide header: '> Verified against the live Singapore DB (ilkhfnoyxlxwqadebnkp) on YYYY-MM-DD. Counts (tables, functions, policies, migrations, routes, file inventories) decay fast - re-measure before relying on any number here.' Priority order: role-permissions.md, api-contracts.md, data-model.md, CLAUDE.md, then the rest. Drafted in DOC-CORRECTIONS.md \u00a714. No action needed on the 29 archived audit docs (\u00a715).",
+  "repro": [
+   "cd /Users/shubhang/Desktop/Projects/uganda-dashboard",
+   "for f in CLAUDE.md README.md docs/*.md .claude/skills/qa.md; do echo \"$f :: $(grep -oiE '(last (updated|sync|verified)|as of|snapshot)[^.|]{0,40}' \"$f\" | head -1)\"; done",
+   "head -3 docs/role-permissions.md",
+   "for f in $(find docs/audits -maxdepth 2 -name '*.md' | grep -v 2026-08-23); do head -1 \"$f\" | grep -c 'Historical audit'; done | sort | uniq -c"
+  ],
+  "agent": "A26"
+ },
+ {
+  "id": "A26-016",
+  "title": "The anon-EXECUTE surface is documented as 3; it is 13, and the sentence contradicts itself",
+  "severity": "info",
+  "confidence": "confirmed",
+  "category": "doc-accuracy-privilege-surface",
+  "surface": "docs",
+  "location": "docs/BACKEND.md:428, docs/BACKEND.md:657",
+  "demo_visible": false,
+  "effort": "S",
+  "roles_affected": [],
+  "evidence": "$ psql \"$SUPABASE_DB_URL\" -X -q -At -c \"SELECT count(*) FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace WHERE n.nspname='public' AND has_function_privilege('anon', p.oid, 'EXECUTE');\"\n13\n\ndocs/BACKEND.md:428 (0094 inventory row) contains both of these in one cell:\n  'KEPT anon deliberately: create_subscriber_from_signup, create_subscriber_from_employer_invite, get_employer_invite - the three genuine pre-login surfaces - plus every trigger function (not usefully callable; revoking risks breaking INSERTs on the anon signup path).'\n  'Verified after applying: ... only the 3 intended pre-login RPCs still anon-executable'\nThe two clauses cannot both be the headline. docs/BACKEND.md:657 repeats the '3' framing.\n\nPer 00-baseline.md \u00a75.2 the 13 are the 3 intentional grants plus 10 zero-arg RETURNS trigger functions retaining the default PUBLIC EXECUTE: block_inactive_employer_run, block_inactive_employer_subscriber, block_inactive_employer_subscriber_update, guard_mass_subscriber_detach, trg_branches_default_distributor, trg_distributors_enforce_editable_cols, trg_subscribers_after_insert, trg_subscribers_enforce_editable_cols, trg_transactions_contribution, trg_transactions_withdrawal.\n\nRelated stale figure in the same cell: 'all 46 app RPCs still executable by authenticated' vs measured 87.",
+  "impact": "Informational rather than a security defect - Postgres refuses to invoke a trigger function directly ('trigger functions can only be called as triggers'), so the 10 are not an exploitable surface, and A03 owns proving that per call. But a reviewer running the obvious has_function_privilege('anon', ...) query gets 13 and cannot reconcile it with the doc's headline, costing a cycle. The audit plan's own \u00a75 made the same class of error in the opposite direction, predicting 25.",
+  "suggested_fix": "Replace the headline at :428 and :657 with the precise number and composition: '13 functions remain anon-EXECUTE: the 3 intended pre-login RPCs plus the 10 zero-arg RETURNS trigger functions that keep their default PUBLIC grant (listed). Postgres refuses to call a trigger function directly, so the 10 are not an exploitable surface - but the number is 13, not 3.' Also correct '46 app RPCs' -> 87. Drafted in DOC-CORRECTIONS.md \u00a74.",
+  "repro": [
+   "cd /Users/shubhang/Desktop/Projects/uganda-dashboard && set -a; . ./.env.local >/dev/null 2>&1; set +a",
+   "psql \"$SUPABASE_DB_URL\" -X -q -At -c \"SELECT count(*) FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace WHERE n.nspname='public' AND has_function_privilege('anon', p.oid, 'EXECUTE');\"",
+   "psql \"$SUPABASE_DB_URL\" -X -q -At -c \"SELECT proname FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace WHERE n.nspname='public' AND has_function_privilege('anon', p.oid, 'EXECUTE') ORDER BY 1;\"",
+   "grep -n 'only the 3 intended' docs/BACKEND.md"
+  ],
+  "agent": "A26"
+ }
+]

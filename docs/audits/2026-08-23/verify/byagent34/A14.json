@@ -1,0 +1,74 @@
+[
+ {
+  "id": "A14-002",
+  "title": "E2E test residue displayed as live data across the employer demo dashboard (reproduces A06-001 on the employer surface)",
+  "severity": "critical",
+  "confidence": "confirmed",
+  "category": "data-integrity",
+  "surface": "Employer dashboard \u2014 every emp-001 money surface (Overview, Employees roster, member detail, Runs, Analytics)",
+  "location": "public.transactions / subscriber_balances / contribution_runs (live data); mechanism owned by A06-002",
+  "demo_visible": true,
+  "roles_affected": [
+   "employer"
+  ],
+  "evidence": "psql: sum(total_balance) for emp-001 = 197,491,903 UGX, of which txn_ref LIKE 'EMP-%' contribution residue = 120,292,000 (60.9%). empe-001: 99 EMP-% contribution rows = 12,810,000 of a 24,471,589 balance (52%). Runs history table top row (on screen) = 'E2E Run 1785753040826'; Overview NeedsAttention shows 'Last run \u00b7 E2E Run 1785753040826'. Member-detail history shows identical UGX 210,000/105,000 pairs dated 23-24 Aug 2026 (today). psql: 171 EMP-% rows stamped 2026-08-24, newest 08:10 today \u2014 residue still growing during the audit. Screenshots: HEADLINE-employees-roster-1440.png, HEADLINE-member-empe-001-1440.png, runs-1440.png, index-1440.png.",
+  "impact": "emp-001 is the ROLE_DEFAULTS.employer fallback every unrecognised employer login lands on \u2014 the employer a rep demos. A prospect is shown fake balances (61% test money), a contribution run literally named 'E2E Run 1785753040826', a wrong 'next contribution' figure, and duplicate transactions dated today.",
+  "suggested_fix": "Purge txn_ref LIKE 'EMP-%' residue + the E2E contribution_runs row from live demo data; make the E2E employer-run suite target a throwaway employer or clean up its own child transactions (the run header is deleted but child txns are orphaned with contribution_run_id nulled). Mechanism/cleanup owned by A06-002.",
+  "effort": "M",
+  "agent": "A14"
+ },
+ {
+  "id": "A14-001",
+  "title": "\"Total contributions\" computed from two irreconcilable sources; same screen shows figures differing up to 11.6x, and Runs page states a provably false total",
+  "severity": "high",
+  "confidence": "confirmed",
+  "category": "correctness",
+  "surface": "Employer Overview (/dashboard), Runs (/dashboard/runs), Analytics (/dashboard/analytics)",
+  "location": "src/services/employer.js getEmployerContributions() (run-linked) vs get_employer_metrics RPC (all contributions); src/employer-dashboard/desktop/OverviewDesktop.jsx:159 (Hero) vs :184/:192 (leg tiles)",
+  "demo_visible": true,
+  "roles_affected": [
+   "employer"
+  ],
+  "evidence": "On the Overview the Hero 'TOTAL CONTRIBUTIONS TO DATE \u00b7 EMPLOYEE + EMPLOYER' = UGX 182,689,000 (get_employer_metrics) while the two leg tiles directly below sum to 9.8M + 5.9M = 15.7M (getEmployerContributions, run-linked) \u2014 an 11.6x gap on one screen. Runs page: 'FUNDED TO DATE UGX 182.7M' and footer ' 6 runs \u00b7 UGX 182,689,000 pension funded' while the run-history table lists 6 runs summing to 19,294,000. Systemic: psql shows emp-002..007 have metrics totals 12-27M but 0 run-linked (Hero shows millions, tiles/Runs show 0). Even clean of residue emp-001 = 62.4M metrics vs 11.8M runs. Aborting get_employer_metrics via Playwright route.abort makes the Hero fall back to UGX 15,734,000, which reconciles with the tiles \u2014 proving 182.7M is the anomalous source. Screenshots: index-1440.png, runs-1440.png, overview-error-1440.png.",
+  "impact": "On the primary employer dashboard and the Runs funding screen, the headline money figure contradicts its own breakdown; '6 runs \u00b7 UGX 182,689,000 pension funded' is falsifiable by adding the six rows shown above it. A prospect who checks the arithmetic sees it does not add up.",
+  "suggested_fix": "Feed the Overview Hero, Runs 'funded to date', and Analytics 'total contributions' from the same run-linked source the leg tiles/Contributions page use (Sum of contribution_runs), or relabel/split get_employer_metrics so members' personal top-ups (contribution_run_id NULL) are not counted as employer run funding. All four surfaces must read one source.",
+  "effort": "M",
+  "agent": "A14"
+ },
+ {
+  "id": "A14-003",
+  "title": "Expired invites labeled \"awaiting sign-up\" on Overview & roster, contradicting Pending KYC page (\"0 awaiting \u00b7 4 lapsed\")",
+  "severity": "medium",
+  "confidence": "confirmed",
+  "category": "correctness",
+  "surface": "Employer Overview (/dashboard), Employees (/dashboard/employees), Pending KYC (/dashboard/pending-kyc)",
+  "location": "src/employer-dashboard/desktop/OverviewDesktop.jsx (Pending KYC tile + NeedsAttention) and EmployeesDesktop.jsx:170 vs PendingKycDesktop.jsx classification",
+  "demo_visible": true,
+  "roles_affected": [
+   "employer"
+  ],
+  "evidence": "psql: all 4 emp-001 employer_invites are status='pending' but expires_at 2026-08-09/08-14 (today 2026-08-24) \u2014 all expired. Overview tile 'PENDING KYC 4 \u00b7 Invited \u00b7 awaiting sign-up'; NeedsAttention '4 invited \u00b7 awaiting sign-up'; roster note '4 people invited and awaiting sign-up.' Pending KYC page (correct): '0 awaiting sign-up \u00b7 4 lapsed', 'Awaiting 0 / Expired 4', 'None awaiting \u00b7 No active pending invites right now.' Public /invite/:token for an expired token renders 'Invite unavailable / invite expired' gracefully (no error). Screenshots: pending-kyc-1440.png, index-1440.png, invite-token-375.png.",
+  "impact": "A demo call-to-action ('4 awaiting sign-up \u2014 chase them') dead-ends on a page stating there is nothing to chase.",
+  "suggested_fix": "Compute the Overview/roster 'pending' figure with the same expires_at split the Pending KYC page uses, or relabel the tile 'invited (incl. lapsed)'.",
+  "effort": "S",
+  "agent": "A14"
+ },
+ {
+  "id": "A14-004",
+  "title": "Overview \"Needs attention\" mislabels combined group cover as \"Group life cover\"",
+  "severity": "low",
+  "confidence": "confirmed",
+  "category": "copy",
+  "surface": "Employer Overview (/dashboard) \u2192 Needs attention",
+  "location": "src/employer-dashboard/desktop/NeedsAttention.jsx",
+  "demo_visible": true,
+  "roles_affected": [
+   "employer"
+  ],
+  "evidence": "Overview shows 'Group life cover UGX 20.0M per member' but 20.0M = life 15.0M + health 5.0M combined (emp-001 config groupInsuranceProducts). The Insurance page correctly splits Life 15.0M / Health 5.0M. Screenshot: index-1440.png.",
+  "impact": "Minor copy inaccuracy on the dashboard; the amount is total cover, not life cover.",
+  "suggested_fix": "Rename to 'Group cover UGX 20.0M per member' or label from the enabled products.",
+  "effort": "S",
+  "agent": "A14"
+ }
+]

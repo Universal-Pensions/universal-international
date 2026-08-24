@@ -1,0 +1,16 @@
+import { chromium } from 'playwright';
+const BASE = 'http://localhost:5173';
+const role = process.argv[2] || 'admin';
+const b = await chromium.launch({ headless: true });
+const ctx = await b.newContext({ viewport: { width: 1440, height: 900 }, storageState: `e2e/.auth/${role}.json` });
+const page = await ctx.newPage();
+const t0 = Date.now();
+const log = [];
+page.on('request', (r) => { if (/rest\/v1\//.test(r.url())) log.push({ t: Date.now()-t0, kind:'REQ', n: r.url().split('/rest/v1/')[1].split('?')[0] }); });
+page.on('response', (r) => { if (/rest\/v1\//.test(r.url())) log.push({ t: Date.now()-t0, kind:'RES '+r.status(), n: r.url().split('/rest/v1/')[1].split('?')[0] }); });
+await page.goto(BASE + '/dashboard', { waitUntil: 'domcontentloaded' });
+await page.waitForTimeout(12000);
+for (const l of log) console.log(`${String(l.t).padStart(6)}ms ${l.kind.padEnd(8)} ${l.n}`);
+const t = await page.evaluate(() => document.body.innerText.replace(/\s+/g, ' '));
+console.log('BODY>>', t.slice(0, 420));
+await b.close();

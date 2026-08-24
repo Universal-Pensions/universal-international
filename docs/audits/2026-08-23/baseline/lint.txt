@@ -1,0 +1,492 @@
+### npm run lint
+
+> universal-pensions-uganda@1.0.0 lint
+> eslint .
+
+
+/Users/shubhang/Desktop/Projects/uganda-dashboard/src/admin-dashboard/AdminCountryOverview.jsx
+  225:17  warning  A control must be associated with a text label  jsx-a11y/control-has-associated-label
+
+/Users/shubhang/Desktop/Projects/uganda-dashboard/src/admin-dashboard/AdminDashboardShell.jsx
+  411:27  warning  Elements with ARIA roles must use a valid, non-abstract ARIA role  jsx-a11y/aria-role
+
+/Users/shubhang/Desktop/Projects/uganda-dashboard/src/admin-dashboard/attention/NotifyComposer.jsx
+  49:7  warning  Form label must have ALL of the following types of associated control: nesting, id  jsx-a11y/label-has-for
+  50:7  warning  A control must be associated with a text label                                      jsx-a11y/control-has-associated-label
+
+/Users/shubhang/Desktop/Projects/uganda-dashboard/src/admin-dashboard/distributors/CreateDistributor.jsx
+  136:19  warning  Form label must have ALL of the following types of associated control: nesting, id             jsx-a11y/label-has-for
+  139:19  warning  A control must be associated with a text label                                                 jsx-a11y/control-has-associated-label
+  145:21  warning  The autoFocus prop should not be used, as it can reduce usability and accessibility for users  jsx-a11y/no-autofocus
+  154:19  warning  Form label must have ALL of the following types of associated control: nesting, id             jsx-a11y/label-has-for
+  155:19  warning  A control must be associated with a text label                                                 jsx-a11y/control-has-associated-label
+  166:19  warning  Form label must have ALL of the following types of associated control: nesting, id             jsx-a11y/label-has-for
+  167:19  warning  A control must be associated with a text label                                                 jsx-a11y/control-has-associated-label
+  178:21  warning  Form label must have ALL of the following types of associated control: nesting, id             jsx-a11y/label-has-for
+  179:21  warning  A control must be associated with a text label                                                 jsx-a11y/control-has-associated-label
+  189:21  warning  Form label must have ALL of the following types of associated control: nesting, id             jsx-a11y/label-has-for
+  190:21  warning  A control must be associated with a text label                                                 jsx-a11y/control-has-associated-label
+
+/Users/shubhang/Desktop/Projects/uganda-dashboard/src/admin-dashboard/employers/CreateEmployer.jsx
+  144:19  warning  Form label must have ALL of the following types of associated control: nesting, id             jsx-a11y/label-has-for
+  147:19  warning  A control must be associated with a text label                                                 jsx-a11y/control-has-associated-label
+  153:21  warning  The autoFocus prop should not be used, as it can reduce usability and accessibility for users  jsx-a11y/no-autofocus
+  159:21  warning  Form label must have ALL of the following types of associated control: nesting, id             jsx-a11y/label-has-for
+  160:21  warning  A control must be associated with a text label                                                 jsx-a11y/control-has-associated-label
+  169:21  warning  Form label must have ALL of the following types of associated control: nesting, id             jsx-a11y/label-has-for
+  170:21  warning  A control must be associated with a text label                                                 jsx-a11y/control-has-associated-label
+  181:19  warning  Form label must have ALL of the following types of associated control: nesting, id             jsx-a11y/label-has-for
+  182:19  warning  A control must be associated with a text label                                                 jsx-a11y/control-has-associated-label
+  192:19  warning  Form label must have ALL of the following types of associated control: nesting, id             jsx-a11y/label-has-for
+  193:19  warning  A control must be associated with a text label                                                 jsx-a11y/control-has-associated-label
+  204:21  warning  Form label must have ALL of the following types of associated control: nesting, id             jsx-a11y/label-has-for
+  205:21  warning  A control must be associated with a text label                                                 jsx-a11y/control-has-associated-label
+  215:21  warning  Form label must have ALL of the following types of associated control: nesting, id             jsx-a11y/label-has-for
+  216:21  warning  A control must be associated with a text label                                                 jsx-a11y/control-has-associated-label
+
+/Users/shubhang/Desktop/Projects/uganda-dashboard/src/admin-dashboard/mobile/AdminNomineeClaimsMobile.jsx
+  156:15  warning  Form label must have ALL of the following types of associated control: nesting, id  jsx-a11y/label-has-for
+  161:19  warning  A control must be associated with a text label                                      jsx-a11y/control-has-associated-label
+  171:15  warning  Form label must have ALL of the following types of associated control: nesting, id  jsx-a11y/label-has-for
+  174:19  warning  A control must be associated with a text label                                      jsx-a11y/control-has-associated-label
+
+/Users/shubhang/Desktop/Projects/uganda-dashboard/src/admin-dashboard/nominee-claims/ViewNomineeClaims.jsx
+  244:15  warning  Form label must have ALL of the following types of associated control: nesting, id  jsx-a11y/label-has-for
+  246:17  warning  A control must be associated with a text label                                      jsx-a11y/control-has-associated-label
+  255:15  warning  Form label must have ALL of the following types of associated control: nesting, id  jsx-a11y/label-has-for
+  257:17  warning  A control must be associated with a text label                                      jsx-a11y/control-has-associated-label
+
+/Users/shubhang/Desktop/Projects/uganda-dashboard/src/admin-dashboard/overview/AdminOverview.jsx
+  347:25  warning  A control must be associated with a text label  jsx-a11y/control-has-associated-label
+
+/Users/shubhang/Desktop/Projects/uganda-dashboard/src/admin-dashboard/shell/AdminMobileAppBar.jsx
+  95:29  warning  Elements with ARIA roles must use a valid, non-abstract ARIA role  jsx-a11y/aria-role
+
+/Users/shubhang/Desktop/Projects/uganda-dashboard/src/agent-dashboard/pages/NudgeSheet.jsx
+  141:15  warning  Form label must have ALL of the following types of associated control: nesting, id  jsx-a11y/label-has-for
+  142:15  warning  A control must be associated with a text label                                      jsx-a11y/control-has-associated-label
+
+/Users/shubhang/Desktop/Projects/uganda-dashboard/src/agent-dashboard/pages/SettingsDesktop.jsx
+  131:11  warning  Form label must have ALL of the following types of associated control: nesting, id  jsx-a11y/label-has-for
+  133:13  warning  A control must be associated with a text label                                      jsx-a11y/control-has-associated-label
+  144:11  warning  Form label must have ALL of the following types of associated control: nesting, id  jsx-a11y/label-has-for
+  146:13  warning  A control must be associated with a text label                                      jsx-a11y/control-has-associated-label
+  156:11  warning  Form label must have ALL of the following types of associated control: nesting, id  jsx-a11y/label-has-for
+  160:15  warning  A control must be associated with a text label                                      jsx-a11y/control-has-associated-label
+
+/Users/shubhang/Desktop/Projects/uganda-dashboard/src/agent-dashboard/pages/SettingsPage.jsx
+  108:11  warning  Form label must have ALL of the following types of associated control: nesting, id  jsx-a11y/label-has-for
+  110:13  warning  A control must be associated with a text label                                      jsx-a11y/control-has-associated-label
+  121:11  warning  Form label must have ALL of the following types of associated control: nesting, id  jsx-a11y/label-has-for
+  123:13  warning  A control must be associated with a text label                                      jsx-a11y/control-has-associated-label
+  133:11  warning  Form label must have ALL of the following types of associated control: nesting, id  jsx-a11y/label-has-for
+  137:15  warning  A control must be associated with a text label                                      jsx-a11y/control-has-associated-label
+
+/Users/shubhang/Desktop/Projects/uganda-dashboard/src/agent-dashboard/pages/UninsuredMembersPage.jsx
+  139:21  warning  Form label must have ALL of the following types of associated control: nesting, id  jsx-a11y/label-has-for
+  140:23  warning  A control must be associated with a text label                                      jsx-a11y/control-has-associated-label
+
+/Users/shubhang/Desktop/Projects/uganda-dashboard/src/agent-dashboard/pages/YetToContributePage.jsx
+  133:21  warning  Form label must have ALL of the following types of associated control: nesting, id  jsx-a11y/label-has-for
+  134:23  warning  A control must be associated with a text label                                      jsx-a11y/control-has-associated-label
+
+/Users/shubhang/Desktop/Projects/uganda-dashboard/src/agent-dashboard/shell/AgentDesktopShell.jsx
+  134:29  warning  Elements with ARIA roles must use a valid, non-abstract ARIA role  jsx-a11y/aria-role
+
+/Users/shubhang/Desktop/Projects/uganda-dashboard/src/agent-dashboard/shell/AgentMobileAppBar.jsx
+  115:41  warning  Elements with ARIA roles must use a valid, non-abstract ARIA role  jsx-a11y/aria-role
+
+/Users/shubhang/Desktop/Projects/uganda-dashboard/src/agent-dashboard/shell/SideNav.jsx
+  103:31  warning  Elements with ARIA roles must use a valid, non-abstract ARIA role  jsx-a11y/aria-role
+
+/Users/shubhang/Desktop/Projects/uganda-dashboard/src/branch-dashboard/agent/CreateAgentForm.jsx
+   75:15  warning  Form label must have ALL of the following types of associated control: nesting, id  jsx-a11y/label-has-for
+   76:15  warning  A control must be associated with a text label                                      jsx-a11y/control-has-associated-label
+   86:15  warning  Form label must have ALL of the following types of associated control: nesting, id  jsx-a11y/label-has-for
+   89:17  warning  A control must be associated with a text label                                      jsx-a11y/control-has-associated-label
+   99:15  warning  Form label must have ALL of the following types of associated control: nesting, id  jsx-a11y/label-has-for
+  113:15  warning  Form label must have ALL of the following types of associated control: nesting, id  jsx-a11y/label-has-for
+  114:15  warning  A control must be associated with a text label                                      jsx-a11y/control-has-associated-label
+  122:15  warning  Form label must have ALL of the following types of associated control: nesting, id  jsx-a11y/label-has-for
+  123:15  warning  A control must be associated with a text label                                      jsx-a11y/control-has-associated-label
+  131:15  warning  Form label must have ALL of the following types of associated control: nesting, id  jsx-a11y/label-has-for
+  132:15  warning  A control must be associated with a text label                                      jsx-a11y/control-has-associated-label
+
+/Users/shubhang/Desktop/Projects/uganda-dashboard/src/branch-dashboard/desktop/AttentionAgentsDesktop.jsx
+  174:11  warning  Form label must have ALL of the following types of associated control: nesting, id  jsx-a11y/label-has-for
+  175:11  warning  A control must be associated with a text label                                      jsx-a11y/control-has-associated-label
+
+/Users/shubhang/Desktop/Projects/uganda-dashboard/src/branch-dashboard/desktop/SettingsDesktop.jsx
+  52:17  warning  Form label must have ALL of the following types of associated control: nesting, id  jsx-a11y/label-has-for
+  53:17  warning  A control must be associated with a text label                                      jsx-a11y/control-has-associated-label
+  56:17  warning  Form label must have ALL of the following types of associated control: nesting, id  jsx-a11y/label-has-for
+  57:17  warning  A control must be associated with a text label                                      jsx-a11y/control-has-associated-label
+  60:17  warning  Form label must have ALL of the following types of associated control: nesting, id  jsx-a11y/label-has-for
+  61:17  warning  A control must be associated with a text label                                      jsx-a11y/control-has-associated-label
+  64:17  warning  Form label must have ALL of the following types of associated control: nesting, id  jsx-a11y/label-has-for
+  65:17  warning  A control must be associated with a text label                                      jsx-a11y/control-has-associated-label
+
+/Users/shubhang/Desktop/Projects/uganda-dashboard/src/branch-dashboard/mobile/AttentionAgentsMobile.jsx
+  190:9  warning  Form label must have ALL of the following types of associated control: nesting, id  jsx-a11y/label-has-for
+  191:9  warning  A control must be associated with a text label                                      jsx-a11y/control-has-associated-label
+
+/Users/shubhang/Desktop/Projects/uganda-dashboard/src/branch-dashboard/mobile/CreateAgentMobile.jsx
+  115:9   warning  Form label must have ALL of the following types of associated control: nesting, id  jsx-a11y/label-has-for
+  119:11  warning  A control must be associated with a text label                                      jsx-a11y/control-has-associated-label
+  131:9   warning  Form label must have ALL of the following types of associated control: nesting, id  jsx-a11y/label-has-for
+  136:11  warning  A control must be associated with a text label                                      jsx-a11y/control-has-associated-label
+  150:9   warning  Form label must have ALL of the following types of associated control: nesting, id  jsx-a11y/label-has-for
+  169:9   warning  Form label must have ALL of the following types of associated control: nesting, id  jsx-a11y/label-has-for
+  173:11  warning  A control must be associated with a text label                                      jsx-a11y/control-has-associated-label
+  184:9   warning  Form label must have ALL of the following types of associated control: nesting, id  jsx-a11y/label-has-for
+  188:11  warning  A control must be associated with a text label                                      jsx-a11y/control-has-associated-label
+  199:9   warning  Form label must have ALL of the following types of associated control: nesting, id  jsx-a11y/label-has-for
+  203:11  warning  A control must be associated with a text label                                      jsx-a11y/control-has-associated-label
+
+/Users/shubhang/Desktop/Projects/uganda-dashboard/src/branch-dashboard/mobile/SettingsMobile.jsx
+  115:13  warning  Form label must have ALL of the following types of associated control: nesting, id  jsx-a11y/label-has-for
+  125:13  warning  Form label must have ALL of the following types of associated control: nesting, id  jsx-a11y/label-has-for
+  127:15  warning  A control must be associated with a text label                                      jsx-a11y/control-has-associated-label
+  137:13  warning  Form label must have ALL of the following types of associated control: nesting, id  jsx-a11y/label-has-for
+  147:13  warning  Form label must have ALL of the following types of associated control: nesting, id  jsx-a11y/label-has-for
+  171:13  warning  Form label must have ALL of the following types of associated control: nesting, id  jsx-a11y/label-has-for
+  183:13  warning  Form label must have ALL of the following types of associated control: nesting, id  jsx-a11y/label-has-for
+  196:13  warning  Form label must have ALL of the following types of associated control: nesting, id  jsx-a11y/label-has-for
+
+/Users/shubhang/Desktop/Projects/uganda-dashboard/src/branch-dashboard/shell/BranchDesktopShell.jsx
+  132:29  warning  Elements with ARIA roles must use a valid, non-abstract ARIA role  jsx-a11y/aria-role
+
+/Users/shubhang/Desktop/Projects/uganda-dashboard/src/components/Modal.test.jsx
+   53:13  warning  A control must be associated with a text label                                                                                                                                                     jsx-a11y/control-has-associated-label
+  132:9   warning  Avoid non-native interactive elements. If using native HTML is not possible, add an appropriate role and support for tabbing, mouse, keyboard, and touch inputs to an interactive content element  jsx-a11y/no-static-element-interactions
+
+/Users/shubhang/Desktop/Projects/uganda-dashboard/src/components/PillChip.jsx
+  86:5  warning  Elements with the 'radiogroup' interactive role must be focusable  jsx-a11y/interactive-supports-focus
+
+/Users/shubhang/Desktop/Projects/uganda-dashboard/src/components/WarmupBanner.jsx
+  33:17  warning  Fast refresh only works when a file only exports components. Use a new file to share constants or functions between components  react-refresh/only-export-components
+
+/Users/shubhang/Desktop/Projects/uganda-dashboard/src/components/reports/FilterSelect.jsx
+  8:7  warning  Form label must have ALL of the following types of associated control: nesting, id  jsx-a11y/label-has-for
+
+/Users/shubhang/Desktop/Projects/uganda-dashboard/src/components/reports/ReportTable.jsx
+  183:13  warning  Form label must have ALL of the following types of associated control: nesting, id  jsx-a11y/label-has-for
+
+/Users/shubhang/Desktop/Projects/uganda-dashboard/src/components/signin/PhoneEntry.jsx
+  107:9   warning  Elements with the 'radiogroup' interactive role must be focusable                              jsx-a11y/interactive-supports-focus
+  148:13  warning  The autoFocus prop should not be used, as it can reduce usability and accessibility for users  jsx-a11y/no-autofocus
+
+/Users/shubhang/Desktop/Projects/uganda-dashboard/src/components/tickets/RaiseIssueSheet.jsx
+  123:13  warning  Form label must have ALL of the following types of associated control: nesting, id  jsx-a11y/label-has-for
+  126:13  warning  A control must be associated with a text label                                      jsx-a11y/control-has-associated-label
+  180:13  warning  Form label must have ALL of the following types of associated control: nesting, id  jsx-a11y/label-has-for
+  183:13  warning  A control must be associated with a text label                                      jsx-a11y/control-has-associated-label
+
+/Users/shubhang/Desktop/Projects/uganda-dashboard/src/dashboard/branch/CreateBranch.jsx
+  460:27  warning  Form label must have ALL of the following types of associated control: nesting, id  jsx-a11y/label-has-for
+  461:27  warning  A control must be associated with a text label                                      jsx-a11y/control-has-associated-label
+  475:27  warning  Form label must have ALL of the following types of associated control: nesting, id  jsx-a11y/label-has-for
+  487:27  warning  Form label must have ALL of the following types of associated control: nesting, id  jsx-a11y/label-has-for
+  488:27  warning  A control must be associated with a text label                                      jsx-a11y/control-has-associated-label
+  499:27  warning  Form label must have ALL of the following types of associated control: nesting, id  jsx-a11y/label-has-for
+  512:27  warning  Form label must have ALL of the following types of associated control: nesting, id  jsx-a11y/label-has-for
+  513:27  warning  A control must be associated with a text label                                      jsx-a11y/control-has-associated-label
+  528:27  warning  A form label must be associated with a control                                      jsx-a11y/label-has-associated-control
+  528:27  warning  Form label must have ALL of the following types of associated control: nesting, id  jsx-a11y/label-has-for
+  529:27  warning  A control must be associated with a text label                                      jsx-a11y/control-has-associated-label
+  540:27  warning  A form label must be associated with a control                                      jsx-a11y/label-has-associated-control
+  540:27  warning  Form label must have ALL of the following types of associated control: nesting, id  jsx-a11y/label-has-for
+  541:27  warning  A control must be associated with a text label                                      jsx-a11y/control-has-associated-label
+  568:27  warning  Form label must have ALL of the following types of associated control: nesting, id  jsx-a11y/label-has-for
+  569:27  warning  A control must be associated with a text label                                      jsx-a11y/control-has-associated-label
+  583:27  warning  Form label must have ALL of the following types of associated control: nesting, id  jsx-a11y/label-has-for
+  589:29  warning  A control must be associated with a text label                                      jsx-a11y/control-has-associated-label
+  605:27  warning  Form label must have ALL of the following types of associated control: nesting, id  jsx-a11y/label-has-for
+  606:27  warning  A control must be associated with a text label                                      jsx-a11y/control-has-associated-label
+
+/Users/shubhang/Desktop/Projects/uganda-dashboard/src/dashboard/branch/ViewBranches.jsx
+  343:17  warning  A form label must be associated with a control                                      jsx-a11y/label-has-associated-control
+  343:17  warning  Form label must have ALL of the following types of associated control: nesting, id  jsx-a11y/label-has-for
+  344:17  warning  A control must be associated with a text label                                      jsx-a11y/control-has-associated-label
+  347:17  warning  A form label must be associated with a control                                      jsx-a11y/label-has-associated-control
+  347:17  warning  Form label must have ALL of the following types of associated control: nesting, id  jsx-a11y/label-has-for
+  348:17  warning  A control must be associated with a text label                                      jsx-a11y/control-has-associated-label
+  351:17  warning  A form label must be associated with a control                                      jsx-a11y/label-has-associated-control
+  351:17  warning  Form label must have ALL of the following types of associated control: nesting, id  jsx-a11y/label-has-for
+  352:17  warning  A control must be associated with a text label                                      jsx-a11y/control-has-associated-label
+  357:15  warning  A form label must be associated with a control                                      jsx-a11y/label-has-associated-control
+  357:15  warning  Form label must have ALL of the following types of associated control: nesting, id  jsx-a11y/label-has-for
+  358:15  warning  A control must be associated with a text label                                      jsx-a11y/control-has-associated-label
+  898:31  warning  A control must be associated with a text label                                      jsx-a11y/control-has-associated-label
+
+/Users/shubhang/Desktop/Projects/uganda-dashboard/src/dashboard/cards/MetricsRow.jsx
+  103:7  warning  A control must be associated with a text label  jsx-a11y/control-has-associated-label
+
+/Users/shubhang/Desktop/Projects/uganda-dashboard/src/dashboard/commissions/CommissionPanel.jsx
+  619:35  warning  The autoFocus prop should not be used, as it can reduce usability and accessibility for users  jsx-a11y/no-autofocus
+
+/Users/shubhang/Desktop/Projects/uganda-dashboard/src/dashboard/mobile/VirtualRows.jsx
+  27:23  warning  Compilation Skipped: Use of incompatible library
+
+This API returns functions which cannot be memoized without leading to stale UI. To prevent this, by default React Compiler will skip memoizing this component/hook. However, you may see issues if values from this API are passed to other components/hooks that are memoized.
+
+  25 |   const estimate = useCallback(() => estimateSize, [estimateSize]);
+  26 |
+> 27 |   const virtualizer = useVirtualizer({
+     |                       ^^^^^^^^^^^^^^ TanStack Virtual's `useVirtualizer()` API returns functions that cannot be memoized safely
+  28 |     count: items.length,
+  29 |     getScrollElement,
+  30 |     estimateSize: estimate,  react-hooks/incompatible-library
+
+/Users/shubhang/Desktop/Projects/uganda-dashboard/src/dashboard/overlay/OverlayPanel.jsx
+  174:11  warning  The autoFocus prop should not be used, as it can reduce usability and accessibility for users  jsx-a11y/no-autofocus
+  448:19  warning  A control must be associated with a text label                                                 jsx-a11y/control-has-associated-label
+  813:13  warning  A control must be associated with a text label                                                 jsx-a11y/control-has-associated-label
+
+/Users/shubhang/Desktop/Projects/uganda-dashboard/src/dashboard/overview/DistributorOverview.jsx
+  315:25  warning  A control must be associated with a text label  jsx-a11y/control-has-associated-label
+  408:23  warning  A control must be associated with a text label  jsx-a11y/control-has-associated-label
+
+/Users/shubhang/Desktop/Projects/uganda-dashboard/src/dashboard/settings/Settings.jsx
+  396:21  warning  Form label must have ALL of the following types of associated control: nesting, id  jsx-a11y/label-has-for
+  399:21  warning  A control must be associated with a text label                                      jsx-a11y/control-has-associated-label
+  413:21  warning  Form label must have ALL of the following types of associated control: nesting, id  jsx-a11y/label-has-for
+  416:21  warning  A control must be associated with a text label                                      jsx-a11y/control-has-associated-label
+  428:21  warning  Form label must have ALL of the following types of associated control: nesting, id  jsx-a11y/label-has-for
+  435:23  warning  A control must be associated with a text label                                      jsx-a11y/control-has-associated-label
+  487:23  warning  Form label must have ALL of the following types of associated control: nesting, id  jsx-a11y/label-has-for
+  491:25  warning  A control must be associated with a text label                                      jsx-a11y/control-has-associated-label
+  519:21  warning  Form label must have ALL of the following types of associated control: nesting, id  jsx-a11y/label-has-for
+  523:23  warning  A control must be associated with a text label                                      jsx-a11y/control-has-associated-label
+  553:21  warning  Form label must have ALL of the following types of associated control: nesting, id  jsx-a11y/label-has-for
+  557:23  warning  A control must be associated with a text label                                      jsx-a11y/control-has-associated-label
+
+/Users/shubhang/Desktop/Projects/uganda-dashboard/src/dashboard/shell/DistributorMobileAppBar.jsx
+  88:31  warning  Elements with ARIA roles must use a valid, non-abstract ARIA role  jsx-a11y/aria-role
+
+/Users/shubhang/Desktop/Projects/uganda-dashboard/src/dashboard/sidebar/Sidebar.jsx
+  680:31  warning  Elements with ARIA roles must use a valid, non-abstract ARIA role  jsx-a11y/aria-role
+
+/Users/shubhang/Desktop/Projects/uganda-dashboard/src/dashboard/subscriber/ViewSubscribers.jsx
+  259:9   warning  The 'allSubscribersRaw' logical expression could make the dependencies of useMemo Hook (at line 297) change on every render. To fix this, wrap the initialization of 'allSubscribersRaw' in its own useMemo() Hook                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               react-hooks/exhaustive-deps
+  259:9   warning  The 'allSubscribersRaw' logical expression could make the dependencies of useMemo Hook (at line 320) change on every render. To fix this, wrap the initialization of 'allSubscribersRaw' in its own useMemo() Hook                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               react-hooks/exhaustive-deps
+  323:23  warning  Compilation Skipped: Use of incompatible library
+
+This API returns functions which cannot be memoized without leading to stale UI. To prevent this, by default React Compiler will skip memoizing this component/hook. However, you may see issues if values from this API are passed to other components/hooks that are memoized.
+
+  321 |
+  322 |   const estimateSize = useCallback(() => 72, []);
+> 323 |   const virtualizer = useVirtualizer({
+      |                       ^^^^^^^^^^^^^^ TanStack Virtual's `useVirtualizer()` API returns functions that cannot be memoized safely
+  324 |     count: filtered.length,
+  325 |     getScrollElement: () => bodyRef.current,
+  326 |     estimateSize,  react-hooks/incompatible-library
+
+/Users/shubhang/Desktop/Projects/uganda-dashboard/src/employer-dashboard/desktop/EmployeesDesktop.jsx
+  206:21  warning  A control must be associated with a text label  jsx-a11y/control-has-associated-label
+
+/Users/shubhang/Desktop/Projects/uganda-dashboard/src/employer-dashboard/desktop/SupportDesktop.jsx
+  164:11  warning  Form label must have ALL of the following types of associated control: nesting, id  jsx-a11y/label-has-for
+  165:11  warning  A control must be associated with a text label                                      jsx-a11y/control-has-associated-label
+  181:13  warning  Form label must have ALL of the following types of associated control: nesting, id  jsx-a11y/label-has-for
+  195:13  warning  Form label must have ALL of the following types of associated control: nesting, id  jsx-a11y/label-has-for
+  210:11  warning  Form label must have ALL of the following types of associated control: nesting, id  jsx-a11y/label-has-for
+  211:11  warning  A control must be associated with a text label                                      jsx-a11y/control-has-associated-label
+
+/Users/shubhang/Desktop/Projects/uganda-dashboard/src/employer-dashboard/employees/MemberDetailBody.jsx
+  140:21  warning  The autoFocus prop should not be used, as it can reduce usability and accessibility for users  jsx-a11y/no-autofocus
+
+/Users/shubhang/Desktop/Projects/uganda-dashboard/src/employer-dashboard/runs/runViews.jsx
+   31:14  warning  Fast refresh only works when a file only exports components. Use a new file to share constants or functions between components  react-refresh/only-export-components
+   35:14  warning  Fast refresh only works when a file only exports components. Use a new file to share constants or functions between components  react-refresh/only-export-components
+   36:14  warning  Fast refresh only works when a file only exports components. Use a new file to share constants or functions between components  react-refresh/only-export-components
+   61:17  warning  Fast refresh only works when a file only exports components. Use a new file to share constants or functions between components  react-refresh/only-export-components
+   70:17  warning  Fast refresh only works when a file only exports components. Use a new file to share constants or functions between components  react-refresh/only-export-components
+  221:42  warning  Non-interactive elements should not be assigned interactive roles                                                               jsx-a11y/no-noninteractive-element-to-interactive-role
+  250:17  warning  Fast refresh only works when a file only exports components. Use a new file to share constants or functions between components  react-refresh/only-export-components
+  397:13  warning  Form label must have ALL of the following types of associated control: nesting, id                                              jsx-a11y/label-has-for
+  398:13  warning  A control must be associated with a text label                                                                                  jsx-a11y/control-has-associated-label
+  408:13  warning  Form label must have ALL of the following types of associated control: nesting, id                                              jsx-a11y/label-has-for
+
+/Users/shubhang/Desktop/Projects/uganda-dashboard/src/employer-dashboard/settings/GroupInsuranceFieldset.jsx
+  48:13  warning  Form label must have ALL of the following types of associated control: nesting, id  jsx-a11y/label-has-for
+  49:15  warning  A control must be associated with a text label                                      jsx-a11y/control-has-associated-label
+  62:17  warning  Form label must have ALL of the following types of associated control: nesting, id  jsx-a11y/label-has-for
+  65:17  warning  A control must be associated with a text label                                      jsx-a11y/control-has-associated-label
+
+/Users/shubhang/Desktop/Projects/uganda-dashboard/src/employer-dashboard/settings/settingsTabs.jsx
+  396:9   warning  Form label must have ALL of the following types of associated control: nesting, id  jsx-a11y/label-has-for
+  399:9   warning  A control must be associated with a text label                                      jsx-a11y/control-has-associated-label
+  413:9   warning  Form label must have ALL of the following types of associated control: nesting, id  jsx-a11y/label-has-for
+  428:9   warning  Form label must have ALL of the following types of associated control: nesting, id  jsx-a11y/label-has-for
+  429:9   warning  A control must be associated with a text label                                      jsx-a11y/control-has-associated-label
+  440:9   warning  Form label must have ALL of the following types of associated control: nesting, id  jsx-a11y/label-has-for
+  441:9   warning  A control must be associated with a text label                                      jsx-a11y/control-has-associated-label
+  453:9   warning  Form label must have ALL of the following types of associated control: nesting, id  jsx-a11y/label-has-for
+  471:9   warning  Form label must have ALL of the following types of associated control: nesting, id  jsx-a11y/label-has-for
+  472:9   warning  A control must be associated with a text label                                      jsx-a11y/control-has-associated-label
+  484:9   warning  Form label must have ALL of the following types of associated control: nesting, id  jsx-a11y/label-has-for
+  485:9   warning  A control must be associated with a text label                                      jsx-a11y/control-has-associated-label
+  498:9   warning  Form label must have ALL of the following types of associated control: nesting, id  jsx-a11y/label-has-for
+  499:9   warning  A control must be associated with a text label                                      jsx-a11y/control-has-associated-label
+  608:13  warning  Form label must have ALL of the following types of associated control: nesting, id  jsx-a11y/label-has-for
+  609:15  warning  A control must be associated with a text label                                      jsx-a11y/control-has-associated-label
+  630:13  warning  Form label must have ALL of the following types of associated control: nesting, id  jsx-a11y/label-has-for
+  633:13  warning  A control must be associated with a text label                                      jsx-a11y/control-has-associated-label
+  657:13  warning  Form label must have ALL of the following types of associated control: nesting, id  jsx-a11y/label-has-for
+  660:13  warning  A control must be associated with a text label                                      jsx-a11y/control-has-associated-label
+  878:11  warning  Form label must have ALL of the following types of associated control: nesting, id  jsx-a11y/label-has-for
+  880:13  warning  A control must be associated with a text label                                      jsx-a11y/control-has-associated-label
+  907:9   warning  Form label must have ALL of the following types of associated control: nesting, id  jsx-a11y/label-has-for
+  909:11  warning  A control must be associated with a text label                                      jsx-a11y/control-has-associated-label
+  936:9   warning  Form label must have ALL of the following types of associated control: nesting, id  jsx-a11y/label-has-for
+  938:11  warning  A control must be associated with a text label                                      jsx-a11y/control-has-associated-label
+
+/Users/shubhang/Desktop/Projects/uganda-dashboard/src/employer-dashboard/shell/EmployerDesktopShell.jsx
+  120:29  warning  Elements with ARIA roles must use a valid, non-abstract ARIA role  jsx-a11y/aria-role
+
+/Users/shubhang/Desktop/Projects/uganda-dashboard/src/employer-dashboard/shell/EmployerMobileAppBar.jsx
+  110:44  warning  Elements with ARIA roles must use a valid, non-abstract ARIA role  jsx-a11y/aria-role
+
+/Users/shubhang/Desktop/Projects/uganda-dashboard/src/pages/Contact.jsx
+  158:21  warning  Form label must have ALL of the following types of associated control: nesting, id  jsx-a11y/label-has-for
+  159:21  warning  A control must be associated with a text label                                      jsx-a11y/control-has-associated-label
+  173:21  warning  Form label must have ALL of the following types of associated control: nesting, id  jsx-a11y/label-has-for
+  174:21  warning  A control must be associated with a text label                                      jsx-a11y/control-has-associated-label
+  188:21  warning  Form label must have ALL of the following types of associated control: nesting, id  jsx-a11y/label-has-for
+  189:21  warning  A control must be associated with a text label                                      jsx-a11y/control-has-associated-label
+
+/Users/shubhang/Desktop/Projects/uganda-dashboard/src/pages/NomineeClaim.jsx
+   64:7   warning  Form label must have ALL of the following types of associated control: nesting, id  jsx-a11y/label-has-for
+  329:21  warning  A control must be associated with a text label                                      jsx-a11y/control-has-associated-label
+
+/Users/shubhang/Desktop/Projects/uganda-dashboard/src/pages/RequestAccess.jsx
+   62:7   warning  Form label must have ALL of the following types of associated control: nesting, id  jsx-a11y/label-has-for
+  244:50  warning  A control must be associated with a text label                                      jsx-a11y/control-has-associated-label
+
+/Users/shubhang/Desktop/Projects/uganda-dashboard/src/pages/landing/mobile/ContactMobile.jsx
+  133:13  warning  Form label must have ALL of the following types of associated control: nesting, id  jsx-a11y/label-has-for
+  134:13  warning  A control must be associated with a text label                                      jsx-a11y/control-has-associated-label
+  145:13  warning  Form label must have ALL of the following types of associated control: nesting, id  jsx-a11y/label-has-for
+  146:13  warning  A control must be associated with a text label                                      jsx-a11y/control-has-associated-label
+  158:13  warning  Form label must have ALL of the following types of associated control: nesting, id  jsx-a11y/label-has-for
+  159:13  warning  A control must be associated with a text label                                      jsx-a11y/control-has-associated-label
+
+/Users/shubhang/Desktop/Projects/uganda-dashboard/src/pages/landing/mobile/RequestAccessMobile.jsx
+  110:15  warning  Form label must have ALL of the following types of associated control: nesting, id  jsx-a11y/label-has-for
+  111:15  warning  A control must be associated with a text label                                      jsx-a11y/control-has-associated-label
+  120:15  warning  Form label must have ALL of the following types of associated control: nesting, id  jsx-a11y/label-has-for
+  121:15  warning  A control must be associated with a text label                                      jsx-a11y/control-has-associated-label
+  129:15  warning  Form label must have ALL of the following types of associated control: nesting, id  jsx-a11y/label-has-for
+  130:15  warning  A control must be associated with a text label                                      jsx-a11y/control-has-associated-label
+  136:15  warning  Form label must have ALL of the following types of associated control: nesting, id  jsx-a11y/label-has-for
+  137:15  warning  A control must be associated with a text label                                      jsx-a11y/control-has-associated-label
+  143:15  warning  Form label must have ALL of the following types of associated control: nesting, id  jsx-a11y/label-has-for
+  144:15  warning  A control must be associated with a text label                                      jsx-a11y/control-has-associated-label
+  154:15  warning  Form label must have ALL of the following types of associated control: nesting, id  jsx-a11y/label-has-for
+  155:15  warning  A control must be associated with a text label                                      jsx-a11y/control-has-associated-label
+  161:15  warning  Form label must have ALL of the following types of associated control: nesting, id  jsx-a11y/label-has-for
+  162:15  warning  A control must be associated with a text label                                      jsx-a11y/control-has-associated-label
+  167:74  warning  A control must be associated with a text label                                      jsx-a11y/control-has-associated-label
+
+/Users/shubhang/Desktop/Projects/uganda-dashboard/src/pages/landing/mobile/SubscribersMobile.jsx
+  45:7  warning  A control must be associated with a text label  jsx-a11y/control-has-associated-label
+  46:7  warning  A control must be associated with a text label  jsx-a11y/control-has-associated-label
+  47:7  warning  A control must be associated with a text label  jsx-a11y/control-has-associated-label
+
+/Users/shubhang/Desktop/Projects/uganda-dashboard/src/pages/landing/shell/LandingMenuSheet.jsx
+  116:11  warning  Anchor used as a button. Anchors are primarily expected to navigate. Use the button element instead. Learn more: https://github.com/jsx-eslint/eslint-plugin-jsx-a11y/blob/HEAD/docs/rules/anchor-is-valid.md  jsx-a11y/anchor-is-valid
+  117:11  warning  Anchor used as a button. Anchors are primarily expected to navigate. Use the button element instead. Learn more: https://github.com/jsx-eslint/eslint-plugin-jsx-a11y/blob/HEAD/docs/rules/anchor-is-valid.md  jsx-a11y/anchor-is-valid
+  118:11  warning  Anchor used as a button. Anchors are primarily expected to navigate. Use the button element instead. Learn more: https://github.com/jsx-eslint/eslint-plugin-jsx-a11y/blob/HEAD/docs/rules/anchor-is-valid.md  jsx-a11y/anchor-is-valid
+  119:11  warning  Anchor used as a button. Anchors are primarily expected to navigate. Use the button element instead. Learn more: https://github.com/jsx-eslint/eslint-plugin-jsx-a11y/blob/HEAD/docs/rules/anchor-is-valid.md  jsx-a11y/anchor-is-valid
+
+/Users/shubhang/Desktop/Projects/uganda-dashboard/src/pages/landing/shell/installPrompt.jsx
+  129:17  warning  Fast refresh only works when a file only exports components. Use a new file to share constants or functions between components  react-refresh/only-export-components
+
+/Users/shubhang/Desktop/Projects/uganda-dashboard/src/signup/SignupPage.jsx
+  55:17  warning  Fast refresh only works when a file only exports components. Use a new file to share constants or functions between components  react-refresh/only-export-components
+
+/Users/shubhang/Desktop/Projects/uganda-dashboard/src/signup/contribution/ContributionSettings.jsx
+   338:15  warning  A control must be associated with a text label                                      jsx-a11y/control-has-associated-label
+   381:27  warning  Form label must have ALL of the following types of associated control: nesting, id  jsx-a11y/label-has-for
+   385:31  warning  A control must be associated with a text label                                      jsx-a11y/control-has-associated-label
+  1004:15  warning  Form label must have ALL of the following types of associated control: nesting, id  jsx-a11y/label-has-for
+
+/Users/shubhang/Desktop/Projects/uganda-dashboard/src/signup/steps/BeneficiariesStep.jsx
+  191:9   warning  A form label must have accessible text                                              jsx-a11y/label-has-associated-control
+  191:9   warning  Form label must have ALL of the following types of associated control: nesting, id  jsx-a11y/label-has-for
+  192:11  warning  A control must be associated with a text label                                      jsx-a11y/control-has-associated-label
+  434:11  warning  Form label must have ALL of the following types of associated control: nesting, id  jsx-a11y/label-has-for
+  435:11  warning  A control must be associated with a text label                                      jsx-a11y/control-has-associated-label
+  446:11  warning  Form label must have ALL of the following types of associated control: nesting, id  jsx-a11y/label-has-for
+  452:13  warning  A control must be associated with a text label                                      jsx-a11y/control-has-associated-label
+  466:11  warning  Form label must have ALL of the following types of associated control: nesting, id  jsx-a11y/label-has-for
+  481:11  warning  Form label must have ALL of the following types of associated control: nesting, id  jsx-a11y/label-has-for
+  487:15  warning  A control must be associated with a text label                                      jsx-a11y/control-has-associated-label
+
+/Users/shubhang/Desktop/Projects/uganda-dashboard/src/signup/steps/ConsentStep.jsx
+  120:7  warning  A form label must have accessible text                                              jsx-a11y/label-has-associated-control
+  120:7  warning  Form label must have ALL of the following types of associated control: nesting, id  jsx-a11y/label-has-for
+  121:9  warning  A control must be associated with a text label                                      jsx-a11y/control-has-associated-label
+
+/Users/shubhang/Desktop/Projects/uganda-dashboard/src/signup/steps/IdUploadStep.jsx
+  184:7  warning  Form label must have ALL of the following types of associated control: nesting, id  jsx-a11y/label-has-for
+
+/Users/shubhang/Desktop/Projects/uganda-dashboard/src/signup/steps/LivenessStep.jsx
+  309:11  warning  A control must be associated with a text label  jsx-a11y/control-has-associated-label
+
+/Users/shubhang/Desktop/Projects/uganda-dashboard/src/signup/steps/ReviewStep.jsx
+  332:11  warning  A control must be associated with a text label                                      jsx-a11y/control-has-associated-label
+  343:11  warning  A control must be associated with a text label                                      jsx-a11y/control-has-associated-label
+  357:11  warning  A control must be associated with a text label                                      jsx-a11y/control-has-associated-label
+  370:11  warning  A control must be associated with a text label                                      jsx-a11y/control-has-associated-label
+  402:13  warning  A control must be associated with a text label                                      jsx-a11y/control-has-associated-label
+  421:67  warning  Non-interactive elements should not be assigned interactive roles                   jsx-a11y/no-noninteractive-element-to-interactive-role
+  423:34  warning  Non-interactive elements should not be assigned interactive roles                   jsx-a11y/no-noninteractive-element-to-interactive-role
+  460:13  warning  A control must be associated with a text label                                      jsx-a11y/control-has-associated-label
+  498:11  warning  A control must be associated with a text label                                      jsx-a11y/control-has-associated-label
+  525:13  warning  A control must be associated with a text label                                      jsx-a11y/control-has-associated-label
+  557:13  warning  A control must be associated with a text label                                      jsx-a11y/control-has-associated-label
+  628:7   warning  Form label must have ALL of the following types of associated control: nesting, id  jsx-a11y/label-has-for
+
+/Users/shubhang/Desktop/Projects/uganda-dashboard/src/subscriber-dashboard/pages/ClaimPage.jsx
+   86:9   warning  Form label must have ALL of the following types of associated control: nesting, id  jsx-a11y/label-has-for
+   88:11  warning  A control must be associated with a text label                                      jsx-a11y/control-has-associated-label
+   96:9   warning  Form label must have ALL of the following types of associated control: nesting, id  jsx-a11y/label-has-for
+   98:11  warning  A control must be associated with a text label                                      jsx-a11y/control-has-associated-label
+  108:7   warning  Form label must have ALL of the following types of associated control: nesting, id  jsx-a11y/label-has-for
+  110:9   warning  A control must be associated with a text label                                      jsx-a11y/control-has-associated-label
+  458:25  warning  Form label must have ALL of the following types of associated control: nesting, id  jsx-a11y/label-has-for
+  577:17  warning  Form label must have ALL of the following types of associated control: nesting, id  jsx-a11y/label-has-for
+
+/Users/shubhang/Desktop/Projects/uganda-dashboard/src/subscriber-dashboard/pages/HelpPage.jsx
+  141:15  warning  A control must be associated with a text label  jsx-a11y/control-has-associated-label
+  156:15  warning  A control must be associated with a text label  jsx-a11y/control-has-associated-label
+  172:15  warning  A control must be associated with a text label  jsx-a11y/control-has-associated-label
+
+/Users/shubhang/Desktop/Projects/uganda-dashboard/src/subscriber-dashboard/pages/NomineesPage.jsx
+   91:15  warning  Form label must have ALL of the following types of associated control: nesting, id  jsx-a11y/label-has-for
+   93:17  warning  A control must be associated with a text label                                      jsx-a11y/control-has-associated-label
+  104:17  warning  Form label must have ALL of the following types of associated control: nesting, id  jsx-a11y/label-has-for
+  118:17  warning  Form label must have ALL of the following types of associated control: nesting, id  jsx-a11y/label-has-for
+  121:21  warning  A control must be associated with a text label                                      jsx-a11y/control-has-associated-label
+  137:17  warning  Form label must have ALL of the following types of associated control: nesting, id  jsx-a11y/label-has-for
+  141:21  warning  A control must be associated with a text label                                      jsx-a11y/control-has-associated-label
+  153:17  warning  Form label must have ALL of the following types of associated control: nesting, id  jsx-a11y/label-has-for
+  155:19  warning  A control must be associated with a text label                                      jsx-a11y/control-has-associated-label
+
+/Users/shubhang/Desktop/Projects/uganda-dashboard/src/subscriber-dashboard/pages/ProfilePage.jsx
+  149:13  warning  Form label must have ALL of the following types of associated control: nesting, id  jsx-a11y/label-has-for
+  151:15  warning  A control must be associated with a text label                                      jsx-a11y/control-has-associated-label
+  161:13  warning  Form label must have ALL of the following types of associated control: nesting, id  jsx-a11y/label-has-for
+  165:17  warning  A control must be associated with a text label                                      jsx-a11y/control-has-associated-label
+  177:13  warning  Form label must have ALL of the following types of associated control: nesting, id  jsx-a11y/label-has-for
+  179:15  warning  A control must be associated with a text label                                      jsx-a11y/control-has-associated-label
+
+/Users/shubhang/Desktop/Projects/uganda-dashboard/src/subscriber-dashboard/pages/SavePage.jsx
+  305:21  warning  Form label must have ALL of the following types of associated control: nesting, id  jsx-a11y/label-has-for
+  512:15  warning  Form label must have ALL of the following types of associated control: nesting, id  jsx-a11y/label-has-for
+
+✖ 323 problems (0 errors, 323 warnings)
+
+EXIT=0

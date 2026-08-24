@@ -1,0 +1,119 @@
+[
+ {
+  "id": "A15-001",
+  "title": "Mobile subscriber detail shows every member's Balance / Contributions / Withdrawals as \"\u2014\" though the member holds real money",
+  "severity": "high",
+  "confidence": "confirmed",
+  "category": "correctness",
+  "surface": "admin (shared with distributor, branch) \u2014 mobile shell",
+  "location": "src/dashboard/mobile/SubscriberDetailMobile.jsx:11-12,73-75 (root cause: services/entities.js getEntity SELECT '*' with no balance embed + mapSubscriber totalContributions/totalWithdrawals never sourced)",
+  "evidence": "DB: `psql ... \"SELECT id,name,total_balance FROM subscribers s JOIN subscriber_balances b ON b.subscriber_id=s.id WHERE id IN ('empe-001','s-0001')\"` -> empe-001|Brian Okello|24471589 ; s-0001|Carol Obua|1411092. UI @375 (scratch/a15-08 list-click path AND a15-07 cold deep-link): DETAIL @0.8s and @5s both render `BALANCE \u2014 CONTRIBUTIONS \u2014 WITHDRAWALS \u2014` for empe-001 (list shows 24.5M) and s-0001. Desktop is correct (a15-09: `BALANCE UGX 24.5M TOTAL CONTRIBUTIONS UGX 22.4M`). formatUGX(0) returns '\u2014' (utils/currency.js:32). Screenshots screenshots/admin/m-subscriber-detail-fromlist-375.png, m-subscriber-detail-375.png, desktop-subscriber-detail-1440.png.",
+  "impact": "WRONG/MISSING MONEY on a supported viewport. A rep on a phone tapping any member to show their savings sees Balance/Contributions/Withdrawals all '\u2014' for members holding millions, on the admin, distributor AND branch dashboards. The list says 24.5M; the detail says nothing. Borders critical for a live phone demo.",
+  "suggested_fix": "In SubscriberDetailMobile render formatUGX(sub.totalBalance) for Balance and add the same id-bounded lifetime fetch the desktop ViewSubscribers already uses for contributions/withdrawals; and/or have getEntity('subscriber', id) embed subscriber_balances(total_balance) so cold deep-links populate.",
+  "demo_visible": true,
+  "effort": "M",
+  "roles_affected": [
+   "admin",
+   "distributor",
+   "branch"
+  ],
+  "repro": [
+   "At 375px sign in as admin (admin-001) via /admin/login",
+   "Go to Subscribers, tap 'Brian Okello' (or open /dashboard/subscribers/empe-001)",
+   "Observe Balance \u2014, Contributions \u2014, Withdrawals \u2014 while the list row and desktop both show UGX 24.5M"
+  ],
+  "agent": "A15"
+ },
+ {
+  "id": "A15-002",
+  "title": "Admin platform hero has no error/retry state; a failed money read renders \"\u2014\" / 0 subscribers / \"Needs work\" silently",
+  "severity": "medium",
+  "confidence": "confirmed",
+  "category": "error-state",
+  "surface": "admin \u2014 desktop/mobile shared hero",
+  "location": "AdminOverview/AdminCountryOverview hero reading get_platform_overview (src/services/entities.js:1279) + get_entity_metrics_rollup; no QueryCache.onError in src/main.jsx",
+  "evidence": "scratch/a15-05-hero-fail.mjs: logged in with read working, then page.route('**/rpc/get_platform_overview*', abort) + reload -> hero: `FUNDS UNDER MANAGEMENT \u2014 \u00b7 0 distributors \u00b7 0 employers \u00b7 CONTRIBUTIONS \u2014 \u00b7 SUBSCRIBERS 0 \u00b7 0 active \u00b7 0% \u00b7 AGENTS 0 Across 0 branches \u00b7 Health Score 0 Needs work`; has 'unavailable': false; has 'retry': false; role=status/alert count: 0. Screenshot screenshots/admin/desktop-hero-read-fail-1440.png.",
+  "impact": "If the admin platform-overview read fails (or during the documented cold-restore window), the hero silently reports a UGX 0 / 0-subscriber 'Needs work' platform with no message and no retry, indistinguishable from a genuinely empty platform. The only 'Metrics unavailable' role=status badge lives on a secondary Summary card in Map view, not the mounted hero. Cross-ref A22-002.",
+  "suggested_fix": "Give the shared hero an isError branch (message + Retry that calls refetch()); add a global QueryCache.onError toast so no read fails entirely silently.",
+  "demo_visible": true,
+  "effort": "S",
+  "roles_affected": [
+   "admin",
+   "distributor",
+   "branch"
+  ],
+  "repro": [
+   "Sign in as admin, on /dashboard block the get_platform_overview RPC",
+   "Reload \u2014 hero shows \u2014/0/'Needs work' with no error message and no retry"
+  ],
+  "agent": "A15"
+ },
+ {
+  "id": "A15-003",
+  "title": "Reconciliation queue shows leftover test-fixture rows (\"TST tree member\", \"TST retag probe\") in the live admin drill",
+  "severity": "medium",
+  "confidence": "confirmed",
+  "category": "data-hygiene",
+  "surface": "admin \u2014 Needs Attention > Reconciliation drill",
+  "location": "v_reconciliation_exceptions -> get_admin_attention reconciliation drill (AdminAttentionDesktop / attention/reconciliation)",
+  "evidence": "`psql ... \"SELECT * FROM v_reconciliation_exceptions\"` returns 7 rows: 4 orphans tst-sub-tree-msc7vzsc 'TST tree member', tst-sub-emp-msc7vzsc 'TST employer member', tst-sub-retag-msc7vzsc 'TST retag probe', tst-sub-tree-msd3855c (missing_balance) + 3 intended demo rows t-demo-recon-1/2/3 (agent_mismatch). On screen: OPEN EXCEPTIONS 7 with rows literally named 'TST ...' (screenshots/admin/desktop-reconciliation-drill-1440.png, m-attention-reconciliation-375.png). These 4 tst-* rows are exactly the subscribers 5064 vs subscriber_balances 5060 gap.",
+  "impact": "An admin drilling into Reconciliation during a demo sees test-harness debris ('TST \u2026 probe') in a finance-facing exception queue \u2014 a credibility hit and data-hygiene leak into the shared live demo DB. Cross-ref A06 (owns the orphan cleanup).",
+  "suggested_fix": "Delete the 4 tst-sub-* subscribers left by prior test runs (and any orphaned rows); they should never have been committed to the shared live DB.",
+  "demo_visible": true,
+  "effort": "S",
+  "roles_affected": [
+   "admin"
+  ],
+  "repro": [
+   "Sign in as admin",
+   "Needs attention card > Reconciliation issues",
+   "Observe 7 open exceptions, 4 named 'TST tree member'/'TST employer member'/'TST retag probe'"
+  ],
+  "agent": "A15"
+ },
+ {
+  "id": "A15-004",
+  "title": "Mobile Agents list flashes \"0 Subscribers \u00b7 0 Funds\" before per-agent metrics resolve",
+  "severity": "low",
+  "confidence": "confirmed",
+  "category": "loading-state",
+  "surface": "admin (shared) \u2014 mobile Agents list",
+  "location": "src/dashboard/mobile/AgentsMobile.jsx:71-75 (totals reduce over a.metrics?.totalSubscribers/aum); isLoading guard at :80 doesn't cover the rows-loaded-metrics-pending window",
+  "evidence": "scratch/a15-06 (@1.6s): `2,046 Agents  0 Subscribers  0 Funds` \u2026 `Dorothy Kiiza \u2026 0 subs`. scratch/a15-07 (@5s): `2,046 Agents  5,001 Subscribers  2.12B Funds` \u2026 `Beatrice Mugisha \u2026 12 subs`. SQL: subs-via-agent=5001, agent-channel AUM=2.125B. Screenshots screenshots/admin/m-agents-375.png vs m-agents-deep-375.png.",
+  "impact": "Transient, self-correcting (~1-3s on the shared remote DB) but shows a '0 Funds' money figure on first paint of the Agents tab \u2014 a brief wrong-zero a rep could hit mid-demo.",
+  "suggested_fix": "Show a skeleton/placeholder ('\u2014') for the totals strip and per-row subs until metrics is present, rather than defaulting to 0.",
+  "demo_visible": true,
+  "effort": "S",
+  "roles_affected": [
+   "admin",
+   "distributor"
+  ],
+  "repro": [
+   "At 375px sign in as admin",
+   "Open Agents \u2014 header reads '0 Subscribers 0 Funds' for ~1-3s, then corrects to 5,001 / 2.12B"
+  ],
+  "agent": "A15"
+ },
+ {
+  "id": "A15-005",
+  "title": "Admin hero UGX 2.45B / 321 branches verified correct for admin scope (source figure for A22-001 bleed)",
+  "severity": "info",
+  "confidence": "confirmed",
+  "category": "verification",
+  "surface": "admin \u2014 /dashboard hero",
+  "location": "admin /dashboard hero (get_platform_overview)",
+  "evidence": "`psql ...` platform totals: subscribers 5064, active 3968, distributors 3, employers 8, branches 321, agents 2046, AUM 2450226487 (2.4502B), contributions 2.0038B \u2014 every hero figure matches. Screenshot screenshots/admin/index-1440.png.",
+  "impact": "None on the admin surface; recorded so the A22-001 source screenshot is traceable. The cross-tenant bleed of this figure into distributor d-002's cache is A22-001's finding, not an admin-side defect.",
+  "suggested_fix": "No admin-side action; fix belongs to A22-001 (clear React Query cache on login, not only logout).",
+  "demo_visible": false,
+  "effort": "S",
+  "roles_affected": [
+   "admin"
+  ],
+  "repro": [
+   "Sign in as admin at /admin/login",
+   "Hero shows UGX 2.45B / 321 branches / 5,064 subscribers \u2014 all match SQL"
+  ],
+  "agent": "A15"
+ }
+]

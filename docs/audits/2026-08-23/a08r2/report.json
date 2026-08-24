@@ -1,0 +1,2636 @@
+{
+  "summary": {
+    "filesScanned": 524,
+    "rpcSites": 55,
+    "rpcDistinct": 55,
+    "rpcResolved": 55,
+    "fromSites": 63,
+    "selects": 55,
+    "selectDynamic": 18,
+    "colRefs": 55,
+    "embeds": 13,
+    "filters": 67,
+    "filterDynamic": 1,
+    "orders": 11,
+    "writes": 19,
+    "writeKeys": 47,
+    "writeDynamic": 11,
+    "issuesBySeverity": {
+      "info": 38,
+      "CRIT": 2
+    },
+    "issuesByKind": {
+      "select-dynamic": 18,
+      "from-dynamic-table": 8,
+      "filter-dynamic-col": 1,
+      "write-dynamic-payload": 10,
+      "write-spread-payload": 1,
+      "write-bad-column": 2
+    }
+  },
+  "issues": [
+    {
+      "sev": "info",
+      "kind": "select-dynamic",
+      "file": "src/services/agent.js",
+      "line": 167,
+      "table": "subscribers",
+      "raw": "\n      'id, name, phone, email, gender, age, kyc_status, is_active, ' +\n        "
+    },
+    {
+      "sev": "info",
+      "kind": "select-dynamic",
+      "file": "src/services/employer.js",
+      "line": 396,
+      "table": "subscribers",
+      "raw": "MEMBER_SELECT"
+    },
+    {
+      "sev": "info",
+      "kind": "select-dynamic",
+      "file": "src/services/employer.js",
+      "line": 432,
+      "table": "subscribers",
+      "raw": "MEMBER_SELECT"
+    },
+    {
+      "sev": "info",
+      "kind": "from-dynamic-table",
+      "file": "src/services/entities.js",
+      "line": 376,
+      "raw": "table"
+    },
+    {
+      "sev": "info",
+      "kind": "from-dynamic-table",
+      "file": "src/services/entities.js",
+      "line": 412,
+      "raw": "table"
+    },
+    {
+      "sev": "info",
+      "kind": "select-dynamic",
+      "file": "src/services/entities.js",
+      "line": 412,
+      "table": null,
+      "raw": "listColumns(cfg.childLevel)"
+    },
+    {
+      "sev": "info",
+      "kind": "filter-dynamic-col",
+      "file": "src/services/entities.js",
+      "line": 412,
+      "table": null,
+      "method": "eq",
+      "raw": "cfg.column"
+    },
+    {
+      "sev": "info",
+      "kind": "from-dynamic-table",
+      "file": "src/services/entities.js",
+      "line": 477,
+      "raw": "table"
+    },
+    {
+      "sev": "info",
+      "kind": "select-dynamic",
+      "file": "src/services/entities.js",
+      "line": 477,
+      "table": null,
+      "raw": "columns"
+    },
+    {
+      "sev": "info",
+      "kind": "from-dynamic-table",
+      "file": "src/services/entities.js",
+      "line": 492,
+      "raw": "table"
+    },
+    {
+      "sev": "info",
+      "kind": "select-dynamic",
+      "file": "src/services/entities.js",
+      "line": 492,
+      "table": null,
+      "raw": "columns, { count: 'exact', head: true }"
+    },
+    {
+      "sev": "info",
+      "kind": "from-dynamic-table",
+      "file": "src/services/entities.js",
+      "line": 503,
+      "raw": "table"
+    },
+    {
+      "sev": "info",
+      "kind": "select-dynamic",
+      "file": "src/services/entities.js",
+      "line": 503,
+      "table": null,
+      "raw": "columns"
+    },
+    {
+      "sev": "info",
+      "kind": "from-dynamic-table",
+      "file": "src/services/entities.js",
+      "line": 591,
+      "raw": "table"
+    },
+    {
+      "sev": "info",
+      "kind": "select-dynamic",
+      "file": "src/services/entities.js",
+      "line": 591,
+      "table": null,
+      "raw": "listColumns(level), { count: 'estimated' }"
+    },
+    {
+      "sev": "info",
+      "kind": "from-dynamic-table",
+      "file": "src/services/entities.js",
+      "line": 717,
+      "raw": "LEVEL_TABLES.subscriber"
+    },
+    {
+      "sev": "info",
+      "kind": "select-dynamic",
+      "file": "src/services/entities.js",
+      "line": 717,
+      "table": null,
+      "raw": "columns"
+    },
+    {
+      "sev": "info",
+      "kind": "write-dynamic-payload",
+      "file": "src/services/entities.js",
+      "line": 1064,
+      "table": "branches",
+      "method": "insert",
+      "raw": "row"
+    },
+    {
+      "sev": "info",
+      "kind": "select-dynamic",
+      "file": "src/services/entities.js",
+      "line": 1064,
+      "table": "branches",
+      "raw": ""
+    },
+    {
+      "sev": "info",
+      "kind": "write-dynamic-payload",
+      "file": "src/services/entities.js",
+      "line": 1100,
+      "table": "agents",
+      "method": "insert",
+      "raw": "row"
+    },
+    {
+      "sev": "info",
+      "kind": "select-dynamic",
+      "file": "src/services/entities.js",
+      "line": 1100,
+      "table": "agents",
+      "raw": ""
+    },
+    {
+      "sev": "info",
+      "kind": "write-dynamic-payload",
+      "file": "src/services/entities.js",
+      "line": 1132,
+      "table": "branches",
+      "method": "update",
+      "raw": "row"
+    },
+    {
+      "sev": "info",
+      "kind": "select-dynamic",
+      "file": "src/services/entities.js",
+      "line": 1132,
+      "table": "branches",
+      "raw": ""
+    },
+    {
+      "sev": "info",
+      "kind": "write-dynamic-payload",
+      "file": "src/services/entities.js",
+      "line": 1184,
+      "table": "distributors",
+      "method": "update",
+      "raw": "row"
+    },
+    {
+      "sev": "info",
+      "kind": "select-dynamic",
+      "file": "src/services/entities.js",
+      "line": 1184,
+      "table": "distributors",
+      "raw": ""
+    },
+    {
+      "sev": "info",
+      "kind": "select-dynamic",
+      "file": "src/services/entities.js",
+      "line": 1410,
+      "table": "agents",
+      "raw": ""
+    },
+    {
+      "sev": "info",
+      "kind": "select-dynamic",
+      "file": "src/services/subscriber.js",
+      "line": 518,
+      "table": "transactions",
+      "raw": "\n      'id, subscriber_id, agent_id, type, source, amount, date, status, method,"
+    },
+    {
+      "sev": "info",
+      "kind": "write-dynamic-payload",
+      "file": "src/services/subscriber.js",
+      "line": 1048,
+      "table": "contribution_schedules",
+      "method": "update",
+      "raw": "patch"
+    },
+    {
+      "sev": "info",
+      "kind": "select-dynamic",
+      "file": "src/services/subscriber.js",
+      "line": 1048,
+      "table": "contribution_schedules",
+      "raw": ""
+    },
+    {
+      "sev": "info",
+      "kind": "write-spread-payload",
+      "file": "src/services/subscriber.js",
+      "line": 1211,
+      "table": "insurance_policies",
+      "method": "upsert",
+      "raw": "...patch }, { onConflict: 'subscriber_id'"
+    },
+    {
+      "sev": "info",
+      "kind": "select-dynamic",
+      "file": "src/services/subscriber.js",
+      "line": 1211,
+      "table": "insurance_policies",
+      "raw": ""
+    },
+    {
+      "sev": "info",
+      "kind": "write-dynamic-payload",
+      "file": "src/services/subscriber.js",
+      "line": 1218,
+      "table": "subscriber_insurance_products",
+      "method": "update",
+      "raw": "patch"
+    },
+    {
+      "sev": "info",
+      "kind": "select-dynamic",
+      "file": "src/services/subscriber.js",
+      "line": 1218,
+      "table": "subscriber_insurance_products",
+      "raw": ""
+    },
+    {
+      "sev": "info",
+      "kind": "write-dynamic-payload",
+      "file": "src/services/subscriber.js",
+      "line": 1399,
+      "table": "insurance_policies",
+      "method": "update",
+      "raw": "renewalPatch"
+    },
+    {
+      "sev": "info",
+      "kind": "write-dynamic-payload",
+      "file": "src/services/subscriber.js",
+      "line": 1402,
+      "table": "subscriber_insurance_products",
+      "method": "update",
+      "raw": "renewalPatch"
+    },
+    {
+      "sev": "info",
+      "kind": "write-dynamic-payload",
+      "file": "src/services/subscriber.js",
+      "line": 1462,
+      "table": "subscribers",
+      "method": "update",
+      "raw": "patch"
+    },
+    {
+      "sev": "info",
+      "kind": "from-dynamic-table",
+      "file": "api/auth/_lib/entity-status.ts",
+      "line": 46,
+      "raw": "table"
+    },
+    {
+      "sev": "info",
+      "kind": "write-dynamic-payload",
+      "file": "api/auth/verify-otp.ts",
+      "line": 94,
+      "table": "users",
+      "method": "upsert",
+      "raw": "patch, { onConflict: 'phone,role' }"
+    },
+    {
+      "sev": "CRIT",
+      "kind": "write-bad-column",
+      "file": "api/kyc/agent-referral.ts",
+      "line": 95,
+      "table": "agent_referrals",
+      "method": "insert",
+      "col": "tracking_id"
+    },
+    {
+      "sev": "CRIT",
+      "kind": "write-bad-column",
+      "file": "api/kyc/agent-referral.ts",
+      "line": 95,
+      "table": "agent_referrals",
+      "method": "insert",
+      "col": "session_id"
+    }
+  ],
+  "rpcSites": [
+    {
+      "file": "src/services/accessRequests.js",
+      "line": 20,
+      "name": "list_access_requests",
+      "nameRaw": "'list_access_requests'",
+      "argsRaw": "{ p_status: status }",
+      "keys": [
+        {
+          "key": "p_status",
+          "value": "status",
+          "raw": "p_status: status"
+        }
+      ]
+    },
+    {
+      "file": "src/services/accessRequests.js",
+      "line": 28,
+      "name": "approve_access_request",
+      "nameRaw": "'approve_access_request'",
+      "argsRaw": "{ p_id: id }",
+      "keys": [
+        {
+          "key": "p_id",
+          "value": "id",
+          "raw": "p_id: id"
+        }
+      ]
+    },
+    {
+      "file": "src/services/accessRequests.js",
+      "line": 36,
+      "name": "deny_access_request",
+      "nameRaw": "'deny_access_request'",
+      "argsRaw": "{ p_id: id }",
+      "keys": [
+        {
+          "key": "p_id",
+          "value": "id",
+          "raw": "p_id: id"
+        }
+      ]
+    },
+    {
+      "file": "src/services/adminAttention.js",
+      "line": 78,
+      "name": "get_admin_attention",
+      "nameRaw": "'get_admin_attention'",
+      "argsRaw": "",
+      "keys": []
+    },
+    {
+      "file": "src/services/adminAttention.js",
+      "line": 101,
+      "name": "get_admin_attention_rows",
+      "nameRaw": "'get_admin_attention_rows'",
+      "argsRaw": "{\n    p_type: type,\n    p_limit: limit,\n  }",
+      "keys": [
+        {
+          "key": "p_type",
+          "value": "type",
+          "raw": "p_type: type"
+        },
+        {
+          "key": "p_limit",
+          "value": "limit",
+          "raw": "p_limit: limit"
+        }
+      ]
+    },
+    {
+      "file": "src/services/commissions.js",
+      "line": 135,
+      "name": "get_commission_rate",
+      "nameRaw": "'get_commission_rate'",
+      "argsRaw": "",
+      "keys": []
+    },
+    {
+      "file": "src/services/commissions.js",
+      "line": 159,
+      "name": "set_commission_rate",
+      "nameRaw": "'set_commission_rate'",
+      "argsRaw": "{\n    p_rate: amount,\n  }",
+      "keys": [
+        {
+          "key": "p_rate",
+          "value": "amount",
+          "raw": "p_rate: amount"
+        }
+      ]
+    },
+    {
+      "file": "src/services/commissions.js",
+      "line": 176,
+      "name": "get_commission_summary",
+      "nameRaw": "'get_commission_summary'",
+      "argsRaw": "{\n    p_branch_id: branchId,\n  }",
+      "keys": [
+        {
+          "key": "p_branch_id",
+          "value": "branchId",
+          "raw": "p_branch_id: branchId"
+        }
+      ]
+    },
+    {
+      "file": "src/services/commissions.js",
+      "line": 197,
+      "name": "get_entity_commission_summary",
+      "nameRaw": "'get_entity_commission_summary'",
+      "argsRaw": "{\n    p_level: level,\n    p_entity_id: entityId ?? null,\n  }",
+      "keys": [
+        {
+          "key": "p_level",
+          "value": "level",
+          "raw": "p_level: level"
+        },
+        {
+          "key": "p_entity_id",
+          "value": "entityId ?? null",
+          "raw": "p_entity_id: entityId ?? null"
+        }
+      ]
+    },
+    {
+      "file": "src/services/commissions.js",
+      "line": 241,
+      "name": "get_agent_commission_list",
+      "nameRaw": "'get_agent_commission_list'",
+      "argsRaw": "{\n    p_status_focus: statusFocus ?? null,\n  }",
+      "keys": [
+        {
+          "key": "p_status_focus",
+          "value": "statusFocus ?? null",
+          "raw": "p_status_focus: statusFocus ?? null"
+        }
+      ]
+    },
+    {
+      "file": "src/services/commissions.js",
+      "line": 256,
+      "name": "get_agent_commission_detail",
+      "nameRaw": "'get_agent_commission_detail'",
+      "argsRaw": "{\n    p_agent_id: agentId,\n  }",
+      "keys": [
+        {
+          "key": "p_agent_id",
+          "value": "agentId",
+          "raw": "p_agent_id: agentId"
+        }
+      ]
+    },
+    {
+      "file": "src/services/commissions.js",
+      "line": 336,
+      "name": "get_pending_dues_by_agent",
+      "nameRaw": "'get_pending_dues_by_agent'",
+      "argsRaw": "",
+      "keys": []
+    },
+    {
+      "file": "src/services/commissions.js",
+      "line": 356,
+      "name": "get_pending_dues_by_branch",
+      "nameRaw": "'get_pending_dues_by_branch'",
+      "argsRaw": "",
+      "keys": []
+    },
+    {
+      "file": "src/services/commissions.js",
+      "line": 397,
+      "name": "apply_settlement",
+      "nameRaw": "'apply_settlement'",
+      "argsRaw": "{\n    p_rows,\n    p_nonce: nonce ?? null,\n  }",
+      "keys": [
+        {
+          "key": "p_rows",
+          "value": "p_rows",
+          "shorthand": true,
+          "raw": "p_rows"
+        },
+        {
+          "key": "p_nonce",
+          "value": "nonce ?? null",
+          "raw": "p_nonce: nonce ?? null"
+        }
+      ]
+    },
+    {
+      "file": "src/services/employer.js",
+      "line": 597,
+      "name": "get_employer_metrics",
+      "nameRaw": "'get_employer_metrics'",
+      "argsRaw": "",
+      "keys": []
+    },
+    {
+      "file": "src/services/employer.js",
+      "line": 628,
+      "name": "create_employer",
+      "nameRaw": "'create_employer'",
+      "argsRaw": "{\n    p_name: payload.name,\n    p_sector: payload.sector ?? null,\n    p_registration_no: payload.registrationNo ?? null,\n    p_contact_name: payload.contactName ?? null,\n    p_contact_phone: payload.contactPhone ?? null,\n    p_contact_email: payload.contactEmail ?? null,\n    p_district: payload.district ?? null,\n  }",
+      "keys": [
+        {
+          "key": "p_name",
+          "value": "payload.name",
+          "raw": "p_name: payload.name"
+        },
+        {
+          "key": "p_sector",
+          "value": "payload.sector ?? null",
+          "raw": "p_sector: payload.sector ?? null"
+        },
+        {
+          "key": "p_registration_no",
+          "value": "payload.registrationNo ?? null",
+          "raw": "p_registration_no: payload.registrationNo ?? null"
+        },
+        {
+          "key": "p_contact_name",
+          "value": "payload.contactName ?? null",
+          "raw": "p_contact_name: payload.contactName ?? null"
+        },
+        {
+          "key": "p_contact_phone",
+          "value": "payload.contactPhone ?? null",
+          "raw": "p_contact_phone: payload.contactPhone ?? null"
+        },
+        {
+          "key": "p_contact_email",
+          "value": "payload.contactEmail ?? null",
+          "raw": "p_contact_email: payload.contactEmail ?? null"
+        },
+        {
+          "key": "p_district",
+          "value": "payload.district ?? null",
+          "raw": "p_district: payload.district ?? null"
+        }
+      ]
+    },
+    {
+      "file": "src/services/employer.js",
+      "line": 667,
+      "name": "get_all_employers_metrics",
+      "nameRaw": "'get_all_employers_metrics'",
+      "argsRaw": "",
+      "keys": []
+    },
+    {
+      "file": "src/services/employer.js",
+      "line": 737,
+      "name": "create_subscriber_from_employer_onboard",
+      "nameRaw": "'create_subscriber_from_employer_onboard'",
+      "argsRaw": "{\n    payload,\n    calling_employer_id: employerId,\n    p_nonce: nonce ?? null,\n  }",
+      "keys": [
+        {
+          "key": "payload",
+          "value": "payload",
+          "shorthand": true,
+          "raw": "payload"
+        },
+        {
+          "key": "calling_employer_id",
+          "value": "employerId",
+          "raw": "calling_employer_id: employerId"
+        },
+        {
+          "key": "p_nonce",
+          "value": "nonce ?? null",
+          "raw": "p_nonce: nonce ?? null"
+        }
+      ]
+    },
+    {
+      "file": "src/services/employer.js",
+      "line": 757,
+      "name": "submit_employer_contribution_run",
+      "nameRaw": "'submit_employer_contribution_run'",
+      "argsRaw": "{\n    p_period_label: periodLabel ?? null,\n    p_method: method ?? null,\n    p_nonce: nonce ?? null,\n  }",
+      "keys": [
+        {
+          "key": "p_period_label",
+          "value": "periodLabel ?? null",
+          "raw": "p_period_label: periodLabel ?? null"
+        },
+        {
+          "key": "p_method",
+          "value": "method ?? null",
+          "raw": "p_method: method ?? null"
+        },
+        {
+          "key": "p_nonce",
+          "value": "nonce ?? null",
+          "raw": "p_nonce: nonce ?? null"
+        }
+      ]
+    },
+    {
+      "file": "src/services/employer.js",
+      "line": 786,
+      "name": "apply_group_insurance",
+      "nameRaw": "'apply_group_insurance'",
+      "argsRaw": "{ p_cover: coverNum }",
+      "keys": [
+        {
+          "key": "p_cover",
+          "value": "coverNum",
+          "raw": "p_cover: coverNum"
+        }
+      ]
+    },
+    {
+      "file": "src/services/employer.js",
+      "line": 807,
+      "name": "remove_employer_member",
+      "nameRaw": "'remove_employer_member'",
+      "argsRaw": "{\n    p_subscriber_id: employeeId,\n  }",
+      "keys": [
+        {
+          "key": "p_subscriber_id",
+          "value": "employeeId",
+          "raw": "p_subscriber_id: employeeId"
+        }
+      ]
+    },
+    {
+      "file": "src/services/employer.js",
+      "line": 833,
+      "name": "update_employer_member_compensation",
+      "nameRaw": "'update_employer_member_compensation'",
+      "argsRaw": "{\n    p_subscriber_id: subscriberId,\n    p_compensation: comp,\n  }",
+      "keys": [
+        {
+          "key": "p_subscriber_id",
+          "value": "subscriberId",
+          "raw": "p_subscriber_id: subscriberId"
+        },
+        {
+          "key": "p_compensation",
+          "value": "comp",
+          "raw": "p_compensation: comp"
+        }
+      ]
+    },
+    {
+      "file": "src/services/employer.js",
+      "line": 854,
+      "name": "set_employer_status",
+      "nameRaw": "'set_employer_status'",
+      "argsRaw": "{\n    p_employer_id: id,\n    p_status: status,\n  }",
+      "keys": [
+        {
+          "key": "p_employer_id",
+          "value": "id",
+          "raw": "p_employer_id: id"
+        },
+        {
+          "key": "p_status",
+          "value": "status",
+          "raw": "p_status: status"
+        }
+      ]
+    },
+    {
+      "file": "src/services/employer.js",
+      "line": 907,
+      "name": "update_employer_profile",
+      "nameRaw": "'update_employer_profile'",
+      "argsRaw": "args",
+      "keys": null
+    },
+    {
+      "file": "src/services/employer.js",
+      "line": 957,
+      "name": "create_employer_invite",
+      "nameRaw": "'create_employer_invite'",
+      "argsRaw": "{ p_prefill: prefill }",
+      "keys": [
+        {
+          "key": "p_prefill",
+          "value": "prefill",
+          "raw": "p_prefill: prefill"
+        }
+      ]
+    },
+    {
+      "file": "src/services/employer.js",
+      "line": 1068,
+      "name": "cancel_employer_invite",
+      "nameRaw": "'cancel_employer_invite'",
+      "argsRaw": "{ p_token: token }",
+      "keys": [
+        {
+          "key": "p_token",
+          "value": "token",
+          "raw": "p_token: token"
+        }
+      ]
+    },
+    {
+      "file": "src/services/entities.js",
+      "line": 778,
+      "name": "get_top_branch",
+      "nameRaw": "'get_top_branch'",
+      "argsRaw": "{\n    p_level: level,\n    p_parent_id: parentId,\n  }",
+      "keys": [
+        {
+          "key": "p_level",
+          "value": "level",
+          "raw": "p_level: level"
+        },
+        {
+          "key": "p_parent_id",
+          "value": "parentId",
+          "raw": "p_parent_id: parentId"
+        }
+      ]
+    },
+    {
+      "file": "src/services/entities.js",
+      "line": 797,
+      "name": "get_breadcrumb",
+      "nameRaw": "'get_breadcrumb'",
+      "argsRaw": "{\n    p_level: currentLevel,\n    p_ids: selectedIds ?? {},\n  }",
+      "keys": [
+        {
+          "key": "p_level",
+          "value": "currentLevel",
+          "raw": "p_level: currentLevel"
+        },
+        {
+          "key": "p_ids",
+          "value": "selectedIds ?? {}",
+          "raw": "p_ids: selectedIds ?? {}"
+        }
+      ]
+    },
+    {
+      "file": "src/services/entities.js",
+      "line": 868,
+      "name": "get_entity_metrics_rollup",
+      "nameRaw": "'get_entity_metrics_rollup'",
+      "argsRaw": "{\n    p_level: level,\n    p_entity_ids: entityIds,\n  }",
+      "keys": [
+        {
+          "key": "p_level",
+          "value": "level",
+          "raw": "p_level: level"
+        },
+        {
+          "key": "p_entity_ids",
+          "value": "entityIds",
+          "raw": "p_entity_ids: entityIds"
+        }
+      ]
+    },
+    {
+      "file": "src/services/entities.js",
+      "line": 917,
+      "name": "get_distributor_rollup",
+      "nameRaw": "'get_distributor_rollup'",
+      "argsRaw": "",
+      "keys": []
+    },
+    {
+      "file": "src/services/entities.js",
+      "line": 961,
+      "name": "get_top_entities",
+      "nameRaw": "'get_top_entities'",
+      "argsRaw": "{\n    p_level: level,\n    p_sort_key: effSort,\n    p_limit: effLimit,\n  }",
+      "keys": [
+        {
+          "key": "p_level",
+          "value": "level",
+          "raw": "p_level: level"
+        },
+        {
+          "key": "p_sort_key",
+          "value": "effSort",
+          "raw": "p_sort_key: effSort"
+        },
+        {
+          "key": "p_limit",
+          "value": "effLimit",
+          "raw": "p_limit: effLimit"
+        }
+      ]
+    },
+    {
+      "file": "src/services/entities.js",
+      "line": 1013,
+      "name": "get_branch_pending_contributions",
+      "nameRaw": "'get_branch_pending_contributions'",
+      "argsRaw": "{\n    p_branch_id: branchId,\n  }",
+      "keys": [
+        {
+          "key": "p_branch_id",
+          "value": "branchId",
+          "raw": "p_branch_id: branchId"
+        }
+      ]
+    },
+    {
+      "file": "src/services/entities.js",
+      "line": 1222,
+      "name": "create_distributor",
+      "nameRaw": "'create_distributor'",
+      "argsRaw": "{\n    p_name: payload.name,\n    p_manager_name: payload.managerName ?? null,\n    p_manager_phone: payload.managerPhone ?? null,\n    p_manager_email: payload.managerEmail ?? null,\n    p_parent_id: payload.parentId ?? 'ug',\n    p_registration_no: payload.registrationNo ?? null,\n  }",
+      "keys": [
+        {
+          "key": "p_name",
+          "value": "payload.name",
+          "raw": "p_name: payload.name"
+        },
+        {
+          "key": "p_manager_name",
+          "value": "payload.managerName ?? null",
+          "raw": "p_manager_name: payload.managerName ?? null"
+        },
+        {
+          "key": "p_manager_phone",
+          "value": "payload.managerPhone ?? null",
+          "raw": "p_manager_phone: payload.managerPhone ?? null"
+        },
+        {
+          "key": "p_manager_email",
+          "value": "payload.managerEmail ?? null",
+          "raw": "p_manager_email: payload.managerEmail ?? null"
+        },
+        {
+          "key": "p_parent_id",
+          "value": "payload.parentId ?? 'ug'",
+          "raw": "p_parent_id: payload.parentId ?? 'ug'"
+        },
+        {
+          "key": "p_registration_no",
+          "value": "payload.registrationNo ?? null",
+          "raw": "p_registration_no: payload.registrationNo ?? null"
+        }
+      ]
+    },
+    {
+      "file": "src/services/entities.js",
+      "line": 1253,
+      "name": "set_distributor_status",
+      "nameRaw": "'set_distributor_status'",
+      "argsRaw": "{\n    p_distributor_id: id,\n    p_status: status,\n  }",
+      "keys": [
+        {
+          "key": "p_distributor_id",
+          "value": "id",
+          "raw": "p_distributor_id: id"
+        },
+        {
+          "key": "p_status",
+          "value": "status",
+          "raw": "p_status: status"
+        }
+      ]
+    },
+    {
+      "file": "src/services/entities.js",
+      "line": 1315,
+      "name": "get_platform_overview",
+      "nameRaw": "'get_platform_overview'",
+      "argsRaw": "",
+      "keys": []
+    },
+    {
+      "file": "src/services/entities.js",
+      "line": 1340,
+      "name": "get_employer_geo_rollup",
+      "nameRaw": "'get_employer_geo_rollup'",
+      "argsRaw": "",
+      "keys": []
+    },
+    {
+      "file": "src/services/entities.js",
+      "line": 1379,
+      "name": "get_employer_activity_rollup",
+      "nameRaw": "'get_employer_activity_rollup'",
+      "argsRaw": "",
+      "keys": []
+    },
+    {
+      "file": "src/services/nav.js",
+      "line": 86,
+      "name": "get_nav_overview",
+      "nameRaw": "'get_nav_overview'",
+      "argsRaw": "{ p_fund_code: fundCode }",
+      "keys": [
+        {
+          "key": "p_fund_code",
+          "value": "fundCode",
+          "raw": "p_fund_code: fundCode"
+        }
+      ]
+    },
+    {
+      "file": "src/services/nav.js",
+      "line": 105,
+      "name": "list_nav_snapshots",
+      "nameRaw": "'list_nav_snapshots'",
+      "argsRaw": "{\n    p_fund_code: fundCode, p_limit: limit, p_offset: offset, p_status: status,\n  }",
+      "keys": [
+        {
+          "key": "p_fund_code",
+          "value": "fundCode",
+          "raw": "p_fund_code: fundCode"
+        },
+        {
+          "key": "p_limit",
+          "value": "limit",
+          "raw": "p_limit: limit"
+        },
+        {
+          "key": "p_offset",
+          "value": "offset",
+          "raw": "p_offset: offset"
+        },
+        {
+          "key": "p_status",
+          "value": "status",
+          "raw": "p_status: status"
+        }
+      ]
+    },
+    {
+      "file": "src/services/nav.js",
+      "line": 143,
+      "name": "publish_nav_snapshot",
+      "nameRaw": "'publish_nav_snapshot'",
+      "argsRaw": "{\n    p_nav_date: navDate,\n    p_unit_price: Number(unitPrice),\n    p_fund_code: fundCode,\n    p_source: source,\n    p_confirm_move: Boolean(confirmMove),\n  }",
+      "keys": [
+        {
+          "key": "p_nav_date",
+          "value": "navDate",
+          "raw": "p_nav_date: navDate"
+        },
+        {
+          "key": "p_unit_price",
+          "value": "Number(unitPrice)",
+          "raw": "p_unit_price: Number(unitPrice)"
+        },
+        {
+          "key": "p_fund_code",
+          "value": "fundCode",
+          "raw": "p_fund_code: fundCode"
+        },
+        {
+          "key": "p_source",
+          "value": "source",
+          "raw": "p_source: source"
+        },
+        {
+          "key": "p_confirm_move",
+          "value": "Boolean(confirmMove)",
+          "raw": "p_confirm_move: Boolean(confirmMove)"
+        }
+      ]
+    },
+    {
+      "file": "src/services/nomineeClaims.js",
+      "line": 23,
+      "name": "list_nominee_claims",
+      "nameRaw": "'list_nominee_claims'",
+      "argsRaw": "{ p_status: status }",
+      "keys": [
+        {
+          "key": "p_status",
+          "value": "status",
+          "raw": "p_status: status"
+        }
+      ]
+    },
+    {
+      "file": "src/services/nomineeClaims.js",
+      "line": 38,
+      "name": "review_nominee_claim",
+      "nameRaw": "'review_nominee_claim'",
+      "argsRaw": "{\n    p_id: id,\n    p_status: status,\n    p_note: note ?? null,\n    p_subscriber_id: subscriberId ?? null,\n  }",
+      "keys": [
+        {
+          "key": "p_id",
+          "value": "id",
+          "raw": "p_id: id"
+        },
+        {
+          "key": "p_status",
+          "value": "status",
+          "raw": "p_status: status"
+        },
+        {
+          "key": "p_note",
+          "value": "note ?? null",
+          "raw": "p_note: note ?? null"
+        },
+        {
+          "key": "p_subscriber_id",
+          "value": "subscriberId ?? null",
+          "raw": "p_subscriber_id: subscriberId ?? null"
+        }
+      ]
+    },
+    {
+      "file": "src/services/notifications.js",
+      "line": 178,
+      "name": "mark_notifications_read",
+      "nameRaw": "'mark_notifications_read'",
+      "argsRaw": "{ p_ids: targetIds }",
+      "keys": [
+        {
+          "key": "p_ids",
+          "value": "targetIds",
+          "raw": "p_ids: targetIds"
+        }
+      ]
+    },
+    {
+      "file": "src/services/notifications.js",
+      "line": 287,
+      "name": "admin_notify",
+      "nameRaw": "'admin_notify'",
+      "argsRaw": "{\n      p_recipient_role: recipientRole,\n      p_recipient_id: recipientId,\n      p_type: type,\n      p_title: title,\n      p_body: body,\n      p_ref_id: refId,\n      p_amount: amount,\n    }",
+      "keys": [
+        {
+          "key": "p_recipient_role",
+          "value": "recipientRole",
+          "raw": "p_recipient_role: recipientRole"
+        },
+        {
+          "key": "p_recipient_id",
+          "value": "recipientId",
+          "raw": "p_recipient_id: recipientId"
+        },
+        {
+          "key": "p_type",
+          "value": "type",
+          "raw": "p_type: type"
+        },
+        {
+          "key": "p_title",
+          "value": "title",
+          "raw": "p_title: title"
+        },
+        {
+          "key": "p_body",
+          "value": "body",
+          "raw": "p_body: body"
+        },
+        {
+          "key": "p_ref_id",
+          "value": "refId",
+          "raw": "p_ref_id: refId"
+        },
+        {
+          "key": "p_amount",
+          "value": "amount",
+          "raw": "p_amount: amount"
+        }
+      ]
+    },
+    {
+      "file": "src/services/search.js",
+      "line": 32,
+      "name": "search_entities",
+      "nameRaw": "'search_entities'",
+      "argsRaw": "{ p_q: query }",
+      "keys": [
+        {
+          "key": "p_q",
+          "value": "query",
+          "raw": "p_q: query"
+        }
+      ]
+    },
+    {
+      "file": "src/services/subscriber.js",
+      "line": 652,
+      "name": "get_my_employer_funding",
+      "nameRaw": "'get_my_employer_funding'",
+      "argsRaw": "",
+      "keys": []
+    },
+    {
+      "file": "src/services/subscriber.js",
+      "line": 822,
+      "name": "make_contribution",
+      "nameRaw": "'make_contribution'",
+      "argsRaw": "{\n    p_nonce: nonce ?? crypto.randomUUID(),\n    p_amount: amount,\n    p_retirement_pct: retirementPct,\n    p_method: method,\n  }",
+      "keys": [
+        {
+          "key": "p_nonce",
+          "value": "nonce ?? crypto.randomUUID()",
+          "raw": "p_nonce: nonce ?? crypto.randomUUID()"
+        },
+        {
+          "key": "p_amount",
+          "value": "amount",
+          "raw": "p_amount: amount"
+        },
+        {
+          "key": "p_retirement_pct",
+          "value": "retirementPct",
+          "raw": "p_retirement_pct: retirementPct"
+        },
+        {
+          "key": "p_method",
+          "value": "method",
+          "raw": "p_method: method"
+        }
+      ]
+    },
+    {
+      "file": "src/services/subscriber.js",
+      "line": 902,
+      "name": "request_withdrawal",
+      "nameRaw": "'request_withdrawal'",
+      "argsRaw": "{\n    p_nonce: nonce ?? crypto.randomUUID(),\n    p_amount: amount,\n    p_bucket: bucket ?? null,\n    p_reason: reason ?? null,\n    p_method: method,\n    p_split_retirement: splitRetirement ?? null,\n    p_split_emergency: splitEmergency ?? null,\n  }",
+      "keys": [
+        {
+          "key": "p_nonce",
+          "value": "nonce ?? crypto.randomUUID()",
+          "raw": "p_nonce: nonce ?? crypto.randomUUID()"
+        },
+        {
+          "key": "p_amount",
+          "value": "amount",
+          "raw": "p_amount: amount"
+        },
+        {
+          "key": "p_bucket",
+          "value": "bucket ?? null",
+          "raw": "p_bucket: bucket ?? null"
+        },
+        {
+          "key": "p_reason",
+          "value": "reason ?? null",
+          "raw": "p_reason: reason ?? null"
+        },
+        {
+          "key": "p_method",
+          "value": "method",
+          "raw": "p_method: method"
+        },
+        {
+          "key": "p_split_retirement",
+          "value": "splitRetirement ?? null",
+          "raw": "p_split_retirement: splitRetirement ?? null"
+        },
+        {
+          "key": "p_split_emergency",
+          "value": "splitEmergency ?? null",
+          "raw": "p_split_emergency: splitEmergency ?? null"
+        }
+      ]
+    },
+    {
+      "file": "src/services/subscriber.js",
+      "line": 988,
+      "name": "submit_hospital_cash_claim",
+      "nameRaw": "'submit_hospital_cash_claim'",
+      "argsRaw": "{\n    p_nonce: nonce ?? crypto.randomUUID(),\n    p_admission_date: admissionDate,\n    p_discharge_date: dischargeDate,\n    p_provider: provider,\n    p_description: description,\n  }",
+      "keys": [
+        {
+          "key": "p_nonce",
+          "value": "nonce ?? crypto.randomUUID()",
+          "raw": "p_nonce: nonce ?? crypto.randomUUID()"
+        },
+        {
+          "key": "p_admission_date",
+          "value": "admissionDate",
+          "raw": "p_admission_date: admissionDate"
+        },
+        {
+          "key": "p_discharge_date",
+          "value": "dischargeDate",
+          "raw": "p_discharge_date: dischargeDate"
+        },
+        {
+          "key": "p_provider",
+          "value": "provider",
+          "raw": "p_provider: provider"
+        },
+        {
+          "key": "p_description",
+          "value": "description",
+          "raw": "p_description: description"
+        }
+      ]
+    },
+    {
+      "file": "src/services/subscriber.js",
+      "line": 1097,
+      "name": "upsert_nominees",
+      "nameRaw": "'upsert_nominees'",
+      "argsRaw": "{\n      p_subscriber_id: id,\n      p_pension: (pension ?? []).map((n) => ({\n        id: n.id ?? null,\n        name: n.name,\n        phone: n.phone ?? null,\n        relationship: n.relationship ?? null,\n        nin: n.nin ?? null,\n        share: Number(n.share ?? 0),\n      })),\n      p_insurance: (insurance ?? []).map((n) => ({\n        id: n.id ?? null,\n        name: n.name,\n        phone: n.phone ?? null,\n        relationship: n.relationship ?? null,\n        nin: n.nin ?? null,\n        share: Number(n.share ?? 0),\n      })),\n    }",
+      "keys": [
+        {
+          "key": "p_subscriber_id",
+          "value": "id",
+          "raw": "p_subscriber_id: id"
+        },
+        {
+          "key": "p_pension",
+          "value": "(pension ?? []).map((n) => ({\n        id: n.id ?? null,\n        name: n.name,\n        phone: n.phone ?? null,\n        relationship: n.relationship ?? null,\n        nin: n.nin ?? null,\n        share: Number(n.share ?? 0),\n      }))",
+          "raw": "p_pension: (pension ?? []).map((n) => ({\n        id: n.id ?? null,\n        name: n.name,\n        phone: n.phone ?? null,\n        relationship: n.relationship ?? null,\n        nin: n.nin ?? null,\n        share: Number(n.share ?? 0),\n      }))"
+        },
+        {
+          "key": "p_insurance",
+          "value": "(insurance ?? []).map((n) => ({\n        id: n.id ?? null,\n        name: n.name,\n        phone: n.phone ?? null,\n        relationship: n.relationship ?? null,\n        nin: n.nin ?? null,\n        share: Number(n.share ?? 0),\n      }))",
+          "raw": "p_insurance: (insurance ?? []).map((n) => ({\n        id: n.id ?? null,\n        name: n.name,\n        phone: n.phone ?? null,\n        relationship: n.relationship ?? null,\n        nin: n.nin ?? null,\n        share: Number(n.share ?? 0),\n      }))"
+        }
+      ]
+    },
+    {
+      "file": "src/services/subscriber.js",
+      "line": 1318,
+      "name": "fund_insurance_products",
+      "nameRaw": "'fund_insurance_products'",
+      "argsRaw": "{\n    p_nonce: nonce ?? crypto.randomUUID(),\n    p_funding_mode: fundingMode,\n    p_products: list.map((p) => ({\n      product: p.product,\n      cover: Number(p.cover ?? 0),\n      premiumMonthly: Number(p.premiumMonthly ?? 0),\n    })),\n    p_savings_pct: Number(savingsPct ?? 100),\n    p_method: method,\n  }",
+      "keys": [
+        {
+          "key": "p_nonce",
+          "value": "nonce ?? crypto.randomUUID()",
+          "raw": "p_nonce: nonce ?? crypto.randomUUID()"
+        },
+        {
+          "key": "p_funding_mode",
+          "value": "fundingMode",
+          "raw": "p_funding_mode: fundingMode"
+        },
+        {
+          "key": "p_products",
+          "value": "list.map((p) => ({\n      product: p.product,\n      cover: Number(p.cover ?? 0),\n      premiumMonthly: Number(p.premiumMonthly ?? 0),\n    }))",
+          "raw": "p_products: list.map((p) => ({\n      product: p.product,\n      cover: Number(p.cover ?? 0),\n      premiumMonthly: Number(p.premiumMonthly ?? 0),\n    }))"
+        },
+        {
+          "key": "p_savings_pct",
+          "value": "Number(savingsPct ?? 100)",
+          "raw": "p_savings_pct: Number(savingsPct ?? 100)"
+        },
+        {
+          "key": "p_method",
+          "value": "method",
+          "raw": "p_method: method"
+        }
+      ]
+    },
+    {
+      "file": "src/services/subscriber.js",
+      "line": 1496,
+      "name": "create_subscriber_from_signup",
+      "nameRaw": "'create_subscriber_from_signup'",
+      "argsRaw": "{\n    payload,\n    p_nonce: nonce ?? null,\n  }",
+      "keys": [
+        {
+          "key": "payload",
+          "value": "payload",
+          "shorthand": true,
+          "raw": "payload"
+        },
+        {
+          "key": "p_nonce",
+          "value": "nonce ?? null",
+          "raw": "p_nonce: nonce ?? null"
+        }
+      ]
+    },
+    {
+      "file": "src/services/subscriber.js",
+      "line": 1512,
+      "name": "get_employer_invite",
+      "nameRaw": "'get_employer_invite'",
+      "argsRaw": "{ p_token: token }",
+      "keys": [
+        {
+          "key": "p_token",
+          "value": "token",
+          "raw": "p_token: token"
+        }
+      ]
+    },
+    {
+      "file": "src/services/subscriber.js",
+      "line": 1531,
+      "name": "create_subscriber_from_employer_invite",
+      "nameRaw": "'create_subscriber_from_employer_invite'",
+      "argsRaw": "{\n    payload,\n    p_token: token,\n    p_nonce: nonce ?? null,\n  }",
+      "keys": [
+        {
+          "key": "payload",
+          "value": "payload",
+          "shorthand": true,
+          "raw": "payload"
+        },
+        {
+          "key": "p_token",
+          "value": "token",
+          "raw": "p_token: token"
+        },
+        {
+          "key": "p_nonce",
+          "value": "nonce ?? null",
+          "raw": "p_nonce: nonce ?? null"
+        }
+      ]
+    },
+    {
+      "file": "src/services/subscriber.js",
+      "line": 1556,
+      "name": "create_subscriber_from_agent_onboard",
+      "nameRaw": "'create_subscriber_from_agent_onboard'",
+      "argsRaw": "{\n    payload,\n    calling_agent_id: agentId,\n    p_nonce: nonce ?? null,\n  }",
+      "keys": [
+        {
+          "key": "payload",
+          "value": "payload",
+          "shorthand": true,
+          "raw": "payload"
+        },
+        {
+          "key": "calling_agent_id",
+          "value": "agentId",
+          "raw": "calling_agent_id: agentId"
+        },
+        {
+          "key": "p_nonce",
+          "value": "nonce ?? null",
+          "raw": "p_nonce: nonce ?? null"
+        }
+      ]
+    }
+  ],
+  "fromSites": [
+    {
+      "file": "src/services/agent.js",
+      "line": 167,
+      "table": "subscribers",
+      "tableRaw": "'subscribers'",
+      "chain": [
+        {
+          "m": "select",
+          "arg": "\n      'id, name, phone, email, gender, age, kyc_status, is_active, ' +\n        'registered_date, last_contribution_date, products_held, contribution_history, ' +\n        'contribution_schedules(frequency, amount, retirement_pct, emergency_pct, ' +\n        'include_insurance, insurance_choice_made, next_due_date), ' +\n        'subscriber_balances(total_balance, retirement_balance, emergency_balance), ' +\n        'insurance_policies(cover, premium_monthly, status), ' +\n        'subscriber_insurance_products(product, status)',\n    "
+        },
+        {
+          "m": "eq",
+          "arg": "'agent_id', agentId"
+        }
+      ]
+    },
+    {
+      "file": "src/services/agent.js",
+      "line": 218,
+      "table": "transactions",
+      "tableRaw": "'transactions'",
+      "chain": [
+        {
+          "m": "select",
+          "arg": "'id, amount, date, method, subscriber_id, subscribers(name)'"
+        },
+        {
+          "m": "eq",
+          "arg": "'agent_id', agentId"
+        },
+        {
+          "m": "eq",
+          "arg": "'type', 'contribution'"
+        },
+        {
+          "m": "order",
+          "arg": "'date', { ascending: false }"
+        }
+      ]
+    },
+    {
+      "file": "src/services/commissions.js",
+      "line": 283,
+      "table": "commissions",
+      "tableRaw": "'commissions'",
+      "chain": [
+        {
+          "m": "select",
+          "arg": "'subscriber_id, subscriber_name, status, first_contribution_date'"
+        },
+        {
+          "m": "eq",
+          "arg": "'agent_id', agentId"
+        }
+      ]
+    },
+    {
+      "file": "src/services/commissions.js",
+      "line": 291,
+      "table": "subscribers",
+      "tableRaw": "'subscribers'",
+      "chain": [
+        {
+          "m": "select",
+          "arg": "'id, name, registered_date, is_active, subscriber_balances(total_balance)'"
+        },
+        {
+          "m": "eq",
+          "arg": "'agent_id', agentId"
+        }
+      ]
+    },
+    {
+      "file": "src/services/commissions.js",
+      "line": 420,
+      "table": "settlement_batches",
+      "tableRaw": "'settlement_batches'",
+      "chain": [
+        {
+          "m": "select",
+          "arg": "'id, agent_id, branch_id, pending_total, paid_amount, txn_ref, paid_date, line_count, created_at'"
+        },
+        {
+          "m": "order",
+          "arg": "'created_at', { ascending: false }"
+        }
+      ]
+    },
+    {
+      "file": "src/services/commissions.js",
+      "line": 434,
+      "table": "agents",
+      "tableRaw": "'agents'",
+      "chain": [
+        {
+          "m": "select",
+          "arg": "'id, name'"
+        },
+        {
+          "m": "in",
+          "arg": "'id', agentIds"
+        }
+      ]
+    },
+    {
+      "file": "src/services/commissions.js",
+      "line": 437,
+      "table": "branches",
+      "tableRaw": "'branches'",
+      "chain": [
+        {
+          "m": "select",
+          "arg": "'id, name'"
+        },
+        {
+          "m": "in",
+          "arg": "'id', branchIds"
+        }
+      ]
+    },
+    {
+      "file": "src/services/employer.js",
+      "line": 375,
+      "table": "employers",
+      "tableRaw": "'employers'",
+      "chain": [
+        {
+          "m": "select",
+          "arg": "'*'"
+        },
+        {
+          "m": "eq",
+          "arg": "'id', id"
+        },
+        {
+          "m": "maybeSingle",
+          "arg": ""
+        }
+      ]
+    },
+    {
+      "file": "src/services/employer.js",
+      "line": 396,
+      "table": "subscribers",
+      "tableRaw": "'subscribers'",
+      "chain": [
+        {
+          "m": "select",
+          "arg": "MEMBER_SELECT"
+        },
+        {
+          "m": "eq",
+          "arg": "'employer_id', employerId"
+        }
+      ]
+    },
+    {
+      "file": "src/services/employer.js",
+      "line": 406,
+      "table": "transactions",
+      "tableRaw": "'transactions'",
+      "chain": [
+        {
+          "m": "select",
+          "arg": "'amount, source, type'"
+        },
+        {
+          "m": "eq",
+          "arg": "'subscriber_id', subscriberId"
+        },
+        {
+          "m": "eq",
+          "arg": "'type', 'contribution'"
+        }
+      ]
+    },
+    {
+      "file": "src/services/employer.js",
+      "line": 432,
+      "table": "subscribers",
+      "tableRaw": "'subscribers'",
+      "chain": [
+        {
+          "m": "select",
+          "arg": "MEMBER_SELECT"
+        },
+        {
+          "m": "eq",
+          "arg": "'id', employeeId"
+        },
+        {
+          "m": "maybeSingle",
+          "arg": ""
+        }
+      ]
+    },
+    {
+      "file": "src/services/employer.js",
+      "line": 457,
+      "table": "contribution_runs",
+      "tableRaw": "'contribution_runs'",
+      "chain": [
+        {
+          "m": "select",
+          "arg": "'*'"
+        },
+        {
+          "m": "eq",
+          "arg": "'employer_id', employerId"
+        },
+        {
+          "m": "order",
+          "arg": "'run_at', { ascending: false }"
+        }
+      ]
+    },
+    {
+      "file": "src/services/employer.js",
+      "line": 480,
+      "table": "contribution_runs",
+      "tableRaw": "'contribution_runs'",
+      "chain": [
+        {
+          "m": "select",
+          "arg": "'*'"
+        },
+        {
+          "m": "eq",
+          "arg": "'id', runId"
+        },
+        {
+          "m": "maybeSingle",
+          "arg": ""
+        }
+      ]
+    },
+    {
+      "file": "src/services/employer.js",
+      "line": 487,
+      "table": "transactions",
+      "tableRaw": "'transactions'",
+      "chain": [
+        {
+          "m": "select",
+          "arg": "'*, subscribers(name)'"
+        },
+        {
+          "m": "eq",
+          "arg": "'contribution_run_id', runId"
+        }
+      ]
+    },
+    {
+      "file": "src/services/employer.js",
+      "line": 514,
+      "table": "transactions",
+      "tableRaw": "'transactions'",
+      "chain": [
+        {
+          "m": "select",
+          "arg": "'*'"
+        },
+        {
+          "m": "eq",
+          "arg": "'subscriber_id', employeeId"
+        },
+        {
+          "m": "eq",
+          "arg": "'type', 'contribution'"
+        },
+        {
+          "m": "order",
+          "arg": "'date', { ascending: false }"
+        }
+      ]
+    },
+    {
+      "file": "src/services/employer.js",
+      "line": 559,
+      "table": "transactions",
+      "tableRaw": "'transactions'",
+      "chain": [
+        {
+          "m": "select",
+          "arg": "'*, subscribers(name)'"
+        },
+        {
+          "m": "eq",
+          "arg": "'type', 'contribution'"
+        },
+        {
+          "m": "not",
+          "arg": "'contribution_run_id', 'is', null"
+        },
+        {
+          "m": "order",
+          "arg": "'date', { ascending: false }"
+        }
+      ]
+    },
+    {
+      "file": "src/services/employer.js",
+      "line": 990,
+      "table": "employer_invites",
+      "tableRaw": "'employer_invites'",
+      "chain": [
+        {
+          "m": "select",
+          "arg": "'*'"
+        },
+        {
+          "m": "eq",
+          "arg": "'employer_id', employerId"
+        },
+        {
+          "m": "eq",
+          "arg": "'status', 'pending'"
+        },
+        {
+          "m": "order",
+          "arg": "'created_at', { ascending: false }"
+        }
+      ]
+    },
+    {
+      "file": "src/services/entities.js",
+      "line": 376,
+      "table": null,
+      "tableRaw": "table",
+      "chain": [
+        {
+          "m": "select",
+          "arg": "'*'"
+        },
+        {
+          "m": "eq",
+          "arg": "'id', id"
+        },
+        {
+          "m": "maybeSingle",
+          "arg": ""
+        }
+      ]
+    },
+    {
+      "file": "src/services/entities.js",
+      "line": 412,
+      "table": null,
+      "tableRaw": "table",
+      "chain": [
+        {
+          "m": "select",
+          "arg": "listColumns(cfg.childLevel)"
+        },
+        {
+          "m": "eq",
+          "arg": "cfg.column, parentId"
+        }
+      ]
+    },
+    {
+      "file": "src/services/entities.js",
+      "line": 477,
+      "table": null,
+      "tableRaw": "table",
+      "chain": [
+        {
+          "m": "select",
+          "arg": "columns"
+        }
+      ]
+    },
+    {
+      "file": "src/services/entities.js",
+      "line": 492,
+      "table": null,
+      "tableRaw": "table",
+      "chain": [
+        {
+          "m": "select",
+          "arg": "columns, { count: 'exact', head: true }"
+        }
+      ]
+    },
+    {
+      "file": "src/services/entities.js",
+      "line": 503,
+      "table": null,
+      "tableRaw": "table",
+      "chain": [
+        {
+          "m": "select",
+          "arg": "columns"
+        }
+      ]
+    },
+    {
+      "file": "src/services/entities.js",
+      "line": 591,
+      "table": null,
+      "tableRaw": "table",
+      "chain": [
+        {
+          "m": "select",
+          "arg": "listColumns(level), { count: 'estimated' }"
+        }
+      ]
+    },
+    {
+      "file": "src/services/entities.js",
+      "line": 633,
+      "table": "subscriber_balances",
+      "tableRaw": "'subscriber_balances'",
+      "chain": [
+        {
+          "m": "select",
+          "arg": "'subscriber_id, total_balance'"
+        },
+        {
+          "m": "in",
+          "arg": "'subscriber_id', ids"
+        }
+      ]
+    },
+    {
+      "file": "src/services/entities.js",
+      "line": 717,
+      "table": null,
+      "tableRaw": "LEVEL_TABLES.subscriber",
+      "chain": [
+        {
+          "m": "select",
+          "arg": "columns"
+        },
+        {
+          "m": "in",
+          "arg": "'agent_id', agentIds"
+        },
+        {
+          "m": "range",
+          "arg": "from, from + PAGE_SIZE - 1"
+        }
+      ]
+    },
+    {
+      "file": "src/services/entities.js",
+      "line": 1064,
+      "table": "branches",
+      "tableRaw": "'branches'",
+      "chain": [
+        {
+          "m": "insert",
+          "arg": "row"
+        },
+        {
+          "m": "select",
+          "arg": ""
+        },
+        {
+          "m": "single",
+          "arg": ""
+        }
+      ]
+    },
+    {
+      "file": "src/services/entities.js",
+      "line": 1100,
+      "table": "agents",
+      "tableRaw": "'agents'",
+      "chain": [
+        {
+          "m": "insert",
+          "arg": "row"
+        },
+        {
+          "m": "select",
+          "arg": ""
+        },
+        {
+          "m": "single",
+          "arg": ""
+        }
+      ]
+    },
+    {
+      "file": "src/services/entities.js",
+      "line": 1132,
+      "table": "branches",
+      "tableRaw": "'branches'",
+      "chain": [
+        {
+          "m": "update",
+          "arg": "row"
+        },
+        {
+          "m": "eq",
+          "arg": "'id', id"
+        },
+        {
+          "m": "select",
+          "arg": ""
+        },
+        {
+          "m": "single",
+          "arg": ""
+        }
+      ]
+    },
+    {
+      "file": "src/services/entities.js",
+      "line": 1184,
+      "table": "distributors",
+      "tableRaw": "'distributors'",
+      "chain": [
+        {
+          "m": "update",
+          "arg": "row"
+        },
+        {
+          "m": "eq",
+          "arg": "'id', id"
+        },
+        {
+          "m": "select",
+          "arg": ""
+        },
+        {
+          "m": "single",
+          "arg": ""
+        }
+      ]
+    },
+    {
+      "file": "src/services/entities.js",
+      "line": 1410,
+      "table": "agents",
+      "tableRaw": "'agents'",
+      "chain": [
+        {
+          "m": "update",
+          "arg": "{ status }"
+        },
+        {
+          "m": "eq",
+          "arg": "'id', id"
+        },
+        {
+          "m": "select",
+          "arg": ""
+        },
+        {
+          "m": "single",
+          "arg": ""
+        }
+      ]
+    },
+    {
+      "file": "src/services/notifications.js",
+      "line": 94,
+      "table": "notifications",
+      "tableRaw": "'notifications'",
+      "chain": [
+        {
+          "m": "select",
+          "arg": "'*'"
+        },
+        {
+          "m": "eq",
+          "arg": "'recipient_role', role"
+        }
+      ]
+    },
+    {
+      "file": "src/services/notifications.js",
+      "line": 130,
+      "table": "notifications",
+      "tableRaw": "'notifications'",
+      "chain": [
+        {
+          "m": "select",
+          "arg": "'*', { count: 'exact', head: true }"
+        },
+        {
+          "m": "eq",
+          "arg": "'recipient_role', role"
+        },
+        {
+          "m": "eq",
+          "arg": "'is_read', false"
+        }
+      ]
+    },
+    {
+      "file": "src/services/notifications.js",
+      "line": 169,
+      "table": "notifications",
+      "tableRaw": "'notifications'",
+      "chain": [
+        {
+          "m": "select",
+          "arg": "'id'"
+        },
+        {
+          "m": "eq",
+          "arg": "'recipient_role', role"
+        },
+        {
+          "m": "eq",
+          "arg": "'recipient_id', entityId"
+        },
+        {
+          "m": "eq",
+          "arg": "'is_read', false"
+        }
+      ]
+    },
+    {
+      "file": "src/services/subscriber.js",
+      "line": 487,
+      "table": "subscribers",
+      "tableRaw": "'subscribers'",
+      "chain": [
+        {
+          "m": "select",
+          "arg": "'*, subscriber_balances(*), contribution_schedules(*), insurance_policies(*), subscriber_insurance_products(*)'"
+        },
+        {
+          "m": "limit",
+          "arg": "1"
+        },
+        {
+          "m": "maybeSingle",
+          "arg": ""
+        }
+      ]
+    },
+    {
+      "file": "src/services/subscriber.js",
+      "line": 518,
+      "table": "transactions",
+      "tableRaw": "'transactions'",
+      "chain": [
+        {
+          "m": "select",
+          "arg": "\n      'id, subscriber_id, agent_id, type, source, amount, date, status, method, txn_ref, bucket, split_retirement, split_emergency, contribution_run_id',\n    "
+        },
+        {
+          "m": "eq",
+          "arg": "'subscriber_id', id"
+        },
+        {
+          "m": "order",
+          "arg": "'date', { ascending: false }"
+        }
+      ]
+    },
+    {
+      "file": "src/services/subscriber.js",
+      "line": 582,
+      "table": "transactions",
+      "tableRaw": "'transactions'",
+      "chain": [
+        {
+          "m": "select",
+          "arg": "'amount, source, type'"
+        },
+        {
+          "m": "eq",
+          "arg": "'subscriber_id', id"
+        },
+        {
+          "m": "eq",
+          "arg": "'type', 'contribution'"
+        }
+      ]
+    },
+    {
+      "file": "src/services/subscriber.js",
+      "line": 666,
+      "table": "claims",
+      "tableRaw": "'claims'",
+      "chain": [
+        {
+          "m": "select",
+          "arg": "'*'"
+        },
+        {
+          "m": "eq",
+          "arg": "'subscriber_id', id"
+        },
+        {
+          "m": "order",
+          "arg": "'submitted_date', { ascending: false }"
+        }
+      ]
+    },
+    {
+      "file": "src/services/subscriber.js",
+      "line": 683,
+      "table": "withdrawals",
+      "tableRaw": "'withdrawals'",
+      "chain": [
+        {
+          "m": "select",
+          "arg": "'*'"
+        },
+        {
+          "m": "eq",
+          "arg": "'subscriber_id', id"
+        },
+        {
+          "m": "order",
+          "arg": "'date', { ascending: false }"
+        }
+      ]
+    },
+    {
+      "file": "src/services/subscriber.js",
+      "line": 704,
+      "table": "nominees",
+      "tableRaw": "'nominees'",
+      "chain": [
+        {
+          "m": "select",
+          "arg": "'*'"
+        },
+        {
+          "m": "eq",
+          "arg": "'subscriber_id', id"
+        },
+        {
+          "m": "order",
+          "arg": "'created_at', { ascending: true }"
+        }
+      ]
+    },
+    {
+      "file": "src/services/subscriber.js",
+      "line": 749,
+      "table": "subscribers",
+      "tableRaw": "'subscribers'",
+      "chain": [
+        {
+          "m": "select",
+          "arg": "'agent_id, agents(*, branches(name))'"
+        },
+        {
+          "m": "eq",
+          "arg": "'id', subscriberId"
+        },
+        {
+          "m": "maybeSingle",
+          "arg": ""
+        }
+      ]
+    },
+    {
+      "file": "src/services/subscriber.js",
+      "line": 1048,
+      "table": "contribution_schedules",
+      "tableRaw": "'contribution_schedules'",
+      "chain": [
+        {
+          "m": "update",
+          "arg": "patch"
+        },
+        {
+          "m": "eq",
+          "arg": "'subscriber_id', id"
+        },
+        {
+          "m": "select",
+          "arg": ""
+        },
+        {
+          "m": "single",
+          "arg": ""
+        }
+      ]
+    },
+    {
+      "file": "src/services/subscriber.js",
+      "line": 1211,
+      "table": "insurance_policies",
+      "tableRaw": "'insurance_policies'",
+      "chain": [
+        {
+          "m": "upsert",
+          "arg": "{ subscriber_id: id, ...patch }, { onConflict: 'subscriber_id' }"
+        },
+        {
+          "m": "select",
+          "arg": ""
+        },
+        {
+          "m": "single",
+          "arg": ""
+        }
+      ]
+    },
+    {
+      "file": "src/services/subscriber.js",
+      "line": 1218,
+      "table": "subscriber_insurance_products",
+      "tableRaw": "'subscriber_insurance_products'",
+      "chain": [
+        {
+          "m": "update",
+          "arg": "patch"
+        },
+        {
+          "m": "eq",
+          "arg": "'subscriber_id', id"
+        },
+        {
+          "m": "eq",
+          "arg": "'product', product"
+        },
+        {
+          "m": "select",
+          "arg": ""
+        },
+        {
+          "m": "single",
+          "arg": ""
+        }
+      ]
+    },
+    {
+      "file": "src/services/subscriber.js",
+      "line": 1399,
+      "table": "insurance_policies",
+      "tableRaw": "'insurance_policies'",
+      "chain": [
+        {
+          "m": "update",
+          "arg": "renewalPatch"
+        },
+        {
+          "m": "eq",
+          "arg": "'subscriber_id', id"
+        }
+      ]
+    },
+    {
+      "file": "src/services/subscriber.js",
+      "line": 1402,
+      "table": "subscriber_insurance_products",
+      "tableRaw": "'subscriber_insurance_products'",
+      "chain": [
+        {
+          "m": "update",
+          "arg": "renewalPatch"
+        },
+        {
+          "m": "eq",
+          "arg": "'subscriber_id', id"
+        },
+        {
+          "m": "eq",
+          "arg": "'product', type"
+        }
+      ]
+    },
+    {
+      "file": "src/services/subscriber.js",
+      "line": 1411,
+      "table": "transactions",
+      "tableRaw": "'transactions'",
+      "chain": [
+        {
+          "m": "insert",
+          "arg": "{\n        id: tx.id,\n        subscriber_id: id,\n        type: 'premium',\n        amount,\n        date: new Date().toISOString(),\n        status: 'settled',\n        method,\n        txn_ref: reference,\n      }"
+        }
+      ]
+    },
+    {
+      "file": "src/services/subscriber.js",
+      "line": 1455,
+      "table": "subscribers",
+      "tableRaw": "'subscribers'",
+      "chain": [
+        {
+          "m": "select",
+          "arg": "'*'"
+        },
+        {
+          "m": "eq",
+          "arg": "'id', id"
+        },
+        {
+          "m": "maybeSingle",
+          "arg": ""
+        }
+      ]
+    },
+    {
+      "file": "src/services/subscriber.js",
+      "line": 1462,
+      "table": "subscribers",
+      "tableRaw": "'subscribers'",
+      "chain": [
+        {
+          "m": "update",
+          "arg": "patch"
+        },
+        {
+          "m": "eq",
+          "arg": "'id', id"
+        },
+        {
+          "m": "select",
+          "arg": "'*, subscriber_balances(*), contribution_schedules(*), insurance_policies(*), subscriber_insurance_products(*)'"
+        },
+        {
+          "m": "single",
+          "arg": ""
+        }
+      ]
+    },
+    {
+      "file": "api/access-request.ts",
+      "line": 121,
+      "table": "access_requests",
+      "tableRaw": "'access_requests'",
+      "chain": [
+        {
+          "m": "select",
+          "arg": "'id'"
+        },
+        {
+          "m": "eq",
+          "arg": "'status', 'pending'"
+        },
+        {
+          "m": "eq",
+          "arg": "'kind', kind"
+        },
+        {
+          "m": "eq",
+          "arg": "'contact_phone', canonicalPhone"
+        },
+        {
+          "m": "limit",
+          "arg": "1"
+        },
+        {
+          "m": "maybeSingle",
+          "arg": ""
+        }
+      ]
+    },
+    {
+      "file": "api/access-request.ts",
+      "line": 132,
+      "table": "access_requests",
+      "tableRaw": "'access_requests'",
+      "chain": [
+        {
+          "m": "insert",
+          "arg": "{\n    id,\n    kind,\n    org_name: orgName,\n    registration_no: registrationNo || null,\n    contact_name: contactName || null,\n    contact_email: contactEmail || null,\n    contact_phone: canonicalPhone,                                              \n    sector: kind === 'employer' ? (sector || null) : null,\n    district: kind === 'employer' ? (district || null) : null,\n    message: message || null,\n  }"
+        }
+      ]
+    },
+    {
+      "file": "api/auth/_lib/entity-status.ts",
+      "line": 46,
+      "table": null,
+      "tableRaw": "table",
+      "chain": [
+        {
+          "m": "select",
+          "arg": "'status'"
+        },
+        {
+          "m": "eq",
+          "arg": "'id', entityId"
+        },
+        {
+          "m": "maybeSingle",
+          "arg": ""
+        }
+      ]
+    },
+    {
+      "file": "api/auth/_lib/personas.ts",
+      "line": 74,
+      "table": "subscribers",
+      "tableRaw": "'subscribers'",
+      "chain": [
+        {
+          "m": "select",
+          "arg": "'id, name'"
+        },
+        {
+          "m": "eq",
+          "arg": "'phone', phone"
+        },
+        {
+          "m": "order",
+          "arg": "'created_at', { ascending: false }"
+        },
+        {
+          "m": "limit",
+          "arg": "1"
+        },
+        {
+          "m": "maybeSingle",
+          "arg": ""
+        }
+      ]
+    },
+    {
+      "file": "api/auth/_lib/personas.ts",
+      "line": 102,
+      "table": "demo_personas",
+      "tableRaw": "'demo_personas'",
+      "chain": [
+        {
+          "m": "select",
+          "arg": "'entity_id, label'"
+        },
+        {
+          "m": "eq",
+          "arg": "'phone', phone"
+        },
+        {
+          "m": "eq",
+          "arg": "'role', role"
+        },
+        {
+          "m": "limit",
+          "arg": "1"
+        },
+        {
+          "m": "maybeSingle",
+          "arg": ""
+        }
+      ]
+    },
+    {
+      "file": "api/auth/change-password.ts",
+      "line": 106,
+      "table": "users",
+      "tableRaw": "'users'",
+      "chain": [
+        {
+          "m": "select",
+          "arg": "'password_hash'"
+        },
+        {
+          "m": "eq",
+          "arg": "'phone', phone"
+        },
+        {
+          "m": "eq",
+          "arg": "'role', appRole"
+        },
+        {
+          "m": "maybeSingle",
+          "arg": ""
+        }
+      ]
+    },
+    {
+      "file": "api/auth/change-password.ts",
+      "line": 146,
+      "table": "users",
+      "tableRaw": "'users'",
+      "chain": [
+        {
+          "m": "update",
+          "arg": "{ password_hash: newHash }"
+        },
+        {
+          "m": "eq",
+          "arg": "'phone', phone"
+        },
+        {
+          "m": "eq",
+          "arg": "'role', appRole"
+        }
+      ]
+    },
+    {
+      "file": "api/auth/verify-otp.ts",
+      "line": 94,
+      "table": "users",
+      "tableRaw": "'users'",
+      "chain": [
+        {
+          "m": "upsert",
+          "arg": "patch, { onConflict: 'phone,role' }"
+        },
+        {
+          "m": "select",
+          "arg": "'password_hash'"
+        },
+        {
+          "m": "maybeSingle",
+          "arg": ""
+        }
+      ]
+    },
+    {
+      "file": "api/auth/verify-password.ts",
+      "line": 50,
+      "table": "users",
+      "tableRaw": "'users'",
+      "chain": [
+        {
+          "m": "update",
+          "arg": "{ last_login_at: new Date().toISOString() }"
+        },
+        {
+          "m": "eq",
+          "arg": "'phone', phone"
+        },
+        {
+          "m": "eq",
+          "arg": "'role', role"
+        }
+      ]
+    },
+    {
+      "file": "api/auth/verify-password.ts",
+      "line": 101,
+      "table": "users",
+      "tableRaw": "'users'",
+      "chain": [
+        {
+          "m": "select",
+          "arg": "'password_hash, role'"
+        },
+        {
+          "m": "eq",
+          "arg": "'phone', canonicalPhone"
+        },
+        {
+          "m": "eq",
+          "arg": "'role', typedRole"
+        },
+        {
+          "m": "maybeSingle",
+          "arg": ""
+        }
+      ]
+    },
+    {
+      "file": "api/contact.ts",
+      "line": 62,
+      "table": "contact_submissions",
+      "tableRaw": "'contact_submissions'",
+      "chain": [
+        {
+          "m": "insert",
+          "arg": "{\n    id,\n    name,\n    email,\n    message,\n  }"
+        }
+      ]
+    },
+    {
+      "file": "api/kyc/agent-referral.ts",
+      "line": 95,
+      "table": "agent_referrals",
+      "tableRaw": "'agent_referrals'",
+      "chain": [
+        {
+          "m": "insert",
+          "arg": "{\n    id: rowId,\n    ticket_id: ticketId,\n    phone,\n    reason,\n    stage: stage || null,\n    tracking_id: trackingId || null,\n    session_id: sessionId || null,\n    status: 'open',\n    eta,\n  }"
+        }
+      ]
+    },
+    {
+      "file": "api/nominee-claim.ts",
+      "line": 149,
+      "table": "nominee_claims",
+      "tableRaw": "'nominee_claims'",
+      "chain": [
+        {
+          "m": "select",
+          "arg": "'id, reference'"
+        },
+        {
+          "m": "eq",
+          "arg": "'status', 'pending'"
+        },
+        {
+          "m": "eq",
+          "arg": "'claimant_phone', canonicalClaimantPhone"
+        },
+        {
+          "m": "eq",
+          "arg": "'deceased_name', deceasedName"
+        },
+        {
+          "m": "limit",
+          "arg": "1"
+        },
+        {
+          "m": "maybeSingle",
+          "arg": ""
+        }
+      ]
+    },
+    {
+      "file": "api/nominee-claim.ts",
+      "line": 163,
+      "table": "nominee_claims",
+      "tableRaw": "'nominee_claims'",
+      "chain": [
+        {
+          "m": "insert",
+          "arg": "{\n      product,\n      deceased_name: deceasedName,\n      deceased_nin: deceasedNin || null,\n      deceased_phone: canonicalDeceasedPhone || null,\n      date_of_death: dateOfDeath,\n      claimant_name: claimantName,\n      claimant_nin: claimantNin || null,\n      claimant_phone: canonicalClaimantPhone,\n      claimant_email: claimantEmail || null,\n      relationship,\n      district: district || null,\n      notes: notes || null,\n    }"
+        },
+        {
+          "m": "select",
+          "arg": "'id, reference'"
+        },
+        {
+          "m": "single",
+          "arg": ""
+        }
+      ]
+    },
+    {
+      "file": "server/index.ts",
+      "line": 134,
+      "table": "commission_config",
+      "tableRaw": "'commission_config'",
+      "chain": [
+        {
+          "m": "select",
+          "arg": "'id'"
+        },
+        {
+          "m": "limit",
+          "arg": "1"
+        }
+      ]
+    }
+  ]
+}

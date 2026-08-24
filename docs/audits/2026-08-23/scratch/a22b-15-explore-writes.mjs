@@ -1,0 +1,14 @@
+import { chromium } from 'playwright';
+const BASE = 'http://localhost:5173';
+const [role, path] = process.argv.slice(2);
+const b = await chromium.launch({ headless: true });
+const ctx = await b.newContext({ viewport: { width: 1440, height: 900 }, storageState: `e2e/.auth/${role}.json` });
+const page = await ctx.newPage();
+await page.goto(BASE + path, { waitUntil: 'domcontentloaded' });
+await page.waitForTimeout(9000);
+const t = await page.evaluate(() => document.body.innerText.replace(/\s+/g, ' '));
+console.log('BODY:', t.slice(0, 1300));
+console.log('\nBUTTONS:', JSON.stringify((await page.getByRole('button').allInnerTexts()).map(s=>s.replace(/\s+/g,' ').trim()).filter(Boolean).slice(0, 40)));
+console.log('\nINPUTS:', JSON.stringify(await page.locator('input:visible').evaluateAll((els)=>els.map(e=>({name:e.name,type:e.type,value:String(e.value).slice(0,30)})))));
+await page.screenshot({ path: `docs/audits/2026-08-23/scratch/a22b-explore-${role}${path.replace(/\//g,'_')}.png`, fullPage: true });
+await b.close();

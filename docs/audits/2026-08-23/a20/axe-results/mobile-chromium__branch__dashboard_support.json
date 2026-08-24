@@ -1,0 +1,7 @@
+{
+  "role": "branch",
+  "route": "/dashboard/support",
+  "project": "mobile-chromium",
+  "url": "http://localhost:5173/dashboard/support",
+  "violations": []
+}

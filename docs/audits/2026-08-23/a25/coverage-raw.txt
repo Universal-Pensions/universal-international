@@ -1,0 +1,604 @@
+
+> universal-pensions-uganda@1.0.0 test:coverage
+> vitest run --coverage
+
+Loaded  vitest@4.1.4  and  @vitest/coverage-v8@4.1.7 .
+Running mixed versions is not supported and may lead into bugs
+Update your dependencies and make sure the versions match.
+
+ RUN  v4.1.4 /Users/shubhang/Desktop/Projects/uganda-dashboard
+      Coverage enabled with v8
+
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: navigation to another Document
+Not implemented: navigation to another Document
+
+ Test Files  140 passed (140)
+      Tests  2010 passed (2010)
+   Start at  13:22:17
+   Duration  27.69s (transform 3.98s, setup 6.86s, import 23.78s, tests 110.45s, environment 62.18s)
+
+ % Coverage report from v8
+-------------------|---------|----------|---------|---------|-------------------
+File               | % Stmts | % Branch | % Funcs | % Lines | Uncovered Line #s 
+-------------------|---------|----------|---------|---------|-------------------
+All files          |   32.94 |    28.95 |   27.49 |   34.26 |                   
+ api               |   42.01 |    43.98 |   61.53 |   41.93 |                   
+  ...ss-request.ts |       0 |        0 |       0 |       0 | 19-151            
+  chat.ts          |      71 |    76.47 |     100 |   70.21 | ...97-298,303-304 
+  contact.ts       |     100 |       96 |     100 |     100 | 39                
+  nominee-claim.ts |       0 |        0 |       0 |       0 | 27-187            
+ api/_lib          |   93.33 |    87.03 |     100 |   98.36 |                   
+  bearer.ts        |     100 |     87.5 |     100 |     100 | 16                
+  jwt.ts           |   83.87 |    79.16 |     100 |   95.83 | 65                
+  ...base-admin.ts |     100 |       90 |     100 |     100 | 61                
+ api/auth          |   98.44 |    92.96 |     100 |   98.43 |                   
+  ...e-password.ts |   96.22 |    92.85 |     100 |   96.22 | 162-163           
+  verify-otp.ts    |     100 |    93.18 |     100 |     100 | 62,126,171        
+  ...y-password.ts |    98.3 |    90.47 |     100 |    98.3 | 55                
+ api/auth/_lib     |   97.91 |    98.27 |     100 |    97.5 |                   
+  password.ts      |   94.44 |      100 |     100 |    92.3 | 76                
+  personas.ts      |     100 |    91.66 |     100 |     100 | 114               
+ api/kyc           |    98.7 |    87.37 |     100 |     100 |                   
+  ...t-referral.ts |      95 |    87.09 |     100 |     100 | 57-64,77,89       
+  aml-screen.ts    |     100 |    83.33 |     100 |     100 | 37                
+  face-match.ts    |     100 |    83.33 |     100 |     100 | 41,51             
+  id-ocr.ts        |     100 |     87.5 |     100 |     100 | 33                
+  id-quality.ts    |     100 |    93.75 |     100 |     100 | 53                
+  nira-verify.ts   |     100 |     87.5 |     100 |     100 | 44                
+  otp-send.ts      |     100 |    83.33 |     100 |     100 | 30                
+  otp-verify.ts    |     100 |     87.5 |     100 |     100 | 27,39             
+ src               |       0 |        0 |       0 |       0 |                   
+  App.jsx          |       0 |        0 |       0 |       0 | 21-153            
+  main.jsx         |       0 |        0 |       0 |       0 | 29-111            
+ ...dmin-dashboard |   46.71 |     41.7 |   35.89 |   49.62 |                   
+  ...yOverview.jsx |      75 |       50 |   46.15 |      75 | 82-83,134-225     
+  ...oardShell.jsx |   35.18 |    38.21 |   30.76 |    38.7 | ...12-415,439-442 
+ ...ccess-requests |   80.43 |    70.51 |   68.75 |   84.61 |                   
+  ...sRequests.jsx |   80.43 |    70.51 |   68.75 |   84.61 | ...84-106,218-231 
+ ...oard/attention |    57.6 |     46.2 |      50 |   60.19 |                   
+  ...onDesktop.jsx |   83.78 |    66.66 |   88.88 |    87.5 | 65-73,100         
+  ...ionMobile.jsx |    3.57 |        0 |       0 |    4.76 | 19-120            
+  ...yComposer.jsx |   81.81 |    66.66 |      75 |   85.71 | 54                
+  attentionMeta.js |   57.14 |     37.5 |   36.84 |   53.84 | ...88-115,146-160 
+  ...ntionDrill.js |   71.42 |    52.94 |   55.55 |   76.47 | 52-56,65          
+ ...d/distributors |   69.56 |    73.91 |   58.82 |   74.02 |                   
+  ...stributor.jsx |   67.27 |    61.76 |      60 |   71.11 | ...98-123,183-202 
+  ...tributors.jsx |   72.97 |    79.01 |   57.14 |   78.12 | ...82-110,213-226 
+ ...oard/employers |   28.33 |    46.23 |   15.55 |      31 |                   
+  ...eEmployer.jsx |       0 |        0 |       0 |       0 | 10-228            
+  ...yerDetail.jsx |   80.95 |       86 |   63.63 |   88.57 | 59,75,246-259     
+  ...Employers.jsx |       0 |        0 |       0 |       0 | 19-119            
+ ...shboard/mobile |       0 |        0 |       0 |       0 |                   
+  ...stsMobile.jsx |       0 |        0 |       0 |       0 | 21-129            
+  ...omeMobile.jsx |       0 |        0 |       0 |       0 | 18-207            
+  ...HubMobile.jsx |       0 |        0 |       0 |       0 | 8-59              
+  ...NavMobile.jsx |       0 |        0 |       0 |       0 | 21-245            
+  ...orkMobile.jsx |       0 |        0 |       0 |       0 | 7-45              
+  ...imsMobile.jsx |       0 |        0 |       0 |       0 | 27-185            
+  ...ngsMobile.jsx |       0 |        0 |       0 |       0 | 7-87              
+  ...ailMobile.jsx |       0 |        0 |       0 |       0 | 8-45              
+  ...orsMobile.jsx |       0 |        0 |       0 |       0 | 8-48              
+  ...ailMobile.jsx |       0 |        0 |       0 |       0 | 9-104             
+  ...ersMobile.jsx |       0 |        0 |       0 |       0 | 9-92              
+ ...-dashboard/nav |    74.5 |    78.23 |   67.85 |   80.48 |                   
+  ...avDesktop.jsx |    74.5 |    78.23 |   67.85 |   80.48 | ...65,391,445-463 
+ ...nominee-claims |      84 |    73.21 |    82.6 |   88.88 |                   
+  ...neeClaims.jsx |    82.6 |    73.21 |      80 |    87.8 | 70,91-113,230,267 
+ ...board/overview |   88.72 |    71.65 |   77.77 |   92.98 |                   
+  ...nOverview.jsx |   80.76 |    55.93 |    61.9 |    87.5 | ...00,239-295,346 
+  ...tionDerive.js |     100 |    97.91 |     100 |     100 | 89                
+ ...ashboard/shell |   67.16 |    47.05 |   52.63 |   75.47 |                   
+  ...ileAppBar.jsx |   58.33 |    46.66 |      50 |   66.66 | 49-57,99          
+  ...bileShell.jsx |   68.42 |        0 |      50 |   76.47 | 105-107,127       
+  ...BarContext.js |   66.66 |      100 |      25 |   66.66 | 10                
+ ...hboard/sidebar |       0 |        0 |       0 |       0 |                   
+  AdminSidebar.jsx |       0 |        0 |       0 |       0 | 17-663            
+ ...gent-dashboard |       0 |        0 |       0 |       0 |                   
+  ...oardShell.jsx |       0 |        0 |       0 |       0 | 12-78             
+ ...dashboard/home |    0.57 |        0 |    2.56 |    0.66 |                   
+  HomeDesktop.jsx  |       0 |        0 |       0 |       0 | 26-257            
+  HomeMobile.jsx   |       0 |        0 |       0 |       0 | 19-201            
+  HomePage.jsx     |       0 |        0 |       0 |       0 | 7-12              
+  ...pilotReply.js |       0 |        0 |       0 |       0 | 13-65             
+  ...omeSummary.js |     2.7 |        0 |    9.09 |    3.12 | 15-109            
+ ...d/home/widgets |       0 |        0 |       0 |       0 |                   
+  ...ranceCard.jsx |       0 |        0 |       0 |       0 | 17-45             
+  QuickActions.jsx |       0 |        0 |       0 |       0 | 14-38             
+ ...ashboard/inbox |       0 |        0 |       0 |       0 |                   
+  ...tionPanel.jsx |       0 |        0 |       0 |       0 | 8-64              
+  ...yComposer.jsx |       0 |        0 |       0 |       0 | 6-46              
+  ...adActions.jsx |       0 |        0 |       0 |       0 | 7-31              
+  ThreadPanel.jsx  |       0 |        0 |       0 |       0 | 13-31             
+ ...ard/onboarding |   59.62 |    54.76 |   46.93 |      60 |                   
+  ...nessCheck.jsx |       0 |        0 |       0 |       0 | 15-268            
+  OnboardFlow.jsx  |   77.27 |       95 |   72.72 |   76.19 | 43-45,115,132     
+  ...rdKycFlow.jsx |   74.07 |       65 |   69.23 |   73.07 | ...62,175,188-190 
+  ...eduleStep.jsx |       0 |      100 |       0 |       0 | 29-36             
+  ...gComplete.jsx |   85.71 |     61.9 |     100 |   84.61 | 17,38-40,63-64    
+  ...ardPayload.js |     100 |     87.5 |     100 |     100 | 44,62-63          
+ ...ashboard/pages |     4.2 |     5.83 |     3.2 |    4.59 |                   
+  ...csDesktop.jsx |       0 |        0 |       0 |       0 | 38-321            
+  ...yticsPage.jsx |       0 |        0 |       0 |       0 | 23-275            
+  ...nsDesktop.jsx |       0 |        0 |       0 |       0 | 21-248            
+  ...sionsPage.jsx |       0 |        0 |       0 |       0 | 20-194            
+  ...MonthPage.jsx |       0 |        0 |       0 |       0 | 29-108            
+  HelpPage.jsx     |       0 |      100 |       0 |       0 | 6-93              
+  InboxDesktop.jsx |       0 |        0 |       0 |       0 | 19-258            
+  InboxPage.jsx    |       0 |        0 |       0 |       0 | 22-253            
+  ...mbersPage.jsx |   83.33 |    70.27 |      60 |   83.33 | 36,81             
+  ...eLauncher.jsx |       0 |        0 |       0 |       0 | 10-154            
+  NudgeSheet.jsx   |   15.78 |        0 |       0 |   17.14 | 8-28,87-147       
+  ...rdDesktop.jsx |       0 |      100 |       0 |       0 | 27                
+  OnboardPage.jsx  |       0 |        0 |       0 |       0 | 11-12             
+  ...MonthPage.jsx |       0 |        0 |       0 |       0 | 27-88             
+  ProfilePage.jsx  |       0 |        0 |       0 |       0 | 11-121            
+  ...gsDesktop.jsx |       0 |        0 |       0 |       0 | 15-189            
+  SettingsPage.jsx |       0 |        0 |       0 |       0 | 16-166            
+  ...ilDesktop.jsx |       0 |        0 |       0 |       0 | 21-252            
+  ...etailPage.jsx |       0 |        0 |       0 |       0 | 21-220            
+  ...leDesktop.jsx |       0 |        0 |       0 |       0 | 34-132            
+  ...edulePage.jsx |       0 |        0 |       0 |       0 | 15-113            
+  ...rsDesktop.jsx |       0 |        0 |       0 |       0 | 18-196            
+  ...ibersPage.jsx |       0 |        0 |       0 |       0 | 23-189            
+  ...mbersPage.jsx |   52.77 |    57.62 |   33.33 |   54.83 | ...72,114,144-172 
+  ...ibutePage.jsx |       0 |        0 |       0 |       0 | 20-168            
+ ...ages/analytics |       0 |        0 |       0 |       0 |                   
+  chartConfig.jsx  |       0 |        0 |       0 |       0 | 4-26              
+  ...eAnalytics.js |       0 |        0 |       0 |       0 | 3-98              
+ ...es/commissions |       0 |        0 |       0 |       0 |                   
+  ...ionsParts.jsx |       0 |        0 |       0 |       0 | 12-143            
+  ...onsConfig.jsx |       0 |      100 |     100 |       0 | 14-21             
+ ...ges/subscriber |      50 |    32.69 |   29.41 |   47.05 |                   
+  ...leConsent.jsx |       0 |        0 |       0 |       0 | 15-23             
+  PolicyChips.jsx  |       0 |        0 |       0 |       0 | 15-21             
+  ...berBadges.jsx |       0 |        0 |       0 |       0 | 4-49              
+  messageDrafts.js |       0 |        0 |       0 |       0 | 7-13              
+  ...berMetrics.js |     100 |    80.95 |     100 |     100 | 18,25,36-37       
+ ...ashboard/shell |    0.35 |     3.62 |    1.02 |    0.41 |                   
+  ...skAISheet.jsx |       0 |        0 |       0 |       0 | 12-137            
+  ...ilotPanel.jsx |       0 |        0 |       0 |       0 | 14-195            
+  ...ktopShell.jsx |       0 |        0 |       0 |       0 | 13-84             
+  ...ileAppBar.jsx |       0 |        0 |       0 |       0 | 10-109            
+  AgentShell.jsx   |       0 |        0 |       0 |       0 | 17-77             
+  ...avDesktop.jsx |       0 |        0 |       0 |       0 | 16-96             
+  BottomSheet.jsx  |       0 |        0 |       0 |       0 | 8-42              
+  BottomTabBar.jsx |       0 |        0 |       0 |       0 | 9-70              
+  SideNav.jsx      |       0 |        0 |       0 |       0 | 8-129             
+  ...BarContext.js |       0 |      100 |       0 |       0 | 16-23             
+  agentNav.jsx     |       0 |        0 |       0 |       0 | 25-119            
+ ...anch-dashboard |       0 |        0 |       0 |       0 |                   
+  ...oardShell.jsx |       0 |        0 |       0 |       0 | 17-46             
+ ...ashboard/agent |       0 |        0 |       0 |       0 |                   
+  ...ardAgents.jsx |       0 |        0 |       0 |       0 | 12-195            
+  ...AgentForm.jsx |       0 |        0 |       0 |       0 | 18-134            
+ ...oard/analytics |     100 |    85.84 |     100 |     100 |                   
+  ...hAnalytics.js |     100 |    85.84 |     100 |     100 | ...41-245,365-368 
+ ...hboard/desktop |       0 |        0 |       0 |       0 |                   
+  ...ilDesktop.jsx |       0 |        0 |       0 |       0 | 20-251            
+  ...tsDesktop.jsx |       0 |        0 |       0 |       0 | 16-134            
+  ...csDesktop.jsx |       0 |        0 |       0 |       0 | 50-811            
+  ...tsDesktop.jsx |       0 |        0 |       0 |       0 | 16-187            
+  ...bscribers.jsx |       0 |        0 |       0 |       0 | 18-19             
+  ...nsDesktop.jsx |       0 |        0 |       0 |       0 | 14-113            
+  ...ewDesktop.jsx |       0 |        0 |       0 |       0 | 28-373            
+  ...gsDesktop.jsx |       0 |        0 |       0 |       0 | 10-65             
+  ...rtDesktop.jsx |       0 |        0 |       0 |       0 | 15-122            
+ ...shboard/mobile |       0 |        0 |       0 |       0 |                   
+  ...ailMobile.jsx |       0 |        0 |       0 |       0 | 11-194            
+  AgentsMobile.jsx |       0 |        0 |       0 |       0 | 11-207            
+  ...icsMobile.jsx |       0 |        0 |       0 |       0 | 44-634            
+  ...ntsMobile.jsx |       0 |        0 |       0 |       0 | 13-194            
+  ...omeMobile.jsx |       0 |        0 |       0 |       0 | 20-226            
+  ...HubMobile.jsx |       0 |        0 |       0 |       0 | 13-121            
+  ...onsMobile.jsx |       0 |        0 |       0 |       0 | 16-197            
+  ...entMobile.jsx |       0 |        0 |       0 |       0 | 12-220            
+  ...ngsMobile.jsx |       0 |        0 |       0 |       0 | 26-202            
+  ...ortMobile.jsx |       0 |        0 |       0 |       0 | 12-151            
+  ThreadMobile.jsx |       0 |        0 |       0 |       0 | 13-118            
+ ...board/overview |   50.92 |    38.51 |   54.54 |      50 |                   
+  ...lotContext.js |       0 |        0 |       0 |       0 | 29-54             
+  ...viewDerive.js |   53.92 |    42.85 |   57.14 |   53.84 | ...93-151,204-206 
+ ...ashboard/shell |    0.32 |        0 |       0 |    0.39 |                   
+  BottomSheet.jsx  |    9.09 |        0 |       0 |    12.5 | 32-43             
+  ...skAISheet.jsx |       0 |        0 |       0 |       0 | 13-153            
+  ...tomTabBar.jsx |       0 |        0 |       0 |       0 | 5-59              
+  ...ilotPanel.jsx |       0 |        0 |       0 |       0 | 22-190            
+  ...ktopShell.jsx |       0 |        0 |       0 |       0 | 15-147            
+  ...ileAppBar.jsx |       0 |        0 |       0 |       0 | 9-104             
+  ...bileShell.jsx |       0 |        0 |       0 |       0 | 34-119            
+  ...otifSheet.jsx |       0 |        0 |       0 |       0 | 11-63             
+  ...avDesktop.jsx |       0 |        0 |       0 |       0 | 12-81             
+  ...BarContext.js |       0 |      100 |       0 |       0 | 17-24             
+  branchNav.jsx    |       0 |      100 |     100 |       0 | 25-34             
+ src/components    |    32.9 |    36.71 |   31.81 |   34.33 |                   
+  CTA.jsx          |       0 |      100 |       0 |       0 | 9-44              
+  EmptyState.jsx   |   83.33 |    55.55 |   66.66 |   83.33 | 124               
+  ...rBoundary.jsx |       0 |        0 |       0 |       0 | 6-47              
+  ForYou.jsx       |       0 |        0 |       0 |       0 | 9-177             
+  Hero.jsx         |       0 |        0 |       0 |       0 | 10-36             
+  HeroCapsule.jsx  |       0 |        0 |       0 |       0 | 52-53             
+  HowItWorks.jsx   |       0 |      100 |       0 |       0 | 6-88              
+  ...ePayPanel.jsx |       0 |        0 |       0 |       0 | 79-144            
+  MemberCard.jsx   |     100 |    72.72 |     100 |     100 | 42-53             
+  Modal.jsx        |   84.21 |    70.12 |     100 |   88.37 | ...56,169,197-199 
+  Navbar.jsx       |       0 |        0 |       0 |       0 | 19-129            
+  PageHeader.jsx   |   33.33 |    53.33 |      50 |   42.85 | 36-38,42          
+  PaySheet.jsx     |   77.77 |       75 |      80 |    87.5 | 76-77             
+  PillChip.jsx     |      50 |    54.54 |      75 |   57.69 | 72-82             
+  ...alculator.jsx |       0 |        0 |       0 |       0 | 8-50              
+  ScrollToTop.jsx  |       0 |      100 |       0 |       0 | 8-12              
+  SignInModal.jsx  |   46.15 |    51.11 |   56.25 |   47.18 | ...59,421,467-486 
+  SkeletonRow.jsx  |     100 |    77.77 |     100 |     100 | 60-64             
+  ...MobileCTA.jsx |       0 |        0 |       0 |       0 | 8-16              
+  TimeJourney.jsx  |       0 |        0 |       0 |       0 | 10-427            
+  Toast.jsx        |       0 |        0 |       0 |       0 | 5-98              
+  Trust.jsx        |       0 |      100 |       0 |       0 | 6-140             
+  WarmupBanner.jsx |       0 |        0 |       0 |       0 | 10-70             
+ ...s/contribution |    85.9 |    78.07 |   77.19 |   90.47 |                   
+  ...eduleForm.jsx |    85.9 |    78.07 |   77.19 |   90.47 | ...42-722,758,884 
+ ...nents/feedback |     100 |     87.5 |     100 |     100 |                   
+  ErrorCard.jsx    |     100 |     87.5 |     100 |     100 | 24                
+ ...ents/insurance |    87.5 |    91.66 |   83.33 |   92.85 |                   
+  ...ierPicker.jsx |    87.5 |    91.66 |   83.33 |   92.85 | 92                
+ .../notifications |   44.44 |    23.28 |      25 |      50 |                   
+  ...ationBell.jsx |   57.14 |    38.63 |    37.5 |   63.33 | 82-96,135         
+  ...ationList.jsx |       0 |        0 |       0 |       0 | 18-67             
+ ...onents/payment |   39.68 |    39.53 |   29.62 |   44.23 |                   
+  ...hodPicker.jsx |   22.72 |    36.61 |   21.05 |   26.31 | 49-223,273,296    
+  ...mentMethod.js |   78.94 |    53.33 |      50 |   92.85 | 40                
+ ...onents/reports |   58.33 |    41.77 |      50 |   63.46 |                   
+  FilterSelect.jsx |       0 |        0 |       0 |       0 | 5-17              
+  ReportTable.jsx  |   65.38 |    43.24 |    64.7 |   72.72 | ...19,155,188,197 
+  SearchFilter.jsx |       0 |        0 |       0 |       0 | 4-20              
+ ...ponents/signin |   21.16 |    13.72 |   21.15 |   22.47 |                   
+  OtpVerify.jsx    |    3.48 |        0 |       0 |    4.05 | 15-166            
+  ...wordEntry.jsx |       0 |        0 |       0 |       0 | 37-178            
+  PhoneEntry.jsx   |   34.04 |     43.9 |      40 |   36.84 | 34-67,119-128     
+  useLoginFlow.js  |   28.57 |       12 |    9.09 |   28.57 | ...41,148,152-157 
+ ...onents/tickets |       0 |        0 |       0 |       0 |                   
+  ...ageBubble.jsx |       0 |        0 |       0 |       0 | 40-59             
+  ...ssueSheet.jsx |       0 |        0 |       0 |       0 | 23-200            
+  ThreadView.jsx   |       0 |        0 |       0 |       0 | 76-172            
+  ...etListRow.jsx |       0 |        0 |       0 |       0 | 30-43             
+  ...atusBadge.jsx |       0 |        0 |       0 |       0 | 14-31             
+ src/config        |   86.66 |     87.5 |     100 |   92.85 |                   
+  env.js           |   86.66 |     87.5 |     100 |   92.85 | 19                
+ src/constants     |    78.7 |    61.81 |   69.23 |   82.95 |                   
+  claims.js        |       0 |        0 |       0 |       0 | 19-79             
+  districts.js     |   83.33 |       50 |     100 |     100 | 153-154           
+  savings.js       |     100 |       90 |     100 |     100 | 178,243,306       
+ src/contexts      |    39.5 |    25.92 |   43.03 |      40 |                   
+  ...elContext.jsx |   63.33 |       50 |      75 |   64.28 | 72-81             
+  ...peContext.jsx |       0 |      100 |     100 |       0 | 6-9               
+  AuthContext.jsx  |    3.03 |        0 |       0 |    3.17 | 39-191            
+  ...peContext.jsx |       0 |      100 |     100 |       0 | 8-11              
+  ...avContext.jsx |   38.98 |    26.02 |   66.66 |   38.67 | ...86,192-199,204 
+  ...elContext.jsx |   62.96 |       50 |   41.66 |   66.66 | 73,76,79,101-113  
+  ...elContext.jsx |       0 |        0 |       0 |       0 | 32-94             
+  ...InContext.jsx |       0 |        0 |       0 |       0 | 3-32              
+  ToastContext.jsx |      75 |    42.85 |   66.66 |   78.78 | 26-30,45,68       
+  ...peContext.jsx |   33.33 |        0 |      25 |      40 | 20-25             
+ src/dashboard     |   44.79 |    49.15 |      52 |   45.67 |                   
+  ...oardShell.jsx |   44.79 |    49.15 |      52 |   45.67 | ...03-204,346-348 
+ ...ashboard/agent |       0 |        0 |       0 |       0 |                   
+  ViewAgents.jsx   |       0 |        0 |       0 |       0 | 25-661            
+ ...shboard/branch |       0 |        0 |       0 |       0 |                   
+  CreateBranch.jsx |       0 |        0 |       0 |       0 | 12-690            
+  ViewBranches.jsx |       0 |        0 |       0 |       0 | 26-1049           
+ ...ashboard/cards |       0 |        0 |       0 |       0 |                   
+  MetricsRow.jsx   |       0 |        0 |       0 |       0 | 11-352            
+ ...rd/commissions |       0 |        0 |       0 |       0 |                   
+  ...sionPanel.jsx |       0 |        0 |       0 |       0 | 38-1090           
+ src/dashboard/map |       0 |        0 |       0 |       0 |                   
+  UgandaMap.jsx    |       0 |        0 |       0 |       0 | 11-558            
+ ...shboard/mobile |    3.67 |     6.07 |    2.94 |    3.84 |                   
+  ...ailMobile.jsx |       0 |        0 |       0 |       0 | 9-45              
+  AgentsMobile.jsx |       0 |        0 |       0 |       0 | 10-137            
+  ...ailMobile.jsx |       0 |        0 |       0 |       0 | 10-118            
+  ...hesMobile.jsx |       0 |        0 |       0 |       0 | 10-140            
+  ...onsMobile.jsx |       0 |        0 |       0 |       0 | 7-93              
+  ...omeMobile.jsx |       0 |        0 |       0 |       0 | 19-279            
+  ...HubMobile.jsx |       0 |        0 |       0 |       0 | 8-72              
+  ...iewMobile.jsx |       0 |        0 |       0 |       0 | 7-36              
+  ...rtsMobile.jsx |       0 |      100 |       0 |       0 | 5-43              
+  ...ngsMobile.jsx |       0 |        0 |       0 |       0 | 14-130            
+  ...ailMobile.jsx |   76.19 |    62.71 |   57.14 |   78.94 | 31,34,41,94       
+  ...ersMobile.jsx |       0 |        0 |       0 |       0 | 10-125            
+  ...ortMobile.jsx |       0 |        0 |       0 |       0 | 11-78             
+  ThreadMobile.jsx |       0 |        0 |       0 |       0 | 8-59              
+  VirtualRows.jsx  |       0 |        0 |       0 |       0 | 18-61             
+ ...hboard/overlay |   37.32 |    36.24 |   25.64 |   40.56 |                   
+  Breadcrumb.jsx   |       0 |        0 |       0 |       0 | 6-21              
+  ...ilotPanel.jsx |    1.19 |     1.53 |    3.22 |    1.51 | 26-229            
+  OverlayPanel.jsx |   65.58 |     52.8 |    42.1 |   66.66 | ...77-813,868-888 
+  TopBar.jsx       |       0 |        0 |       0 |       0 | 14-186            
+  ...lotContext.js |     100 |       80 |     100 |     100 | 26,40,50,55-57,77 
+ ...board/overview |   71.79 |    55.55 |   45.16 |   76.81 |                   
+  ...rOverview.jsx |   71.79 |    55.55 |   45.16 |   76.81 | ...37-301,314-400 
+ ...hboard/reports |       0 |        0 |       0 |       0 |                   
+  ReportView.jsx   |       0 |        0 |       0 |       0 | 48-98             
+  ReportsHub.jsx   |       0 |        0 |       0 |       0 | 22-447            
+  ViewReports.jsx  |       0 |        0 |       0 |       0 | 12-166            
+ .../reports/views |       0 |        0 |       0 |       0 |                   
+  ...rformance.jsx |       0 |        0 |       0 |       0 | 12-152            
+  AllAgents.jsx    |       0 |        0 |       0 |       0 | 12-148            
+  AllBranches.jsx  |       0 |        0 |       0 |       0 | 11-126            
+  ...bscribers.jsx |       0 |        0 |       0 |       0 | 12-127            
+  ...rformance.jsx |       0 |        0 |       0 |       0 | 11-143            
+  ...llections.jsx |       0 |        0 |       0 |       0 | 10-164            
+  ...onSummary.jsx |       0 |        0 |       0 |       0 | 9-105             
+  ...ompliance.jsx |       0 |        0 |       0 |       0 | 10-165            
+  ...ographics.jsx |       0 |        0 |       0 |       0 | 12-135            
+  ...berGrowth.jsx |       0 |        0 |       0 |       0 | 13-151            
+  ...lsPayouts.jsx |       0 |        0 |       0 |       0 | 11-118            
+ ...board/settings |       0 |        0 |       0 |       0 |                   
+  Settings.jsx     |       0 |        0 |       0 |       0 | 24-701            
+ ...shboard/shared |    8.33 |     7.69 |    8.33 |    8.69 |                   
+  Demographics.jsx |       0 |        0 |       0 |       0 | 5-24              
+  KpiCard.jsx      |     100 |       75 |     100 |     100 | 6                 
+  MetricTile.jsx   |       0 |        0 |       0 |       0 | 37-47             
+  MiniChart.jsx    |       0 |      100 |       0 |       0 | 6-19              
+  Stars.jsx        |       0 |        0 |       0 |       0 | 5-9               
+  TrendArrow.jsx   |       0 |        0 |       0 |       0 | 4-5               
+ ...ashboard/shell |   72.58 |    56.66 |   52.63 |   80.39 |                   
+  ...ileAppBar.jsx |   67.74 |    57.69 |      50 |   77.27 | 45-48,93          
+  ...bileShell.jsx |   68.42 |        0 |      50 |   76.47 | 88-90,115         
+  ...BarContext.js |   66.66 |      100 |      25 |   66.66 | 11                
+ ...hboard/sidebar |   27.57 |    40.21 |      20 |    32.4 |                   
+  Sidebar.jsx      |   27.57 |    40.21 |      20 |    32.4 | ...88-690,717-755 
+ ...ard/subscriber |       0 |        0 |       0 |       0 |                   
+  ...bscribers.jsx |       0 |        0 |       0 |       0 | 26-582            
+ ...hboard/tickets |       0 |        0 |       0 |       0 |                   
+  ViewTickets.jsx  |       0 |        0 |       0 |       0 | 39-442            
+ ...oyer-dashboard |       0 |        0 |       0 |       0 |                   
+  ...oardShell.jsx |       0 |        0 |       0 |       0 | 32-56             
+ .../contributions |     100 |    77.77 |     100 |     100 |                   
+  ...ionHistory.js |     100 |    77.77 |     100 |     100 | 64,82-98,118      
+ ...hboard/desktop |   11.68 |    10.74 |   11.32 |   12.63 |                   
+  ...csDesktop.jsx |       0 |        0 |       0 |       0 | 47-519            
+  ...nsDesktop.jsx |      75 |     62.5 |   77.77 |   73.33 | 53,148-150        
+  ...esDesktop.jsx |       0 |        0 |       0 |       0 | 29-204            
+  FundingPanel.jsx |       0 |        0 |       0 |       0 | 22-142            
+  ...ceDesktop.jsx |       0 |        0 |       0 |       0 | 12-156            
+  ...ilDesktop.jsx |       0 |        0 |       0 |       0 | 21-96             
+  ...Attention.jsx |       0 |        0 |       0 |       0 | 19-89             
+  ...ewDesktop.jsx |       0 |        0 |       0 |       0 | 44-273            
+  ...ycDesktop.jsx |       0 |        0 |       0 |       0 | 27-277            
+  RunsDesktop.jsx  |       0 |        0 |       0 |       0 | 27-166            
+  ...gsDesktop.jsx |       0 |        0 |       0 |       0 | 21-86             
+  ...rtDesktop.jsx |       0 |        0 |       0 |       0 | 34-495            
+  icons.jsx        |   59.25 |    18.51 |   18.51 |   59.25 | ...85,191,197,204 
+  ui.jsx           |   89.65 |    80.39 |   85.71 |   89.65 | 146,171-178       
+ ...oard/employees |       0 |        0 |       0 |       0 |                   
+  ...etailBody.jsx |       0 |        0 |       0 |       0 | 28-257            
+  ...StaffBody.jsx |       0 |        0 |       0 |       0 | 23-376            
+  ...taffPanel.jsx |       0 |        0 |       0 |       0 | 13-16             
+ ...-dashboard/kyc |   76.04 |    48.97 |   68.57 |   79.72 |                   
+  ...ngKycNudge.js |   76.04 |    48.97 |   68.57 |   79.72 | ...35-138,152,159 
+ ...shboard/mobile |    5.97 |    14.11 |    9.55 |    6.68 |                   
+  ...icsMobile.jsx |       0 |        0 |       0 |       0 | 20-206            
+  ...onsMobile.jsx |    90.9 |    58.33 |   85.71 |      90 | 73                
+  ...eesMobile.jsx |       0 |        0 |       0 |       0 | 12-117            
+  ...nceMobile.jsx |       0 |        0 |       0 |       0 | 8-88              
+  ...ailMobile.jsx |       0 |        0 |       0 |       0 | 11-86             
+  ...affMobile.jsx |       0 |      100 |       0 |       0 | 12-13             
+  ...iewMobile.jsx |       0 |        0 |       0 |       0 | 20-159            
+  ...KycMobile.jsx |   77.77 |    72.13 |   63.63 |   77.77 | 74-84,144-151     
+  ...ileMobile.jsx |       0 |        0 |       0 |       0 | 9-106             
+  RunsMobile.jsx   |       0 |        0 |       0 |       0 | 15-96             
+  ...ngsMobile.jsx |       0 |        0 |       0 |       0 | 10-67             
+  ...ortMobile.jsx |       0 |        0 |       0 |       0 | 23-257            
+ ...board/overview |       0 |        0 |       0 |       0 |                   
+  ...lotContext.js |       0 |        0 |       0 |       0 | 23-91             
+ ...ashboard/pages |       0 |        0 |       0 |       0 |                   
+  ...yticsPage.jsx |       0 |        0 |       0 |       0 | 6-11              
+  ...tionsPage.jsx |       0 |        0 |       0 |       0 | 9-14              
+  ...oyeesPage.jsx |       0 |        0 |       0 |       0 | 6-11              
+  ...rancePage.jsx |       0 |        0 |       0 |       0 | 6-11              
+  ...etailPage.jsx |       0 |        0 |       0 |       0 | 6-11              
+  OnboardPage.jsx  |       0 |        0 |       0 |       0 | 9-11              
+  OverviewPage.jsx |       0 |        0 |       0 |       0 | 6-11              
+  ...ngKycPage.jsx |       0 |        0 |       0 |       0 | 10-11             
+  ProfilePage.jsx  |       0 |        0 |       0 |       0 | 8-10              
+  RunsPage.jsx     |       0 |        0 |       0 |       0 | 6-11              
+  SettingsPage.jsx |       0 |        0 |       0 |       0 | 6-11              
+  SupportPage.jsx  |       0 |        0 |       0 |       0 | 6-11              
+ ...shboard/panels |       0 |        0 |       0 |       0 |                   
+  ...lidePanel.jsx |       0 |        0 |       0 |       0 | 23-153            
+ ...hboard/reports |      94 |    61.16 |   92.85 |   96.42 |                   
+  chartConfig.jsx  |   55.55 |        0 |       0 |    62.5 | 42-47             
+  ...eAnalytics.js |    97.8 |    70.78 |     100 |     100 | ...07,228-231,233 
+ ...dashboard/runs |       0 |        0 |       0 |       0 |                   
+  runViews.jsx     |       0 |        0 |       0 |       0 | 31-411            
+ ...board/settings |   34.07 |    27.38 |   22.03 |   36.04 |                   
+  ...eFieldset.jsx |    8.33 |        0 |       0 |    8.33 | 27-73             
+  settingsTabs.jsx |   35.51 |       30 |   24.07 |   37.83 | ...17-504,668-984 
+ ...ashboard/shell |       0 |        0 |       0 |       0 |                   
+  BottomSheet.jsx  |       0 |        0 |       0 |       0 | 8-43              
+  ...skAISheet.jsx |       0 |        0 |       0 |       0 | 23-172            
+  ...tomTabBar.jsx |       0 |        0 |       0 |       0 | 13-20             
+  ...ilotPanel.jsx |       0 |        0 |       0 |       0 | 31-208            
+  ...ktopShell.jsx |       0 |        0 |       0 |       0 | 15-80             
+  ...ileAppBar.jsx |       0 |        0 |       0 |       0 | 10-104            
+  ...oyerShell.jsx |       0 |        0 |       0 |       0 | 24-84             
+  ...avDesktop.jsx |       0 |        0 |       0 |       0 | 12-81             
+  PageFallback.jsx |       0 |      100 |       0 |       0 | 6                 
+  ...BarContext.js |       0 |      100 |       0 |       0 | 24-33             
+  ...MobileNav.jsx |       0 |        0 |       0 |       0 | 10-46             
+  employerNav.jsx  |       0 |      100 |     100 |       0 | 25-35             
+ src/hooks         |   71.97 |     52.7 |   67.55 |   72.77 |                   
+  ...nAttention.js |       0 |        0 |       0 |       0 | 19-39             
+  useAgent.js      |   90.47 |    72.72 |   81.81 |      90 | 32-34             
+  useCommission.js |   83.33 |       75 |   80.95 |   83.33 | 35-37,44,52       
+  useCountUp.js    |      40 |    38.46 |      50 |   41.66 | 21-29             
+  useEmployer.js   |   77.06 |    69.23 |   66.12 |   76.63 | ...84-290,373-374 
+  useEntity.js     |   57.79 |    35.38 |   54.32 |   59.86 | ...97,529-549,620 
+  ...ifications.js |   66.66 |      100 |      70 |   66.66 | 68-73             
+  ...tsideClick.js |     100 |     87.5 |     100 |     100 | 22                
+  useSubscriber.js |   79.26 |    43.75 |   72.34 |   78.75 | ...15,132,239-254 
+  useTickets.js    |   65.78 |    44.06 |   58.62 |   68.22 | ...70-471,477-478 
+ src/pages         |   29.19 |    27.64 |    27.5 |   28.96 |                   
+  About.jsx        |       0 |      100 |       0 |       0 | 7-129             
+  AdminLogin.jsx   |       0 |        0 |       0 |       0 | 16-61             
+  Contact.jsx      |       0 |        0 |       0 |       0 | 12-65             
+  FAQ.jsx          |       0 |        0 |       0 |       0 | 10-125            
+  NomineeClaim.jsx |       0 |        0 |       0 |       0 | 30-295            
+  ...estAccess.jsx |   97.91 |    87.17 |     100 |     100 | 78,93-99,132-174  
+ src/pages/landing |   54.03 |    65.47 |   34.65 |   53.51 |                   
+  AdminPage.jsx    |    97.5 |    85.71 |   94.11 |   97.43 | 93                
+  ...utorsPage.jsx |       0 |        0 |       0 |       0 | 11-316            
+  ...oyersPage.jsx |       0 |        0 |       0 |       0 | 11-198            
+  ...LoginCard.jsx |   64.28 |    65.38 |   33.33 |   69.23 | 58-100            
+  LandingNav.jsx   |   72.72 |    89.47 |   56.25 |   86.36 | 73-77,86          
+  ...ibersPage.jsx |       0 |        0 |       0 |       0 | 11-326            
+  motion.jsx       |   77.77 |    83.33 |     100 |   77.77 | 30-31             
+  ...essRequest.js |   94.54 |    79.62 |     100 |     100 | ...9-91,95-97,105 
+  ...mineeClaim.js |   95.45 |    94.64 |     100 |   97.95 | 103               
+ ...landing/mobile |   13.55 |     3.19 |    14.7 |   13.72 |                   
+  AboutMobile.jsx  |       0 |      100 |       0 |       0 | 3-6               
+  ...actMobile.jsx |       0 |        0 |       0 |       0 | 7-128             
+  ...orsMobile.jsx |       0 |      100 |       0 |       0 | 3-6               
+  ...ersMobile.jsx |       0 |      100 |       0 |       0 | 3-6               
+  FAQMobile.jsx    |       0 |        0 |       0 |       0 | 4-40              
+  ...essMobile.jsx |       0 |        0 |       0 |       0 | 9-167             
+  ...ersMobile.jsx |       0 |      100 |       0 |       0 | 5-47              
+  calc.js          |     100 |       75 |     100 |     100 | 33                
+ .../landing/shell |   72.97 |    57.52 |   65.07 |   76.26 |                   
+  BottomSheet.jsx  |   44.44 |    35.41 |      50 |    46.8 | 16-19,67-92       
+  ...atorSheet.jsx |   66.66 |      100 |      40 |   66.66 | 27-28,42-64       
+  ...tallSheet.jsx |   53.33 |    35.71 |      40 |   57.14 | 37-43,64-65       
+  ...MenuSheet.jsx |      65 |      100 |   45.45 |   68.42 | 106-119           
+  ...bileShell.jsx |   91.83 |    93.75 |   73.33 |   93.18 | 171-176           
+  ...allPrompt.jsx |   85.45 |    69.56 |   85.71 |   93.87 | 31,56,92          
+ src/pwa           |       0 |        0 |       0 |       0 |                   
+  registerSW.js    |       0 |        0 |       0 |       0 | 8-37              
+ src/services      |   64.23 |    54.73 |   73.03 |   67.71 |                   
+  ...ssRequests.js |       0 |        0 |       0 |       0 | 19-38             
+  ...nAttention.js |    5.55 |        0 |       0 |    6.66 | 56-106            
+  agent.js         |   98.14 |    83.03 |     100 |     100 | ...23-224,227-233 
+  api.js           |   92.79 |    87.61 |   78.94 |   95.78 | 37,178-180        
+  auth.js          |   98.86 |    94.31 |     100 |     100 | 51-53,117,211     
+  chat.js          |   78.35 |    76.92 |     100 |   81.21 | ...35,538,541,544 
+  commissions.js   |   69.53 |    43.05 |    75.3 |      72 | ...17-820,823-829 
+  contact.js       |    90.9 |    66.66 |     100 |      90 | 42                
+  employer.js      |   78.04 |    55.57 |   89.85 |   86.57 | ...-900,1064-1066 
+  entities.js      |    28.5 |     20.7 |   35.29 |   30.95 | ...1377,1392-1438 
+  kyc.js           |    83.8 |    81.11 |     100 |   91.76 | ...25,356,359,369 
+  nav.js           |     7.4 |        0 |       0 |    8.69 | 63-151            
+  nomineeClaim.js  |       0 |        0 |       0 |       0 | 25-66             
+  nomineeClaims.js |       0 |        0 |       0 |       0 | 22-45             
+  notifications.js |   46.25 |     40.5 |      75 |   52.23 | ...66-180,286-315 
+  requestAccess.js |       0 |        0 |       0 |       0 | 28-58             
+  search.js        |   95.23 |    91.66 |     100 |     100 | 55                
+  subscriber.js    |   54.87 |    54.86 |   60.93 |   57.71 | ...1441,1510,1529 
+  ...baseClient.js |   73.91 |    48.88 |   85.71 |    75.4 | ...32-169,186,197 
+  tickets.js       |   97.53 |     86.2 |   94.23 |   98.22 | 257-259,398       
+ src/signup        |   40.35 |    29.77 |   48.27 |   41.11 |                   
+  ...nalLoader.jsx |   11.76 |        0 |       0 |   15.38 | 72-119            
+  ...upContext.jsx |   87.69 |    70.37 |   94.44 |   94.33 | 12,187,227        
+  SignupPage.jsx   |   12.74 |     8.95 |   18.18 |   12.08 | 66-347            
+  SignupShell.jsx  |      20 |        0 |   33.33 |   18.51 | 45-92             
+  SignupTopbar.jsx |     100 |       70 |     100 |     100 | ...42,54-58,88-99 
+ ...p/contribution |   62.86 |     63.8 |   58.94 |   63.93 |                   
+  ...tionRoute.jsx |       0 |        0 |       0 |       0 | 32-172            
+  ...nSettings.jsx |   71.87 |    65.98 |   60.71 |   73.87 | ...1326,1482-1483 
+  ...ionPayload.js |     100 |    91.66 |     100 |     100 | 63-64             
+  ...ertificate.js |   71.79 |    69.44 |      80 |   75.67 | 435-446           
+ src/signup/steps  |   14.06 |    13.64 |    12.5 |   14.71 |                   
+  ...vatedStep.jsx |       0 |        0 |       0 |       0 | 15-215            
+  ...lbackStep.jsx |       0 |        0 |       0 |       0 | 11-33             
+  AmlStep.jsx      |       0 |        0 |       0 |       0 | 13-90             
+  ...ariesStep.jsx |    1.51 |        0 |       0 |    1.81 | 31-513            
+  ConsentStep.jsx  |      12 |        0 |       0 |    12.5 | 40-212            
+  IdUploadStep.jsx |    5.88 |        0 |       0 |    6.77 | 38-277            
+  LivenessStep.jsx |    1.58 |        0 |       0 |    1.75 | 26,43-521         
+  NiraStep.jsx     |   54.54 |       50 |   63.63 |   53.33 | ...73-174,217-218 
+  OtpStep.jsx      |     2.1 |        0 |       0 |    2.43 | 15-208            
+  ...eviewStep.jsx |       0 |        0 |       0 |       0 | 9-14              
+  ReviewStep.jsx   |   35.13 |    40.43 |   36.73 |   42.22 | ...80,506-574,613 
+ ...iber-dashboard |       0 |        0 |       0 |       0 |                   
+  ...oardShell.jsx |       0 |        0 |       0 |       0 | 12-47             
+  ...elContext.jsx |       0 |        0 |       0 |       0 | 31-70             
+ ...dashboard/home |   53.25 |    38.51 |      50 |   53.08 |                   
+  HomeDesktop.jsx  |   81.81 |    59.23 |   66.66 |   82.69 | ...12,324,518-576 
+  HomeMobile.jsx   |       0 |        0 |       0 |       0 | 18-247            
+  HomePage.jsx     |       0 |        0 |       0 |       0 | 9-48              
+ ...ashboard/pages |   21.02 |    14.67 |   12.89 |   22.19 |                   
+  ActivityPage.jsx |       0 |        0 |       0 |       0 | 22-240            
+  AgentPage.jsx    |       0 |        0 |       0 |       0 | 32-508            
+  ClaimPage.jsx    |       0 |        0 |       0 |       0 | 20-741            
+  HelpPage.jsx     |       0 |        0 |       0 |       0 | 18-213            
+  ...rancePage.jsx |   90.51 |    79.56 |   88.88 |   93.27 | ...33-234,256,468 
+  NomineesPage.jsx |       0 |        0 |       0 |       0 | 14-380            
+  PoliciesPage.jsx |       0 |        0 |       0 |       0 | 26-433            
+  ProfilePage.jsx  |       0 |        0 |       0 |       0 | 18-184            
+  ReportsPage.jsx  |       0 |        0 |       0 |       0 | 10-175            
+  SavePage.jsx     |   53.57 |    37.29 |      15 |   57.69 | ...59-520,543-681 
+  SchedulePage.jsx |    62.5 |    41.77 |   28.57 |   67.79 | ...84,251,267-300 
+  ...gsDesktop.jsx |       0 |        0 |       0 |       0 | 13-106            
+  SettingsPage.jsx |       0 |        0 |       0 |       0 | 18-89             
+  WithdrawPage.jsx |       0 |        0 |       0 |       0 | 22-705            
+  ...lsHubPage.jsx |       0 |        0 |       0 |       0 | 14-193            
+  ...sSections.jsx |       0 |      100 |     100 |       0 | 7                 
+ ...hboard/reports |   55.49 |    51.97 |   36.36 |   57.96 |                   
+  ...ticsPanel.jsx |       0 |        0 |       0 |       0 | 36-315            
+  chartConfig.jsx  |       0 |        0 |       0 |       0 | 11-36             
+  ...rAnalytics.js |   95.28 |    85.18 |     100 |     100 | ...46-262,283-284 
+ .../reports/views |   28.32 |    21.83 |   29.33 |   29.41 |                   
+  ...nsactions.jsx |       0 |        0 |       0 |       0 | 23-215            
+  ...Statement.jsx |      70 |    46.93 |   85.71 |   70.27 | ...04,108,120,160 
+  ...nsSummary.jsx |   79.48 |    65.21 |   83.33 |   82.85 | 66-69,73,85       
+  ...Statement.jsx |       0 |        0 |       0 |       0 | 21-130            
+  ...lsHistory.jsx |       0 |        0 |       0 |       0 | 15-122            
+ ...ashboard/shell |       0 |        0 |       0 |       0 |                   
+  AskAISheet.jsx   |       0 |        0 |       0 |       0 | 10-149            
+  BottomSheet.jsx  |       0 |        0 |       0 |       0 | 8-41              
+  BottomTabBar.jsx |       0 |        0 |       0 |       0 | 4-88              
+  HelpSheet.jsx    |       0 |        0 |       0 |       0 | 9-131             
+  ...ionsSheet.jsx |       0 |        0 |       0 |       0 | 12-25             
+  SideNav.jsx      |       0 |        0 |       0 |       0 | 6-126             
+  ...ilotPanel.jsx |       0 |        0 |       0 |       0 | 10-215            
+  ...ktopShell.jsx |       0 |        0 |       0 |       0 | 12-113            
+  ...ileAppBar.jsx |       0 |        0 |       0 |       0 | 7-80              
+  ...ationBell.jsx |       0 |        0 |       0 |       0 | 13-158            
+  ...iberShell.jsx |       0 |        0 |       0 |       0 | 21-89             
+  ...avDesktop.jsx |       0 |        0 |       0 |       0 | 26-170            
+  ...BarContext.js |       0 |      100 |       0 |       0 | 11-17             
+  ...ifications.js |       0 |        0 |       0 |       0 | 25-121            
+ src/utils         |   90.75 |    84.45 |   93.61 |   91.21 |                   
+  card.js          |     100 |    94.44 |     100 |     100 | 27,84             
+  ...sionMonths.js |       0 |        0 |       0 |       0 | 14-37             
+  csv.js           |   66.66 |    96.29 |   72.72 |   64.28 | 104,132-151       
+  csvDownload.js   |   83.33 |    77.27 |     100 |   85.29 | 73,94-98          
+  currency.js      |   96.66 |    96.66 |     100 |     100 | 37                
+  dashboard.js     |     100 |    92.85 |     100 |     100 | 9                 
+  date.js          |      75 |    66.66 |     100 |   83.33 | 95-101            
+  finance.js       |     100 |    98.46 |     100 |     100 | 76                
+  ...pInsurance.js |   84.21 |    76.92 |   71.42 |   88.23 | 62,72             
+  hospitalCash.js  |     100 |    91.42 |     100 |     100 | 23,98,122         
+  ...eSelection.js |     100 |    92.59 |     100 |     100 | 87-88             
+  navigation.js    |       0 |        0 |       0 |       0 | 15-19             
+  ...Settlement.js |     100 |     87.5 |     100 |     100 | 57,60-70,101-102  
+  phone.js         |     100 |    92.85 |     100 |     100 | 40                
+  policies.js      |   94.44 |     80.3 |      95 |   95.23 | 40-41             
+  sentryScrub.js   |   98.33 |     86.2 |     100 |     100 | ...14-119,125,134 
+  settlement.js    |   96.07 |       75 |     100 |   97.77 | 233               
+  xlsx.js          |   92.59 |    83.33 |     100 |    93.5 | 62-63,142,234-235 
+-------------------|---------|----------|---------|---------|-------------------
+
+=============================== Coverage summary ===============================
+Statements   : 32.94% ( 7005/21262 )
+Branches     : 28.95% ( 6300/21758 )
+Functions    : 27.49% ( 1661/6042 )
+Lines        : 34.26% ( 6234/18196 )
+================================================================================

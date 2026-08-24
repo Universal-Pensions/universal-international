@@ -1,0 +1,21 @@
+import { chromium } from 'playwright';
+const BASE = 'http://localhost:5173';
+const b = await chromium.launch({ headless: true });
+const ctx = await b.newContext({ viewport: { width: 375, height: 812 } });
+const page = await ctx.newPage();
+await page.goto(BASE + '/distributors', { waitUntil: 'domcontentloaded' });
+await page.waitForTimeout(2000);
+await page.getByRole('button', { name: /^Log in$/i }).first().click();
+await page.waitForTimeout(1000);
+await page.getByRole('button', { name: /^Distributor Distribution network/i }).first().click();
+await page.waitForTimeout(1000);
+await page.getByRole('button', { name: /Distributor Admin/i }).first().click();
+await page.waitForTimeout(1200);
+let inputs = await page.evaluate(() => Array.from(document.querySelectorAll('input')).map(e => `${e.type}|name=${e.name}|ph=${e.placeholder}|vis=${e.offsetParent!==null}`));
+console.log('INPUTS after Distributor Admin:', JSON.stringify(inputs));
+const btns = await page.evaluate(() => Array.from(document.querySelectorAll('button')).map(e=>e.innerText.replace(/\s+/g,' ').trim()).filter(Boolean).slice(0,20));
+console.log('BUTTONS:', JSON.stringify(btns));
+// try fill phone + password?
+console.log('BODY:', (await page.evaluate(()=>document.body.innerText.replace(/\s+/g,' '))).slice(0,300));
+await page.screenshot({ path: 'docs/audits/2026-08-23/scratch/a13-phonestep-375.png', fullPage: true });
+await b.close();
