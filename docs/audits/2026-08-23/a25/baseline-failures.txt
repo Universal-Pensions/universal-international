@@ -1,3 +1,37 @@
+# ============================================================================
+# FROZEN 2026-08-25 — machine-checkable allowlist of pre-existing e2e failures
+# ============================================================================
+# Owner: docs/audits/2026-08-23/REMEDIATION-LEDGER.md  (section "Frozen baseline
+# allowlist"). Frozen as part of the audit-2026-08-23 remediation so that later
+# phases can tell a pre-existing failure from one they introduced.
+#
+# FORMAT — one Playwright test per line, verbatim from the list reporter's
+#          trailing "N failed" block:
+#              [project] > <spec>:<line>:<col> > <describe> > <test>
+#          (the real separator below is Playwright's U+203A, not ">")
+#          30 data lines. LC_ALL=C-sorted. No leading indent, no trailing space.
+#          Lines starting with "#" are this header — parsers MUST skip them.
+#
+# BASELINE RUN — npx playwright test --workers=1   (all 4 projects)
+#          326 passed / 30 failed / 14 skipped, exit 1, 24.4 min.
+#          Full log: docs/audits/2026-08-23/baseline/playwright-full.txt
+#
+# REGENERATE the 30 data lines (verified byte-identical to them on 2026-08-25;
+# the command does NOT reproduce this header, so re-add it afterwards):
+#
+#   awk '/^  [0-9]+ failed$/{f=1;next} /^  [0-9]+ (skipped|passed|flaky)/{f=0} f' \
+#     docs/audits/2026-08-23/baseline/playwright-full.txt \
+#     | sed 's/^    //; s/ *$//' | LC_ALL=C sort \
+#     > docs/audits/2026-08-23/a25/baseline-failures.txt
+#
+# RULE — remediation may only SHORTEN this list. Delete a line in the same change
+#        that fixes it. A failing test that is NOT listed here is a regression
+#        introduced by remediation, not a pre-existing failure.
+#
+# ROUTING — every one of the 30 is routed to an owning finding in the ledger's
+#        "E2E baseline failure routing" table. Exactly one is a true flake:
+#        modal-escape.spec.ts:224 (chromium + webkit) -> A25-013, Phase 7.
+# ============================================================================
 [chromium] › e2e/specs/flows/agent-onboard-subscriber.spec.ts:109:3 › agent → onboard new subscriber (UI + RPC + DB) › full wizard creates subscriber + balances via RPC
 [chromium] › e2e/specs/regression/modal-escape.spec.ts:224:5 › Modal Escape regression › distributor → settlement confirm modal › Escape closes the confirm modal without closing CommissionPanel
 [mobile-chromium] › e2e/specs/flows/distributor-exports-csv.spec.ts:141:3 › mobile UA → CSV cap notice (>5k rows) › subscriber export does NOT surface the cap toast (legacy path)
