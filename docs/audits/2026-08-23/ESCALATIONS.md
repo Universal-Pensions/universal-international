@@ -34,8 +34,8 @@ Status: `OPEN` · `ASSIGNED <owner>` · `DONE <commit>` · `WONT-DO <reason>`
 |---|---|---|---|
 | E8 | Contract test for `apply_settlement`'s tenancy predicate lives at the bottom of `src/utils/__tests__/settlement.test.js`. The established home for that kind of test is `src/test/` (cf. `login-identity-contract.test.js`). Relocate. | P7-tests | OPEN |
 | E9 | **Ownership handoff:** any later migration doing `CREATE OR REPLACE` on `public.apply_settlement` MUST merge onto `0109`'s body, not `0032`/`0051`'s. The new contract test fails loudly if the guard is lost, but only checks the newest FORWARD migration — it cannot protect a hand-applied live `CREATE OR REPLACE`. | all future DB agents | **STANDING** |
-| E10 | `src/employer-dashboard/desktop/EmployeesDesktop.jsx:71` — same expired-invite miscount as A14-003, on the Employees page. Filter `pendingInvites` by `expiresAt` before counting. | P4-branch-metrics | OPEN |
-| E11 | `src/employer-dashboard/desktop/NeedsAttention.jsx:65` — hardcodes "Group life cover"; it is life+health combined (A14-004). | P4-branch-metrics | OPEN |
+| E10 | `src/employer-dashboard/desktop/EmployeesDesktop.jsx:71` — same expired-invite miscount as A14-003, on the Employees page. Filter `pendingInvites` by `expiresAt` before counting. | P4-branch-metrics | **ASSIGNED** |
+| E11 | `src/employer-dashboard/desktop/NeedsAttention.jsx:65` — hardcodes "Group life cover"; it is life+health combined (A14-004). | P4-branch-metrics | **ASSIGNED** |
 | E12 | `e2e/specs/flows/kyc-failure-paths.spec.ts:56` hardcodes NIN `CF12345678ABCD`. Noted deliberately, NOT fixed — it types over the OCR value so it is unaffected by the minting change. | P7-e2e-coverage | OPEN (low) |
 | E13 | **React Compiler trap, repo-wide:** referencing a `useMemo` value from a plain function declared ABOVE that `useMemo` trips `react-hooks/preserve-manual-memoization` as a lint ERROR. Pass the value as a parameter instead. | all frontend agents | **STANDING** |
 
@@ -54,3 +54,15 @@ Status: `OPEN` · `ASSIGNED <owner>` · `DONE <commit>` · `WONT-DO <reason>`
 | A02-101 | `anon` holds TRUNCATE on 35 of 37 tables; RLS does not gate TRUNCATE. Not currently reachable — hardening, not a live hole. | P3-rls-writes | ASSIGNED |
 | A21-101 | PostgREST silently caps every response at 1000 rows; `.limit()` does not override. Already caused a real bug in the e2e probes (56 false positives vs 4 real). | fixed for `getEmployerContributions` (commit 9727064); sweep continues in P6-perf | PARTIAL |
 | — | `map-drill:250` is flaky on chromium too (2 of 5 runs), contradicting A25-013's "only true flake" claim. | P7-e2e-coverage | OPEN |
+
+## Deferred by conflict, not by choice
+
+These are scheduled work that could not start because another agent currently holds the file.
+They are NOT dropped — start them the moment the blocking agent lands.
+
+| Agent | Blocked on | Why |
+|---|---|---|
+| `P4-error-retry` | `P6-observability` | Both write `src/main.jsx` (Sentry init vs the global `QueryCache.onError`). Scope is now only 2 call sites, not 8 — `P4-hero-primitive` measured that the other 6 already guard correctly. |
+| `P4-subscriber-reports` | `P3-rls-writes` | Both write `src/services/subscriber.js` (the insurance-renewal path vs the tax-statement/export queries). A10-001's tax statement reports UGX 0 for a member who contributed 1.4M and exports that to CSV — worth doing properly rather than racing. |
+| `P6-rls-perf` | `P3-rls-writes` | A21-005 consolidates six permissive SELECT policies into one. That is a tenancy change wearing a performance costume and must come AFTER Phase 3 has settled the policy set, then re-run the adversarial cross-tenant probes. |
+| `P5-nav-shells` | `P6-deps` (U2) | The plan sequences the react-router bump BEFORE routing is rewritten. The bump has in fact already happened via the accidental `npm update` — so this is unblocked IF the user keeps the lockfile change, and re-blocked if they revert it. |
