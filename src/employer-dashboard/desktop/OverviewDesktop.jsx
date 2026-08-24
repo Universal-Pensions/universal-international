@@ -24,6 +24,20 @@ import NeedsAttention from './NeedsAttention';
 import ui from './ui.module.css';
 import styles from './OverviewDesktop.module.css';
 
+/**
+ * True when an invite is still worth chasing (A14-003). Mirrors
+ * kyc/usePendingKycNudge.js's `splitInvitesByExpiry` — that helper isn't
+ * exported (it's module-private to the Pending KYC nudge flow), so the same
+ * rule is duplicated here rather than reached into: no `expiresAt` means the
+ * invite never expires (still awaiting); an `expiresAt` at or before `now` means
+ * it has lapsed, and a lapsed invite can't be completed — the public
+ * `/invite/:token` route itself refuses an expired token.
+ */
+export function isInviteAwaiting(invite, now = Date.now()) {
+  const exp = invite?.expiresAt ? new Date(invite.expiresAt).getTime() : Infinity;
+  return !(Number.isFinite(exp) && exp <= now);
+}
+
 /* Funding split for the "How your staff's pension is funded" card, derived from
    REAL MONEY rather than a ratio between the two rates.
 
@@ -106,17 +120,28 @@ export default function OverviewDesktop() {
 
   const headcount = metrics.headcount || employees.length || 0;
   const active = metrics.active || activeRoster.length || 0;
-  // "Total contributions" is PENSION (employee + employer). Insurance premiums
-  // are a separate leg in the run and are excluded here — the metrics RPC counts
-  // type='contribution' only, so the fallback sums the two pension legs (NOT
-  // grandTotal, which now includes the insurance premium).
+  // "Total contributions" is PENSION (employee + employer), run-linked only —
+  // getEmployerMetrics() now recomputes this from the same run-linked source the
+  // leg tiles below read, so the Hero can never disagree with its own tiles again
+  // (A14-001). `??` (not `||`) so a real, correctly-computed 0 (a company with no
+  // funded runs yet) is trusted rather than silently swapped for the fallback.
+  // The fallback itself only covers the brief window before `metrics` resolves.
   const totalContributions = metrics.totalContributions
-    || runs.reduce((s, r) => s + ((r.employeeTotal || 0) + (r.employerTotal || 0)), 0);
+    ?? runs.reduce((s, r) => s + ((r.employeeTotal || 0) + (r.employerTotal || 0)), 0);
 
-  // Employee vs employer leg totals across all runs (the two-leg split the hero
-  // tiles surface). Falls back to 0 cleanly for a company with no runs yet.
-  const employeeTotal = runs.reduce((s, r) => s + (r.employeeTotal || 0), 0);
-  const employerTotal = runs.reduce((s, r) => s + (r.employerTotal || 0), 0);
+  // Employee vs employer leg totals — read the SAME metrics.ownContributions /
+  // employerContributions the Hero above reads (both ultimately the run-linked
+  // getEmployerContributions() sum split by source), so the Hero total and these
+  // two tiles are numerically guaranteed to add up (A14-001). Previously these
+  // summed the `contribution_runs` HEADER rows directly; that happened to match
+  // today, but stays correct only as long as every run header's stored totals
+  // exactly mirror its own child transactions — an invariant a header row with no
+  // (or edited) backing transactions could silently break. Falls back to the
+  // header sum only for the brief window before `metrics` resolves.
+  const employeeTotal = metrics.ownContributions
+    ?? runs.reduce((s, r) => s + (r.employeeTotal || 0), 0);
+  const employerTotal = metrics.employerContributions
+    ?? runs.reduce((s, r) => s + (r.employerTotal || 0), 0);
 
   const latest = runs[0];
   // Next contribution forecast = pension only (employee + employer), consistent
@@ -137,7 +162,15 @@ export default function OverviewDesktop() {
   const totalPremiumMonthly = premiumPerStaff * headcount;
   const totalCover = insProducts.reduce((s, p) => s + p.cover, 0);
 
-  const pendingKyc = pendingInvites.length;
+  // "Pending KYC" should count invites still worth chasing. An EXPIRED invite
+  // can't be completed (the public /invite/:token route itself refuses it), so
+  // counting raw pendingInvites.length is what made the Overview tile + Needs
+  // attention + roster note say "4 invited · awaiting sign-up" while the Pending
+  // KYC page — using the SAME expires_at split — correctly said "0 awaiting ·
+  // 4 lapsed" (A14-003). Mirrors kyc/usePendingKycNudge.js's splitInvitesByExpiry
+  // (not exported there, so duplicated here — same rule: no expiresAt never
+  // expires, expiresAt in the past is lapsed, not awaiting).
+  const pendingKyc = pendingInvites.filter((inv) => isInviteAwaiting(inv)).length;
   const companyName = employer?.name || 'Your company';
   const contactName = employer?.contactName || user?.name || 'there';
 

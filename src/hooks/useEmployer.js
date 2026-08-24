@@ -115,16 +115,20 @@ export function useEmployerContributions(employerId) {
 }
 
 /**
- * Aggregated metrics for the hero / overview (headcount, balances, YTD, mode
- * split). Threads `employerId` through the queryKey so it invalidates with the
- * roster even though the RPC reads scope from the JWT.
+ * Aggregated metrics for the hero / overview (headcount, balances, contribution
+ * totals, YTD). Threads `employerId` through the queryKey so it invalidates with
+ * the roster, AND through to the service call itself — `getEmployerMetrics` uses
+ * it to recompute the four contribution figures from the run-linked source
+ * (getEmployerContributions) rather than trust the RPC's own broader sum
+ * (A14-001); headcount/active/suspended/totalBalance/insuredCount still come
+ * straight off the JWT-scoped RPC and need no argument.
  * @param {string} employerId
  * @returns {import('@tanstack/react-query').UseQueryResult<Object>}
  */
 export function useEmployerMetrics(employerId) {
   return useQuery({
     queryKey: ['employerMetrics', employerId],
-    queryFn: () => employer.getEmployerMetrics(),
+    queryFn: () => employer.getEmployerMetrics(employerId),
     enabled: !!employerId,
     staleTime: READ_STALE_TIME,
   });

@@ -569,16 +569,68 @@ export async function getEmployerContributions(employerId) {
 }
 
 /**
- * @endpoint RPC get_employer_metrics() — aggregates over tagged subscribers.
+ * Reduce a getEmployerContributions()-shaped list (run-linked, `type='contribution'
+ * AND contribution_run_id IS NOT NULL`) into the four aggregate contribution
+ * figures the Overview Hero, Runs "funded to date" and Analytics "total
+ * contributions" KPI all show. ONE computation so every surface that claims
+ * "total contributions" (or its employee/employer legs) means exactly the same
+ * money — pension funded THROUGH an employer run — never a member's own
+ * personal savings from before/outside employer sponsorship (A14-001).
+ * YTD uses the real wall clock (`get_employer_metrics`'s SQL twin reads
+ * `now()`), not the frozen demo `currentTime()` used elsewhere in this file for
+ * seeded mock dates.
+ */
+function summarizeRunLinkedContributions(rows) {
+  const year = new Date().getFullYear();
+  let own = 0;
+  let employerAmt = 0;
+  let ownYtd = 0;
+  let employerYtd = 0;
+  for (const t of rows) {
+    const amount = Number(t.amount ?? 0);
+    const isOwn = t.source !== 'employer';
+    if (isOwn) own += amount; else employerAmt += amount;
+    if (new Date(t.date).getFullYear() === year) {
+      if (isOwn) ownYtd += amount; else employerYtd += amount;
+    }
+  }
+  return {
+    totalContributions: own + employerAmt,
+    ownContributions: own,
+    employerContributions: employerAmt,
+    employeeYtd: ownYtd,
+    employerYtd,
+  };
+}
+
+/**
+ * @endpoint RPC get_employer_metrics() — headcount/active/suspended/totalBalance/
+ *   insuredCount over tagged subscribers. The RPC's OWN totalContributions/
+ *   ownContributions/employerContributions/employerYtd/employeeYtd are NOT
+ *   trusted as-is (Supabase branch only) — see A14-001: the SQL sums every
+ *   type='contribution' row for a tagged member with no `contribution_run_id`
+ *   filter, so it also counts a member's personal contribution history from
+ *   before/outside employer sponsorship, up to an 11.6x overcount on live data.
+ *   Those four fields are replaced with the SAME run-linked total the leg
+ *   tiles / Contributions page already compute (getEmployerContributions),
+ *   so the Hero, the leg tiles, Runs and Analytics can never disagree again.
+ *   headcount/active/suspended/totalBalance/insuredCount are untouched — they
+ *   are not part of this mismatch.
+ * @param {string} [employerId] - needed to recompute the run-linked figures;
+ *   the RPC itself stays JWT-scoped and needs no argument.
  * @cache ['employerMetrics', employerId]
  */
-export async function getEmployerMetrics() {
+export async function getEmployerMetrics(employerId) {
   if (!IS_SUPABASE_ENABLED) {
     const members = mockMembers();
     const headcount = members.length;
     const active = members.filter((m) => m.status === 'active').length;
     const suspended = headcount - active;
     const totalBalance = members.reduce((s, m) => s + (m.netBalance || 0), 0);
+    // Mock members' ownContributions/employerContributions are already
+    // run-linked-only (employerSeed.js derives them as employeeLeg × monthsActive
+    // over the same tagged runs MEMBER_TRANSACTIONS carries) — no analogue of the
+    // live RPC's bug exists here, so the mock path needs no override.
     const ownContributions = members.reduce((s, m) => s + (m.ownContributions || 0), 0);
     const employerContributions = members.reduce((s, m) => s + (m.employerContributions || 0), 0);
     const insuredCount = members.filter((m) => m.insuranceStatus === 'active').length;
@@ -594,9 +646,12 @@ export async function getEmployerMetrics() {
       employeeYtd: ownContributions,
     };
   }
-  const { data, error } = await supabase.rpc('get_employer_metrics');
+  const [{ data, error }, runLinked] = await Promise.all([
+    supabase.rpc('get_employer_metrics'),
+    getEmployerContributions(employerId),
+  ]);
   if (error) throw error;
-  return data ?? {};
+  return { ...(data ?? {}), ...summarizeRunLinkedContributions(runLinked) };
 }
 
 /**

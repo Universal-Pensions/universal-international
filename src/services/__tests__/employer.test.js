@@ -213,6 +213,66 @@ describe('employer service — real (Supabase) branch', () => {
       expect(m.headcount).toBe(16);
       expect(supabaseMock.__getRpcCalls('get_employer_metrics').length).toBe(1);
     });
+
+    // A14-001: on live emp-001 data the RPC's own totalContributions summed EVERY
+    // type='contribution' row for a tagged member (including personal savings
+    // from before/outside employer sponsorship) to 182,689,000, while the
+    // run-linked leg tiles/Runs page totalled 15,734,000 — an 11.6x gap on one
+    // screen. This pins that getEmployerMetrics() no longer trusts the RPC's
+    // contribution fields: it overrides them with the SAME run-linked source
+    // getEmployerContributions() exposes, so the Hero/leg-tiles/Runs/Analytics
+    // can never disagree again, while demographic fields the RPC computes
+    // correctly (headcount/active/suspended/totalBalance/insuredCount) pass
+    // through untouched.
+    it('overrides the RPC contribution totals with the run-linked total (not the RPC sum)', async () => {
+      const thisYear = new Date().getFullYear();
+      supabaseMock.__queueRpc('get_employer_metrics', {
+        data: {
+          headcount: 21, active: 19, suspended: 2, totalBalance: 197491903,
+          // Inflated (all-history) figures the RPC computes today — must be
+          // REPLACED, not surfaced.
+          totalContributions: 182689000, ownContributions: 120292000, employerContributions: 62397000,
+          employerYtd: 62397000, employeeYtd: 120292000,
+          insuredCount: 21,
+        },
+        error: null,
+      });
+      supabaseMock.__queueFrom('transactions', {
+        data: [
+          // Run-linked (contribution_run_id set) — the only rows getEmployerContributions
+          // would actually return (its query filters `.not('contribution_run_id','is',null)`).
+          { id: 't-1', subscriber_id: 'empe-001', type: 'contribution', source: 'own', amount: 105000, date: `${thisYear}-05-15T12:00:00.000Z`, contribution_run_id: 'run-001' },
+          { id: 't-2', subscriber_id: 'empe-001', type: 'contribution', source: 'employer', amount: 210000, date: `${thisYear - 5}-05-15T12:00:00.000Z`, contribution_run_id: 'run-001' },
+        ],
+        error: null,
+      });
+
+      const m = await svc.getEmployerMetrics('emp-001');
+
+      // Demographic fields: untouched pass-through from the RPC.
+      expect(m).toMatchObject({ headcount: 21, active: 19, suspended: 2, totalBalance: 197491903, insuredCount: 21 });
+      // Contribution fields: the run-linked sum (105000 + 210000 = 315000), NOT
+      // the RPC's inflated 182,689,000.
+      expect(m.totalContributions).toBe(315000);
+      expect(m.ownContributions).toBe(105000);
+      expect(m.employerContributions).toBe(210000);
+      expect(m.totalContributions).not.toBe(182689000);
+      // YTD splits by the transaction's own year, not the RPC's YTD fields.
+      expect(m.employeeYtd).toBe(105000); // this year's 'own' txn only
+      expect(m.employerYtd).toBe(0); // the 'employer' txn is 5 years old
+    });
+
+    it('with no run-linked contributions, reports 0 rather than the RPC sum (post-cleanup empty state)', async () => {
+      supabaseMock.__queueRpc('get_employer_metrics', {
+        data: { headcount: 3, active: 3, totalContributions: 21300000, ownContributions: 21300000, employerContributions: 0 },
+        error: null,
+      });
+      supabaseMock.__queueFrom('transactions', { data: [], error: null });
+      const m = await svc.getEmployerMetrics('emp-002');
+      expect(m.totalContributions).toBe(0);
+      expect(m.ownContributions).toBe(0);
+      expect(m.employerContributions).toBe(0);
+    });
   });
 
   describe('removeEmployee', () => {
