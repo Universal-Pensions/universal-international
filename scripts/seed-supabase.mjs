@@ -10,7 +10,12 @@
  *      pooler URL for the Singapore project, e.g.
  *      aws-1-ap-southeast-1.pooler.supabase.com:6543).
  *   2. Ensure migrations 0001+ are applied to the project.
- *   3. node scripts/seed-supabase.mjs
+ *   3. npm run seed -- --yes-destroy <project-ref>
+ *      (or: node scripts/seed-supabase.mjs --yes-destroy <project-ref>)
+ *      <project-ref> must exactly match the ref parsed out of
+ *      SUPABASE_DB_URL (audit A09-003 guard) — this is a destructive
+ *      TRUNCATE + reseed and the script refuses to run without it. The
+ *      error message on a bare run echoes the exact ref to pass.
  *
  * The script:
  *   • Wraps everything in a single transaction.
@@ -90,6 +95,87 @@ if (!DB_URL) {
   );
   process.exit(1);
 }
+
+// ─── Destructive-run guard (audit A09-003) ─────────────────────────────────
+// This script TRUNCATEs every seeded table with no undo. It has already been
+// pointed at a live project by accident once (2026-06-16 destructive live
+// reseed). Require the caller to name the exact project the TRUNCATE is
+// about to hit, and refuse — before opening any connection — if it doesn't
+// match the ref parsed out of SUPABASE_DB_URL.
+//
+// The project ref lives in a different part of the connection string
+// depending on which form is used:
+//   • Pooler (this repo's normal path, host like
+//     aws-1-ap-southeast-1.pooler.supabase.com): the ref is embedded in the
+//     USERNAME as "postgres.<ref>" — NOT in the hostname.
+//   • Direct (host db.<ref>.supabase.co): the ref is the hostname's first
+//     label.
+//
+// Parsed with plain regexes against the raw connection string rather than
+// `new URL()` — a password containing a character URL() treats specially
+// (e.g. "@") could otherwise misparse the userinfo/host split. Only the
+// matched ref is ever logged or compared; the password never is.
+function parseProjectRef(dbUrl) {
+  const pooler = dbUrl.match(
+    /:\/\/postgres\.([a-z0-9]+):[^@]*@[^/]*\.pooler\.supabase\.com\b/i
+  );
+  if (pooler) return pooler[1];
+
+  const direct = dbUrl.match(/:\/\/[^@]*@db\.([a-z0-9]+)\.supabase\.co\b/i);
+  if (direct) return direct[1];
+
+  return null;
+}
+
+const YES_FLAG = '--yes-destroy';
+
+/**
+ * Refuse to proceed unless the caller passed `--yes-destroy <project-ref>`
+ * naming the exact project SUPABASE_DB_URL resolves to. Exits the process
+ * (non-zero) on any refusal path; only returns on success. Must run before
+ * the first DB connection in the file — see the TRUNCATE block in main().
+ */
+function requireDestroyConfirmation(dbUrl, argv) {
+  const projectRef = parseProjectRef(dbUrl);
+  if (!projectRef) {
+    console.error(
+      'ERROR: could not parse a Supabase project ref out of SUPABASE_DB_URL.\n' +
+        '  Expected the pooler form (username "postgres.<ref>" on a\n' +
+        '  *.pooler.supabase.com host) or the direct form (db.<ref>.supabase.co).\n' +
+        '  Refusing to run — the destructive TRUNCATE below must never fire\n' +
+        '  against an unrecognised target.'
+    );
+    process.exit(1);
+  }
+
+  const flagIdx = argv.indexOf(YES_FLAG);
+  const suppliedRef = flagIdx !== -1 ? argv[flagIdx + 1] : undefined;
+
+  if (!suppliedRef) {
+    console.error(
+      'ERROR: refusing to run. This script TRUNCATEs every seeded table — ' +
+        'destructive and irreversible (audit A09-003; this repo has already ' +
+        'suffered one accidental live reseed).\n' +
+        `  SUPABASE_DB_URL currently targets project "${projectRef}".\n` +
+        '  Re-run naming that exact project to proceed:\n' +
+        `    npm run seed -- ${YES_FLAG} ${projectRef}`
+    );
+    process.exit(1);
+  }
+
+  if (suppliedRef !== projectRef) {
+    console.error(
+      `ERROR: refusing to run. ${YES_FLAG} "${suppliedRef}" does not match ` +
+        `the project ref parsed from SUPABASE_DB_URL ("${projectRef}").\n` +
+        '  Aborting before opening any connection — fix the flag or the URL.'
+    );
+    process.exit(1);
+  }
+
+  console.log(`• Destructive-run guard passed — confirmed target "${projectRef}".`);
+}
+
+requireDestroyConfirmation(DB_URL, process.argv);
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 /**
