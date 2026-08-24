@@ -100,3 +100,33 @@ is right in principle; it is only the *discrimination method* that needs replaci
    Abort if it has: a new ref means a rep created a real run, and it must be left alone.
 3. `CREATE TABLE transactions_pre_purge_20260824 AS SELECT * FROM transactions WHERE txn_ref IN
    (…)` first, with a committed `unpurge.sql`.
+
+---
+
+## Addendum — 4 extra rows for Phase 2 to purge (2026-08-25)
+
+`P0-e2e-teardown` disclosed that its own verification run left residue in live. Its specs are
+only safe run serially (`playwright.config.ts` pins `workers:1` under CI only); locally they
+raced on the shared fixture agent `a-001`, and two tests failed *after* their real
+`apply_settlement` call but *before* the line that records the batch id for cleanup.
+
+Add these to Phase 2's purge set:
+
+```sql
+-- notifications first (they reference the batch)
+delete from notifications
+ where id in ('ntf-264e6b5ff2a7418c956d0d932316255f',
+              'ntf-322cf641ecfa433fbb3ec1433cc2c870');
+delete from settlement_batches
+ where id in ('sb-8598ef1286bd4f89b628e4aed9238f6f',   -- txn_ref E2E-PARTIAL-1787558955623
+              'sb-f7c09fe4e5d34d42ab385ac075367a6b');  -- txn_ref E2E-FULL-1787558947624
+```
+
+These fall inside `P2-sql-settlement`'s existing `E2E-PARTIAL-*` / `E2E-FULL-*` orphan sweep, so
+they need no separate migration — but they post-date the audit, so confirm the sweep's predicate
+catches them rather than assuming.
+
+**Separate latent issue, unowned:** `distributor-apply-settlement.spec.ts` and
+`employer-kyc-nudge.spec.ts` both use fixed shared ids and are only safe serial. Locally they run
+parallel by default. Worth `test.describe.configure({ mode: 'serial' })` or per-test unique ids —
+a Phase 7 test-suite decision, not part of A06-002.
