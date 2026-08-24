@@ -48,6 +48,16 @@ export default function OnboardFlow() {
   }
 
   function handleClose() {
+    // A11-002: nin/idConfidence are NOT in SignupContext's EPHEMERAL_KEYS, so
+    // without a reset they'd survive in localStorage — and ReviewStep skips
+    // OCR entirely whenever idConfidence is already set. Without this line,
+    // Close (on success OR on a manual-review/error terminal) would leave the
+    // JUST-USED identity sitting there for the next visit to /dashboard/onboard
+    // to silently replay, 409-ing on the same NIN all over again. reset()
+    // mints a fresh onboardingSessionId + signupNonce too, exactly like
+    // startAnother() below — Close is just the "abandon this attempt" exit,
+    // so it gets the identical clean slate.
+    signup.reset();
     navigate('/dashboard');
   }
 

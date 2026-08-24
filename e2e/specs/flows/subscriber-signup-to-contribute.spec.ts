@@ -165,11 +165,14 @@ test.describe('subscriber → signup wizard → first contribution (UI + DB)', (
     // The `name="phone"` input is unique on the page.
     await page.locator('input[name="phone"]').fill(uniquePhoneDigits);
 
-    // Override the OCR-provided NIN so parallel workers don't collide on the
-    // partial unique index `ux_subscribers_nin` (migration 0017). The mock
-    // returns a fixed `CF92018AB3CD45`; we derive a unique value from the
-    // unique phone. Format `^C[MF][A-Z0-9]{12}$` — 14 chars total
-    // (ReviewStep.jsx:10). 'CF' + 9-digit phone + 'ABC' = 14 chars.
+    // Override the OCR-provided NIN with one derived from the unique phone.
+    // The OCR mock no longer returns one fixed NIN forever (A11-002 — it
+    // mints a fresh identity per call, seeded off the onboarding session id;
+    // see api/kyc/id-ocr.ts), so this isn't dodging a collision with itself
+    // anymore, but pinning the NIN to the same unique phone this spec already
+    // generates keeps its uniqueness independent of the mock's own hashing.
+    // Format `^C[MF][A-Z0-9]{12}$` — 14 chars total (ReviewStep.jsx:10). 'CF'
+    // + 9-digit phone + 'ABC' = 14 chars.
     await page.locator('#nin').fill(`CF${uniquePhoneDigits}ABC`);
 
     // District — combobox: focus opens the listbox, then we click the option.

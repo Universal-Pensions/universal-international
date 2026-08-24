@@ -259,6 +259,114 @@ function mockTrackingId() {
   return `smile_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
 }
 
+/* ── Seeded identity mint (duplicated in api/kyc/id-ocr.ts) ─────────────────
+ * `mockExtractIdFields` below used to return one fixed identity forever,
+ * which collided with the UNIQUE index on subscribers.nin the moment a demo
+ * agent onboarded a SECOND subscriber (audit A11-002). This mints a fresh,
+ * internally-consistent identity per call, deterministically seeded off the
+ * caller's `sessionId` — the same reasoning as the API route, whose header
+ * comment (api/kyc/id-ocr.ts) explains the seeding choice in full. Kept as a
+ * full duplicate here rather than imported: `.vercelignore` strips `api/`
+ * from the Vercel source upload, so an `api/` <-> `src/` import compiles
+ * locally and in CI but breaks only at the production deploy — see
+ * `api/auth/_lib/password.ts`'s "Never imported from src/" convention and
+ * `mockTrackingId` just above, which is the same duplicate-not-shared
+ * pattern for a different mock field. Name pools mirror
+ * `src/data/mockData.js`'s FIRST_NAMES_M/FIRST_NAMES_F/LAST_NAMES (private
+ * to that module, so copied rather than imported).
+ */
+
+const OCR_FIRST_NAMES_M = ['James', 'Robert', 'David', 'Joseph', 'Samuel', 'Peter', 'John', 'Moses', 'Isaac', 'Patrick', 'Ronald', 'Brian', 'Denis', 'Frank', 'Henry', 'Richard', 'Charles', 'Emmanuel', 'Gerald', 'Andrew'];
+const OCR_FIRST_NAMES_F = ['Grace', 'Sarah', 'Agnes', 'Mary', 'Rose', 'Esther', 'Florence', 'Janet', 'Rebecca', 'Judith', 'Harriet', 'Dorothy', 'Irene', 'Beatrice', 'Prossy', 'Lillian', 'Carol', 'Diana', 'Annet', 'Brenda'];
+const OCR_LAST_NAMES = ['Okello', 'Namubiru', 'Mugisha', 'Kabuye', 'Ssempala', 'Atuhaire', 'Owori', 'Nankya', 'Tumusiime', 'Byaruhanga', 'Namutebi', 'Kisakye', 'Obua', 'Drazu', 'Akello', 'Okiror', 'Natukunda', 'Musinguzi', 'Katusiime', 'Babirye', 'Nsubuga', 'Kasozi', 'Lubega', 'Kato', 'Wasswa', 'Nakato', 'Kiiza', 'Asiimwe', 'Mwesigwa', 'Arinaitwe'];
+const OCR_NIN_CHARS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+
+// FNV-1a 32-bit — turns the sessionId string into a numeric seed.
+function ocrSeedFromString(str) {
+  let h = 0x811c9dc5;
+  for (let i = 0; i < str.length; i++) {
+    h ^= str.charCodeAt(i);
+    h = Math.imul(h, 0x01000193);
+  }
+  return h >>> 0;
+}
+
+// mulberry32 — small deterministic PRNG. Same seed -> same output stream
+// every time, i.e. "stable across retries" for a given sessionId.
+function ocrMulberry32(seed) {
+  let t = seed >>> 0;
+  return function next() {
+    t = (t + 0x6d2b79f5) >>> 0;
+    let r = Math.imul(t ^ (t >>> 15), 1 | t);
+    r = (r + Math.imul(r ^ (r >>> 7), 61 | r)) ^ r;
+    return ((r ^ (r >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+function ocrRandInt(rand, n) {
+  return Math.floor(rand() * n);
+}
+
+function ocrPick(rand, arr) {
+  return arr[ocrRandInt(rand, arr.length)];
+}
+
+function ocrPad2(n) {
+  return String(n).padStart(2, '0');
+}
+
+/**
+ * Mint a full {@link IdExtraction}-shaped identity, seeded off `sessionId` so
+ * the SAME identity comes back across a same-attempt retry but a DIFFERENT
+ * one for every new onboarding session. Only `nin` must be unique per call
+ * (ux_subscribers_nin) — the other fields vary too, for realism.
+ */
+function mintIdExtraction(sessionId) {
+  // No sessionId isn't the production path (ReviewStep always sends
+  // signup.onboardingSessionId), but stay safe rather than colliding every
+  // caller that somehow omits it onto one shared identity.
+  const seedInput = typeof sessionId === 'string' && sessionId
+    ? sessionId
+    : `no-session-${Math.random()}`;
+  const rand = ocrMulberry32(ocrSeedFromString(seedInput));
+
+  const gender = rand() < 0.5 ? 'male' : 'female';
+  const firstName = ocrPick(rand, gender === 'female' ? OCR_FIRST_NAMES_F : OCR_FIRST_NAMES_M);
+  const lastName = ocrPick(rand, OCR_LAST_NAMES);
+  // Third name token, used only in the barcode's SURNAME,GIVEN,OTHER slot —
+  // Ugandan IDs commonly carry a clan/"other" name distinct from the two
+  // printed on the front.
+  const otherName = ocrPick(rand, OCR_LAST_NAMES);
+  const fullName = `${firstName} ${lastName}`;
+
+  // NIN: 'C' + M/F (MUST track gender — ReviewStep.jsx's NIN_RE requires it;
+  // 'other' has no valid prefix and must never be minted) + 12 alphanumeric
+  // chars. The only field that MUST be unique per call.
+  let ninSuffix = '';
+  for (let i = 0; i < 12; i++) ninSuffix += OCR_NIN_CHARS[ocrRandInt(rand, OCR_NIN_CHARS.length)];
+  const nin = `C${gender === 'male' ? 'M' : 'F'}${ninSuffix}`;
+
+  // Card number: 'UG' + 7 digits, mirrors the old fixed 'UG7412903' shape.
+  let cardDigits = '';
+  for (let i = 0; i < 7; i++) cardDigits += String(ocrRandInt(rand, 10));
+  const cardNumber = `UG${cardDigits}`;
+
+  // DOB: a birth-YEAR OFFSET against *today*, not a fixed calendar date, so
+  // the minted age can never age out of the [18,100] window ReviewStep.jsx
+  // and 0002_rpc_functions.sql both enforce.
+  const today = new Date();
+  const ageYears = 22 + ocrRandInt(rand, 40); // 22..61
+  const birthYear = today.getUTCFullYear() - ageYears;
+  const birthMonth = 1 + ocrRandInt(rand, 12);
+  const birthDay = 1 + ocrRandInt(rand, 28); // avoid month-length edge cases
+  const dob = `${birthYear}-${ocrPad2(birthMonth)}-${ocrPad2(birthDay)}`;
+
+  // Real format: NIN|cardNumber|dob|SURNAME,GIVEN,OTHER.
+  const barcodeRaw = `${nin}|${cardNumber}|${dob}|${lastName.toUpperCase()},${firstName.toUpperCase()},${otherName.toUpperCase()}`;
+
+  return { fullName, nin, cardNumber, dob, gender, barcodeRaw, confidence: 0.94 };
+}
+
 function readForced(key) {
   // QA force-overrides only apply in development. In production these keys are
   // ignored so a user with devtools cannot bypass any KYC stage.
@@ -296,15 +404,7 @@ async function mockExtractIdFields(payload) {
   if (!payload?.front || !payload?.back) {
     throw new Error('Both sides of the ID are required.');
   }
-  return {
-    fullName: 'Namukasa Sarah Kintu',
-    nin: 'CF92018AB3CD45',
-    cardNumber: 'UG7412903',
-    dob: '1992-06-18',
-    gender: 'female',
-    barcodeRaw: 'CF92018AB3CD45|UG7412903|1992-06-18|NAMUKASA,SARAH,KINTU',
-    confidence: 0.94,
-  };
+  return mintIdExtraction(payload?.sessionId);
 }
 
 async function mockVerifyNira(payload) {

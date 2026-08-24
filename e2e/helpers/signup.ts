@@ -82,10 +82,14 @@ export async function walkSignupToFirstContribution(
 
   await page.locator('input[name="phone"]').fill(phoneDigits);
 
-  // Override the OCR-provided NIN so parallel runs don't collide on the
-  // partial unique index `ux_subscribers_nin` (migration 0017). The OCR mock
-  // returns a fixed `CF92018AB3CD45`; we replace it with a per-run unique
-  // value derived from the unique phone digits. NIN format is
+  // Override the OCR-provided NIN with one derived from the unique phone
+  // digits. The OCR mock no longer returns one fixed NIN forever (A11-002 —
+  // it mints a fresh identity per call, seeded off the onboarding session
+  // id; see api/kyc/id-ocr.ts), so this override isn't dodging a collision
+  // with itself anymore — but this helper is shared across specs
+  // (self-signup, password sign-in, …), so pinning the NIN to the SAME
+  // Date.now()+workerIndex source as the phone keeps its uniqueness
+  // guarantee independent of the mock's own hashing. NIN format is
   // `^C[MF][A-Z0-9]{12}$` (14 chars total — ReviewStep.jsx:10).
   await page.locator('#nin').fill(`${NIN_PREFIX}${phoneDigits}${NIN_SUFFIX}`);
 

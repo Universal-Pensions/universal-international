@@ -41,6 +41,17 @@
 //   • The agent onboard variant skips the subscriber-side "done" celebration
 //     step entirely (OnboardKycFlow.jsx:52). Consent -> handoff -> schedule
 //     -> OnboardingComplete is the agent-only ending.
+//   • Unlike the self-signup specs (subscriber-signup-to-contribute.spec.ts,
+//     helpers/signup.ts), this one does NOT override the OCR-provided #nin.
+//     That's deliberate: it's the direct regression test for A11-002 (the
+//     mock ID-OCR used to return one fixed identity forever, which 409'd the
+//     create RPC on ux_subscribers_nin the moment a SECOND subscriber was
+//     onboarded). id-ocr.ts now mints a fresh identity per call, seeded off
+//     the onboarding session id, so leaving #nin untouched here is what
+//     actually exercises that mint end-to-end. Re-running this spec twice in
+//     a row without a DB reset is the fix's verification step — see
+//     api/kyc/id-ocr.ts's IDENTITY MINTING comment for why it's stable
+//     within one attempt (retries) but distinct across attempts.
 
 import { test, expect } from '@playwright/test';
 import { clickPay, fillContributionPlan } from '../../helpers/contribution';
@@ -73,6 +84,7 @@ type SubscriberRow = {
   id: string;
   phone: string;
   name: string;
+  nin: string;
   district_id: string;
   agent_id: string;
   kyc_status: string;
@@ -341,6 +353,12 @@ test.describe('agent → onboard new subscriber (UI + RPC + DB)', () => {
     expect(sub!.agent_id).toBe(AGENT_ID);
     expect(sub!.kyc_status).toBe('complete');
     expect(sub!.name).toBeTruthy();
+    // A11-002: the persisted NIN came from the mocked OCR's per-session mint,
+    // not the old fixed 'CF92018AB3CD45'. Confirms the mint's shape survived
+    // the full round trip (OCR -> ReviewStep -> RPC -> DB), and — since this
+    // spec deliberately leaves #nin untouched (see the header comment) — that
+    // create_subscriber_from_agent_onboard actually received a fresh value.
+    expect(sub!.nin, 'persisted NIN should be CM/CF + 12 alphanumeric chars').toMatch(/^C[MF][A-Z0-9]{12}$/);
 
     // subscriber_balances is created atomically inside _insert_subscriber_chain
     // (via the AFTER INSERT trigger on the first transactions row); its

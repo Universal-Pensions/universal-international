@@ -12,6 +12,20 @@ import MemberCard from '../../components/MemberCard';
 import { buildPayload } from './onboardPayload';
 import styles from './OnboardingComplete.module.css';
 
+// Postgres unique-violation (23505) surfaces raw constraint text ("duplicate
+// key value violates unique constraint …") that means nothing to a field
+// agent. Map it to plain language; every other failure falls through to the
+// RPC/network error's own message (or a generic fallback). supabase-js
+// exposes the Postgres SQLSTATE via `error.code` — same field
+// `isSupabaseAuthError` (services/supabaseClient.js) already reads for
+// PGRST301/302.
+function describeCreateError(err) {
+  if (err?.code === '23505') {
+    return "This subscriber's details match someone already on record (most likely the NIN). Go back and re-check the ID — two different people can't share the same National ID number.";
+  }
+  return err?.message || "Couldn't create the subscriber. Please retry.";
+}
+
 function formatSchedule(schedule) {
   if (!schedule || !schedule.amount) return null;
   const freq = FREQUENCY_LABEL[normalizeFrequency(schedule.frequency)] || 'Monthly';
@@ -61,7 +75,7 @@ export default function OnboardingComplete({ subscriberName, awareness, schedule
       setStatus('success');
     } catch (err) {
       setStatus('error');
-      setErrorMessage(err?.message || "Couldn't create the subscriber. Please retry.");
+      setErrorMessage(describeCreateError(err));
     }
   }, [agentId, signup, queryClient]);
 
@@ -94,7 +108,7 @@ export default function OnboardingComplete({ subscriberName, awareness, schedule
   const lead = saved
     ? 'The subscriber’s record is created and KYC has been submitted. They’ll receive a welcome SMS with their member ID and next steps shortly.'
     : status === 'error'
-      ? 'The payment and KYC details were captured — only the final save failed. Retry below; nothing is lost and no duplicate can be created.'
+      ? 'The payment and KYC details were captured — only the final save failed. Retrying is safe and won’t create a second copy of this member.'
       : 'Payment captured. Writing the subscriber record and submitting KYC…';
 
   return (
@@ -234,8 +248,12 @@ export default function OnboardingComplete({ subscriberName, awareness, schedule
           type="button"
           className={styles.secondaryBtn}
           onClick={onClose}
-          disabled={status !== 'success'}
-          aria-disabled={status !== 'success'}
+          // Enabled once the RPC has settled either way — only mid-flight
+          // ('pending') blocks it. Previously gated on status === 'success',
+          // which trapped the agent on the error card with no way out but the
+          // shell nav (A11-002).
+          disabled={status === 'pending'}
+          aria-disabled={status === 'pending'}
         >
           Close
         </button>
