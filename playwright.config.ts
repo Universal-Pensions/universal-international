@@ -53,6 +53,11 @@ export default defineConfig({
   reporter: process.env.CI ? [['github'], ['html', { open: 'never' }]] : [['list'], ['html', { open: 'never' }]],
 
   globalSetup: './e2e/global-setup.ts',
+  // Fails the run if the suite leaked residue into the live demo DB that it
+  // did not clean up (audit A25-004 / the missing Phase-0 leak sweep). Scoped
+  // to a run-start baseline so it does not trip on known pre-existing
+  // residue — see e2e/global-teardown.ts's header for the full design.
+  globalTeardown: './e2e/global-teardown.ts',
 
   use: {
     baseURL: BASE_URL,
