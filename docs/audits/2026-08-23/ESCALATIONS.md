@@ -81,3 +81,18 @@ They are NOT dropped — start them the moment the blocking agent lands.
 | # | Item | Outcome |
 |---|---|---|
 | — | The unexplained `users` row P3-provisioning flagged (real password, NULL entity, created 22 min before the Uniclusion incident, phone one digit off) | **Investigated and FIXED — migration `0122`, commit 5038abe.** Not a mystery and not adjacent: it is `s-100117`'s own credential, a surviving casualty of the 2026-08-07 login-identity regression that `0101`'s backfill missed. That member could authenticate and then resolve to nothing. Measured scope: exactly one row. |
+
+## Phase 4 — clock unification (`0126`)
+
+| # | Item | Owner | Status |
+|---|---|---|---|
+| E21 | `src/utils/periodSettlement.test.js:11` and `src/utils/policies.test.js:14` each hardcode their own `2026-05-26` injected-NOW literal. Both still pass (57/57), but they no longer exercise the anchor the demo actually runs on — a test pinned to a value nothing else uses cannot catch drift. | P7-tests | OPEN |
+| E22 | Comment-only stale clock mentions with no runtime effect: `adminAttentionDerive.js:11-16`, `employerSeed.js:14`, `adminAttention.js:19`. | P7-docs-truth | OPEN |
+| E23 | **A06-003's data half.** Live `contribution_schedules` / `subscriber_insurance_products` still carry over-shifted dates (weekly savers due up to 57 days out) until the next `npm run seed`. That reseed is deliberately NOT recommended yet: it must wait for A04-003 (NAV pricing, `P3-nav-integrity`) or seeded units revert to the dead 1,000 UGX price. **Ordering dependency, not an oversight.** | after A04-003 applies | **BLOCKED** |
+| E24 | A26-003's doc half — `CLAUDE.md:201`, `docs/BACKEND.md:880`, `docs/FRONTEND.md:301`, `docs/FRONTEND.md:1412` all still print the stale `2026-05-26`. | P7-docs-truth | OPEN (by design) |
+
+Handed directly to `P4-branch-metrics` (it owns the files, and was still running):
+**A12-001** — branch charts label their x-axis from `new Date()`
+(`OverviewDesktop.jsx:64-72`, `deriveBranchAnalytics.js:47`).
+**A11-007** — agent home shows June on one tile and August on another
+(`agentHomeSummary.js`).
