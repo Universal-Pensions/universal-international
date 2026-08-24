@@ -25,9 +25,11 @@ import { setToken, clearToken, getToken, isJwtExpired } from '../services/supaba
  * @property {string|null} role - Shortcut to user.role
  * @property {boolean} isAuthenticated
  * @property {(payload: { token: string, user: AuthUser }) => Promise<AuthUser>} login
- *   - Persists the JWT (`upensions_token`) and user object (`upensions_auth`),
+ *   - Clears the React Query cache (so no component can render the incoming
+ *     identity against the outgoing identity's cached data — A22-001), then
+ *     persists the JWT (`upensions_token`) and user object (`upensions_auth`),
  *     updates React state, and returns the resolved user.
- * @property {() => void} logout - Clears both auth keys + React Query cache.
+ * @property {() => void} logout - Clears the React Query cache, then both auth keys.
  * @property {(updates: Partial<AuthUser>) => void} updateUser - Merge partial updates.
  */
 
@@ -55,6 +57,13 @@ export function AuthProvider({ children }) {
    * Signature is `({ token, user })` rather than the legacy bare user object.
    */
   const login = useCallback(async ({ token, user: nextUser }) => {
+    // Drop cached server data BEFORE switching the signed-in user (A22-001).
+    // Clearing afterward leaves a window where React has already
+    // re-rendered the incoming identity's components against the outgoing
+    // identity's cached, RLS-scoped data — e.g. a distributor briefly
+    // rendering the previous admin session's platform-wide totals. Ordering
+    // is the whole fix.
+    queryClient.clear();
     if (token) setToken(token);
     setUser(nextUser);
     try {
@@ -63,7 +72,7 @@ export function AuthProvider({ children }) {
       // Quota / private-browsing — non-fatal; session lives in memory only.
     }
     return nextUser;
-  }, []);
+  }, [queryClient]);
 
   /** Apply partial updates to the active session (e.g. profile edits). */
   const updateUser = useCallback((updates) => {
@@ -80,6 +89,12 @@ export function AuthProvider({ children }) {
   }, []);
 
   const logout = useCallback(() => {
+    // Drop cached server data BEFORE switching the signed-in user to null
+    // (A22-001) — mirrors `login` above. Clearing afterward would leave a
+    // window where already-mounted components re-render against the
+    // outgoing user's stale cache for one tick before it's wiped. Ordering
+    // is the whole fix.
+    queryClient.clear();
     setUser(null);
     clearToken();
     try {
@@ -87,8 +102,6 @@ export function AuthProvider({ children }) {
     } catch {
       // Storage may be inaccessible — non-fatal.
     }
-    // Drop cached server data so the next user doesn't inherit it.
-    queryClient.clear();
   }, [queryClient]);
 
   // When the API client surfaces a 401, log out and route home via
