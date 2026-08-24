@@ -126,7 +126,7 @@ export default function CommissionsPage() {
             <section className={styles.outstandingCard} aria-labelledby="outstanding-title">
               <span className={styles.outstandingEyebrow}>
                 <span className={styles.outstandingIcon} aria-hidden="true">{Icons.wallet}</span>
-                Outstanding
+                Outstanding right now
               </span>
               <h2 id="outstanding-title" className={styles.outstandingValue}>
                 {formatUGX(totals.totalDue)}

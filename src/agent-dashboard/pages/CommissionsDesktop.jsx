@@ -213,7 +213,7 @@ export default function CommissionsDesktop() {
             />
             <KpiCard
               icon={Icons.clock}
-              label="Owed"
+              label="Owed right now"
               value={isLoading ? '—' : formatUGX(totals.totalDue)}
             />
             <KpiCard

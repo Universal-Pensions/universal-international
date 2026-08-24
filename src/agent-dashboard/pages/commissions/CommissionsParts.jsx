@@ -119,20 +119,37 @@ export function EarnedMonths({ months }) {
  * reference, the due total, and the paid total. A client-side mailto is a demo
  * affordance (no backend integration); the recipient is the distributor/back-
  * office support mailbox (`SUPPORT_EMAIL`).
+ *
+ * TIME, not arithmetic (A05-002 / A11-001): `shortfall` below is frozen at
+ * the moment this batch was settled — it is "what was left over from THAT
+ * payout". The Owed/Outstanding tile rendered right after this banner reads
+ * live `due` commissions queried NOW, which can include lines that didn't
+ * exist yet when this batch was raised. Both numbers are correct; they just
+ * answer different questions. Rather than collapsing them into one figure
+ * (which would either hide the agent's true live balance, or break the
+ * "paid against due — shortfall" arithmetic inside this banner's own
+ * sentence), both stay and are labelled by time so a non-technical reader
+ * doesn't have to reconcile them: this banner is explicitly "from that
+ * settlement"; the tile below is explicitly "right now".
  */
 export function SettlementMismatchBanner({ batch }) {
   if (!batch) return null;
   const shortfall = Math.max(0, (batch.pendingTotal || 0) - (batch.paidAmount || 0));
-  const subject = `Commission settlement query — ${batch.id}`;
+  // A05-010: show the human payment reference (what a mobile-money payer or
+  // back-office staffer would recognise), never the internal batch UUID.
+  // apply_settlement always sets txn_ref, but the column is nullable, so fall
+  // back to the id only if it's ever missing.
+  const reference = batch.txnRef || batch.id;
+  const subject = `Commission settlement query — ${reference}`;
   const bodyLines = [
     `Hello,`,
     ``,
     `I have a question about a recent commission settlement.`,
     ``,
-    `Settlement reference: ${batch.id}`,
+    `Settlement reference: ${reference}`,
     `Due at the time: ${formatUGX(batch.pendingTotal)}`,
     `Amount paid: ${formatUGX(batch.paidAmount)}`,
-    `Still outstanding: ${formatUGX(shortfall)}`,
+    `Still unpaid from this settlement: ${formatUGX(shortfall)}`,
     ``,
     `Could you let me know the reason for the difference?`,
     ``,
@@ -145,8 +162,9 @@ export function SettlementMismatchBanner({ batch }) {
       <div className={styles.mismatchText}>
         <span className={styles.mismatchTitle}>Your last settlement was partial</span>
         <span className={styles.mismatchBody}>
-          {formatUGX(batch.paidAmount)} paid against {formatUGX(batch.pendingTotal)} due
-          {' '}— {formatUGX(shortfall)} is still outstanding (ref {batch.id}).
+          {formatUGX(batch.paidAmount)} paid against {formatUGX(batch.pendingTotal)} due at the time
+          {' '}— {formatUGX(shortfall)} from that settlement is still unpaid (ref {reference}).
+          {' '}That's separate from what's owed to you right now, shown below.
         </span>
       </div>
       <a className={styles.mismatchCta} href={mailto}>Ask for reason</a>
