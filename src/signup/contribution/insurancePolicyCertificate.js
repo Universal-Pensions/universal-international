@@ -53,7 +53,7 @@ function renderBeneficiaryRows(beneficiaries) {
       const name = escapeHtml(b?.name || '—');
       const rel = escapeHtml(RELATIONSHIP_LABEL[b?.relationship] || b?.relationship || '—');
       const share = Number.isFinite(Number(b?.share)) ? `${Number(b.share)}%` : '—';
-      return `<tr><td>${name}</td><td>${rel}</td><td class="share">${share}</td></tr>`;
+      return `<tr><td>${name}</td><td>${rel}</td><td class="share">${escapeHtml(share)}</td></tr>`;
     })
     .join('');
 }
@@ -88,12 +88,21 @@ export function buildPolicyCertificateHtml(data) {
 
   const holder = escapeHtml(holderName || 'Policy Holder');
   const member = escapeHtml(memberId || '—');
-  const dobStr = formatDate(dob);
-  const startStr = formatDate(policyStart);
-  const renewalStr = formatDate(renewalDate);
-  const todayStr = formatDate(new Date());
-  const coverStr = formatUGX(cover, { compact: false });
-  const premiumStr = formatUGX(premiumPerPeriod, { compact: false });
+  // formatDate()/formatUGX() are structurally incapable of echoing raw input:
+  // they always route the value through Date/Number parsing first and emit
+  // only locale-formatted digits/month-names, or a fixed '—'/'UGX 0' fallback
+  // (src/utils/date.js, src/utils/currency.js) — verified, not assumed.
+  // escapeHtml() here is a no-op on their actual output today; it stays as
+  // defence in depth so this sink is safe even if a formatter's fallback ever
+  // changes. This matters because the destination is a same-origin popup that
+  // can read localStorage['upensions_token'] (A24-007) — every interpolation
+  // into this template is a real XSS→token-theft sink, not a cosmetic one.
+  const dobStr = escapeHtml(formatDate(dob));
+  const startStr = escapeHtml(formatDate(policyStart));
+  const renewalStr = escapeHtml(formatDate(renewalDate));
+  const todayStr = escapeHtml(formatDate(new Date()));
+  const coverStr = escapeHtml(formatUGX(cover, { compact: false }));
+  const premiumStr = escapeHtml(formatUGX(premiumPerPeriod, { compact: false }));
   const premiumLbl = escapeHtml(premiumLabel || 'Premium');
   const cadence = FREQ_CADENCE[frequency] || frequency || '';
 
@@ -433,8 +442,23 @@ export function buildPolicyCertificateHtml(data) {
 
 export function openPolicyCertificate(data) {
   const html = buildPolicyCertificateHtml(data);
-  const win = window.open('', '_blank', 'noopener,noreferrer');
-  if (!win) return false;
+  // A24-001: per the HTML Standard, a feature string containing "noopener"
+  // (or "noreferrer", which implies it) makes window.open() return null
+  // UNCONDITIONALLY — not "when the browser's pop-up blocker fires". The
+  // previous `window.open('', '_blank', 'noopener,noreferrer')` therefore
+  // returned null on every call, in every browser, regardless of the pop-up
+  // setting, so this function always returned false and the certificate
+  // never rendered (broken since 2026-05-25). We need the window handle to
+  // write the certificate into it, so severing the opener link is not an
+  // option here — omitting the third argument is the fix.
+  //
+  // Security note (A24-007): without `noopener`, the resulting popup IS
+  // same-origin with this window and can read anything on this origin,
+  // including localStorage['upensions_token']. That is what makes the
+  // escaping in buildPolicyCertificateHtml() above load-bearing rather than
+  // cosmetic — keep every interpolation there escaped.
+  const win = window.open('', '_blank');
+  if (!win) return false; // genuine pop-up block — the one real failure mode now
   win.document.open();
   win.document.write(html);
   win.document.close();
