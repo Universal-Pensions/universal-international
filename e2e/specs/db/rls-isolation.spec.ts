@@ -213,8 +213,12 @@ test.describe('cross-tenant RLS isolation (DB layer)', () => {
       // Teardown (newest-FK first): drop the tagged subscriber, then employer B.
       // ON DELETE SET NULL on subscribers.employer_id means an orphaned subscriber
       // would otherwise survive the employer delete, so remove it explicitly.
-      await supabaseAdmin.from('subscribers').delete().eq('id', subBId);
-      await supabaseAdmin.from('employers').delete().eq('id', employerB);
+      // Both deletes are asserted — a swallowed error here is exactly how fixture
+      // rows leak into the live demo DB unnoticed (audit A25-004).
+      const { error: subDelErr } = await supabaseAdmin.from('subscribers').delete().eq('id', subBId);
+      expect(subDelErr, `cleanup: deleting subscriber ${subBId}`).toBeNull();
+      const { error: empDelErr } = await supabaseAdmin.from('employers').delete().eq('id', employerB);
+      expect(empDelErr, `cleanup: deleting employer ${employerB}`).toBeNull();
     }
   });
 });

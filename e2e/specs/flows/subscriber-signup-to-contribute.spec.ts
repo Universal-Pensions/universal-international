@@ -98,7 +98,12 @@ test.describe('subscriber → signup wizard → first contribution (UI + DB)', (
 
     // Defensive: in case a previous run crashed mid-flow, clean up first.
     await cleanupSubscriberByPhone(uniquePhone);
-    await supabaseAdmin.from('users').delete().eq('phone', uniquePhone).eq('role', 'subscriber');
+    const { error: preDelErr } = await supabaseAdmin
+      .from('users')
+      .delete()
+      .eq('phone', uniquePhone)
+      .eq('role', 'subscriber');
+    expect(preDelErr, `pre-cleanup: deleting stale users row for ${uniquePhone}`).toBeNull();
   });
 
   test.afterEach(async () => {
@@ -109,8 +114,14 @@ test.describe('subscriber → signup wizard → first contribution (UI + DB)', (
     // The `users(phone, role)` row that verify-otp upserts (with the bcrypt
     // password_hash) lives outside the subscriber FK chain and isn't covered
     // by cleanupSubscriberByPhone. Delete it explicitly so reruns start with
-    // a fresh "no password yet" state.
-    await supabaseAdmin.from('users').delete().eq('phone', uniquePhone).eq('role', 'subscriber');
+    // a fresh "no password yet" state. Asserted — an unchecked failure here is
+    // exactly how fixture rows leak into the live demo DB unnoticed (A25-004).
+    const { error: delErr } = await supabaseAdmin
+      .from('users')
+      .delete()
+      .eq('phone', uniquePhone)
+      .eq('role', 'subscriber');
+    expect(delErr, `cleanup: deleting users row for ${uniquePhone}`).toBeNull();
   });
 
   test('completes 9-step signup + contribution and writes the subscriber chain', async ({ page }) => {

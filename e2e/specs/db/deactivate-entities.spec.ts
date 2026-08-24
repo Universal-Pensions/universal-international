@@ -154,19 +154,38 @@ test.describe('deactivate-entities enforcement (0060 + 0061)', () => {
     if (!hasEnv) return;
     // Tear down in FK-safe order. Subscribers first (children of agents /
     // employers), then agent → branch → distributor, then employers. Best-effort:
-    // each delete is independent so a mid-run failure still cleans the rest.
+    // each delete is independent so a mid-run failure still cleans the rest —
+    // but every error is COLLECTED and asserted at the end rather than ignored,
+    // because a silently-swallowed delete failure is exactly how fixture rows
+    // (this file's own `tst-*` rows included) leak into the live demo DB
+    // permanently unnoticed (audit A25-004).
     const subIds = [TST.treeSub, TST.empMember, TST.retagSub, TST.insertSub];
+    const teardownErrors: string[] = [];
     // Remove any subscriber-FK child rows the inserts may have spawned (none are
     // expected for these bare inserts, but keep teardown orphan-proof).
     for (const table of ['subscriber_balances', 'transactions', 'contribution_schedules',
       'insurance_policies', 'nominees', 'claims', 'withdrawals', 'commissions']) {
-      await supabaseAdmin.from(table).delete().in('subscriber_id', subIds);
+      const { error } = await supabaseAdmin.from(table).delete().in('subscriber_id', subIds);
+      if (error) teardownErrors.push(`${table}: ${error.message}`);
     }
-    await supabaseAdmin.from('subscribers').delete().in('id', subIds);
-    await supabaseAdmin.from('agents').delete().eq('id', TST.agent);
-    await supabaseAdmin.from('branches').delete().eq('id', TST.branch);
-    await supabaseAdmin.from('distributors').delete().eq('id', TST.distributor);
-    await supabaseAdmin.from('employers').delete().in('id', [TST.employerActive, TST.employerInactive]);
+    const { error: subErr } = await supabaseAdmin.from('subscribers').delete().in('id', subIds);
+    if (subErr) teardownErrors.push(`subscribers: ${subErr.message}`);
+    const { error: agentErr } = await supabaseAdmin.from('agents').delete().eq('id', TST.agent);
+    if (agentErr) teardownErrors.push(`agents: ${agentErr.message}`);
+    const { error: branchErr } = await supabaseAdmin.from('branches').delete().eq('id', TST.branch);
+    if (branchErr) teardownErrors.push(`branches: ${branchErr.message}`);
+    const { error: distErr } = await supabaseAdmin.from('distributors').delete().eq('id', TST.distributor);
+    if (distErr) teardownErrors.push(`distributors: ${distErr.message}`);
+    const { error: empErr } = await supabaseAdmin
+      .from('employers')
+      .delete()
+      .in('id', [TST.employerActive, TST.employerInactive]);
+    if (empErr) teardownErrors.push(`employers: ${empErr.message}`);
+
+    expect(
+      teardownErrors,
+      `cleanup: all teardown deletes must succeed — failures: ${teardownErrors.join('; ')}`,
+    ).toEqual([]);
   });
 
   test('0060: INSERT a subscriber tagged to an INACTIVE employer raises', async () => {

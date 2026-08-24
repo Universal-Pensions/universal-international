@@ -31,7 +31,8 @@ const INVITEE = 'E2E Nudge Target';
 test.describe('employer pending KYC — routed page + nudge channels', () => {
   test.beforeAll(async () => {
     const db = getAdminClient();
-    await db.from('employer_invites').delete().eq('token', TOKEN);
+    const { error: preDelErr } = await db.from('employer_invites').delete().eq('token', TOKEN);
+    if (preDelErr) throw new Error(`could not clear a stale e2e invite: ${preDelErr.message}`);
     const { error } = await db.from('employer_invites').insert({
       token: TOKEN,
       employer_id: EMPLOYER_ID,
@@ -44,7 +45,8 @@ test.describe('employer pending KYC — routed page + nudge channels', () => {
   });
 
   test.afterAll(async () => {
-    await getAdminClient().from('employer_invites').delete().eq('token', TOKEN);
+    const { error } = await getAdminClient().from('employer_invites').delete().eq('token', TOKEN);
+    if (error) throw new Error(`cleanup: could not delete the e2e invite: ${error.message}`);
   });
 
   test.beforeEach(async ({ page }) => {

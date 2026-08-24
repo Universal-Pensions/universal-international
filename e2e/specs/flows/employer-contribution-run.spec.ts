@@ -11,8 +11,10 @@
 //   3. Step 1 (period + method, live preview) → Continue → Step 2 (confirm).
 //   4. "Confirm & record" fires the real submit_employer_contribution_run RPC.
 //   5. Result — success toast + a contribution_runs row recorded for the period.
-//   6. Cleanup — delete the run + its lines + transactions + the upload nonce by
-//      the unique period label so re-runs don't accumulate.
+//   6. Cleanup — delete the run's transactions (by contribution_run_id) BEFORE
+//      the run header (ON DELETE SET NULL on that FK would otherwise orphan
+//      them — A06-002), then the upload-nonce ledger row by its own nonce, so
+//      re-runs don't accumulate.
 //
 // Mirrors distributor-apply-settlement.spec.ts: storageState auth,
 // waitForResponse on the RPC, DB assert via supabaseAdmin, afterEach cleanup.
@@ -51,34 +53,66 @@ type RunRow = {
 test.describe('employer → contribution run (UI → RPC → DB)', () => {
   // Unique period label so the DB assert + cleanup target exactly this run.
   const periodLabel = `E2E Run ${Date.now()}`;
+  // Captured from the submit_employer_contribution_run RPC's own request body
+  // during the test — the wizard mints a fresh crypto.randomUUID() nonce
+  // client-side (runViews.jsx mintNonce()) that never surfaces in the DOM, so
+  // reading the RPC's outgoing request is the only way a spec can observe it.
+  // Scopes the contribution_run_uploads cleanup to exactly the row this test
+  // created (see A06-002 — that table has no employer_id column to filter on).
+  let capturedNonce: string | null = null;
 
   test.afterEach(async () => {
-    // Find the run(s) we created by the unique period label, then walk the
-    // child rows (lines + the employer-source transactions) before deleting the
-    // run + the upload nonce ledger so a re-run starts clean.
-    const { data: runs } = await supabaseAdmin
+    // Find the run(s) we created by the unique period label.
+    const { data: runs, error: findErr } = await supabaseAdmin
       .from('contribution_runs')
       .select('id')
       .eq('employer_id', EMPLOYER_ID)
       .eq('period_label', periodLabel);
+    expect(findErr, 'cleanup: locating contribution_runs by period_label').toBeNull();
     const runIds = (runs || []).map((r) => (r as { id: string }).id);
     if (runIds.length > 0) {
-      await supabaseAdmin.from('contribution_run_lines').delete().in('run_id', runIds);
-      // Employer-source transactions stamped by this run carry source='employer';
-      // there is no run_id FK on transactions, so we scope by the run's window is
-      // not reliable — instead delete the run rows + their lines (the ledger rows
-      // are demo-scope residue, consistent with the settlement spec's discipline).
-      await supabaseAdmin.from('contribution_runs').delete().in('id', runIds);
+      // transactions.contribution_run_id DOES carry a real FK
+      // (transactions_contribution_run_id_fkey, ON DELETE SET NULL — verified
+      // live via pg_constraint: confdeltype='n'). A previous version of this
+      // comment claimed the opposite ("no run_id FK on transactions") and
+      // deleted the run header FIRST; that ON DELETE SET NULL then nulled
+      // contribution_run_id on every transaction the run had stamped before
+      // this cleanup could ever scope a delete by it, permanently orphaning
+      // them (audit A06-002 — 1,824 unattributable EMP-% transaction rows in
+      // the live demo DB traced to exactly this ordering bug). Delete the
+      // transactions FIRST, scoped by the FK column, THEN the run header.
+      const { error: txnErr } = await supabaseAdmin
+        .from('transactions')
+        .delete()
+        .in('contribution_run_id', runIds);
+      expect(txnErr, 'cleanup: deleting transactions by contribution_run_id').toBeNull();
+
+      // contribution_run_lines is deliberately NOT deleted here: the table does
+      // not exist on the live schema (verified against
+      // information_schema.tables — 0 rows). The old cleanup's delete from it
+      // was always a silent no-op.
+      const { error: runErr } = await supabaseAdmin
+        .from('contribution_runs')
+        .delete()
+        .in('id', runIds);
+      expect(runErr, 'cleanup: deleting contribution_runs header').toBeNull();
     }
-    // Best-effort: clear any upload-nonce ledger row(s) created this run so the
-    // idempotency table doesn't accumulate E2E nonces (ignore if the table or
-    // the rows aren't present — cleanup must never fail the test).
-    await supabaseAdmin
-      .from('contribution_run_uploads')
-      .delete()
-      .eq('employer_id', EMPLOYER_ID)
-      .gte('created_at', new Date(Date.now() - 5 * 60_000).toISOString())
-      .then(() => undefined, () => undefined);
+    // Clear the upload-nonce ledger row this run created. contribution_run_uploads
+    // has NO employer_id column (its only columns are nonce/result/created_at —
+    // verified against information_schema.columns), so the old `.eq('employer_id',
+    // ...)` filter never matched, and the trailing
+    // `.then(() => undefined, () => undefined)` silently swallowed the resulting
+    // error — the row was NEVER deleted, which is exactly how this ledger grew to
+    // 33 monotonically-increasing rows (A06-002). Target the exact nonce the
+    // wizard minted instead, captured from the RPC request body in the test below.
+    if (capturedNonce) {
+      const { error: nonceErr } = await supabaseAdmin
+        .from('contribution_run_uploads')
+        .delete()
+        .eq('nonce', capturedNonce);
+      expect(nonceErr, 'cleanup: deleting contribution_run_uploads by nonce').toBeNull();
+    }
+    capturedNonce = null;
   });
 
   test('running a contribution run records a run and shows a success result', async ({ page }) => {
@@ -129,6 +163,17 @@ test.describe('employer → contribution run (UI → RPC → DB)', () => {
 
     const rpcResponse = await rpcPromise;
     expect(rpcResponse.status(), 'submit_employer_contribution_run RPC must succeed').toBe(200);
+
+    // Capture the idempotency nonce straight off the RPC's own request body so
+    // afterEach can target the exact contribution_run_uploads row this test
+    // creates (see the describe-level comment on capturedNonce for why this is
+    // the only place a spec can observe it).
+    const rpcRequestBody = rpcResponse.request().postDataJSON() as { p_nonce?: string | null } | null;
+    capturedNonce = rpcRequestBody?.p_nonce ?? null;
+    expect(
+      capturedNonce,
+      'the RPC request must carry the idempotency nonce so afterEach can clean up its upload-ledger row',
+    ).not.toBeNull();
 
     // ── Result: success toast ─────────────────────────────────────────────────
     // handleConfirm shows "Run recorded — N funded · UGX total".

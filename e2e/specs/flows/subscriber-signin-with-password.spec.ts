@@ -67,12 +67,22 @@ test.describe('subscriber → sign in with password', () => {
 
     // Defensive: tear down any leftover state from a previous crashed run.
     await cleanupSubscriberByPhone(uniquePhone);
-    await supabaseAdmin.from('users').delete().eq('phone', uniquePhone).eq('role', 'subscriber');
+    const { error: preDelErr } = await supabaseAdmin
+      .from('users')
+      .delete()
+      .eq('phone', uniquePhone)
+      .eq('role', 'subscriber');
+    expect(preDelErr, `pre-cleanup: deleting stale users row for ${uniquePhone}`).toBeNull();
   });
 
   test.afterEach(async () => {
     await cleanupSubscriberByPhone(uniquePhone);
-    await supabaseAdmin.from('users').delete().eq('phone', uniquePhone).eq('role', 'subscriber');
+    const { error: delErr } = await supabaseAdmin
+      .from('users')
+      .delete()
+      .eq('phone', uniquePhone)
+      .eq('role', 'subscriber');
+    expect(delErr, `cleanup: deleting users row for ${uniquePhone}`).toBeNull();
   });
 
   test('A) signs in with password after fresh signup', async ({ page }) => {
