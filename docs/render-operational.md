@@ -112,6 +112,34 @@ These are the 3 documented failure modes where Render keeps running but the symp
 
 ---
 
+## Rollback — see `docs/rollback.md` (A09-009)
+
+There was no documented rollback for the frontend, the API, or the database. There is now, and it
+lives in one place rather than scattered here: **`docs/rollback.md`**.
+
+Verified rather than assumed, because the details are the part that bites:
+
+- **Vercel** auto-deploys from `main`, so merging *is* shipping. Roll back by promoting a prior
+  production deployment from the dashboard — it re-points the alias at an already-built artefact,
+  so it cannot fail on a build error. The `vercel` CLI is **not** installed on the maintainer's
+  machine, so the dashboard route is primary.
+- **Render** does NOT auto-deploy (`autoDeployTrigger: off`). Roll back from the dashboard.
+  ⚠️ **`npm run deploy:api` only moves FORWARD** — it builds from the current branch. It is not
+  an undo, and reaching for it as one ships whatever is in the tree.
+- **Migrations: 22 are forward-only** and cannot be reverted by file. They are numbered
+  ≤ 0028; every migration from 0029 up has a `.down.sql`. (The exact list is in
+  `docs/rollback.md`. Note that "≤0028" is an upper bound, not a rule — 0016 and 0022–0026 *do*
+  have downs.)
+- ⚠️ **Four down-migrations are booby-trapped.** `0042`, `0043`, `0072` and `0089` each replace
+  `trg_transactions_contribution` with a body hardcoding `v_unit_price := 1000`, silently
+  reverting NAV pricing and corrupting every subsequent contribution. Each now carries a guard
+  header. Read it before running the file.
+- **Data**: the free tier has **no point-in-time recovery**. A `pg_dump` you have actually
+  restored is the only safety net. The restore drill is proven and recorded at
+  `docs/audits/2026-08-23/a25/restore-drill.md` — 37 tables, 99,265 rows, byte-identical
+  manifest. Note it needs an `auth` schema stub or 108 RLS policies silently fail to restore,
+  leaving the data present with row-level security quietly missing.
+
 ## Provisioning Checklist
 
 Follow this when ready to create the Render service. **Do not run the MCP calls until each step's question is answered.**
