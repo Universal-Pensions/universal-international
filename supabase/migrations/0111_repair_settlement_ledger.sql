@@ -148,8 +148,14 @@ BEGIN
       FROM public.settlement_batches b
       LEFT JOIN public.commissions c ON c.txn_ref = b.txn_ref AND c.status = 'paid'
      GROUP BY b.id, b.paid_amount, b.line_count
-    HAVING b.paid_amount <> COALESCE(SUM(c.paid_amount), 0)
-        OR b.line_count  <> COUNT(c.id)
+    -- IS DISTINCT FROM, not <>. `<>` yields NULL when either side is NULL, and a
+    -- NULL is not TRUE, so a HAVING built on `<>` silently PASSES the very rows
+    -- it exists to catch. paid_amount/line_count are NOT NULL today, so this is
+    -- defensive — but the UPDATE above already uses IS DISTINCT FROM, and a guard
+    -- weaker than the statement it verifies is worse than no guard: it reports
+    -- success it cannot actually establish.
+    HAVING b.paid_amount IS DISTINCT FROM COALESCE(SUM(c.paid_amount), 0)
+        OR b.line_count  IS DISTINCT FROM COUNT(c.id)
   ) x;
   IF v_bad > 0 THEN
     RAISE EXCEPTION 'ABORT: % batch(es) still disagree with their commission lines.', v_bad

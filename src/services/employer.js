@@ -555,17 +555,75 @@ export async function getEmployerContributions(employerId) {
       .sort(newestFirst);
   }
   if (!employerId) return [];
-  const { data, error } = await supabase
-    .from('transactions')
-    .select('*, subscribers(name)')
-    .eq('type', 'contribution')
-    .not('contribution_run_id', 'is', null)
-    .order('date', { ascending: false });
-  if (error) throw error;
-  return (data ?? []).map((t) => ({
-    ...mapTxn(t),
-    memberName: t.subscribers?.name ?? 'Former member',
-  }));
+
+  // A21-101 / defence-in-depth. Two things this query MUST do that it used not to:
+  //
+  //  1. SCOPE BY EMPLOYER EXPLICITLY. This used to select every run-linked
+  //     contribution on the platform and lean entirely on RLS to cut it down to
+  //     the caller's own. That is a single policy edit away from a cross-tenant
+  //     money leak, and A14-001 made this function the canonical source for the
+  //     employer Overview hero, Runs "funded to date" and the Analytics KPI —
+  //     so a scoping slip here shows another company's money as this one's.
+  //     `subscribers!inner(...)` makes the join an INNER join so the embedded
+  //     `subscribers.employer_id` filter actually restricts rows (with a plain
+  //     embed PostgREST would return the parent row with a null child instead).
+  //     RLS still applies; this is a second lock, not a replacement.
+  //
+  //  2. PAGE. PostgREST enforces a hard db-max-rows=1000 that a larger .limit()
+  //     or .range() does NOT override — it clamps SILENTLY, with no error. An
+  //     unpaged read of a 1000+ row set returns a truncated list that looks
+  //     complete, and every caller here SUMS it into a money figure. Today this
+  //     set is ~178 rows platform-wide so nothing is being lost, but "today's
+  //     row count" is not a safety property. Same PAGE_SIZE/exact-count idiom as
+  //     src/services/entities.js:455.
+  const PAGE_SIZE = 1000;
+  const SAFETY_CAP_ROWS = 100_000; // bound a runaway fan-out
+  const COLUMNS = '*, subscribers!inner(name, employer_id)';
+
+  const scoped = () =>
+    supabase
+      .from('transactions')
+      .select(COLUMNS)
+      .eq('type', 'contribution')
+      .not('contribution_run_id', 'is', null)
+      .eq('subscribers.employer_id', employerId)
+      .order('date', { ascending: false });
+
+  const { data: firstData, error: firstError } = await scoped().range(0, PAGE_SIZE - 1);
+  if (firstError) throw firstError;
+  const rows = firstData ?? [];
+
+  // Common case: the whole set fits in one page — one round-trip, same result.
+  if (rows.length === PAGE_SIZE) {
+    const { count, error: countError } = await supabase
+      .from('transactions')
+      .select(COLUMNS, { count: 'exact', head: true })
+      .eq('type', 'contribution')
+      .not('contribution_run_id', 'is', null)
+      .eq('subscribers.employer_id', employerId);
+    if (countError) throw countError;
+
+    const total = Math.min(count ?? rows.length, SAFETY_CAP_ROWS);
+    const pages = [];
+    for (let from = PAGE_SIZE; from < total; from += PAGE_SIZE) {
+      pages.push(
+        scoped()
+          .range(from, Math.min(from + PAGE_SIZE - 1, total - 1))
+          .then(({ data, error }) => {
+            if (error) throw error;
+            return data ?? [];
+          }),
+      );
+    }
+    for (const page of await Promise.all(pages)) rows.push(...page);
+  }
+
+  return rows
+    .map((t) => ({
+      ...mapTxn(t),
+      memberName: t.subscribers?.name ?? 'Former member',
+    }))
+    .sort(newestFirst);
 }
 
 /**

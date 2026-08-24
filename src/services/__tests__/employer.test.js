@@ -262,6 +262,79 @@ describe('employer service — real (Supabase) branch', () => {
       expect(m.employerYtd).toBe(0); // the 'employer' txn is 5 years old
     });
 
+    // A21-101 — two defects that were invisible at today's row counts.
+    //
+    // Both are the kind that a "does the number look right?" test can never
+    // catch, because at 178 live rows the number DOES look right. They only
+    // become visible in the QUERY SHAPE, so that is what these pin.
+    describe('getEmployerContributions — tenancy scope + row-cap paging (A21-101)', () => {
+      it('scopes the query to the employer instead of leaning on RLS alone', async () => {
+        supabaseMock.__queueFrom('transactions', { data: [], error: null });
+
+        await svc.getEmployerContributions('emp-001');
+
+        const call = supabaseMock.__getFromCalls('transactions').at(-1);
+        expect(call).toBeTruthy();
+
+        // The embed MUST be an inner join. With a plain `subscribers(...)` embed
+        // PostgREST returns the parent row with a null child rather than
+        // filtering it out, so the employer predicate would silently do nothing.
+        const selectArg = call.chain.select.mock.calls.at(0)?.[0] ?? '';
+        expect(selectArg).toContain('subscribers!inner');
+
+        // And the tenant predicate itself must be present. Before this fix the
+        // query carried no employer filter at all — it selected every run-linked
+        // contribution on the platform and trusted RLS to cut it down. One
+        // policy edit away from showing another company's money as this one's.
+        const eqArgs = call.chain.eq.mock.calls.map((c) => c.join('='));
+        expect(eqArgs).toContain('subscribers.employer_id=emp-001');
+      });
+
+      it('pages past PostgREST\'s silent 1000-row cap instead of truncating', async () => {
+        // PostgREST enforces db-max-rows=1000 and CLAMPS SILENTLY — a larger
+        // .limit()/.range() is ignored, no error is raised, and the caller sums
+        // a truncated list into a money figure that looks perfectly plausible.
+        // A full first page is the only signal that more rows exist.
+        const page0 = Array.from({ length: 1000 }, (_, i) => ({
+          id: `t-${i}`, subscriber_id: 'empe-001', type: 'contribution',
+          source: 'own', amount: 1000, date: '2026-05-15T12:00:00.000Z',
+          contribution_run_id: 'run-001', subscribers: { name: 'A', employer_id: 'emp-001' },
+        }));
+        const page1 = Array.from({ length: 234 }, (_, i) => ({
+          id: `t-${1000 + i}`, subscriber_id: 'empe-002', type: 'contribution',
+          source: 'employer', amount: 1000, date: '2026-05-16T12:00:00.000Z',
+          contribution_run_id: 'run-001', subscribers: { name: 'B', employer_id: 'emp-001' },
+        }));
+        supabaseMock.__queueFrom('transactions', { data: page0, error: null });   // range(0,999)
+        supabaseMock.__queueFrom('transactions', { count: 1234, error: null });   // exact HEAD count
+        supabaseMock.__queueFrom('transactions', { data: page1, error: null });   // range(1000,1233)
+
+        const rows = await svc.getEmployerContributions('emp-001');
+
+        // The whole set, not the first page. A truncating implementation returns
+        // exactly 1000 here and every downstream total is quietly ~19% short.
+        expect(rows).toHaveLength(1234);
+        expect(supabaseMock.__getFromCalls('transactions')).toHaveLength(3);
+      });
+
+      it('does not page when the first page is short (the common case stays one round-trip)', async () => {
+        supabaseMock.__queueFrom('transactions', {
+          data: [{
+            id: 't-1', subscriber_id: 'empe-001', type: 'contribution', source: 'own',
+            amount: 105000, date: '2026-05-15T12:00:00.000Z', contribution_run_id: 'run-001',
+            subscribers: { name: 'A', employer_id: 'emp-001' },
+          }],
+          error: null,
+        });
+
+        const rows = await svc.getEmployerContributions('emp-001');
+
+        expect(rows).toHaveLength(1);
+        // Exactly one query — no needless count probe for a set that already fits.
+        expect(supabaseMock.__getFromCalls('transactions')).toHaveLength(1);
+      });
+    });
+
     it('with no run-linked contributions, reports 0 rather than the RPC sum (post-cleanup empty state)', async () => {
       supabaseMock.__queueRpc('get_employer_metrics', {
         data: { headcount: 3, active: 3, totalContributions: 21300000, ownContributions: 21300000, employerContributions: 0 },

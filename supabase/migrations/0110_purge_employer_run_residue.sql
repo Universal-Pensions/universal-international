@@ -85,7 +85,13 @@ BEGIN
     INTO v_new_refs
     FROM transactions t
    WHERE t.txn_ref LIKE 'EMP-%'
-     AND t.txn_ref NOT IN (SELECT txn_ref FROM _frozen_refs);
+     -- NOT EXISTS, not NOT IN. `NOT IN (subquery)` evaluates to NULL for every
+     -- row the moment the subquery yields a single NULL, so the guard would find
+     -- nothing and report the frozen set intact while it was not. _frozen_refs
+     -- is a PRIMARY KEY so it cannot hold NULL today; this is written to be
+     -- correct regardless of that, because a guard that can silently no-op is
+     -- exactly the failure mode this migration exists to prevent.
+     AND NOT EXISTS (SELECT 1 FROM _frozen_refs f WHERE f.txn_ref = t.txn_ref);
 
   IF v_new_refs IS NOT NULL THEN
     RAISE EXCEPTION
