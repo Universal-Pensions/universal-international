@@ -74,6 +74,19 @@ const { EXTRA_EMPLOYERS, EXTRA_MEMBERS } = employerGeoSeed;
 const groupInsuranceMod = await import('../src/utils/groupInsurance.js');
 const { groupInsuranceProducts } = groupInsuranceMod;
 
+// Single demo-clock anchor (audit A06-003/A06-009/A26-003) — the ONE literal
+// both mockData.js and this seed read for "now", via the same dynamic
+// `import()` this file already uses for the rest of the mock graph. Used
+// below by the date re-anchoring block. Previously this file hand-mirrored
+// a SECOND, separately-typed `MOCK_NOW` literal here (justified by a comment
+// claiming "the seed can't import a live binding without re-evaluating the
+// whole mock module") — that premise never actually held (the `mockData`
+// import two lines above already IS that live, fully-evaluated binding) and
+// the hand-mirror silently drifted 36 days behind mockData.js's real value,
+// over-shifting every re-anchored date (a WEEKLY saver's next_due_date landed
+// 57 days out — see docs/audits/2026-08-23/06-data-integrity.md §3.2).
+const { MOCK_NOW } = await import('../src/constants/demoClock.js');
+
 const { Client } = pg;
 
 // Hardcoded demo unit price — UGX 1,000/unit, matching the live
@@ -249,10 +262,9 @@ function toDateStr(v) {
 // emits onto today's date while preserving their MOCK_NOW-relative offset, so
 // "due in N days" math stays intact and no schedule is born stale.
 //
-// MOCK_NOW MUST mirror src/data/mockData.js (`new Date(2026, 4, 26)` = 2026-05-26).
-// If that constant moves, update this to match (kept in sync deliberately — the
-// seed can't import a live binding without re-evaluating the whole mock module).
-const MOCK_NOW = new Date(2026, 4, 26); // 2026-05-26 — mirror of mockData.MOCK_NOW
+// MOCK_NOW is imported above from src/constants/demoClock.js — see that
+// import's comment for why this can no longer drift the way the old
+// hand-mirrored local literal did.
 const SEED_TODAY = new Date();
 SEED_TODAY.setHours(0, 0, 0, 0);
 // Whole-day delta from the frozen anchor to today (≥ 0 once wall-clock passes
@@ -306,7 +318,7 @@ function toTimestamptz(v) {
 
 /** Approximate a DOB from age — mid-year on the birth-year boundary. */
 function dobFromAge(age) {
-  // MOCK_NOW reference is 2026-05-26 in mockData (see MOCK_NOW above).
+  // MOCK_NOW is imported from src/constants/demoClock.js (see above).
   const birthYear = MOCK_NOW.getFullYear() - age;
   return `${birthYear}-06-15`;
 }

@@ -30,15 +30,24 @@
 //   5. Zero contribution schedules with `next_due_date < MOCK_NOW` —
 //      contribution_schedules has no status column; we assert every schedule
 //      row has a non-stale next_due_date RELATIVE TO THE SEED ANCHOR. The seed
-//      generates next_due_date relative to the frozen MOCK_NOW (2026-05-26),
-//      NOT wall-clock, so comparing against `new Date()` would fail purely from
-//      real time elapsing since cutover (~1997 "stale" rows that are stale only
-//      vs today, not vs the seed anchor — audit §4b.2). Comparing against
-//      MOCK_NOW asserts the genuine invariant the seed guarantees.
+//      generates next_due_date relative to the frozen MOCK_NOW (2026-07-01,
+//      imported from src/constants/demoClock.js — see below), NOT wall-clock,
+//      so comparing against `new Date()` would fail purely from real time
+//      elapsing since the last seed run (hundreds of "stale" rows that are
+//      stale only vs today, not vs the seed anchor — audit §4b.2). Comparing
+//      against MOCK_NOW asserts the genuine invariant the seed guarantees.
+//      A second assertion catches NULL next_due_date rows, which the SQL `<`
+//      comparison above can never see (audit A06-008 — this exact blind spot
+//      hid 21 live rows), confined to the one shape known to legitimately
+//      carry it (see that assertion for why).
 //   6. The new `distributors` table is live with the d-001 row.
 //   7. The new settlement write RPCs `apply_settlement` and
 //      `mark_notifications_read` exist in pg_proc (replacing the dropped
 //      `agent_dispute_line` probe — that RPC was removed by 0029 line 55).
+//   8. public._demo_now() — the SQL-side demo clock — resolves to the SAME
+//      calendar date as the JS MOCK_NOW anchor (audit A06-009: these two had
+//      drifted 44 days apart, sitting behind four RPCs that drive admin /
+//      distributor / branch / employer "today" and "this month" tiles).
 //
 // Run prereq: SUPABASE_SERVICE_ROLE_KEY in .env.local. Without it, every
 // test in this file `test.skip()`s with a clear note — the e2e/fixtures/db
@@ -47,23 +56,38 @@
 // is wired by default via the existing .env.local.
 
 import { test, expect } from '@playwright/test';
+import pgDefault from 'pg';
 import { supabaseAdmin } from '../../fixtures/db';
+import { MOCK_NOW_ISO_DATE } from '../../../src/constants/demoClock.js';
 
-// Seed anchor — mirrors `MOCK_NOW = new Date(2026, 4, 26)` (2026-05-26) in
-// `src/data/mockData.js`. The seed generates `contribution_schedules
-// .next_due_date` relative to THIS frozen anchor, not wall-clock, so the
-// freshness invariant in assertion #5 must compare against it (not `new
-// Date()`) — otherwise real time elapsing since cutover reports thousands of
-// "stale" rows that are stale only vs today, never vs the seed (audit §4b.2).
-// Kept as a local literal rather than importing mockData.js so this Node-side
-// spec doesn't drag the app's mockGeo/mockBranchDefs graph into the Playwright
-// runner. If MOCK_NOW moves in mockData.js, mirror it here.
-const MOCK_NOW_ISO = '2026-05-26';
+// Seed anchor — the ONE literal `src/constants/demoClock.js` exports (audit
+// A06-003/A06-008/A06-009/A26-003: this file used to hand-copy its own
+// `MOCK_NOW_ISO = '2026-05-26'` literal, which silently drifted 36 days
+// behind the real anchor and left assertion #5 unable to fail — see that
+// test below). The seed generates `contribution_schedules.next_due_date`
+// relative to THIS frozen anchor, not wall-clock, so the freshness invariant
+// must compare against it (not `new Date()`) — otherwise real time elapsing
+// since the last seed run reports hundreds of "stale" rows that are stale
+// only vs today, never vs the seed (audit §4b.2).
+//
+// Safe to import directly (unlike `src/data/mockData.js`, which this file
+// has always deliberately avoided — see the removed comment this replaced):
+// demoClock.js is a leaf module with ZERO imports, so it does not drag the
+// app's mockGeo/mockBranchDefs graph into the Playwright runner.
+const MOCK_NOW_ISO = MOCK_NOW_ISO_DATE;
 
 // The whole file is service-role-only. If the env var is missing, the
 // supabaseAdmin client throws at import time; this guard catches the
 // import-time error and surfaces a clean skip for the file.
 const hasServiceRole = !!process.env.SUPABASE_SERVICE_ROLE_KEY && !!process.env.VITE_SUPABASE_URL;
+
+// The SQL-clock-agreement test below (assertion #8) needs a direct Postgres
+// connection — `_demo_now()` is a `public.*` function but PostgREST exposure
+// of an underscore-prefixed helper is not something this suite should rely
+// on, so it is read the same way `e2e/fixtures/db.ts::findChildTableListDrift`
+// already reads live schema: a raw `pg` client against SUPABASE_DB_URL (a
+// project dependency already; see that function's own doc comment).
+const hasDbUrl = !!process.env.SUPABASE_DB_URL;
 
 test.describe('DB invariants (ilkhfnoyxlxwqadebnkp)', () => {
   test.skip(!hasServiceRole, 'requires SUPABASE_SERVICE_ROLE_KEY in env');
@@ -165,15 +189,27 @@ test.describe('DB invariants (ilkhfnoyxlxwqadebnkp)', () => {
     expect(dueWithDate ?? 0, 'due commissions carrying a paid_date').toBe(0);
   });
 
-  test('no schedules with next_due_date < MOCK_NOW (seed anchor)', async () => {
+  test('no schedules with next_due_date < MOCK_NOW (seed anchor), and NULL is confined to known employer-member rows', async () => {
     // contribution_schedules has no status column (0001 line 189) —
     // every row is implicitly "active". We assert every row has a non-stale
     // next_due_date RELATIVE TO THE SEED ANCHOR (MOCK_NOW), not wall-clock:
     // the seed materialises next_due_date from the frozen MOCK_NOW
-    // (2026-05-26), so comparing against `new Date()` would fail purely from
-    // real time elapsing since cutover (audit §4b.2 — ~1997 rows stale only vs
-    // today). Comparing against MOCK_NOW asserts the invariant the seed
-    // actually guarantees.
+    // (imported from src/constants/demoClock.js — see MOCK_NOW_ISO above), so
+    // comparing against `new Date()` would fail purely from real time
+    // elapsing since the last seed run (audit §4b.2 — hundreds of rows stale
+    // only vs today). Comparing against MOCK_NOW asserts the invariant the
+    // seed actually guarantees.
+    //
+    // Until 2026-08-25 this comparison was against a stale local copy of the
+    // anchor 36 days behind the real one (audit A06-008), which — combined
+    // with the seed's own stale mirror (A06-003, fixed in
+    // scripts/seed-supabase.mjs) — left this assertion with 41 days of dead
+    // slack: it reported 0 while 717 live rows were genuinely stale against
+    // the wall clock. Comparing against the CORRECT anchor does not chase
+    // that wall-clock staleness (doing so would make this test fail every day
+    // between reseeds purely from time passing, which is not a regression —
+    // see the comment above); it closes the dead slack a regression would
+    // need to move dates back through before this test could ever notice.
     const isoDate = MOCK_NOW_ISO;
     const { count, error } = await supabaseAdmin
       .from('contribution_schedules')
@@ -183,6 +219,30 @@ test.describe('DB invariants (ilkhfnoyxlxwqadebnkp)', () => {
     expect(
       count ?? 0,
       `schedules with next_due_date before the seed anchor ${isoDate}`,
+    ).toBe(0);
+
+    // SQL `<` never matches NULL, so the assertion above is structurally
+    // blind to a schedule with NO due date at all — arguably the most stale
+    // state possible (audit A06-008 finding #3: 21 live rows hid here). We
+    // don't assert the NULL count is zero outright: 21 `empe-*` (employer
+    // member) schedule rows are a known, separately-tracked shape (their
+    // `amount` is also not > 0 — see A06-015, owned elsewhere, not a clock
+    // defect). Instead we assert NULL is confined to EXACTLY that known
+    // shape, so a NULL appearing on any other schedule (a real subscriber's,
+    // `s-*`) — which would be a genuine regression — fails loudly.
+    const { data: nullDueRows, error: nullErr } = await supabaseAdmin
+      .from('contribution_schedules')
+      .select('subscriber_id')
+      .is('next_due_date', null)
+      .limit(1000);
+    expect(nullErr, 'schedules NULL next_due_date query').toBeNull();
+    const unexpectedNulls = (nullDueRows ?? []).filter(
+      (r) => !String((r as { subscriber_id: string | null }).subscriber_id ?? '').startsWith('empe-'),
+    );
+    expect(
+      unexpectedNulls.length,
+      `schedule(s) with NULL next_due_date outside the known empe-* shape (A06-015): ` +
+        `${JSON.stringify(unexpectedNulls.slice(0, 5))}`,
     ).toBe(0);
   });
 
@@ -269,5 +329,53 @@ test.describe('DB invariants (ilkhfnoyxlxwqadebnkp)', () => {
       `subscribers with no agent + no employer but live commission rows naming an agent — ` +
         `mass-detach signature. Sample: ${JSON.stringify(orphans?.slice(0, 5) ?? [])}`,
     ).toBe(0);
+  });
+
+  // ── SQL/JS demo-clock agreement (audit A06-009) ─────────────────────────
+  // public._demo_now() is a FIFTH independent "now" — the only one that
+  // lives in SQL, read by get_employer_activity_rollup,
+  // get_entity_metrics_rollup, get_top_branch and submit_hospital_cash_claim
+  // (i.e. the admin/distributor/branch/employer "today"/"this week"/"this
+  // month" tiles + hospital-cash claim pricing). It was 44 days behind the JS
+  // MOCK_NOW anchor (2026-05-18 vs 2026-07-01) — same live rows, same day,
+  // "today's contributions" read 28 on one surface and 844 on another.
+  // supabase/migrations/0126_demo_clock.sql brings it into agreement; this
+  // test is what would have caught the original drift, and what catches the
+  // next one if only one side of a future roll-forward gets updated.
+  test('public._demo_now() (SQL clock) resolves to the same calendar date as the JS MOCK_NOW anchor', async () => {
+    test.skip(!hasDbUrl, 'requires SUPABASE_DB_URL in env (.env.local) for a direct Postgres connection');
+
+    // Raw `pg` client, not supabaseAdmin/PostgREST — `_demo_now` is a
+    // leading-underscore internal helper and this suite should not depend on
+    // whether PostgREST's schema cache happens to expose it as `/rpc/_demo_now`
+    // for the service-role key. Same approach as
+    // `e2e/fixtures/db.ts::findChildTableListDrift` (`pg` is already a project
+    // dependency — see that function's doc comment). `@types/pg` is not
+    // installed and e2e/*.ts is not type-checked by any script (A25-006), so
+    // a minimal local shape is declared rather than reaching for `any`.
+    const { Client } = pgDefault as unknown as {
+      Client: new (config: { connectionString: string }) => {
+        connect(): Promise<void>;
+        query<T>(sql: string): Promise<{ rows: T[] }>;
+        end(): Promise<void>;
+      };
+    };
+    const client = new Client({ connectionString: process.env.SUPABASE_DB_URL as string });
+    await client.connect();
+    try {
+      const { rows } = await client.query<{ demo_now_date: string }>(
+        `select (public._demo_now())::date::text as demo_now_date`,
+      );
+      const sqlDate = rows[0]?.demo_now_date;
+      expect(
+        sqlDate,
+        `public._demo_now() resolves to ${sqlDate ?? '(no row returned)'} but the JS anchor ` +
+          `MOCK_NOW_ISO_DATE (src/constants/demoClock.js) is ${MOCK_NOW_ISO_DATE}. These must ` +
+          `resolve to the same calendar date — apply supabase/migrations/0126_demo_clock.sql, ` +
+          `or (if MOCK_NOW was rolled forward since) author its successor (audit A06-009).`,
+      ).toBe(MOCK_NOW_ISO_DATE);
+    } finally {
+      await client.end();
+    }
   });
 });
