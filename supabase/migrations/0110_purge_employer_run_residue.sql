@@ -154,88 +154,126 @@ DELETE FROM public.transactions
 -- ---------------------------------------------------------------------------
 -- REBUILD the balances the residue inflated, in the SAME transaction.
 --
--- This system stores total_balance as CURRENT MARKET VALUE, not cost basis.
--- Verified on live 2026-08-25: all 5,060 balance rows satisfy
---     total_balance = round(units * latest_nav())
--- exactly (e.g. s-0001: 897.9839115963516446 x 1571.4 = 1,411,092).
+-- This is the EXACT INVERSE of what put the money there, not a from-scratch
+-- recomputation. Derived by reading the two functions that own these columns:
 --
--- So the rebuild is two steps, in this order:
---   1. units — recomputed from the surviving settled transactions, each priced
---      at the NAV in force ON ITS OWN DATE (nav_for_date), never at a single
---      current NAV, which would misprice historical rows. Verified that
---      nav_for_date returns real historical values (2026-07-30 -> 1580.72,
---      today -> 1571.4).
---   2. total_balance — DERIVED from units at the current NAV.
+--   trg_transactions_contribution — fires WHEN (new.type = 'contribution')
+--   ONLY, and simply ACCUMULATES:
+--       retirement_balance += COALESCE(split_retirement, round(amount*0.80))
+--       emergency_balance  += COALESCE(split_emergency,  amount - round(amount*0.80))
+--       units              += amount / nav_for_date(date)
+--       invested           += amount
+--   then calls _resync_bucket_units().
 --
--- An earlier draft rebuilt total_balance as sum(amount) (cost basis). The dry
--- run against a restored copy of live caught it: 19 of 19 touched balances
--- failed the units x NAV check. That is what the dry run is for.
+--   publish_nav_snapshot — the canonical revaluation:
+--       total_balance      = round(units * nav)
+--       retirement_balance = round(retirement_units * nav)
+--       emergency_balance  = round(units * nav) - round(retirement_units * nav)
+--
+-- Two consequences that a from-scratch rebuild gets wrong:
+--
+--   1. The 627 `insurance_premium` residue rows NEVER touched subscriber_balances
+--      — the trigger's WHEN clause excludes them. Only the 1,254 `contribution`
+--      rows did. Subtracting the premiums would corrupt 19 real balances.
+--
+--   2. total_balance is NOT cost basis. All 5,060 live rows satisfy
+--      total_balance = round(units * latest_nav()); an earlier draft of this
+--      migration set it to sum(amount) and the dry run failed 19 of 19.
+--
+-- So: subtract the trigger's contribution, re-derive bucket units the way the
+-- system does, then revalue exactly as publish_nav_snapshot does.
 -- ---------------------------------------------------------------------------
-WITH touched AS (
-  SELECT DISTINCT subscriber_id
-    FROM public.transactions_pre_purge_20260824
-   WHERE subscriber_id IS NOT NULL
-),
-rebuilt AS (
-  SELECT s.subscriber_id,
-         COALESCE(SUM(
-           CASE WHEN t.type = 'contribution'
-                THEN  t.amount / NULLIF(public.nav_for_date(t.date::date), 0)
-                WHEN t.type = 'withdrawal'
-                THEN -t.amount / NULLIF(public.nav_for_date(t.date::date), 0)
-                ELSE 0 END), 0) AS units
-    FROM touched s
-    LEFT JOIN public.transactions t
-           ON t.subscriber_id = s.subscriber_id
-          AND t.status = 'settled'
-   GROUP BY s.subscriber_id
-)
+CREATE TEMP TABLE _deltas ON COMMIT DROP AS
+SELECT p.subscriber_id,
+       SUM(COALESCE(p.split_retirement, round(p.amount * 0.80)))                      AS d_ret_bal,
+       SUM(COALESCE(p.split_emergency,  p.amount - round(p.amount * 0.80)))           AS d_emg_bal,
+       SUM(p.amount / NULLIF(public.nav_for_date(p.date::date), 0))                   AS d_units,
+       SUM(p.amount)                                                                  AS d_invested
+  FROM public.transactions_pre_purge_20260824 p
+ WHERE p.type = 'contribution'          -- the trigger's WHEN clause. Do not widen.
+   AND p.subscriber_id IS NOT NULL
+ GROUP BY p.subscriber_id;
+
+-- Step 1 — undo the trigger's accumulation.
 UPDATE public.subscriber_balances b
-   SET units         = r.units,
-       total_balance = round(r.units * public.latest_nav())
-  FROM rebuilt r
- WHERE b.subscriber_id = r.subscriber_id;
+   SET retirement_balance = b.retirement_balance - d.d_ret_bal,
+       emergency_balance  = b.emergency_balance  - d.d_emg_bal,
+       units              = b.units              - d.d_units,
+       invested           = COALESCE(b.invested, 0) - d.d_invested,
+       updated_at         = now()
+  FROM _deltas d
+ WHERE b.subscriber_id = d.subscriber_id;
+
+-- Step 2 — re-derive bucket units from the corrected balance ratio, using the
+-- system's own function rather than hand-maintaining them (0104's rule).
+DO $$
+DECLARE r record;
+BEGIN
+  FOR r IN SELECT subscriber_id FROM _deltas LOOP
+    PERFORM public._resync_bucket_units(r.subscriber_id);
+  END LOOP;
+END $$;
+
+-- Step 3 — revalue at the current NAV, byte-identical to publish_nav_snapshot.
+UPDATE public.subscriber_balances b
+   SET total_balance      = round(b.units * public.latest_nav()),
+       retirement_balance = round(b.retirement_units * public.latest_nav()),
+       emergency_balance  = round(b.units * public.latest_nav())
+                            - round(b.retirement_units * public.latest_nav())
+ WHERE b.subscriber_id IN (SELECT subscriber_id FROM _deltas);
 
 -- ---------------------------------------------------------------------------
--- GUARD 3 — no rebuilt balance may be negative or NaN.
--- (Asserting total_balance = units x NAV here would be circular, since the
--- UPDATE above derives it that way. These check the things that CAN go wrong.)
+-- GUARDS — the three invariants live actually maintains (measured 2026-08-25:
+-- they hold for 5060/5060, 5059/5060 and 5060/5060 rows respectively; the one
+-- exception is s-0005, which 0112 repairs via A04-016).
 -- ---------------------------------------------------------------------------
 DO $$
 DECLARE v_bad int;
 BEGIN
-  SELECT count(*) INTO v_bad
-    FROM public.subscriber_balances b
-   WHERE b.subscriber_id IN (SELECT DISTINCT subscriber_id FROM public.transactions_pre_purge_20260824)
+  SELECT count(*) INTO v_bad FROM public.subscriber_balances b
+   WHERE b.subscriber_id IN (SELECT subscriber_id FROM _deltas)
+     AND abs((COALESCE(b.retirement_balance,0) + COALESCE(b.emergency_balance,0)) - b.total_balance) > 1;
+  IF v_bad > 0 THEN
+    RAISE EXCEPTION 'ABORT: % row(s) break retirement_balance + emergency_balance = total_balance.', v_bad
+      USING ERRCODE = 'P0001';
+  END IF;
+
+  SELECT count(*) INTO v_bad FROM public.subscriber_balances b
+   WHERE b.subscriber_id IN (SELECT subscriber_id FROM _deltas)
+     AND abs((COALESCE(b.retirement_units,0) + COALESCE(b.emergency_units,0)) - b.units) > 0.0001;
+  IF v_bad > 0 THEN
+    RAISE EXCEPTION 'ABORT: % row(s) break retirement_units + emergency_units = units.', v_bad
+      USING ERRCODE = 'P0001';
+  END IF;
+
+  SELECT count(*) INTO v_bad FROM public.subscriber_balances b
+   WHERE b.subscriber_id IN (SELECT subscriber_id FROM _deltas)
+     AND abs(b.total_balance - round(b.units * public.latest_nav())) > 1;
+  IF v_bad > 0 THEN
+    RAISE EXCEPTION 'ABORT: % row(s) break total_balance = units x NAV.', v_bad USING ERRCODE = 'P0001';
+  END IF;
+
+  SELECT count(*) INTO v_bad FROM public.subscriber_balances b
+   WHERE b.subscriber_id IN (SELECT subscriber_id FROM _deltas)
      AND (b.units < 0 OR b.total_balance < 0);
   IF v_bad > 0 THEN
-    RAISE EXCEPTION 'ABORT: % touched balance(s) went negative.', v_bad USING ERRCODE = 'P0001';
+    RAISE EXCEPTION 'ABORT: % balance(s) went negative.', v_bad USING ERRCODE = 'P0001';
   END IF;
-END $$;
 
--- GUARD 4 — no NaN anywhere in balances (A04-001's failure mode; NaN survives
--- every arithmetic check written as `<= 0`, so it must be tested explicitly).
-DO $$
-DECLARE v_nan int;
-BEGIN
-  SELECT count(*) INTO v_nan FROM public.subscriber_balances
+  SELECT count(*) INTO v_bad FROM public.subscriber_balances
    WHERE units::text = 'NaN' OR total_balance::text = 'NaN';
-  IF v_nan > 0 THEN
-    RAISE EXCEPTION 'ABORT: % balance row(s) hold NaN.', v_nan USING ERRCODE = 'P0001';
+  IF v_bad > 0 THEN
+    RAISE EXCEPTION 'ABORT: % balance row(s) hold NaN.', v_bad USING ERRCODE = 'P0001';
   END IF;
-END $$;
 
--- GUARD 5 — the whole EMP- residue must be gone, and only it.
-DO $$
-DECLARE v_left bigint; v_snap bigint;
-BEGIN
-  SELECT count(*) INTO v_left FROM public.transactions
+  SELECT count(*) INTO v_bad FROM public.transactions
    WHERE txn_ref IN (SELECT txn_ref FROM _frozen_refs);
-  IF v_left <> 0 THEN
-    RAISE EXCEPTION 'ABORT: % residue row(s) survived the delete.', v_left USING ERRCODE = 'P0001';
+  IF v_bad <> 0 THEN
+    RAISE EXCEPTION 'ABORT: % residue row(s) survived the delete.', v_bad USING ERRCODE = 'P0001';
   END IF;
-  SELECT count(*) INTO v_snap FROM public.transactions_pre_purge_20260824;
-  RAISE NOTICE 'Purged % residue rows across 33 refs. Recoverable from transactions_pre_purge_20260824.', v_snap;
+
+  RAISE NOTICE 'Purged 1881 residue rows across 33 refs; % balance(s) rebuilt. Recoverable from transactions_pre_purge_20260824.',
+    (SELECT count(*) FROM _deltas);
 END $$;
 
 COMMIT;
