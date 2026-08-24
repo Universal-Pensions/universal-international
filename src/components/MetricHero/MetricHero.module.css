@@ -1,0 +1,198 @@
+/* ── MetricHero ───────────────────────────────────────────────────────────
+   Visual language matches the two drifted-but-converged Tile recipes already
+   in the codebase (DistributorOverview.module.css / AdminOverview reuse, and
+   employer-dashboard/desktop/ui.module.css): white card, ~12% tinted icon
+   chip (never a solid-fill tile — house rule: light tints over solid
+   indigo), uppercase label, bold indigo value, gray sub. The skeleton reuses
+   the same lavender→white shimmer sweep established by SkeletonRow.module.css
+   / MetricsRow.module.css so every loading state in the app reads as one
+   system. `.root` itself carries no card chrome — call sites keep wrapping
+   this in their own section/card, MetricHero only owns the tile grid. */
+
+.root {
+  display: block;
+  width: 100%;
+}
+
+/* ── Grid ── */
+.grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--space-4);
+}
+.grid[data-cols='1'] { grid-template-columns: minmax(0, 1fr); }
+.grid[data-cols='2'] { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.grid[data-cols='3'] { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.grid[data-cols='4'] { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+
+@media (max-width: 900px) {
+  .grid[data-cols='4'] { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 560px) {
+  .grid[data-cols='4'],
+  .grid[data-cols='3'],
+  .grid[data-cols='2'] {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* ── Tile ── */
+.tile {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  width: 100%;
+  padding: var(--space-5);
+  background: var(--color-white);
+  border: 1px solid var(--color-lavender);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 1px 4px color-mix(in srgb, var(--color-indigo) 4%, transparent);
+  text-align: left;
+  min-width: 0;
+  font-family: inherit;
+  cursor: default;
+  box-sizing: border-box;
+}
+button.tile {
+  cursor: pointer;
+  transition: border-color 0.16s ease, box-shadow 0.16s ease, transform 0.16s ease;
+}
+button.tile:hover {
+  border-color: var(--color-indigo-soft);
+  box-shadow: 0 4px 14px -6px color-mix(in srgb, var(--color-indigo) 22%, transparent);
+  transform: translateY(-1px);
+}
+button.tile:focus-visible {
+  outline: 2px solid var(--color-indigo);
+  outline-offset: 2px;
+}
+
+.tileIcon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-md);
+  margin-bottom: 4px;
+  flex-shrink: 0;
+}
+/* Tinted chip per tone — never a solid-fill background (house visual rule). */
+.tile[data-tone='indigo'] .tileIcon { background: color-mix(in srgb, var(--color-indigo) 10%, transparent); color: var(--color-indigo); }
+.tile[data-tone='indigoSoft'] .tileIcon { background: rgba(94, 99, 168, 0.16); color: var(--color-indigo-soft); }
+.tile[data-tone='green'] .tileIcon { background: rgba(46, 139, 87, 0.13); color: #1F6B41; }
+.tile[data-tone='teal'] .tileIcon { background: rgba(47, 143, 157, 0.13); color: #237F8C; }
+.tile[data-tone='amber'] .tileIcon { background: rgba(217, 119, 6, 0.14); color: #9A6300; }
+
+.tileLabel {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 0.6875rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--color-gray);
+}
+.tileValue {
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 1.5rem;
+  letter-spacing: -0.02em;
+  color: var(--color-indigo);
+  line-height: 1.15;
+  font-variant-numeric: tabular-nums;
+  word-break: break-word;
+}
+.tileSub {
+  font-family: var(--font-body);
+  font-size: 0.75rem;
+  color: var(--color-gray);
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+.tileSub[data-tone='up'] { color: #1F6B41; }
+.tileSub[data-tone='down'] { color: #B22834; }
+
+/* size="hero" — the mobile framed headline stat: bigger value, quieter
+   sentence-case label, softer card tint. Mirrors distributorMobile.module.css
+   .frame/.frameLbl/.heroVal without touching that file. */
+.tile[data-size='hero'] {
+  background: color-mix(in srgb, var(--color-white) 70%, var(--color-cloud));
+  gap: 6px;
+  padding: var(--space-4) var(--space-5);
+}
+.tile[data-size='hero'] .tileLabel {
+  font-size: 0.71875rem;
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
+}
+.tile[data-size='hero'] .tileValue {
+  font-size: 2rem;
+}
+.tile[data-size='hero'] .tileIcon {
+  width: 40px;
+  height: 40px;
+}
+
+/* ── Skeleton ── */
+.skeletonTile {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: var(--space-5);
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.72) 0%, rgba(246, 247, 251, 0.65) 100%);
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 1px 4px color-mix(in srgb, var(--color-indigo) 4%, transparent);
+  animation: metricHeroFadeIn 0.5s var(--ease-out-expo) backwards;
+  min-height: 112px;
+  box-sizing: border-box;
+}
+
+.skeletonChip,
+.skeletonLine {
+  display: block;
+  border-radius: var(--radius-full);
+  background: linear-gradient(
+    100deg,
+    rgba(217, 220, 242, 0.55) 0%,
+    rgba(217, 220, 242, 0.55) 40%,
+    rgba(255, 255, 255, 0.95) 50%,
+    rgba(217, 220, 242, 0.55) 60%,
+    rgba(217, 220, 242, 0.55) 100%
+  );
+  background-size: 220% 100%;
+  background-position: 100% 50%;
+  animation: metricHeroSweep 1.6s var(--ease-out-expo) infinite;
+}
+
+.skeletonChip {
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-md);
+}
+.skeletonLabel { width: 55%; height: 8px; opacity: 0.7; }
+.skeletonValue { width: 70%; height: 18px; margin-top: 2px; }
+.skeletonSub { width: 40%; height: 8px; opacity: 0.55; }
+
+@keyframes metricHeroSweep {
+  0%   { background-position: 100% 50%; }
+  60%  { background-position: 0% 50%; }
+  100% { background-position: 0% 50%; }
+}
+@keyframes metricHeroFadeIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skeletonChip,
+  .skeletonLine,
+  .skeletonTile {
+    animation: none;
+    background-position: 0% 50%;
+  }
+}
