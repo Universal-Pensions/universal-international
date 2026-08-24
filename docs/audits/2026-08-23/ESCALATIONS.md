@@ -66,3 +66,18 @@ They are NOT dropped — start them the moment the blocking agent lands.
 | `P4-subscriber-reports` | `P3-rls-writes` | Both write `src/services/subscriber.js` (the insurance-renewal path vs the tax-statement/export queries). A10-001's tax statement reports UGX 0 for a member who contributed 1.4M and exports that to CSV — worth doing properly rather than racing. |
 | `P6-rls-perf` | `P3-rls-writes` | A21-005 consolidates six permissive SELECT policies into one. That is a tenancy change wearing a performance costume and must come AFTER Phase 3 has settled the policy set, then re-run the adversarial cross-tenant probes. |
 | `P5-nav-shells` | `P6-deps` (U2) | The plan sequences the react-router bump BEFORE routing is rewritten. The bump has in fact already happened via the accidental `npm update` — so this is unblocked IF the user keeps the lockfile change, and re-blocked if they revert it. |
+
+## Phase 3 — provisioning (`0121`)
+
+| # | Item | Owner | Status |
+|---|---|---|---|
+| E17 | `src/test/login-identity-contract.test.js` only **greps for the string** `register_login_identity` in the function body. That is why it could not catch A06-005 — the call was there, its NULL return was simply ignored. It should assert the body actually checks the return value. | P7-enforcement | OPEN |
+| E18 | `api/auth/verify-otp.ts` is the ROOT CAUSE of A06-013: it writes a fresh entity_id-less, password-less `users` breadcrumb on every OTP sign-in. `0121` prunes the 32 that exist; the writer keeps making more. Either stop writing the row, or resolve `entity_id` at write time from the same lookup the JWT already does. | needs an owner | **OPEN — recurring** |
+| E19 | `src/admin-dashboard/employers/CreateEmployer.jsx` — unlabelled free-text district input with a name-style placeholder, while the RPC historically validated it as a `districts.id`. Now mitigated at the RPC boundary (0121 accepts either form), but a real picker (mirroring `RequestAccess.jsx`'s `list="ra-districts"`) would close it at source. | P4/P5 admin owner | OPEN |
+| E20 | **Counts in the report have drifted.** A06-013's 39 was 32 by verification time, and a collision row the audit flagged was already gone — because remediation agents are concurrently mutating the same tables. Every later DB agent must re-derive its targets from live state rather than trusting the report's numbers. | all DB agents | **STANDING** |
+
+## Resolved from this register
+
+| # | Item | Outcome |
+|---|---|---|
+| — | The unexplained `users` row P3-provisioning flagged (real password, NULL entity, created 22 min before the Uniclusion incident, phone one digit off) | **Investigated and FIXED — migration `0122`, commit 5038abe.** Not a mystery and not adjacent: it is `s-100117`'s own credential, a surviving casualty of the 2026-08-07 login-identity regression that `0101`'s backfill missed. That member could authenticate and then resolve to nothing. Measured scope: exactly one row. |
