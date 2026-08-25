@@ -113,3 +113,71 @@ an auditor action.
 **Net effect on the demo:** `empe-*` (Nile Breweries roster) balances read higher than their seeded
 values — which is exactly what finding A06-001 reports. No other tenant is affected; no schema, code
 or config was changed. `git status` remains: audit dir + the `@axe-core/playwright` devDependency only.
+
+---
+
+## 2026-08-25 — remediation migrations applied to live
+
+Operator: Claude, on explicit user instruction ("proceed with everything that is pending").
+Recovery point taken and **proven** first: `/private/tmp/claude-501/-Users-shubhang/b27ec2e1-6146-468e-bdff-78bb7ca40ecb/scratchpad/apply-1233/live.dump` restored into a scratch PostgreSQL 18
+and diffed to a byte-identical 41-table / 99,272-row manifest before anything was applied.
+
+| migration | what it did | outcome |
+|---|---|---|
+| `0109` | settlement tenancy guard (A05-001) | applied — `not_your_agent` present |
+| `0110` | purged 1,881 residue rows / 33 refs; rebuilt 19 balances | **aborted once, then applied** — see below |
+| `0111` | dropped 5 orphan E2E batches + 8 notifications; re-derived branch stamps | applied |
+| `0113` | atomic subscriber-cleanup RPC (A04-010) | applied |
+| `0115` | nonce claimed before the money write (A04-011) | applied |
+| `0117` | cleared 4 stale pending NAV rows; rebuilt the pending-day fixture | applied — book revalued 1571.40 → 1585.88 |
+| `0118` | closed the direct-write surface (A02-001 etc.) | applied — `transactions_insert_self` gone |
+| `0119` | revoked TRUNCATE / REFERENCES / TRIGGER / MAINTAIN from client roles | applied |
+| `0120` | bound employer invites to their invitee (A03-001) | applied |
+| `0121` | tenant provisioning fails loudly (A06-005); 6 employer + 1 distributor sign-ins backfilled | applied |
+| `0122` | repaired the one login that authenticated but resolved to nothing | applied |
+| `0126` | one demo clock for JS and SQL | applied |
+
+Previously applied during the 2026-08-25 probe incident: `0112`, `0114`, `0116`.
+Applied separately as security fixes: `0127` (snapshot RLS), `0128` (A03-101 escalation).
+
+### `0110` aborted on first attempt — and that was the system working
+
+It failed after `DELETE 1881` with
+`violates check constraint "subscriber_balances_bucket_sum_chk"` and rolled the whole
+transaction back. `0114` had already added
+`CHECK (retirement_balance + emergency_balance = total_balance)`, which is **not deferrable**
+and is therefore evaluated at the end of every statement — and 0110's rebuild subtracted the two
+parts in one statement while leaving `total_balance` for the revaluation step below.
+
+Cost of the abort: **nothing**. All 1,881 rows intact, no snapshot table orphaned, AUM unchanged.
+Fixed so the invariant holds at every statement boundary, re-proven on a scratch restore that
+carries the constraint, then applied.
+
+### Live state after
+
+| check | value |
+|---|---|
+| `EMP-` residue rows | **0** (was 1,881) |
+| orphan `E2E-*` batches | **0** (was 5) |
+| test subscribers / null-distributor branches | **0 / 0** |
+| `ret+emg = total_balance` | **5059 / 5059** |
+| `ret_units+emg_units = units` | **5059 / 5059** |
+| `total_balance = round(units × NAV)` | **5059 / 5059** |
+| NaN or negative balances | **0** |
+| logins that authenticate but resolve to nothing | **0** (was 1) |
+| live employer invites | **1** (invite demo works) |
+| NAV | **1585.88** |
+| AUM | **2,354,879,446** |
+
+### Exploits re-run against live, inside a rolled-back transaction
+
+| exploit | result |
+|---|---|
+| A02-001 — subscriber self-credits 999,000,000 | **BLOCKED** |
+| A04-001 — `NaN` contribution | **BLOCKED** — *"amount must be a real number (got NaN)"* |
+| A03-101 — subscriber mints an admin identity | **BLOCKED** |
+| A05-001 — d-001 settles a-780 (another distributor's agent) | **skipped: `not_your_agent`** |
+| normal contribution | **works** |
+| normal withdrawal | **works** |
+
+Unit suite after: **154 files / 2,217 tests passing**; `vite build` clean.
