@@ -48,6 +48,18 @@
 //      calendar date as the JS MOCK_NOW anchor (audit A06-009: these two had
 //      drifted 44 days apart, sitting behind four RPCs that drive admin /
 //      distributor / branch / employer "today" and "this month" tiles).
+//   9. M1 (audit A25-005) — every subscriber has exactly one
+//      subscriber_balances row. A subscriber with none renders a silent
+//      UGX 0 to a demo rep with no error state; as of the 2026-08-23 audit 4
+//      subscribers were missing one (traced to the E2E suite's own leaked
+//      fixtures, guarded separately by e2e/global-teardown.ts — A25-004), not
+//      a product defect. Live clean today; this test guards the regression.
+//  10. M2 (audit A25-005) — subscriber_balances.units reconciles with
+//      retirement_units + emergency_units. _resync_bucket_units() exists to
+//      keep the two figures in step but nothing asserted the outcome; as of
+//      the 2026-08-23 audit s-0005 disagreed by ~6.36 units (~10,000 UGX)
+//      between two numbers on the same subscriber screen. Live clean today;
+//      this test guards the next drift, not the historical one.
 //
 // Run prereq: SUPABASE_SERVICE_ROLE_KEY in .env.local. Without it, every
 // test in this file `test.skip()`s with a clear note — the e2e/fixtures/db
@@ -377,5 +389,63 @@ test.describe('DB invariants (ilkhfnoyxlxwqadebnkp)', () => {
     } finally {
       await client.end();
     }
+  });
+
+  // ── M1: every subscriber has exactly one balance row (audit A25-005) ──────
+  // Fetch both id sets unfiltered (no `.limit()`) — the same convention the
+  // "no duplicate agent emails" / "no duplicate subscriber NIns" tests above
+  // already use for full-table reads — and diff client-side, rather than a
+  // nested PostgREST embed, so this doesn't depend on the schema cache having
+  // auto-detected the subscribers -> subscriber_balances relationship.
+  test('every subscriber has exactly one subscriber_balances row (M1)', async () => {
+    const { data: subs, error: subErr } = await supabaseAdmin.from('subscribers').select('id');
+    expect(subErr, 'subscribers id query').toBeNull();
+
+    const { data: bals, error: balErr } = await supabaseAdmin
+      .from('subscriber_balances')
+      .select('subscriber_id');
+    expect(balErr, 'subscriber_balances id query').toBeNull();
+
+    const balanced = new Set((bals || []).map((r) => (r as { subscriber_id: string }).subscriber_id));
+    const missing = (subs || [])
+      .map((r) => (r as { id: string }).id)
+      .filter((id) => !balanced.has(id));
+
+    expect(
+      missing.length,
+      `subscriber(s) with no subscriber_balances row (M1 — see this file's header comment #9): ` +
+        `${JSON.stringify(missing.slice(0, 10))}`,
+    ).toBe(0);
+  });
+
+  // ── M2: units reconciles with retirement_units + emergency_units (audit
+  // A25-005) ──────────────────────────────────────────────────────────────
+  test('subscriber_balances.units reconciles with retirement_units + emergency_units (M2)', async () => {
+    const { data, error } = await supabaseAdmin
+      .from('subscriber_balances')
+      .select('subscriber_id, units, retirement_units, emergency_units');
+    expect(error, 'subscriber_balances units query').toBeNull();
+
+    // Round to 4dp before comparing — the same precision the live audit probe
+    // used (a25/money-invariants.md: `round(units,4) <> round(retirement_units
+    // + emergency_units,4)`) — so this doesn't fail on float noise far below
+    // the smallest unit fraction the app ever displays.
+    const round4 = (n: number) => Math.round(n * 10_000) / 10_000;
+    type BucketRow = { subscriber_id: string; units: number; retirement_units: number; emergency_units: number };
+    const mismatched = ((data || []) as BucketRow[]).filter(
+      (r) => round4(Number(r.units)) !== round4(Number(r.retirement_units) + Number(r.emergency_units)),
+    );
+
+    expect(
+      mismatched.length,
+      `subscriber_balances row(s) where units <> retirement_units + emergency_units, rounded to ` +
+        `4dp (M2 — see this file's header comment #10): ${JSON.stringify(
+          mismatched.slice(0, 5).map((r) => ({
+            subscriber_id: r.subscriber_id,
+            units: r.units,
+            bucketSum: Number(r.retirement_units) + Number(r.emergency_units),
+          })),
+        )}`,
+    ).toBe(0);
   });
 });

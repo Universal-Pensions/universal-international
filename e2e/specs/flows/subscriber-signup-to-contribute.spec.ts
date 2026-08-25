@@ -57,6 +57,7 @@ import {
 } from '../../fixtures/db';
 import { PHONE_PREFIX, QUICK_CONTRIBUTION_LABEL } from '../../helpers/signup-constants';
 import { walkContributionAndPay } from '../../helpers/contribution';
+import { stubWebkitCamera } from '../_shared/webkitCamera';
 
 test.setTimeout(120_000);
 
@@ -124,7 +125,17 @@ test.describe('subscriber → signup wizard → first contribution (UI + DB)', (
     expect(delErr, `cleanup: deleting users row for ${uniquePhone}`).toBeNull();
   });
 
-  test('completes 9-step signup + contribution and writes the subscriber chain', async ({ page }) => {
+  test('completes 9-step signup + contribution and writes the subscriber chain', async ({
+    page,
+    browserName,
+  }) => {
+    // WebKit has no working fake camera device (see stubWebkitCamera's doc
+    // comment for the full diagnosis); stub getUserMedia before any
+    // navigation so LivenessStep's "Take selfie" can enable in Step 5 below.
+    // No-op on chromium, which already has a working fake device via
+    // playwright.config.ts's launchOptions.
+    await stubWebkitCamera(page, browserName);
+
     // ── Step 1 · id-upload ───────────────────────────────────────────────
     // Upload front + back. The id-quality route always passes for files
     // ≥ 20 KiB (services/kyc.js:53 enforces that client-side); we pass a

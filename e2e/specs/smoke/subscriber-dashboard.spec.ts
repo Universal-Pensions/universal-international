@@ -43,18 +43,31 @@ test.describe('subscriber dashboard smoke', () => {
   test('Schedule loads (/dashboard/save/schedule)', async ({ page }) => {
     await page.goto('/dashboard/save/schedule');
     await expect(selectors.errorBoundary.fallback(page)).toHaveCount(0);
-    // SchedulePage title flips between "Set a schedule" (new) and "Tune your
-    // schedule" (existing). The seeded subscriber has a schedule, but match
-    // both so the test survives demo-data resets.
+    // SchedulePage's own h1 flips between "Set a schedule" (new) and "Tune
+    // your schedule" (existing) on DESKTOP. On mobile the page's own header
+    // doesn't render at all — SubscriberMobileAppBar supplies the <h1>
+    // instead, titled "Contribution settings"
+    // (SubscriberMobileAppBar.jsx FLOW map) — a real, different, but equally
+    // valid identity anchor, not a broken page (audit A10-003: the baseline's
+    // mobile failures here are test-selector brittleness, not product
+    // defects — every route renders cleanly at 375px). Match all three so the
+    // test survives both demo-data resets and the desktop/mobile shell split.
     await expect(
-      page.getByRole('heading', { level: 1, name: /(set a schedule|tune your schedule)/i }),
+      page.getByRole('heading', {
+        level: 1,
+        name: /(set a schedule|tune your schedule|contribution settings)/i,
+      }),
     ).toBeVisible();
   });
 
   test('Withdrawals hub loads (/dashboard/withdraw)', async ({ page }) => {
     await page.goto('/dashboard/withdraw');
     await expect(selectors.errorBoundary.fallback(page)).toHaveCount(0);
-    await expect(page.getByRole('heading', { level: 1, name: /withdrawals/i })).toBeVisible();
+    // Desktop's own header (WithdrawalsHubPage.jsx) reads "Withdrawals"; the
+    // mobile app-bar's shorter tab title is just "Withdraw"
+    // (SubscriberMobileAppBar.jsx TAB map) — same page, real content, not a
+    // bug (audit A10-003). Match the shared stem so both shells pass.
+    await expect(page.getByRole('heading', { level: 1, name: /withdraw/i })).toBeVisible();
   });
 
   test('Withdraw savings loads (/dashboard/withdraw/savings)', async ({ page }) => {
@@ -109,7 +122,16 @@ test.describe('subscriber dashboard smoke', () => {
   test('All Transactions report loads (/dashboard/reports/all-transactions)', async ({ page }) => {
     await page.goto('/dashboard/reports/all-transactions');
     await expect(selectors.errorBoundary.fallback(page)).toHaveCount(0);
-    await expect(page.getByRole('heading', { level: 1, name: /all transactions/i })).toBeVisible();
+    // ReportsPage's own <h1> is desktop-only — ReportsHeader renders nothing
+    // below 1024px (ReportsPage.jsx: `if (!isDesktop) return null`). The
+    // mobile app-bar's <h1> is the fixed, shared "Analytics" for every
+    // /dashboard/reports/* route regardless of which report is open (audit
+    // A10-003/A10-004 — not a bug; on mobile the specific report name is only
+    // an eyebrow, and all 5 report views share that one app-bar title).
+    // Anchor on AllTransactions.jsx's own body eyebrow instead of a heading —
+    // it renders in both the loading and loaded states, on both shells, and
+    // is unique to this report.
+    await expect(page.getByText(/every movement in your account/i)).toBeVisible();
   });
 
   test('Contributions Summary report loads (/dashboard/reports/contributions-summary)', async ({ page }) => {
@@ -118,13 +140,23 @@ test.describe('subscriber dashboard smoke', () => {
     // src/subscriber-dashboard/pages/ReportsPage.jsx.
     await page.goto('/dashboard/reports/contributions-summary');
     await expect(selectors.errorBoundary.fallback(page)).toHaveCount(0);
-    await expect(page.getByRole('heading', { level: 1, name: /contributions summary/i })).toBeVisible();
+    // Same title-agnostic anchor strategy as the All Transactions test above
+    // (audit A10-003/A10-004): the mobile app-bar's <h1> is the shared
+    // "Analytics" for every report route, so anchor on
+    // ContributionsSummary.jsx's own body eyebrow, which is unique to this
+    // report and renders on both shells.
+    await expect(page.getByText(/month-by-month view/i)).toBeVisible();
   });
 
   test('Help loads (/dashboard/help)', async ({ page }) => {
     await page.goto('/dashboard/help');
     await expect(selectors.errorBoundary.fallback(page)).toHaveCount(0);
-    await expect(page.getByRole('heading', { level: 1, name: /how can we help/i })).toBeVisible();
+    // Desktop HelpPage's own header reads "How can we help?"; the mobile
+    // app-bar's shorter title is just "Help" (SubscriberMobileAppBar.jsx
+    // SECONDARY map) — same page, real content, not a bug (audit A10-003).
+    await expect(
+      page.getByRole('heading', { level: 1, name: /(how can we help|^help$)/i }),
+    ).toBeVisible();
   });
 
   test('Agent loads (/dashboard/agent)', async ({ page }) => {
@@ -173,7 +205,12 @@ test.describe('subscriber dashboard smoke', () => {
   test('Profile edit form loads (/dashboard/settings/profile)', async ({ page }) => {
     await page.goto('/dashboard/settings/profile');
     await expect(selectors.errorBoundary.fallback(page)).toHaveCount(0);
-    await expect(page.getByRole('heading', { level: 1, name: /^profile$/i })).toBeVisible();
+    // Desktop's own header reads exactly "Profile"; the mobile app-bar's
+    // title for this deep route is "Edit profile" (SubscriberMobileAppBar.jsx
+    // SECONDARY map) — same page, real content, not a bug (audit A10-003).
+    await expect(
+      page.getByRole('heading', { level: 1, name: /^(profile|edit profile)$/i }),
+    ).toBeVisible();
     // ProfilePage is the editable form. The "Full name" textbox is its
     // distinguishing surface vs the account hub above (the footer CTA reads
     // "No changes to save" until the form is dirty, so it is not a stable

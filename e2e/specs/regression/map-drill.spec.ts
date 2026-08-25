@@ -138,6 +138,30 @@ async function waitForMapSettled(page: Page, label: string): Promise<void> {
  * polygon layers asynchronously as metrics land; a strict single click raced
  * node identity and failed ~1 run in 3 for reasons unrelated to drilling. Never
  * `force: true` — the click must hit-test a real, visible, settled polygon.
+ *
+ * ⚠️ CORRECTED 2026-08-25 (docs/audits/2026-08-23/a25/webkit-diagnosis.md,
+ * finding A25-013/Phase 7): the district-click target picker below used to
+ * choose its candidate purely by bounding-box AREA ("drop the single largest,
+ * take the next-largest"), assuming the only oversized non-clickable shape is
+ * one enclosing outline. That assumption breaks once a region has been
+ * drilled into: `UgandaMap.jsx`'s Layer 2 (the colored region overlay,
+ * `regionOverlayStyle`) stays mounted and `.leaflet-interactive` for ALL FOUR
+ * regions at every drill level, but only gets a click handler
+ * (`onEachFeature: onEachRegion`) at `level === 'country'`. So once inside a
+ * region there are up to FOUR oversized, non-clickable region shapes on the
+ * page at once, not one — "drop one, take the next" routinely just drops one
+ * decoy and clicks another. Measured: this failed on WebKit 5/5 runs AND on
+ * CHROMIUM 2/5 runs with a byte-identical error — a real cross-engine flake
+ * the audit's "WebKit-only" framing missed (A25-013's "modal-escape is the
+ * ONLY true flake" claim was wrong for exactly this reason). This is NOT a
+ * revival of the historical onEachFeature empty-name→id race — that fix is
+ * confirmed still working (a positive control clicking a real district
+ * passed 6/6 on both engines). Fix: for a DISTRICT click, filter candidates
+ * to TRANSPARENT-fill shapes first (`fill-opacity="0"`, exactly what
+ * `getCachedDistrictStyle` in UgandaMap.jsx gives real districts — the
+ * region-overlay decoys are always painted at 0.03–0.1, never 0) before
+ * applying the drop-biggest-take-next heuristic below. The region click
+ * (country level) is untouched: Layer 2 IS the real, clickable target there.
  */
 async function clickPolygonUntilUrl(
   page: Page,
@@ -168,17 +192,43 @@ async function clickPolygonUntilUrl(
   // genuinely-clickable target. At country level there is no outline — only the
   // 4 region shapes — so this simply picks the second-largest region, which is
   // equally valid.
-  const targetIndex = await page.locator(INTERACTIVE_PATH).evaluateAll((els) => {
-    const areas = els.map((el, i) => {
-      const r = el.getBoundingClientRect();
-      return { i, area: r.width * r.height };
-    }).filter((a) => a.area > 0);
-    if (areas.length === 0) return 0;
-    areas.sort((a, b) => b.area - a.area);
-    // areas[0] is the outline when one is present; fall back to it if it is the
-    // only shape on the layer.
-    return (areas[1] ?? areas[0]).i;
-  });
+  //
+  // For a DISTRICT click this now runs on a PRE-FILTERED candidate list (see
+  // the function doc comment above): only transparent-fill shapes, i.e. real
+  // districts, so there is no non-clickable outline left to "drop" at all —
+  // the drop-biggest-take-next step is kept anyway (rather than just taking
+  // the single largest) so a sliver district still isn't preferentially
+  // chosen, matching the same occlusion reasoning as the region case above.
+  const targetIndex = await page.locator(INTERACTIVE_PATH).evaluateAll((els, segment) => {
+    let candidates = els
+      .map((el, i) => {
+        const r = el.getBoundingClientRect();
+        const fillOpacityAttr = el.getAttribute('fill-opacity');
+        const fillOpacity = fillOpacityAttr === null ? null : parseFloat(fillOpacityAttr);
+        return { i, area: r.width * r.height, fillOpacity };
+      })
+      .filter((a) => a.area > 0);
+
+    if (segment === 'districts') {
+      // Real districts (UgandaMap.jsx's districtStyle / getCachedDistrictStyle)
+      // render with fillOpacity: 0 — a genuine transparent fill, set as the
+      // SVG `fill-opacity` presentation attribute by Leaflet's SVG renderer
+      // (L.SVG._updateStyle calls path.setAttribute('fill-opacity', …)). The
+      // region overlay's decoys never use exactly 0 (0.03 unselected / 0.1
+      // selected), so this filter cleanly separates real targets from decoys.
+      // Fall back to the unfiltered set if nothing matches for some unforeseen
+      // reason — better to fall back to the old heuristic than to throw with
+      // zero candidates.
+      const transparent = candidates.filter((a) => a.fillOpacity === 0);
+      if (transparent.length > 0) candidates = transparent;
+    }
+
+    if (candidates.length === 0) return 0;
+    candidates.sort((a, b) => b.area - a.area);
+    // candidates[0] is the outline when one is present; fall back to it if it
+    // is the only shape on the layer.
+    return (candidates[1] ?? candidates[0]).i;
+  }, expectSegment);
   // Click by COORDINATE, not by element handle.
   //
   // Why not `locator.click()`: the map swaps its polygon layers asynchronously

@@ -1,0 +1,10 @@
+{
+  "//": "A25-007 — server/tsconfig.json's build:api INTENTIONALLY excludes *.test.ts (so `dist-server/` — the real Render deploy artifact — never ships test files). That exclusion also meant the 2 server test files were never TYPE-checked by anything. This project extends the same compilerOptions but drops the test exclude and narrows `include` to server/ only (NOT `../api/**` — api/*.test.ts has its own pre-existing type errors tracked separately; see docs/audits/2026-08-23 A25-007 follow-up). --noEmit only; never used for a real build. module/moduleResolution overridden to 'bundler' — the test files' relative imports are extension-less like the rest of the repo, and NodeNext (the base project's setting, correct for the actual Node-executed server/api build) would wrongly demand '.js' extensions here.",
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "module": "ESNext",
+    "moduleResolution": "bundler"
+  },
+  "include": ["./**/*.ts"],
+  "exclude": ["../node_modules/**", "../dist/**"]
+}

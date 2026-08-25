@@ -29,6 +29,23 @@ const TOKEN = 'inv-e2e-kyc-nudge-regression';
 const INVITEE = 'E2E Nudge Target';
 
 test.describe('employer pending KYC — routed page + nudge channels', () => {
+  // SERIAL — mandatory, not a style choice. All 4 tests below share ONE
+  // fixed live row: `employer_invites` keyed by the constant TOKEN, created
+  // in beforeAll and deleted in afterAll. `beforeAll`/`afterAll` run ONCE PER
+  // WORKER that executes a test from this describe block — under
+  // `fullyParallel: true` with more than one worker (the local default;
+  // playwright.config.ts only pins `workers: 1` under CI), Playwright can
+  // schedule these 4 tests across multiple workers, so beforeAll can insert
+  // the same TOKEN row twice (a duplicate-key error, or a second insert
+  // racing the first test's read) and afterAll on whichever worker finishes
+  // first can delete the row while another worker's test is still using it.
+  // This exact class of collision already leaked live rows during this
+  // remediation programme. `mode: 'serial'` forces the whole describe block
+  // onto a single worker, in order, so beforeAll/afterAll each run exactly
+  // once. Always additionally pass `--workers=1` on the CLI when running this
+  // file locally.
+  test.describe.configure({ mode: 'serial' });
+
   test.beforeAll(async () => {
     const db = getAdminClient();
     const { error: preDelErr } = await db.from('employer_invites').delete().eq('token', TOKEN);

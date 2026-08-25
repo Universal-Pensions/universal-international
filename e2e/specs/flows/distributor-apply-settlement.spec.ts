@@ -77,6 +77,24 @@ async function readDueSlice(agentId: string): Promise<DueRow[]> {
 // the real function and every test below runs end-to-end. The file is enabled
 // (no describe.fixme); the per-line 0032 behaviours are enabled inline too.
 test.describe('distributor → apply settlement (UI → RPC → DB → notifications)', () => {
+  // SERIAL — mandatory, not a style choice. Every test in this file shares
+  // ONE fixed live agent id (AGENT_ID = PERSONA_FOR.agent.entityId, 'a-001')
+  // and mutates its `commissions` rows in beforeEach/afterEach
+  // (seedDueCommissionForFixture / revert). Under `fullyParallel: true` with
+  // more than one worker (the local default — playwright.config.ts only pins
+  // `workers: 1` under CI), Playwright is free to run two of these tests on
+  // two different workers AT THE SAME TIME, so two beforeEach calls seed the
+  // SAME agent's due slice concurrently and one test's afterEach can revert
+  // rows the other test is still mid-assertion against. This exact class of
+  // collision already leaked live rows during this remediation programme.
+  // `mode: 'serial'` forces the whole describe block — beforeEach, every
+  // test, afterEach — onto a single worker, in order, which removes the race
+  // entirely regardless of the global worker count. Always additionally pass
+  // `--workers=1` on the CLI when running this file locally (belt and
+  // braces, and required if running it alongside other spec files that touch
+  // the same live rows).
+  test.describe.configure({ mode: 'serial' });
+
   test.use({ storageState: storageStatePathFor('distributor') });
   test.setTimeout(60_000);
 
