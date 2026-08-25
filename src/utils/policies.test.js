@@ -3,6 +3,7 @@ import { describe, it, expect } from 'vitest';
 import {
   derivePolicies,
   derivePolicyStatus,
+  deriveCoverStatus,
   activePolicies,
   activeCoverTotal,
   activeCoverProductsLabel,
@@ -23,6 +24,60 @@ describe('derivePolicyStatus', () => {
   });
   it('is expired once the renewal date has passed', () => {
     expect(derivePolicyStatus({ renewalDate: '2025-01-01' }, NOW)).toBe('expired');
+  });
+});
+
+// A06-004 / A11-005: the shared predicate every surface (subscriber Policies
+// page AND agent member-detail chips) must derive status through, instead of
+// trusting a stored `status` column that nothing sweeps from active→expired.
+describe('deriveCoverStatus', () => {
+  it('recomputes a self-funded ACTIVE-flagged row from the renewal date (the A06-004 bug)', () => {
+    // This is exactly the live shape of the 1,284 divergent rows: the DB still
+    // says status='active' but the renewal date has passed.
+    expect(deriveCoverStatus(
+      { status: 'active', renewalDate: '2025-01-01', fundedBy: 'self' },
+      NOW,
+    )).toBe('expired');
+  });
+
+  it('keeps a self-funded ACTIVE-flagged row active while its renewal is still ahead', () => {
+    expect(deriveCoverStatus(
+      { status: 'active', renewalDate: '2027-05-01', fundedBy: 'self' },
+      NOW,
+    )).toBe('active');
+  });
+
+  it('never lapses an employer-funded row by date — monthly cover has no annual renewal', () => {
+    // Verified live 2026-08-25: employer-funded life rows carry a placeholder
+    // renewal_date (2026-12-28) that is never touched by the ongoing monthly
+    // premium; a naive date rule would eventually misread this as expired.
+    expect(deriveCoverStatus(
+      { status: 'active', renewalDate: '2020-01-01', fundedBy: 'employer' },
+      NOW,
+    )).toBe('active');
+  });
+
+  it('treats a missing renewal_date on an employer-funded row as active too', () => {
+    expect(deriveCoverStatus(
+      { status: 'active', renewalDate: null, fundedBy: 'employer' },
+      NOW,
+    )).toBe('active');
+  });
+
+  it('building wins outright, even with a future renewal date', () => {
+    expect(deriveCoverStatus(
+      { status: 'building', renewalDate: '2027-05-01', fundedBy: 'self' },
+      NOW,
+    )).toBe('building');
+  });
+
+  it('passes through a non-active, non-building stored status unchanged (never held)', () => {
+    expect(deriveCoverStatus({ status: 'inactive', renewalDate: null }, NOW)).toBe('inactive');
+  });
+
+  it('defaults an unset status to date-derived (matches the legacy subscriber shape)', () => {
+    expect(deriveCoverStatus({ status: undefined, renewalDate: '2027-05-01' }, NOW)).toBe('active');
+    expect(deriveCoverStatus({ status: undefined, renewalDate: '2025-01-01' }, NOW)).toBe('expired');
   });
 });
 
