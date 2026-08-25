@@ -10,7 +10,7 @@
 // a provider-wiring regression still surfaces.
 
 import React from 'react';
-import { vi, describe, it, expect } from 'vitest';
+import { vi, describe, it, expect, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -27,7 +27,14 @@ vi.mock('../hooks/useEntity', () => ({
   useCurrentEntity: () => ({ data: null }),
   useEntityMetrics: () => ({ data: { totalBranches: 316, totalAgents: 2049, totalSubscribers: 5000 } }),
 }));
-vi.mock('../contexts/AuthContext', () => ({ useAuth: () => ({ logout: vi.fn() }) }));
+// role: 'distributor' — needed so DashboardPanelContext.jsx's AUDIT A19-001
+// sessionStorage persistence (role-gated to distributor/admin) actually
+// activates in this suite's tests below. Adding it is additive (no existing
+// mock field removed); DashboardNavContext's role-gated
+// `usesReportsPanel` effect only fires for pathname === '/dashboard/reports'
+// and every test here renders at the default '/', so this does not change
+// any existing test's behaviour.
+vi.mock('../contexts/AuthContext', () => ({ useAuth: () => ({ role: 'distributor', logout: vi.fn() }) }));
 
 // ── Heavy / data-bound children → light stubs ────────────────────────────────
 // The lazy map records its `visible` prop so the toggle test can assert the
@@ -62,6 +69,14 @@ function renderShell() {
 }
 
 describe('<DashboardShell /> (distributor two-mode shell)', () => {
+  // AUDIT A19-001 tests below read/write real sessionStorage (the mechanism
+  // this fix uses instead of the URL — see DashboardPanelContext.jsx's header
+  // comment). Clear it before every test so persistence from one test can
+  // never leak into the next, regardless of run order.
+  beforeEach(() => {
+    try { window.sessionStorage.clear(); } catch { /* private-browsing */ }
+  });
+
   it('mounts and defaults to dash mode: the rich DistributorOverview at country level, no map', () => {
     renderShell();
     expect(document.getElementById('main')).not.toBeNull();
@@ -101,5 +116,36 @@ describe('<DashboardShell /> (distributor two-mode shell)', () => {
     expect(document.querySelector('[data-rail]')?.getAttribute('data-rail')).toBe('collapsed');
     // And the expand control is now available to re-open it.
     expect(screen.getByRole('button', { name: 'Expand menu' })).toBeInTheDocument();
+  });
+
+  describe('AUDIT A19-001 — refresh no longer reverts map mode to dash', () => {
+    it('restores map mode on a fresh mount after the tab was left in map mode', async () => {
+      const { unmount } = renderShell();
+      const toggle = screen.getByRole('switch', { name: 'Map view' });
+      fireEvent.click(toggle); // dash -> map
+      await screen.findByTestId('uganda-map');
+      unmount(); // simulates the tab closing; sessionStorage survives a reload, unlike component state
+
+      renderShell();
+      // Restored on the VERY FIRST render (lazy useState init, not a post-mount
+      // effect) — no Overview flash, and the map is mounted (not just requested)
+      // so it isn't a blank canvas.
+      expect(screen.queryByTestId('distributor-overview')).toBeNull();
+      const map = await screen.findByTestId('uganda-map');
+      expect(map.getAttribute('data-visible')).toBe('true');
+    });
+
+    it('does not resurrect a stale map visit once the user has returned to dash mode', async () => {
+      const { unmount } = renderShell();
+      const toggle = screen.getByRole('switch', { name: 'Map view' });
+      fireEvent.click(toggle); // dash -> map
+      await screen.findByTestId('uganda-map');
+      fireEvent.click(toggle); // map -> dash
+      unmount();
+
+      renderShell();
+      // The LATEST mode (dash) wins, not "was map ever visited this session".
+      expect(screen.getByTestId('distributor-overview')).toBeInTheDocument();
+    });
   });
 });

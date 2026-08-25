@@ -302,6 +302,22 @@
 }
 
 /* ── Floating "Ask AI" button (FAB) ──────────────────────────────────────── */
+/* AUDIT A17-005 — converged onto the same white-at-rest recipe as the other
+   five roles' "Ask AI" affordance (Agent's AgentDesktopShell.module.css
+   `.askAi`/`.askAiActive` is the reference; see
+   docs/audits/2026-08-23/a17/design-convergence.md, which P5-design-tokens
+   applied everywhere except this file — explicitly excluded from that
+   agent's write-set as owned by this one). House rule: light tints over
+   solid indigo, at most one solid-indigo CTA per screen at rest. Verbatim
+   properties from the reference: white bg, 1px lavender border, indigo
+   text/`radius-full`, no box-shadow, no hover lift; the icon recolours to
+   `--color-amber-ink` at rest (5.02:1 on white — see src/index.css:123) since
+   it would otherwise render invisible (white-on-white). The FAB previously
+   had no notion of "the copilot is open," unlike the reference's `askAiActive`
+   — added via the new `active` prop below (wired from `copilotOpen` at both
+   call sites, DashboardShell.jsx and AdminDashboardShell.jsx) so the solid
+   fill is reserved for that one always-singular open state, exactly like the
+   reference, rather than being the permanent resting look. */
 .fab {
   position: fixed;
   right: 20px;
@@ -314,48 +330,58 @@
   gap: 8px;
   height: 48px;
   padding: 0 var(--space-5);
-  border: none;
-  border-radius: var(--radius-md);
-  background: var(--color-indigo);
-  color: var(--color-white);
+  border: 1px solid var(--color-lavender);
+  border-radius: var(--radius-full);
+  background: var(--color-white);
+  color: var(--color-indigo);
   font-family: var(--font-display);
   font-weight: 700;
   font-size: var(--text-sm);
   letter-spacing: -0.01em;
   cursor: pointer;
   touch-action: manipulation;
-  box-shadow:
-    0 12px 28px color-mix(in srgb, var(--color-indigo) 32%, transparent),
-    0 2px 6px color-mix(in srgb, var(--color-indigo) 20%, transparent);
-  transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
 }
 
 .fab:hover {
-  transform: translateY(-2px);
-  background: var(--color-indigo-deep);
-  box-shadow:
-    0 16px 34px color-mix(in srgb, var(--color-indigo) 38%, transparent),
-    0 3px 8px color-mix(in srgb, var(--color-indigo) 22%, transparent);
+  background: color-mix(in srgb, var(--color-indigo) 6%, transparent);
+  border-color: var(--color-indigo-soft);
 }
 
-.fab:active { transform: translateY(0); }
-
 .fab:focus-visible {
-  outline: 2px solid var(--color-white);
+  outline: 2px solid var(--color-indigo-soft);
   outline-offset: 2px;
-  box-shadow: 0 0 0 4px color-mix(in srgb, var(--color-indigo) 40%, transparent);
+}
+
+/* Solid-fill open state — see the AUDIT A17-005 comment above. Only one
+   instance of this control can ever be open at a time, so (per the same
+   reasoning P5-design-tokens documented for the other five roles) this is a
+   deliberate exception to "light tints over solid indigo," not a violation
+   of it: it never stacks with another resting solid-indigo element. */
+.fabActive,
+.fabActive:hover {
+  background: var(--color-indigo);
+  border-color: var(--color-indigo);
+  color: var(--color-white);
 }
 
 .fabIcon {
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  color: var(--color-amber-ink);
+}
+
+.fabActive .fabIcon {
+  color: var(--color-white);
 }
 
 /* Desktop: dock the Ask AI button in the top-right corner of the map (the
-   old TopBar slot, now empty), and make it a compact top-bar CTA (40px, lighter
-   shadow) so it doesn't crowd/clip against the Summary panel. Mobile keeps the
-   larger bottom-right FAB from the base rule. */
+   old TopBar slot, now empty), and make it a compact top-bar CTA (40px) so it
+   doesn't crowd/clip against the Summary panel. Mobile keeps the larger
+   bottom-right FAB from the base rule. (The lighter-shadow note here predates
+   AUDIT A17-005 — the base rule carries no box-shadow any more, at rest or on
+   hover, so there is nothing left to lighten at this breakpoint.) */
 @media (min-width: 769px) {
   .fab {
     top: var(--space-4);
@@ -364,10 +390,6 @@
     bottom: auto;
     height: 40px;
     padding: 0 var(--space-4);
-    box-shadow: 0 4px 12px color-mix(in srgb, var(--color-indigo) 22%, transparent);
-  }
-  .fab:hover {
-    box-shadow: 0 6px 16px color-mix(in srgb, var(--color-indigo) 28%, transparent);
   }
 }
 

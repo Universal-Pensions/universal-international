@@ -39,6 +39,26 @@ function getFocusableElements(root) {
  * dots / suggestion chips / Esc-to-close / focus-the-input-on-open) but presents
  * as a CommissionPanel-style right-hand drawer rather than a docked grid cell.
  *
+ * AUDIT A19-007 considered — and rejected — converting this to a non-modal
+ * grid-push panel (the interaction model the other four roles' copilots use:
+ * SubscriberCopilotPanel.jsx et al., an always-mounted `<aside>` with no
+ * role/aria-modal). That would make the Ask-AI drawer the ONE overlay in
+ * this shell that does not behave like its siblings: ViewBranches.jsx,
+ * CommissionPanel.jsx, ViewReports.jsx and Settings.jsx all render
+ * `aria-modal={fullPage ? undefined : 'true'}` — true modal whenever they
+ * appear as a slide-in drawer, non-modal only when they ARE the full-page
+ * dash-mode canvas. This panel has no full-page mode; it is always a
+ * drawer, so per that same established rule it is correctly always modal.
+ * Going non-modal here would trade the cross-role inconsistency A19-007
+ * flags for a worse one — the copilot behaving unlike every other overlay
+ * in its own shell — and would need a coordinated redesign of those four
+ * files (none of them owned by this change) to fix properly. What DID ship
+ * for A19-007: the interaction details that don't depend on modal-ness are
+ * already aligned (Escape-to-close, composer autofocus, focus-restore to
+ * the trigger on close, the mirrored chat UX above) — see A19-005/A19-006
+ * below for the modal contract itself, which is now self-consistent
+ * (aria-modal + an actual Tab trap, not one without the other).
+ *
  * It SELF-FETCHES its figures (TanStack dedupes into the shared caches) and
  * answers via the CLIENT-SIDE getPlatformChatResponse — never the server route,
  * whose stats are stale. The scope split below means the admin-only
@@ -304,10 +324,19 @@ function CopilotChat({ open, onClose, scope, title, ctx }) {
  * Forwards its ref to the underlying <button> (AUDIT A19-006) so the owning
  * shell can return focus here when the Copilot closes — it never restored
  * focus to the trigger before, unlike the four routed shells' Ask-AI buttons.
+ *
+ * @param {boolean} [active] - AUDIT A17-005: true while the Copilot is open,
+ *   applying the solid-fill `.fabActive` state (matching the other five
+ *   roles' Ask-AI button, which is white-at-rest / filled-when-open — see
+ *   the AUDIT A17-005 comment on `.fab` in DataCopilotPanel.module.css).
+ *   Callers pass their own `copilotOpen` flag; defaults to false so any
+ *   caller that doesn't track it yet still renders the (now white) resting
+ *   state rather than an undefined class.
  */
-export const AskAiFab = forwardRef(function AskAiFab({ onClick, label = 'Ask AI' }, ref) {
+export const AskAiFab = forwardRef(function AskAiFab({ onClick, label = 'Ask AI', active = false }, ref) {
+  const className = active ? `${styles.fab} ${styles.fabActive}` : styles.fab;
   return (
-    <button ref={ref} type="button" className={styles.fab} onClick={onClick} aria-label={label}>
+    <button ref={ref} type="button" className={className} onClick={onClick} aria-label={label} aria-pressed={active}>
       <span className={styles.fabIcon}>{sparkIcon(18)}</span>
       <span className={styles.fabText}>{label}</span>
     </button>

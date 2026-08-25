@@ -29,6 +29,32 @@ import Settings from './settings/Settings';
 import ViewTickets from './tickets/ViewTickets';
 import styles from './DashboardShell.module.css';
 
+// AUDIT A19-001 — see DashboardPanelContext.jsx's header comment for the full
+// rationale (sessionStorage, not the URL: CLAUDE.md §4.2 keeps this shell's
+// panel/mode state intentionally unrouted, and DashboardNavContext.jsx's own
+// navigate() calls would silently strip a query param anyway). This key is
+// distinct from that file's rail-panel mirror — it is the whole-shell
+// dash⇄map mode, not a rail panel — and is only ever read/written here,
+// where `mode` already lives as local state (unlike the panel booleans, this
+// is not shared with any other role's shell, so no role-gate is needed).
+function readPersistedMode() {
+  try {
+    if (typeof window === 'undefined') return 'dash';
+    return window.sessionStorage.getItem('upensions_distributor_mode') === 'map' ? 'map' : 'dash';
+  } catch {
+    return 'dash';
+  }
+}
+
+function writePersistedMode(mode) {
+  try {
+    if (typeof window === 'undefined') return;
+    window.sessionStorage.setItem('upensions_distributor_mode', mode);
+  } catch {
+    // Quota / private-browsing — non-fatal.
+  }
+}
+
 const DRAWER_ITEMS = [
   { id: 'overview', label: 'Overview' },
   { id: 'branches', label: 'View Branches' },
@@ -353,7 +379,7 @@ function DashboardContent({ mode, mapMounted }) {
       )}
       {/* Ask-AI Network Copilot — additive FAB + slide-in drawer; the map/overlay
           are untouched. */}
-      <AskAiFab ref={askAiRef} onClick={() => setCopilotOpen(true)} />
+      <AskAiFab ref={askAiRef} onClick={() => setCopilotOpen(true)} active={copilotOpen} />
       {copilotOpen && (
         <DataCopilotPanel open scope="distributor" onClose={closeCopilot} />
       )}
@@ -373,12 +399,20 @@ function DistributorDesktopShell() {
   // DashboardContext so admin + the other roles are untouched. Page selection is
   // the panel-open booleans / URL drill state, which are orthogonal to mode, so
   // toggling mode preserves the current page for free.
-  const [mode, setMode] = useState('dash');
+  //
+  // AUDIT A19-001 — lazily restored from sessionStorage (see the module
+  // comment above) so a reload while in map mode doesn't silently fall back
+  // to the dash canvas.
+  const [mode, setMode] = useState(() => readPersistedMode());
   // Leaflet is expensive and cannot lay out while hidden, so we defer mounting
   // UgandaMap until the first time the user enters map mode (when <main> is
   // visible and correctly sized). Once mounted it stays mounted — dash mode just
   // hides it via CSS so the instance + drill state survive across toggles.
-  const [mapMounted, setMapMounted] = useState(false);
+  //
+  // Restored alongside `mode` (not independently) — if only `mode` restored to
+  // 'map' the first render would ask for map mode with the map never having
+  // been mounted, showing a blank canvas instead of the map.
+  const [mapMounted, setMapMounted] = useState(() => readPersistedMode() === 'map');
   const handleToggleMode = useCallback(() => {
     setMode((m) => {
       const next = m === 'map' ? 'dash' : 'map';
@@ -386,6 +420,9 @@ function DistributorDesktopShell() {
       return next;
     });
   }, []);
+  useEffect(() => {
+    writePersistedMode(mode);
+  }, [mode]);
   // Memoised handlers — inline arrows here recreated `onMenuToggle` and
   // `onClose` on every parent render, defeating any memoisation in
   // `MobileHeader`/`MobileDrawer` and re-running the drawer's keydown effect

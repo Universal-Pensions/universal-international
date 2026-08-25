@@ -124,6 +124,11 @@ function renderAt(path) {
 describe('distributor Reports — mobile (<1024px), AUDIT A13-001', () => {
   beforeEach(() => {
     mocks.isDesktop = false;
+    // AUDIT A19-001 — this file's AuthContext mock carries role: 'distributor'
+    // (needed pre-existingly for `usesReportsPanel`), which now ALSO activates
+    // DashboardPanelContext.jsx's session-persisted rail panel. Clear it so no
+    // test here can leak state into another, regardless of run order.
+    try { window.sessionStorage.clear(); } catch { /* private-browsing */ }
   });
 
   it('/dashboard/reports renders ReportsMobile, listing all 11 report views as real links, and does not bounce to /dashboard', async () => {
@@ -162,6 +167,8 @@ describe('distributor Reports — mobile (<1024px), AUDIT A13-001', () => {
 describe('distributor Reports — desktop (>=1024px) regression guard', () => {
   beforeEach(() => {
     mocks.isDesktop = true;
+    // AUDIT A19-001 — see the mobile describe block's identical note above.
+    try { window.sessionStorage.clear(); } catch { /* private-browsing */ }
   });
 
   it('still opens the reports panel and rewrites the URL to /dashboard (unchanged desktop behaviour)', async () => {

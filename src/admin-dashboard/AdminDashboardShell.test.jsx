@@ -12,7 +12,7 @@
 // provider-wiring regression (e.g. a missing context) still surfaces as a crash.
 
 import React from 'react';
-import { vi, describe, it, expect } from 'vitest';
+import { vi, describe, it, expect, beforeEach } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -71,6 +71,14 @@ function renderShell() {
 }
 
 describe('<AdminDashboardShell />', () => {
+  // AUDIT A19-001 tests below read/write real sessionStorage (the mechanism
+  // this fix uses instead of the URL — see DashboardPanelContext.jsx's header
+  // comment). Clear it before every test so persistence from one test can
+  // never leak into the next, regardless of run order.
+  beforeEach(() => {
+    try { window.sessionStorage.clear(); } catch { /* private-browsing */ }
+  });
+
   it('mounts without crashing and renders the main landmark + sidebar', () => {
     renderShell();
     expect(document.getElementById('main')).not.toBeNull();
@@ -103,5 +111,32 @@ describe('<AdminDashboardShell />', () => {
     // The reused + admin-exclusive panels are all gated false at cold load
     // (mirrors the distributor shell's lazy-mount fix) — none should be present.
     expect(screen.queryByTestId('overlay-panel')).toBeNull();
+  });
+
+  describe('AUDIT A19-001 — refresh no longer reverts map mode to dash', () => {
+    it('restores map mode on the very first render when sessionStorage says the tab was left in map mode', async () => {
+      // Pre-seeds sessionStorage rather than driving the toggle through the
+      // UI — AdminSidebar is stubbed in this suite (see the mock above), so
+      // there is no real "Map view" switch to click here. This still proves
+      // the rehydration half of the fix: AdminDashboardShell.jsx's lazy
+      // useState initializers read this key on mount.
+      window.sessionStorage.setItem('upensions_admin_mode', 'map');
+      renderShell();
+      // Map-mode chrome renders (AdminCountryOverview + the map), not the
+      // dash-mode AdminOverview canvas — no Overview flash, since this is
+      // the value on the FIRST render, not a post-mount correction. The map
+      // itself is behind React.lazy/Suspense, so it resolves asynchronously
+      // even though `mapMounted` was already true on the first render.
+      expect(screen.queryByTestId('admin-overview')).toBeNull();
+      expect(screen.getByTestId('admin-country-overview')).toBeInTheDocument();
+      expect(await screen.findByTestId('uganda-map')).toBeInTheDocument();
+    });
+
+    it('treats anything other than the literal string "map" as dash mode', () => {
+      window.sessionStorage.setItem('upensions_admin_mode', 'nonsense');
+      renderShell();
+      expect(screen.getByTestId('admin-overview')).toBeInTheDocument();
+      expect(screen.queryByTestId('admin-country-overview')).toBeNull();
+    });
   });
 });
