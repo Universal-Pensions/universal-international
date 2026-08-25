@@ -181,3 +181,43 @@ carries the constraint, then applied.
 | normal withdrawal | **works** |
 
 Unit suite after: **154 files / 2,217 tests passing**; `vite build` clean.
+
+---
+
+## 2026-08-25 (later) — Phase 2 tail: `0131`, `0132`
+
+Two further migrations applied to live, both via the Supabase migration API
+(which supplies its own transaction; each file's house-convention `BEGIN`/`COMMIT`
+was **stripped before applying** — Postgres transactions do not nest, and that is
+the exact mechanism behind `INCIDENT-2026-08-25-live-write.md`).
+
+| migration | live effect | undo |
+|---|---|---|
+| `0131_purge_e2e_branches` | **DELETE 2 rows** from `public.branches` (`b-new-1785700420016`, `b-new-1785753024670`). Snapshot `branches_e2e_pre_purge_20260825` created first (2 rows, RLS on, FORCE, anon/authenticated revoked). | `0131_*.down.sql` — restores verbatim from the snapshot. |
+| `0132_secure_nav_rollback_and_universal_rls_guard` | RLS **enabled + FORCE** on `nav_fixture_rollback_0117` and its `anon`/`authenticated` grant revoked; four inert grants revoked (`contribution_run_uploads`, `money_nonces`, `settlement_uploads`, `subscriber_signup_uploads`). **No data rows written or deleted.** | `0132_*.down.sql` — re-disables RLS and restores grants. **Re-opens an ERROR-level finding**; nothing requires it. |
+
+`0132` was found *while verifying* `0131`, not from the audit: `nav_fixture_rollback_0117`
+was the only one of 47 `public` tables without RLS, readable unauthenticated
+through PostgREST. `0127`'s name-pattern sweep and its standing guard shared the
+same blind spot. A first attempt that broadened the pattern to `%snapshot%`
+matched the live `nav_snapshots` table and **the guard aborted rather than
+revoking it** — the guard asserts, it does not auto-fix. Full write-up in
+`a06/phase-tail-verification.md`.
+
+### Invariants re-measured immediately after
+
+| check | value |
+|---|---|
+| `EMP-` residue rows | **0** |
+| E2E branch rows | **0** (was 2) |
+| Kampala branch rows | **8** (was 10; `district_branch_count` was already 8, so no displayed figure changed) |
+| branches total | **318** (was 320) |
+| `ret+emg = total_balance` | **5059 / 5059** |
+| AUM | **2,354,879,446** (unchanged — branches carry no money) |
+| NAV via `latest_nav()` as subscriber `s-100117` | **1585.88** (unaffected) |
+| tables in `public` with RLS disabled | **0** (was 1) |
+| policy-less tables that are API-readable | **0** (was 5) |
+| Supabase advisors, security | **0 ERROR, 0 CRITICAL** |
+
+`anon` against `nav_fixture_rollback_0117` now returns
+`ERROR: permission denied for table nav_fixture_rollback_0117`.
