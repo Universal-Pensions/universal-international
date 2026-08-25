@@ -594,7 +594,15 @@ export async function getEmployerContributions(employerId) {
       .eq('type', 'contribution')
       .not('contribution_run_id', 'is', null)
       .eq('subscribers.employer_id', employerId)
-      .order('date', { ascending: false });
+      .order('date', { ascending: false })
+      // Deterministic tie-breaker. A contribution run writes every one of its
+      // legs at the SAME timestamp — all 210 of emp-001's sit at 12:00:00+00 on
+      // their run date — so `date` alone is nowhere near a total order and
+      // .range() below can return a row on two pages or on none once the set
+      // exceeds PAGE_SIZE. Feeds summarizeRunLinkedContributions, which feeds
+      // the Overview hero, "funded to date" and Analytics. Same fix and same
+      // reason as subscriber.js's transaction paging.
+      .order('id', { ascending: true });
 
   const { data: firstData, error: firstError } = await scoped().range(0, PAGE_SIZE - 1);
   if (firstError) throw firstError;

@@ -607,13 +607,31 @@ describe('entities service', () => {
       expect(supabaseMock.__getFromCalls('subscriber_balances')).toHaveLength(0);
     });
 
-    it('sorts "balance" by the embedded subscriber_balances.total_balance column', async () => {
+    // This test used to assert the `foreignTable: 'subscriber_balances'` form,
+    // which pinned the BUG: supabase-js turns that into
+    // `subscriber_balances.order=` — the EMBEDDED resource's order — so the
+    // query carried no top-level ORDER BY at all, the panel was never
+    // balance-sorted, and .range() paginated an unordered result. The test
+    // asserted the argument shape rather than the emitted URL, so it certified
+    // the broken call as correct and would have rejected the fix.
+    it('sorts "balance" by a TOP-LEVEL order on the embedded column', async () => {
       supabaseMock.__queueFrom('subscribers', { data: [subscriberRow()], error: null, count: 1 });
       await getEntityPage('subscriber', { sortKey: 'balance' });
       const call = supabaseMock.__getFromCalls('subscribers').at(-1);
-      expect(call.chain.order).toHaveBeenCalledWith('total_balance', {
-        ascending: false, nullsFirst: false, foreignTable: 'subscriber_balances',
+      expect(call.chain.order).toHaveBeenCalledWith('subscriber_balances(total_balance)', {
+        ascending: false, nullsFirst: false,
       });
+      // …and never the embedded spelling, which is the no-op.
+      expect(call.chain.order).not.toHaveBeenCalledWith('total_balance', expect.objectContaining({
+        foreignTable: 'subscriber_balances',
+      }));
+    });
+
+    it('always appends a deterministic id tie-breaker for stable paging', async () => {
+      supabaseMock.__queueFrom('subscribers', { data: [subscriberRow()], error: null, count: 1 });
+      await getEntityPage('subscriber', { sortKey: 'balance' });
+      const call = supabaseMock.__getFromCalls('subscribers').at(-1);
+      expect(call.chain.order).toHaveBeenCalledWith('id', { ascending: true });
     });
 
     it('sorts "name" by the plain `name` column (no foreignTable)', async () => {

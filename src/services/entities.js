@@ -672,8 +672,12 @@ export async function getEntityPage(level, opts = {}) {
   query = query.order(orderSpec.column, {
     ascending: orderSpec.ascending,
     nullsFirst: orderSpec.nullsFirst ?? false,
-    ...(orderSpec.foreignTable ? { foreignTable: orderSpec.foreignTable } : {}),
   });
+  // Deterministic tie-breaker. Every sort column above is non-unique — balances
+  // tie, registered_date ties in bulk (the seed writes many rows per day), names
+  // collide — and .range() over a non-total order lets a row appear on two pages
+  // or on none. Same fix, same reason, as subscriber.js's transaction paging.
+  query = query.order('id', { ascending: true });
 
   query = query.range(offset, offset + limit - 1);
   if (signal) query = query.abortSignal(signal);
@@ -699,8 +703,21 @@ export async function getEntityPage(level, opts = {}) {
 // `transactions` aggregates) so it still substitutes `registered_date` — a
 // pre-existing, documented gap this change doesn't touch; closing it needs
 // its own RPC.
+// ⚠️ THE EMBEDDED COLUMN IS SPELLED INLINE, NOT VIA foreignTable.
+// This was `{ column: 'total_balance', foreignTable: 'subscriber_balances' }`,
+// which supabase-js turns into `subscriber_balances.order=total_balance.desc`
+// — the order of the EMBEDDED resource, not a top-level ORDER BY. Since
+// subscriber_balances is 1:1 on the subscriber PK, that embed order is a no-op,
+// so the query emitted NO top-level ordering at all. Two consequences: the
+// panel was never balance-sorted (a regression from the previous deterministic
+// registered_date order), and `.range()` below paginated an UNORDERED query, so
+// page 2+ of a ~4,600-row list can repeat rows and silently omit others.
+// Verified against the installed @supabase/postgrest-js:
+//   foreignTable   -> ?subscriber_balances.order=total_balance.desc   (embedded)
+//   referencedTable-> ?subscriber_balances.order=total_balance.desc   (embedded)
+//   dotted inline  -> ?order=subscriber_balances(total_balance).desc  (top-level)
 const SUBSCRIBER_SORT_ORDER = {
-  balance:       { column: 'total_balance', foreignTable: 'subscriber_balances', ascending: false, nullsFirst: false },
+  balance:       { column: 'subscriber_balances(total_balance)', ascending: false, nullsFirst: false },
   contributions: { column: 'registered_date', ascending: false, nullsFirst: false },
   registration:  { column: 'registered_date', ascending: false, nullsFirst: false },
   name:          { column: 'name',            ascending: true,  nullsFirst: false },
