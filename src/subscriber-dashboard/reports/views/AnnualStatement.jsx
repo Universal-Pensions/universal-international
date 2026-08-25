@@ -124,7 +124,14 @@ export default function AnnualStatement() {
   // (`txLoading`): without it, a still-loading list renders as "No statement
   // yet" or a UGX 0 year summary — indistinguishable from the A10-001 bug
   // this fixes — before the real rows pop in.
-  if (!sub?.id || isLoading || txLoading) {
+  // (isLoading && !sub) || txLoading — NOT `!sub?.id || …`.
+  // getCurrentSubscriber uses maybeSingle(), which returns null with NO error
+  // when RLS yields no row. With isError false and isLoading false, a
+  // `!sub?.id` guard is the only branch that ever matches, so the skeleton
+  // renders FOREVER instead of falling through to the terminal empty state
+  // below it. Three of these four sibling views were changed together and
+  // ended up disagreeing; this is InsuranceStatement's form, which was right.
+  if ((isLoading && !sub) || txLoading) {
     return (
       <div className={frameStyles.frame}>
         <div className={frameStyles.headerRow}>

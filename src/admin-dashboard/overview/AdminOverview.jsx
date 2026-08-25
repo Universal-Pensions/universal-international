@@ -374,7 +374,7 @@ export default function AdminOverview() {
               <div className={styles.tableTitle}><span className={styles.cardIc}>{IC.building}</span>Top branches</div>
               <button className={styles.tableLink} onClick={openBranchList}>View all {formatNumber(branchCount)} →</button>
             </div>
-            <div className={styles.tableScroll} tabIndex={0} aria-label="Top branches, scroll sideways to see more">
+            <div role="region" className={styles.tableScroll} tabIndex={0} aria-label="Top branches, scroll sideways to see more">
               <table className={styles.tbl}>
                 <thead>
                   <tr><th>Branch</th><th>District</th><th className={styles.num}>Subscribers</th><th>Active rate</th><th className={styles.num}>FUM</th><th>Status</th></tr>

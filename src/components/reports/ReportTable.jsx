@@ -98,7 +98,7 @@ export default function ReportTable({
 
   return (
     <div className={styles.tableWrap}>
-      <div className={styles.tableScroll} tabIndex={0} aria-label={ariaLabel}>
+      <div role="region" className={styles.tableScroll} tabIndex={0} aria-label={ariaLabel}>
         <table className={styles.table}>
           <thead>
             <tr>

@@ -22,7 +22,7 @@ export default function ContributionsSummary() {
   // clock — the exact drift its own comment says it exists to avoid. Read the real
   // per-id query instead, as AnnualStatement / AllTransactions / InsuranceStatement
   // now do.
-  const { data: transactions = [] } = useSubscriberTransactions(sub?.id);
+  const { data: transactions = [], isLoading: txLoading } = useSubscriberTransactions(sub?.id);
   const history = useMemo(() => sub?.contributionHistory || [], [sub?.contributionHistory]);
   const schedule = sub?.contributionSchedule;
   const retPct = (schedule?.retirementPct ?? 80) / 100;
@@ -87,7 +87,12 @@ export default function ContributionsSummary() {
 
   // Cold-load skeleton — keep the report frame feeling responsive
   // before history is hydrated.
-  if (isLoading && !sub) {
+  // txLoading included, like the three sibling views. Without it, `transactions`
+  // is [] for one round trip after `sub` resolves, and the month anchor below
+  // falls back to `new Date()` — reintroducing exactly the wall-clock drift
+  // this view was changed to remove. All twelve month labels then shift once
+  // the fetch lands.
+  if ((isLoading && !sub) || txLoading) {
     return (
       <div className={frameStyles.frame}>
         <div className={frameStyles.headerRow}>

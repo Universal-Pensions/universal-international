@@ -57,13 +57,24 @@ describe('A20-005 — scrollable regions are keyboard-reachable', () => {
         for (const match of src.match(re) || []) {
           const focusable = /tabIndex=\{0\}/.test(match);
           const named = /aria-label=/.test(match);
-          if (!focusable || !named) {
+          // role="region" is REQUIRED, not decorative. ARIA prohibits
+          // aria-label on a generic element, so browsers DISCARD it: a
+          // <div tabIndex={0} aria-label="..."> with no role is a focusable
+          // element that announces NOTHING. This test previously checked only
+          // the first two conditions, so it ratcheted that exact broken shape
+          // in — and would have rejected a correct fix. The codebase already
+          // uses role="region" properly in 20+ places (NotificationBell,
+          // UgandaMap, Toast).
+          const roled = /role="(region|group)"/.test(match);
+          if (!focusable || !named || !roled) {
             const line = src.slice(0, src.indexOf(match)).split('\n').length;
             offenders.push(
               `${file.replace(SRC + '/', 'src/')}:${line} — ` +
-                `${!focusable ? 'not focusable (needs tabIndex={0})' : ''}` +
-                `${!focusable && !named ? '; ' : ''}` +
-                `${!named ? 'no accessible name (needs aria-label)' : ''}`,
+                [
+                  !focusable && 'not focusable (needs tabIndex={0})',
+                  !named && 'no accessible name (needs aria-label)',
+                  !roled && 'no role (aria-label is DISCARDED on a generic element — needs role="region")',
+                ].filter(Boolean).join('; '),
             );
           }
         }

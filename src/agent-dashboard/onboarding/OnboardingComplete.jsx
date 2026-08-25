@@ -93,17 +93,28 @@ export default function OnboardingComplete({ subscriberName, awareness, schedule
       // is already committed at this point. Failing the whole onboarding over a
       // credential write would strand the agent on an error card for a member
       // who was in fact created — the exact A11-002 shape.
+      // ⚠️ SUCCESS FIRST, THEN the credential write — and NOT awaited.
+      // This used to `await` inside the same try before setStatus('success').
+      // /auth/verify-otp is on api.js's retry-safe list with an 8s timeout and
+      // one retry after a 1.5s sleep, so a flaky connection stranded the agent
+      // for up to 17.5s on a card reading "Saving <name>'s record…" with BOTH
+      // "Onboard another" and "Close" disabled — for a member whose row had
+      // already committed several lines above. Non-fatal is not the same as
+      // non-blocking, and on a rural connection that is the A11-002 shape the
+      // surrounding code exists to prevent.
+      setStatus('success');
+
       if (signup.password) {
         const memberPhone = toCanonicalUGPhone(signup.phone) || signup.phone;
-        try {
-          await verifyOtp(memberPhone, '123456', 'subscriber', signup.password);
-        } catch {
+        // Deliberately floating: the subscriber row is committed, so nothing
+        // about the agent's next action depends on this resolving.
+        verifyOtp(memberPhone, '123456', 'subscriber', signup.password).catch((err) => {
           // Member exists and can still sign in by OTP; only the password is
-          // missing. Not worth failing a completed onboarding over.
-        }
+          // missing. Log rather than swallow — silently is how the discarded
+          // password went unnoticed in the first place.
+          console.warn('[onboard] member credential write failed:', err?.message ?? err);
+        });
       }
-
-      setStatus('success');
     } catch (err) {
       setStatus('error');
       setErrorMessage(describeCreateError(err));

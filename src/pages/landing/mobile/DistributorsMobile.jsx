@@ -77,7 +77,7 @@ export default function DistributorsMobile() {
         <p className={styles.eyebrow}>Real stories</p>
         <h2 className={styles.sectTitle}>Networks that run on the map.</h2>
       </div>
-      <div className={styles.quotesScroll} tabIndex={0} aria-label="Customer stories, scroll for more">
+      <div role="region" className={styles.quotesScroll} tabIndex={0} aria-label="Customer stories, scroll for more">
         <div className={styles.quote} style={{ '--qc': 'var(--teal)' }}><div className={styles.qm}>“</div><p>I see my whole region on one map, settle commissions in a few clicks, and my agents get paid on time.</p><div className={styles.qby}><span className={styles.qav}>GA</span><div><div className={styles.qn}>Grace Atim</div><div className={styles.qr}>Network operations · Northern Uganda</div></div></div></div>
         <div className={styles.quote} style={{ '--qc': 'var(--indigo)' }}><div className={styles.qm}>“</div><p>Onboarding a new branch takes minutes, not weeks. Add an agent and they're on the map right away.</p><div className={styles.qby}><span className={styles.qav}>DM</span><div><div className={styles.qn}>David Mugisha</div><div className={styles.qr}>Regional lead · Western Uganda</div></div></div></div>
         <div className={styles.quote} style={{ '--qc': 'var(--green)' }}><div className={styles.qm}>“</div><p>Commission disputes used to eat my week. Now every agent sees a clear statement and I settle the whole district from one screen.</p><div className={styles.qby}><span className={styles.qav}>SN</span><div><div className={styles.qn}>Sarah Nakato</div><div className={styles.qr}>Branch coordinator · Central Uganda</div></div></div></div>
