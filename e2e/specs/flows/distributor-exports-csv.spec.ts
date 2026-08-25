@@ -158,3 +158,63 @@ test.describe('mobile UA → CSV cap notice (>5k rows)', () => {
     await expect(page.getByText(/Showing first/i)).toHaveCount(0);
   });
 });
+
+// A13-003: the mobile row cap (csvDownload.js MOBILE_ROW_CAP=5000) was a DEAD
+// safeguard at audit time — two compounding reasons. First, the distributor
+// Reports route bounced to /dashboard on every viewport below 1024px (A13-001),
+// so a mobile UA could never even reach an export button. Second, even once
+// reachable, no DISTRIBUTOR-scoped export clears 5,000 rows: d-001's largest
+// (All Subscribers) was 4,602 rows. Only the ADMIN scope's All Subscribers
+// export — which reads the platform total, not one distributor's network — was
+// ever positioned to exceed the cap.
+//
+// A13-001 has since shipped (P5-nav-shells, 2026-08-25): AdminMobileShell.jsx
+// and DistributorMobileShell.jsx both now mount `reports/:reportId` ->
+// ReportViewMobile, so /dashboard/reports/all-subscribers deep-links on a
+// phone for both roles. This spec proves the cap itself now actually fires,
+// not just that the route resolves.
+test.describe('admin → mobile CSV export cap (>5k rows) — A13-003', () => {
+  test.use({ storageState: storageStatePathFor('admin') });
+
+  test.beforeEach(async ({ page }) => {
+    await disableAnimations(page);
+  });
+
+  test('All Subscribers export surfaces the cap toast once the platform total exceeds 5,000 rows', async ({ page, isMobile }) => {
+    // The mobile UA cap key is `isMobile` (useIsMobile(), a (max-width: 768px)
+    // media query) — desktop projects would never trip it regardless of row
+    // count, so there is nothing to prove there.
+    test.skip(!isMobile, 'the mobile UA cap only applies on the mobile projects — see csvDownload.js MOBILE_ROW_CAP');
+
+    await page.goto('/dashboard/reports/all-subscribers');
+    await expect(selectors.errorBoundary.fallback(page)).toHaveCount(0);
+
+    // Read the live row count off the report's own subtitle ("N subscribers
+    // in the network") instead of hardcoding a figure — platform counts drift
+    // (E2E fixture churn, ongoing demo-data repair), and re-measuring rather
+    // than trusting a stale number is this repo's standing rule (see
+    // docs/audits/2026-08-23/ESCALATIONS.md E20).
+    const subtitle = page.getByText(/subscribers in the network/i);
+    await expect(subtitle).toBeVisible({ timeout: 15_000 });
+    const subtitleText = (await subtitle.textContent()) || '';
+    const total = Number(subtitleText.replace(/[^\d]/g, ''));
+    test.skip(
+      !(total > 5_000),
+      `live platform subscriber total is ${total}, not > 5,000 — the cap is not reachable right now; ` +
+        're-run once the platform total grows past the cap again (A13-003).',
+    );
+
+    const exportBtn = page.getByRole('button', { name: /export report as csv/i });
+    await expect(exportBtn).toBeVisible();
+    await expect(exportBtn).toBeEnabled();
+
+    const downloadPromise = page.waitForEvent('download', { timeout: 15_000 });
+    await exportBtn.click();
+    await downloadPromise;
+
+    // The capped count (5,000, always this exact literal — formatNumber(5000))
+    // proves the truncation itself fired, independent of the live total's own
+    // formatting.
+    await expect(page.getByText(/Showing first 5,000 rows in export/i)).toBeVisible({ timeout: 10_000 });
+  });
+});

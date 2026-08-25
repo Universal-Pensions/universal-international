@@ -11,8 +11,16 @@ import {
   buildingCoverTotal,
   buildingProgress,
 } from './policies';
+import { MOCK_NOW } from '../constants/demoClock';
 
-const NOW = new Date(2026, 4, 26); // 2026-05-26
+// E21 (audit 2026-08-23, Phase 4 `0126`): this used to hardcode its own
+// `new Date(2026, 4, 26)` (2026-05-26) — a THIRD independent copy of the demo
+// clock (src/constants/demoClock.js's own header comment lists this file as
+// drifted copy #5). Every renewalDate fixture below is either far in the past
+// (2020/2025) or far in the future (2027), so none straddles the month
+// boundary — moving the anchor from May to July changes nothing about which
+// assertions are active/expired/building, only which literal the test reads.
+const NOW = MOCK_NOW; // 2026-07-01
 
 function sub(insuranceProducts, extra = {}) {
   return { id: 'sub-1', insuranceProducts, ...extra };

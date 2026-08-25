@@ -154,6 +154,12 @@ export default defineConfig({
         // so they must be proven on the mobile projects too — not just desktop.
         '**/regression/subscriber-payment-methods.spec.ts',
         '**/regression/employer-kyc-nudge.spec.ts',
+        // A25-002: admin and branch each ship a dedicated PHONE shell
+        // (AdminMobileShell / BranchMobileShell) that route-matrix.md
+        // measured at 0% real-device mobile coverage. Both specs self-skip
+        // via the `isMobile` fixture on the desktop projects below.
+        '**/smoke/admin-dashboard-mobile.spec.ts',
+        '**/smoke/branch-dashboard-mobile.spec.ts',
       ],
     },
     // Mobile WebKit (iPhone 12 viewport, WebKit engine) — Safari/iOS
@@ -173,6 +179,12 @@ export default defineConfig({
         // so they must be proven on the mobile projects too — not just desktop.
         '**/regression/subscriber-payment-methods.spec.ts',
         '**/regression/employer-kyc-nudge.spec.ts',
+        // A25-002: admin and branch each ship a dedicated PHONE shell
+        // (AdminMobileShell / BranchMobileShell) that route-matrix.md
+        // measured at 0% real-device mobile coverage. Both specs self-skip
+        // via the `isMobile` fixture on the desktop projects below.
+        '**/smoke/admin-dashboard-mobile.spec.ts',
+        '**/smoke/branch-dashboard-mobile.spec.ts',
       ],
     },
   ],

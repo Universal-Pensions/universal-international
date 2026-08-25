@@ -38,8 +38,12 @@
 //      against MOCK_NOW asserts the genuine invariant the seed guarantees.
 //      A second assertion catches NULL next_due_date rows, which the SQL `<`
 //      comparison above can never see (audit A06-008 — this exact blind spot
-//      hid 21 live rows), confined to the one shape known to legitimately
-//      carry it (see that assertion for why).
+//      hid 21 live rows): any NULL outside the known empe-* (employer-member)
+//      shape fails loudly, and — per A06-015's second half — the empe-* rows
+//      are no longer silently excluded either: each is asserted to carry
+//      amount = 0, so a future one that picks up a non-zero amount with no
+//      due date (money owed, invisible to any freshness check) also fails
+//      (see that assertion for the full reasoning).
 //   6. The new `distributors` table is live with the d-001 row.
 //   7. The new settlement write RPCs `apply_settlement` and
 //      `mark_notifications_read` exist in pg_proc (replacing the dropped
@@ -235,26 +239,60 @@ test.describe('DB invariants (ilkhfnoyxlxwqadebnkp)', () => {
 
     // SQL `<` never matches NULL, so the assertion above is structurally
     // blind to a schedule with NO due date at all — arguably the most stale
-    // state possible (audit A06-008 finding #3: 21 live rows hid here). We
-    // don't assert the NULL count is zero outright: 21 `empe-*` (employer
-    // member) schedule rows are a known, separately-tracked shape (their
-    // `amount` is also not > 0 — see A06-015, owned elsewhere, not a clock
-    // defect). Instead we assert NULL is confined to EXACTLY that known
-    // shape, so a NULL appearing on any other schedule (a real subscriber's,
-    // `s-*`) — which would be a genuine regression — fails loudly.
+    // state possible (audit A06-008 finding #3: 21 live rows hid here).
+    //
+    // A06-015's second half (escalated 2026-08-25, folded in here rather than
+    // as a parallel guard): this used to FILTER OUT every `empe-*` (employer
+    // member) NULL row before asserting anything, which is exactly the defect
+    // the audit named — "it also makes these 21 rows invisible to the only
+    // guard that checks schedule freshness". Excluding them from the count
+    // isn't the same as accounting for them: nothing stopped one of the 21
+    // from silently picking up a non-zero `amount` (money owed with no due
+    // date — a genuine bug) because the old code never looked at anything
+    // but `subscriber_id`.
+    //
+    // 0102's design (its own header comment) makes contribution_schedules
+    // "the MEMBER's own plan" — an employer-funded member legitimately has
+    // EITHER no row at all (P4-employer-funded verified live: emp-002..
+    // emp-007, 37 members, zero schedule rows — out of scope for a
+    // freshness check, since a missing row has no date to be stale) OR a
+    // placeholder row with `amount = 0` AND `next_due_date IS NULL` (emp-001,
+    // 21 members — verified live 2026-08-25). Both are fine; what is NOT
+    // fine is a NULL due date paired with a non-zero amount (money owed,
+    // no schedule) on ANY row, `empe-*` or not — that is asserted explicitly
+    // below instead of being silently skipped.
     const { data: nullDueRows, error: nullErr } = await supabaseAdmin
       .from('contribution_schedules')
-      .select('subscriber_id')
+      .select('subscriber_id, amount')
       .is('next_due_date', null)
       .limit(1000);
     expect(nullErr, 'schedules NULL next_due_date query').toBeNull();
-    const unexpectedNulls = (nullDueRows ?? []).filter(
-      (r) => !String((r as { subscriber_id: string | null }).subscriber_id ?? '').startsWith('empe-'),
+    type NullDueRow = { subscriber_id: string | null; amount: number | null };
+    const rows = (nullDueRows ?? []) as NullDueRow[];
+
+    // A NULL due date on a real subscriber (`s-*`, not `empe-*`) is a
+    // genuine regression — this repo's product model gives every real
+    // subscriber a live schedule.
+    const unexpectedNulls = rows.filter(
+      (r) => !String(r.subscriber_id ?? '').startsWith('empe-'),
     );
     expect(
       unexpectedNulls.length,
       `schedule(s) with NULL next_due_date outside the known empe-* shape (A06-015): ` +
         `${JSON.stringify(unexpectedNulls.slice(0, 5))}`,
+    ).toBe(0);
+
+    // The known empe-* shape is now itself asserted, not skipped: every one
+    // of them must carry amount = 0. A non-zero amount here would mean an
+    // employer-funded member is owed money against a schedule with no due
+    // date — invisible to any other freshness or collections check.
+    const empeNullsWithAmount = rows.filter(
+      (r) => String(r.subscriber_id ?? '').startsWith('empe-') && Number(r.amount) !== 0,
+    );
+    expect(
+      empeNullsWithAmount.length,
+      `empe-* schedule(s) with NULL next_due_date but a NON-ZERO amount (A06-015) — money owed ` +
+        `with no due date, invisible to this freshness check: ${JSON.stringify(empeNullsWithAmount.slice(0, 5))}`,
     ).toBe(0);
   });
 
@@ -446,6 +484,79 @@ test.describe('DB invariants (ilkhfnoyxlxwqadebnkp)', () => {
             bucketSum: Number(r.retirement_units) + Number(r.emergency_units),
           })),
         )}`,
+    ).toBe(0);
+  });
+
+  // ── M3: total_balance reconciles with retirement_balance + emergency_balance
+  // (audit A25-005) ──────────────────────────────────────────────────────────
+  // The money counterpart to M2: M2 guards the two UNIT figures, this guards
+  // the two UGX figures every balance card actually renders. a25/money-
+  // invariants.md's live probe found this ALREADY clean (`balance_total_mismatch
+  // | 0`) — this test is here so a future write path that updates one bucket
+  // without the other (the same class of bug M2 guards) cannot regress silently.
+  test('subscriber_balances.total_balance reconciles with retirement_balance + emergency_balance (M3)', async () => {
+    const { data, error } = await supabaseAdmin
+      .from('subscriber_balances')
+      .select('subscriber_id, total_balance, retirement_balance, emergency_balance');
+    expect(error, 'subscriber_balances balances query').toBeNull();
+
+    type BalanceRow = {
+      subscriber_id: string;
+      total_balance: number;
+      retirement_balance: number;
+      emergency_balance: number;
+    };
+    // 2dp — UGX has no meaningful sub-cent unit; matches the live probe's own
+    // `round(...,2)` comparison in a25/money-invariants.md.
+    const round2 = (n: number) => Math.round(n * 100) / 100;
+    const mismatched = ((data || []) as BalanceRow[]).filter(
+      (r) => round2(Number(r.total_balance)) !== round2(Number(r.retirement_balance) + Number(r.emergency_balance)),
+    );
+
+    expect(
+      mismatched.length,
+      `subscriber_balances row(s) where total_balance <> retirement_balance + emergency_balance, ` +
+        `rounded to 2dp (M3): ${JSON.stringify(
+          mismatched.slice(0, 5).map((r) => ({
+            subscriber_id: r.subscriber_id,
+            total_balance: r.total_balance,
+            bucketSum: Number(r.retirement_balance) + Number(r.emergency_balance),
+          })),
+        )}`,
+    ).toBe(0);
+  });
+
+  // ── M4: no negative money anywhere in subscriber_balances (audit A25-005) ──
+  // A negative balance or unit count has no product meaning — it can only mean
+  // a withdrawal or a repair script overshot. a25/money-invariants.md's live
+  // probe found this ALREADY clean (`negative_balances | 0`); this test is the
+  // guard that keeps it that way.
+  test('no negative balances or units in subscriber_balances (M4)', async () => {
+    const { data, error } = await supabaseAdmin
+      .from('subscriber_balances')
+      .select('subscriber_id, total_balance, retirement_balance, emergency_balance, units, retirement_units, emergency_units');
+    expect(error, 'subscriber_balances negative-value query').toBeNull();
+
+    type Row = {
+      subscriber_id: string;
+      total_balance: number; retirement_balance: number; emergency_balance: number;
+      units: number; retirement_units: number; emergency_units: number;
+    };
+    const NUMERIC_FIELDS = [
+      'total_balance', 'retirement_balance', 'emergency_balance',
+      'units', 'retirement_units', 'emergency_units',
+    ] as const;
+    const negative = ((data || []) as Row[]).filter((r) =>
+      NUMERIC_FIELDS.some((f) => r[f] != null && Number(r[f]) < 0));
+
+    expect(
+      negative.length,
+      `subscriber_balances row(s) with a negative balance or unit figure (M4): ${JSON.stringify(
+        negative.slice(0, 5).map((r) => ({
+          subscriber_id: r.subscriber_id,
+          ...Object.fromEntries(NUMERIC_FIELDS.filter((f) => Number(r[f]) < 0).map((f) => [f, r[f]])),
+        })),
+      )}`,
     ).toBe(0);
   });
 });

@@ -7,33 +7,42 @@ import {
   buildAnnualSettleLineItems,
 } from './periodSettlement';
 import { INSURANCE_PRODUCTS, annualPremium } from '../constants/savings';
+import { MOCK_NOW } from '../constants/demoClock';
 
-const NOW = new Date(2026, 4, 26); // 2026-05-26 (the demo MOCK_NOW)
+// E21 (audit 2026-08-23, Phase 4 `0126`): this used to hardcode its own
+// `new Date(2026, 4, 26)` (2026-05-26) — a THIRD independent copy of the demo
+// clock (src/constants/demoClock.js's own header comment lists this file as
+// drifted copy #5). It kept passing (57/57) while drifting further from the
+// anchor the demo actually runs on, which means it could never catch a future
+// roll-forward that updated MOCK_NOW but not this file. Reading the shared
+// anchor directly closes that gap — see demoClock.js for the single source of
+// truth and how to roll it forward.
+const NOW = MOCK_NOW; // 2026-07-01
 
 describe('paidThisMonth', () => {
   it('sums own contributions in the current month', () => {
     const txns = [
-      { type: 'contribution', source: 'own', amount: 5000, date: '2026-05-02' },
-      { type: 'contribution', source: 'own', amount: 3000, date: '2026-05-20' },
+      { type: 'contribution', source: 'own', amount: 5000, date: '2026-07-02' },
+      { type: 'contribution', source: 'own', amount: 3000, date: '2026-07-20' },
     ];
     expect(paidThisMonth(txns, NOW)).toBe(8000);
   });
 
   it('ignores employer-sourced contributions', () => {
     const txns = [
-      { type: 'contribution', source: 'own', amount: 5000, date: '2026-05-02' },
-      { type: 'contribution', source: 'employer', amount: 9999, date: '2026-05-10' },
+      { type: 'contribution', source: 'own', amount: 5000, date: '2026-07-02' },
+      { type: 'contribution', source: 'employer', amount: 9999, date: '2026-07-10' },
     ];
     expect(paidThisMonth(txns, NOW)).toBe(5000);
   });
 
   it('ignores other transaction types and other months', () => {
     const txns = [
-      { type: 'contribution', source: 'own', amount: 5000, date: '2026-05-02' },
-      { type: 'premium', source: 'own', amount: 2000, date: '2026-05-03' },
-      { type: 'withdrawal', source: 'own', amount: 1000, date: '2026-05-04' },
-      { type: 'contribution', source: 'own', amount: 7000, date: '2026-04-30' }, // last month
-      { type: 'contribution', source: 'own', amount: 4000, date: '2026-06-01' }, // next month
+      { type: 'contribution', source: 'own', amount: 5000, date: '2026-07-02' },
+      { type: 'premium', source: 'own', amount: 2000, date: '2026-07-03' },
+      { type: 'withdrawal', source: 'own', amount: 1000, date: '2026-07-04' },
+      { type: 'contribution', source: 'own', amount: 7000, date: '2026-06-30' }, // last month
+      { type: 'contribution', source: 'own', amount: 4000, date: '2026-08-01' }, // next month
     ];
     expect(paidThisMonth(txns, NOW)).toBe(5000);
   });
