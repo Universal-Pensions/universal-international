@@ -20,6 +20,7 @@ import {
   useRunContribution,
 } from '../../hooks/useEmployer';
 import { formatUGX, formatNumber } from '../../utils/currency';
+import { getFriendlyErrorMessage } from '../../utils/friendlyError';
 import { groupInsurancePremiumPerMember } from '../../utils/groupInsurance';
 import { deriveContributionLegs, contributionFundingLabel } from '../../utils/contributionModel';
 import { formatDate } from '../../utils/date';
@@ -358,7 +359,11 @@ export function NewRunWizard({ employerId, addToast, onDone, onCancel }) {
       nonceRef.current = mintNonce();
       onDone();
     } catch (err) {
-      addToast('error', err?.message || 'Could not record the contribution run.');
+      // A22-004: never render a bare err.message — see subscriber-dashboard's
+      // SavePage.jsx for the full rationale (err.message is always
+      // populated by both the api.js and direct-Supabase error paths, so the
+      // old `err?.message || fallback` never actually fell through).
+      addToast('error', getFriendlyErrorMessage(err, 'Could not record the contribution run.'));
     } finally {
       submittingRef.current = false;
     }

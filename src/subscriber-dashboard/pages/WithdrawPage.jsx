@@ -5,6 +5,7 @@ import { useNavigate } from 'react-router-dom';
 import { calcFV, parseAmount } from '../../utils/finance';
 import { EASE_OUT_EXPO } from '../../utils/motion';
 import { formatUGX, formatUGXShort } from '../../utils/currency';
+import { getFriendlyErrorMessage } from '../../utils/friendlyError';
 import { useCurrentSubscriber, useRequestWithdrawal } from '../../hooks/useSubscriber';
 import { useToast } from '../../contexts/ToastContext';
 import { useIsDesktop } from '../../hooks/useIsDesktop';
@@ -139,7 +140,10 @@ export default function WithdrawPage() {
       withdrawalNonce.current = null;
       addToast('success', `Withdrawal of ${formatUGX(amount, { compact: false })} requested.`);
     } catch (err) {
-      addToast('error', err?.message || 'Could not request withdrawal.');
+      // A22-004: never render a bare err.message — see SavePage.jsx for the
+      // full rationale (err.message is always populated, so the old
+      // `err?.message || fallback` pattern never actually fell through).
+      addToast('error', getFriendlyErrorMessage(err, 'Could not request withdrawal.'));
     } finally {
       setSubmitting(false);
     }

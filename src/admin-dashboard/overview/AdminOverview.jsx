@@ -15,6 +15,8 @@ import { usePlatformTicketMetrics } from '../../hooks/useTickets';
 import { formatUGX, formatNumber } from '../../utils/currency';
 import { EASE_OUT_EXPO as EASE } from '../../utils/motion';
 import MiniChart from '../../dashboard/shared/MiniChart';
+import MetricHero from '../../components/MetricHero/MetricHero';
+import ErrorCard from '../../components/feedback/ErrorCard';
 import NeedsAttentionCard, { NeedsAttentionPill } from './NeedsAttentionCard';
 import {
   computeAdminAttention,
@@ -123,7 +125,24 @@ export default function AdminOverview() {
   const { drillDown, setViewSubscribersOpen, setViewAgentsOpen, setViewBranchesOpen, setDrillTargetBranchId, setDrillTargetAgentId, setViewTicketsOpen } = useDashboard();
   const { setViewDistributorsOpen, setViewEmployersOpen, setViewAccessRequestsOpen, setAttentionType } = useAdminPanel();
 
-  const { data: platform } = usePlatformOverview();
+  // A22-002 / A15-002: this is the ONLY query behind both the 4-tile hero AND
+  // the health-score gauge below (aum/subs/agents/branches/health all read
+  // off `platform`) — so its isLoading/isError/refetch guard both widgets. A
+  // failed read used to fall straight through to `platform ?? {}` and every
+  // field `?? 0`, rendering a confident "FUNDS UNDER MANAGEMENT —, 0
+  // subscribers, Health Score 0 Needs work" with no error and no retry.
+  const {
+    data: platform,
+    isLoading: isPlatformLoading,
+    isError: isPlatformError,
+    error: platformQueryError,
+    refetch: refetchPlatform,
+  } = usePlatformOverview();
+  // ErrorCard would crash if handed the raw Supabase/PostgREST error (a plain
+  // {message,code,details,hint} object, NOT an Error instance — verified
+  // against node_modules/@supabase/postgrest-js's response handling) — it
+  // renders `message` as a bare ReactNode child. Always extract the string.
+  const platformErrorMessage = platformQueryError?.message || 'Something went wrong.';
   const { data: country } = useEntityMetrics('country', 'ug');
   const { data: regions = [] } = useChildren('country', 'ug');
   const { data: regionMetrics = {} } = useChildrenMetrics('country', 'ug');
@@ -228,7 +247,14 @@ export default function AdminOverview() {
       </div>
 
       {/* ── KPI tiles ── */}
-      <div className={styles.tiles}>
+      <MetricHero
+        isLoading={isPlatformLoading}
+        isError={isPlatformError}
+        error={platformErrorMessage}
+        onRetry={refetchPlatform}
+        errorTitle="We couldn't load the platform overview"
+        loadingLabel="Loading platform overview…"
+      >
         <Tile tone="indigo" icon={IC.wallet} label="Funds under management" value={formatUGX(aum)}
           sub={`${formatNumber(distributorCount)} ${distributorCount === 1 ? 'distributor' : 'distributors'} · ${formatNumber(employerCount)} ${employerCount === 1 ? 'employer' : 'employers'}`} />
         <Tile tone="green" icon={IC.coins} label="Contributions" value={formatUGX(contributions)}
@@ -239,7 +265,7 @@ export default function AdminOverview() {
           sub={`${formatNumber(active)} active · ${activeRate}%`} onClick={() => setViewSubscribersOpen(true)} />
         <Tile tone="indigoSoft" icon={IC.employees} label="Agents" value={formatNumber(agentCount)}
           sub={`Across ${formatNumber(branchCount)} branches`} onClick={openAgentList} />
-      </div>
+      </MetricHero>
 
       {/* ── Split ── */}
       <div className={styles.split}>
@@ -247,37 +273,53 @@ export default function AdminOverview() {
           {/* Health score */}
           <section className={styles.card}>
             <div className={styles.cardHead}><span className={styles.cardIc}>{IC.alert}</span>Platform Health Score</div>
-            <div className={styles.scoreRow}>
-              <div className={styles.gauge}>
-                <svg width="128" height="128" viewBox="0 0 128 128">
-                  <circle cx="64" cy="64" r="54" fill="none" stroke="var(--color-lavender)" strokeWidth="12" />
-                  <circle cx="64" cy="64" r="54" fill="none" stroke="url(#aoGauge)" strokeWidth="12" strokeLinecap="round"
-                    strokeDasharray={CIRC} strokeDashoffset={CIRC * (1 - dash)} transform="rotate(-90 64 64)" />
-                  <defs>
-                    <linearGradient id="aoGauge" x1="0" y1="0" x2="1" y2="1">
-                      <stop offset="0" stopColor="#5E63A8" /><stop offset="1" stopColor="#292867" />
-                    </linearGradient>
-                  </defs>
-                </svg>
-                <div className={styles.gaugeMid}>
-                  <div className={styles.gaugeNum}>{health}</div>
-                  <div className={styles.gaugeQ}>{scoreQuality(health)}</div>
+            {/* A22-002 / A15-002: the gauge is a circular widget, not a
+                label/value tile, so it doesn't fit MetricHero.Tile — it gets
+                its own guard here, reusing the same ErrorCard MetricHero uses
+                internally. Same query as the hero above, so isError/isLoading
+                are already in scope. Evidence for this exact widget: "Health
+                Score 0 Needs work" rendered with no message and no retry. */}
+            {isPlatformError ? (
+              <ErrorCard
+                title="We couldn't load the health score"
+                message={platformErrorMessage}
+                onRetry={refetchPlatform}
+              />
+            ) : isPlatformLoading ? (
+              <p className={styles.scoreText} role="status">Loading platform health…</p>
+            ) : (
+              <div className={styles.scoreRow}>
+                <div className={styles.gauge}>
+                  <svg width="128" height="128" viewBox="0 0 128 128">
+                    <circle cx="64" cy="64" r="54" fill="none" stroke="var(--color-lavender)" strokeWidth="12" />
+                    <circle cx="64" cy="64" r="54" fill="none" stroke="url(#aoGauge)" strokeWidth="12" strokeLinecap="round"
+                      strokeDasharray={CIRC} strokeDashoffset={CIRC * (1 - dash)} transform="rotate(-90 64 64)" />
+                    <defs>
+                      <linearGradient id="aoGauge" x1="0" y1="0" x2="1" y2="1">
+                        <stop offset="0" stopColor="#5E63A8" /><stop offset="1" stopColor="#292867" />
+                      </linearGradient>
+                    </defs>
+                  </svg>
+                  <div className={styles.gaugeMid}>
+                    <div className={styles.gaugeNum}>{health}</div>
+                    <div className={styles.gaugeQ}>{scoreQuality(health)}</div>
+                  </div>
+                </div>
+                <div className={styles.scoreMeta}>
+                  <div className={styles.scoreLabel}>Platform score · out of 100</div>
+                  <div className={styles.scoreChips}>
+                    <span className={styles.sChip} data-tone="active">{formatNumber(active)} active members</span>
+                    <span className={styles.sChip}>{formatNumber(branchCount)} branches</span>
+                  </div>
+                  <p className={styles.scoreText}>
+                    Driven by a {activeRate}% active-contribution rate across {formatNumber(subs)} members platform-wide.
+                    {emptyRegions.length > 0
+                      ? ` Biggest lever: coverage — ${emptyRegions.length} ${emptyRegions.length === 1 ? 'region has' : 'regions have'} branches and agents in place but no members yet.`
+                      : ' Coverage spans every region.'}
+                  </p>
                 </div>
               </div>
-              <div className={styles.scoreMeta}>
-                <div className={styles.scoreLabel}>Platform score · out of 100</div>
-                <div className={styles.scoreChips}>
-                  <span className={styles.sChip} data-tone="active">{formatNumber(active)} active members</span>
-                  <span className={styles.sChip}>{formatNumber(branchCount)} branches</span>
-                </div>
-                <p className={styles.scoreText}>
-                  Driven by a {activeRate}% active-contribution rate across {formatNumber(subs)} members platform-wide.
-                  {emptyRegions.length > 0
-                    ? ` Biggest lever: coverage — ${emptyRegions.length} ${emptyRegions.length === 1 ? 'region has' : 'regions have'} branches and agents in place but no members yet.`
-                    : ' Coverage spans every region.'}
-                </p>
-              </div>
-            </div>
+            )}
           </section>
 
           {/* Platform network — the admin's domain shortcuts. Sits under the

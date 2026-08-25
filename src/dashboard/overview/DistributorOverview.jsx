@@ -15,6 +15,8 @@ import { useEntityCommissionSummary } from '../../hooks/useCommission';
 import { formatUGX, formatNumber } from '../../utils/currency';
 import { EASE_OUT_EXPO as EASE } from '../../utils/motion';
 import MiniChart from '../shared/MiniChart';
+import MetricHero from '../../components/MetricHero/MetricHero';
+import ErrorCard from '../../components/feedback/ErrorCard';
 import styles from './DistributorOverview.module.css';
 
 /* ── Inline icons (a small kit beyond shared/Icons.jsx) ───────────────────── */
@@ -129,7 +131,24 @@ export default function DistributorOverview() {
     setCommissionsOpen,
   } = useDashboard();
 
-  const { data: metrics } = useEntityMetrics('country', 'ug');
+  // A22-002: this is the ONLY query behind both the 4-tile hero AND the
+  // health-score gauge below (aum/subs/agents/branches/health all read off
+  // `metrics`) — so its isLoading/isError/refetch guard both widgets. A
+  // failed read used to fall straight through to `metrics ?? {}` and every
+  // field `|| 0`, rendering a confident "FUNDS UNDER MANAGEMENT —, 0
+  // subscribers, Health Score 0 Needs work" with no error and no retry.
+  const {
+    data: metrics,
+    isLoading: isMetricsLoading,
+    isError: isMetricsError,
+    error: metricsQueryError,
+    refetch: refetchMetrics,
+  } = useEntityMetrics('country', 'ug');
+  // ErrorCard would crash if handed the raw Supabase/PostgREST error (a plain
+  // {message,code,details,hint} object, NOT an Error instance — verified
+  // against node_modules/@supabase/postgrest-js's response handling) — it
+  // renders `message` as a bare ReactNode child. Always extract the string.
+  const metricsErrorMessage = metricsQueryError?.message || 'Something went wrong.';
   // Full branch list is still needed for the "inactive branches" attention row
   // (status only); the top-N tables no longer pull it.
   const { data: branchesRaw = [] } = useAllEntities('branch');
@@ -226,7 +245,14 @@ export default function DistributorOverview() {
       </div>
 
       {/* ── KPI tiles ── */}
-      <div className={styles.tiles}>
+      <MetricHero
+        isLoading={isMetricsLoading}
+        isError={isMetricsError}
+        error={metricsErrorMessage}
+        onRetry={refetchMetrics}
+        errorTitle="We couldn't load your network overview"
+        loadingLabel="Loading network overview…"
+      >
         <Tile tone="indigo" icon={IC.wallet} label="Funds under management" value={formatUGX(aum)}
           sub={`Across ${formatNumber(operatedRegions.length)} ${operatedRegions.length === 1 ? 'region' : 'regions'} · ${formatNumber(branchCount)} branches`} />
         <Tile tone="green" icon={IC.coins} label="Contributions" value={formatUGX(m.totalContributions || 0)}
@@ -237,7 +263,7 @@ export default function DistributorOverview() {
           sub={`${formatNumber(active)} active · ${activeRate}%`} onClick={() => setViewSubscribersOpen(true)} />
         <Tile tone="indigoSoft" icon={IC.employees} label="Agents" value={formatNumber(agentCount)}
           sub={`Across ${formatNumber(branchCount)} branches`} onClick={() => setViewAgentsOpen(true)} />
-      </div>
+      </MetricHero>
 
       {/* ── Split ── */}
       <div className={styles.split}>
@@ -245,37 +271,53 @@ export default function DistributorOverview() {
           {/* Health score */}
           <section className={styles.card}>
             <div className={styles.cardHead}><span className={styles.cardIc}>{IC.alert}</span>Network Health Score</div>
-            <div className={styles.scoreRow}>
-              <div className={styles.gauge}>
-                <svg width="128" height="128" viewBox="0 0 128 128">
-                  <circle cx="64" cy="64" r="54" fill="none" stroke="var(--color-lavender)" strokeWidth="12" />
-                  <circle cx="64" cy="64" r="54" fill="none" stroke="url(#doGauge)" strokeWidth="12" strokeLinecap="round"
-                    strokeDasharray={CIRC} strokeDashoffset={CIRC * (1 - dash)} transform="rotate(-90 64 64)" />
-                  <defs>
-                    <linearGradient id="doGauge" x1="0" y1="0" x2="1" y2="1">
-                      <stop offset="0" stopColor="#5E63A8" /><stop offset="1" stopColor="#292867" />
-                    </linearGradient>
-                  </defs>
-                </svg>
-                <div className={styles.gaugeMid}>
-                  <div className={styles.gaugeNum}>{health}</div>
-                  <div className={styles.gaugeQ}>{scoreQuality(health)}</div>
+            {/* A22-002: the gauge is a circular widget, not a label/value
+                tile, so it doesn't fit MetricHero.Tile — it gets its own
+                guard here, reusing the same ErrorCard MetricHero uses
+                internally. Same query as the hero above, so isError/isLoading
+                are already in scope. Evidence for this exact widget: "Health
+                Score 0 Needs work" rendered with no message and no retry. */}
+            {isMetricsError ? (
+              <ErrorCard
+                title="We couldn't load the health score"
+                message={metricsErrorMessage}
+                onRetry={refetchMetrics}
+              />
+            ) : isMetricsLoading ? (
+              <p className={styles.scoreText} role="status">Loading network health…</p>
+            ) : (
+              <div className={styles.scoreRow}>
+                <div className={styles.gauge}>
+                  <svg width="128" height="128" viewBox="0 0 128 128">
+                    <circle cx="64" cy="64" r="54" fill="none" stroke="var(--color-lavender)" strokeWidth="12" />
+                    <circle cx="64" cy="64" r="54" fill="none" stroke="url(#doGauge)" strokeWidth="12" strokeLinecap="round"
+                      strokeDasharray={CIRC} strokeDashoffset={CIRC * (1 - dash)} transform="rotate(-90 64 64)" />
+                    <defs>
+                      <linearGradient id="doGauge" x1="0" y1="0" x2="1" y2="1">
+                        <stop offset="0" stopColor="#5E63A8" /><stop offset="1" stopColor="#292867" />
+                      </linearGradient>
+                    </defs>
+                  </svg>
+                  <div className={styles.gaugeMid}>
+                    <div className={styles.gaugeNum}>{health}</div>
+                    <div className={styles.gaugeQ}>{scoreQuality(health)}</div>
+                  </div>
+                </div>
+                <div className={styles.scoreMeta}>
+                  <div className={styles.scoreLabel}>Network score · out of 100</div>
+                  <div className={styles.scoreChips}>
+                    <span className={styles.sChip} data-tone="active">{formatNumber(active)} active members</span>
+                    <span className={styles.sChip}>{formatNumber(branchCount)} branches</span>
+                  </div>
+                  <p className={styles.scoreText}>
+                    Driven by a {activeRate}% active-contribution rate across {formatNumber(subs)} members.
+                    {emptyRegions.length > 0
+                      ? ` Biggest lever: coverage — ${emptyRegions.length} ${emptyRegions.length === 1 ? 'region has' : 'regions have'} branches and agents in place but no members yet.`
+                      : ' Coverage spans every region.'}
+                  </p>
                 </div>
               </div>
-              <div className={styles.scoreMeta}>
-                <div className={styles.scoreLabel}>Network score · out of 100</div>
-                <div className={styles.scoreChips}>
-                  <span className={styles.sChip} data-tone="active">{formatNumber(active)} active members</span>
-                  <span className={styles.sChip}>{formatNumber(branchCount)} branches</span>
-                </div>
-                <p className={styles.scoreText}>
-                  Driven by a {activeRate}% active-contribution rate across {formatNumber(subs)} members.
-                  {emptyRegions.length > 0
-                    ? ` Biggest lever: coverage — ${emptyRegions.length} ${emptyRegions.length === 1 ? 'region has' : 'regions have'} branches and agents in place but no members yet.`
-                    : ' Coverage spans every region.'}
-                </p>
-              </div>
-            </div>
+            )}
           </section>
 
           {/* Contributions trend */}

@@ -6,6 +6,7 @@ import { EASE_OUT_EXPO } from '../../utils/motion';
 import { formatDate } from '../../utils/date';
 import { formatMemberId } from '../../utils/memberId';
 import { isValidUGPhone, parseUGPhoneLocal } from '../../utils/phone';
+import { getFriendlyErrorMessage } from '../../utils/friendlyError';
 import { useCurrentSubscriber, useUpdateProfile } from '../../hooks/useSubscriber';
 import { useAllEntities } from '../../hooks/useEntity';
 import { useIsDesktop } from '../../hooks/useIsDesktop';
@@ -99,7 +100,9 @@ export default function ProfilePage() {
       addToast('success', 'Profile updated.');
       navigate(-1);
     } catch (err) {
-      addToast('error', err?.message || 'Could not update profile.');
+      // A22-004: never render a bare err.message — see SavePage.jsx for the
+      // full rationale.
+      addToast('error', getFriendlyErrorMessage(err, 'Could not update profile.'));
     } finally {
       setSubmitting(false);
     }
