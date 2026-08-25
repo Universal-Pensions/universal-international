@@ -85,6 +85,12 @@ export default defineConfig({
       // regression below it. Raise these as RTL/unit coverage grows; the bulk
       // of `src/**` is UI components whose only coverage is the browser-level
       // Playwright E2E suite, not Vitest, so 100% here was never the goal.
+      // Vitest defaults this to FALSE, which quietly makes the whole ratchet
+      // conditional: on ANY failing test the coverage report is not produced and
+      // the thresholds below are never evaluated. So a change that both breaks a
+      // test AND tanks coverage reports only the first, and the coverage gate
+      // silently does not run on precisely the runs that most need checking.
+      reportOnFailure: true,
       thresholds: {
         statements: 38,
         branches: 33,

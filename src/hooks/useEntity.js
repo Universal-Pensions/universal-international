@@ -453,13 +453,19 @@ export function useCreateDistributor() {
  * Admin: TRUE platform-wide overview (all subscribers incl. employer-onboarded +
  * channel breakdown + distributor/employer counts). Wraps get_platform_overview
  * (0050, admin-gated). Powers the admin country Summary card. 5-min staleTime.
+ *
+ * @param {boolean} [enabled=true] Distributor-isolation guard, same shape as
+ *   useEmployerActivityRollup: get_platform_overview is admin-gated and RAISEs
+ *   for any other role, so a scoped (distributor/branch/agent) caller must be
+ *   able to opt out rather than fire a query that can only fail.
  * @returns {import('@tanstack/react-query').UseQueryResult<Object>}
  */
-export function usePlatformOverview() {
+export function usePlatformOverview(enabled = true) {
   return useQuery({
     queryKey: ['platformOverview'],
     queryFn: entities.getPlatformOverview,
     staleTime: 5 * 60 * 1000,
+    enabled,
   });
 }
 

@@ -74,6 +74,13 @@ jobs:
       - name: Lint
         run: npm run lint
 
+      # A25-007 added e2e/tsconfig.json and a `typecheck` script specifically
+      # because e2e/*.ts was never type-checked by anything. Nothing then ran
+      # it: CI does lint, test, build and build:api only. Two real implicit-any
+      # errors sit suppressed behind a check nobody invoked.
+      - name: Typecheck
+        run: npm run typecheck
+
       - name: Unit tests
         # --coverage so Phase-6 F3 can enforce a coverage threshold on CI.
         run: npm test -- --coverage

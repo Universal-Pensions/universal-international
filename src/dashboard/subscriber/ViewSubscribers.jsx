@@ -4,7 +4,7 @@ import { useOutsideClick } from '../../hooks/useOutsideClick';
 import { useDebouncedValue } from '../../hooks/useDebouncedValue';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useVirtualizer } from '@tanstack/react-virtual';
-import { useEntity, useEntityMetrics } from '../../hooks/useEntity';
+import { useEntity, useEntityMetrics, usePlatformOverview } from '../../hooks/useEntity';
 import { useSubscriberTransactions } from '../../hooks/useSubscriber';
 import * as entities from '../../services/entities';
 import { EASE_OUT_EXPO } from '../../utils/motion';
@@ -387,7 +387,24 @@ export default function ViewSubscribers({ fullPage = false, scope = null }) {
   const metricsLevel = scopedAgentId ? 'agent' : scopedBranchId ? 'branch' : 'country';
   const metricsId = scopedAgentId ?? scopedBranchId ?? 'ug';
   const { data: scopeMetrics } = useEntityMetrics(metricsLevel, metricsId);
-  const scopedTotal = scopeMetrics?.totalSubscribers ?? 0;
+
+  // ⚠️ UNSCOPED (admin) READS THE PLATFORM OVERVIEW, NOT THE COUNTRY ROLLUP.
+  // get_entity_metrics_rollup builds its counts from `agents LEFT JOIN
+  // subscribers` (0082), so employer-onboarded members — agent_id IS NULL,
+  // measured at 58 of 5,059 live — are invisible to it. The LIST below is a
+  // plain `subscribers` read and DOES include them, so the panel header
+  // undercounted its own rows and the list could be scrolled past its stated
+  // total. AdminOverview.jsx already makes exactly this call, in as many words:
+  // "TRUE platform totals (incl. employer-onboarded subs), not the agent-tree
+  // country rollup that undercounts them" — and the admin arrives here by
+  // clicking that very tile, so the two must agree.
+  //
+  // Agent- and branch-scoped views keep the rollup: it is correct for them
+  // (every subscriber in an agent's book has that agent_id by definition) and
+  // distributor-renders-data.spec.ts pins its agreement with the KPI tile.
+  const isUnscoped = !scopedAgentId && !scopedBranchId;
+  const { data: platformOverview } = usePlatformOverview(isUnscoped);
+  const scopedTotal = (isUnscoped ? platformOverview?.totalSubscribers : scopeMetrics?.totalSubscribers) ?? 0;
   const totals = {
     active: scopeMetrics?.activeSubscribers ?? 0,
     totalBalance: scopeMetrics?.aum ?? 0,

@@ -79,6 +79,16 @@ async function readBalance(subscriberId: string): Promise<BalanceRow> {
   };
 }
 
+// ⚠️ SERIAL. Both tests in this file snapshot, mutate and restore the balance of
+// ONE fixed LIVE subscriber (s-0005). Under `fullyParallel: true` Playwright is
+// free to run them on different workers: two snapshots taken, two unconditional
+// restores applied, last writer wins — leaving a real demo member on a stale
+// balance. distributor-apply-settlement.spec.ts already carries this exact
+// guard, with a note saying the collision class "already leaked live rows during
+// this remediation programme"; the fix was applied to one file out of the four
+// that share live fixtures.
+test.describe.configure({ mode: 'serial' });
+
 test.describe('money RPC idempotency + atomicity (DB layer)', () => {
   test.skip(
     !hasEnv,
