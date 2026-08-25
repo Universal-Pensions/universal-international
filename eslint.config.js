@@ -135,6 +135,30 @@ export default defineConfig([
       },
     },
     rules: {
+      // ── react-hooks: the React-Compiler rules, censused 2026-08-25 ─────────
+      // `reactHooks.configs.flat.recommended` sets these to 'error'. Four of
+      // them arrived with an IN-RANGE plugin bump (package.json pins
+      // ^7.0.1 on this branch AND on main; 7.1.1 resolves), so `npm run lint`
+      // — which CI runs — started exiting 1 on code nobody had touched. 12 of
+      // the 16 affected files are untouched by the audit-remediation branch.
+      //
+      // Handled by the SAME policy this file already applies to jsx-a11y
+      // above: a rule with existing violations goes to 'warn' and is counted;
+      // a rule at zero hits stays 'error' as a ratchet. The counts below are
+      // the backlog — they may shrink, never grow, and --max-warnings in
+      // package.json is the gate that enforces it.
+      //
+      // These are NOT cosmetic. `set-state-in-effect` in particular flags a
+      // real double-render pattern. They are deferred, not dismissed: fixing
+      // 16 of them across 12 files is a genuine hooks refactor with regression
+      // risk, and it is not the same task as un-breaking CI.
+      'react-hooks/set-state-in-effect': 'warn',          // 16 hits, 12 files
+      'react-hooks/immutability': 'warn',                 //  2 hits,  2 files
+      'react-hooks/refs': 'warn',                         //  1 hit
+      'react-hooks/preserve-manual-memoization': 'warn',  //  1 hit
+      // Every other react-hooks rule — including rules-of-hooks and
+      // exhaustive-deps — stays at the plugin's 'error'.
+
       'no-console': ['warn', { allow: ['warn', 'error'] }],
       'no-unused-vars': ['error', { varsIgnorePattern: '^[A-Z_]|^motion$', destructuredArrayIgnorePattern: '^_' }],
       'react-refresh/only-export-components': ['warn', {

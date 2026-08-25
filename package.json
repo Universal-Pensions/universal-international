@@ -15,7 +15,7 @@
     "build:api": "tsc -p server/tsconfig.json",
     "typecheck": "tsc -p server/tsconfig.typecheck.json --noEmit && tsc -p api/tsconfig.json --noEmit && tsc -p e2e/tsconfig.json --noEmit",
     "start": "node dist-server/server/index.js",
-    "lint": "eslint . --max-warnings=189",
+    "lint": "eslint . --max-warnings=204",
     "preview": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest",

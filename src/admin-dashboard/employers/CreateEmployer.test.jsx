@@ -82,7 +82,9 @@ describe('<CreateEmployer /> — district field (E19)', () => {
     expect(listId).toBeTruthy();
     // Datalist <option>s aren't exposed through an RTL accessible query —
     // this is the standard way to assert a native list= wiring.
-    // eslint-disable-next-line testing-library/no-node-access
+    // (No eslint-disable here: eslint-plugin-testing-library is not installed,
+    // so disabling one of its rules is itself an ESLint ERROR — "Definition for
+    // rule ... was not found" — which failed `npm run lint` in CI.)
     const datalist = document.getElementById(listId);
     expect(datalist?.tagName).toBe('DATALIST');
     const optionValues = Array.from(datalist.querySelectorAll('option')).map((o) => o.value);
