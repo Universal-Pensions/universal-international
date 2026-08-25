@@ -1342,11 +1342,22 @@ export async function fundInsuranceProducts(
  * (only 'contribution' rows count toward balances), so renewals never touch
  * savings balances.
  *
+ * LIVE PATH: `fund_insurance_products` (0073), NOT a direct write. This used to
+ * PATCH insurance_policies / subscriber_insurance_products and POST the
+ * 'premium' row straight to /rest/v1/transactions. Migration 0118 closed that
+ * door (finding A02-001: the `transactions_insert_self` policy constrained
+ * subscriber_id but not amount, type or status, so any member could mint
+ * themselves any balance). The RPC does the same three things the two direct
+ * writes did — upsert the policy active, push renewal_date forward a year,
+ * insert ONE 'premium' transaction — plus the things they could not: it derives
+ * the charge server-side as premium × 12, refuses to touch employer-funded
+ * cover, and is idempotent on `nonce` via money_nonces.
+ *
  * @param {string} id
- * @param {{ type: 'life'|'health', method?: string }} payload
+ * @param {{ type: 'life'|'health'|'funeral', method?: string, nonce?: string }} payload
  * @returns {Promise<{ policy: object, reference: string }>}
  */
-export async function renewPolicy(id, { type, method = 'MTN Mobile Money' } = {}) {
+export async function renewPolicy(id, { type, method = 'MTN Mobile Money', nonce } = {}) {
   if (!id) throw new Error('Subscriber id required');
   if (!['life', 'health', 'funeral'].includes(type)) throw new Error('Unknown policy type');
 
@@ -1380,50 +1391,48 @@ export async function renewPolicy(id, { type, method = 'MTN Mobile Money' } = {}
 
   if (!IS_SUPABASE_ENABLED) {
     readSession(id).extraTransactions.unshift(tx);
-  } else {
-    // Supabase: persist the renewal on the real row — push the renewal date
-    // forward a year + reactivate — and record the 'premium' transaction.
-    // 'premium' rows never fire the contribution trigger, so balances are
-    // unaffected. Life lives in insurance_policies (subscriber_id); health/funeral
-    // live in subscriber_insurance_products (subscriber_id, product) — migration
-    // 0064. Direct writes are gated by the subscriber's own *_update_self RLS.
-    const dbRenewal = new Date();
-    dbRenewal.setFullYear(dbRenewal.getFullYear() + 1);
-    const renewalPatch = {
-      status: 'active',
-      renewal_date: dbRenewal.toISOString().slice(0, 10),
-      updated_at: new Date().toISOString(),
-    };
-    try {
-      if (type === 'life') {
-        await supabase.from('insurance_policies').update(renewalPatch).eq('subscriber_id', id);
-      } else {
-        await supabase
-          .from('subscriber_insurance_products')
-          .update(renewalPatch)
-          .eq('subscriber_id', id)
-          .eq('product', type);
-      }
-    } catch {
-      // Non-fatal — the session override still flips the policy active.
-    }
-    try {
-      await supabase.from('transactions').insert({
-        id: tx.id,
-        subscriber_id: id,
-        type: 'premium',
-        amount,
-        date: new Date().toISOString(),
-        status: 'settled',
-        method,
-        txn_ref: reference,
-      });
-    } catch {
-      // Non-fatal in the demo — the policy still renews via the session override.
-    }
+    return { policy, reference };
   }
 
-  return { policy, reference };
+  // Supabase: ONE atomic RPC does the whole renewal. `fund_insurance_products`
+  // routes by product itself — life to insurance_policies (subscriber_id),
+  // health/funeral to subscriber_insurance_products (subscriber_id, product),
+  // migration 0064 — upserts it active with renewal_date = now + 1 year, and
+  // inserts a single 'premium' transaction for premiumMonthly × 12, which is
+  // exactly `policy.renewalAmount`. 'premium' rows never fire the contribution
+  // trigger, so balances and AUM are unaffected, same as before.
+  //
+  // Side effect worth knowing: the RPC also stamps policy_start to today. For a
+  // renewal that is right — the new annual term starts now and ends on the
+  // renewal date it just set.
+  //
+  // The result is CHECKED, not swallowed. The two direct writes this replaced
+  // sat in try/catch blocks that could never fire (the PostgREST client returns
+  // { error }, it does not throw), so a rejected renewal used to look like a
+  // success until the member refreshed and found the policy still expired.
+  const { data, error } = await supabase.rpc('fund_insurance_products', {
+    p_nonce: nonce ?? crypto.randomUUID(),
+    p_funding_mode: 'pay_now',
+    p_products: [{
+      product: type,
+      cover: Number(policy.cover ?? 0),
+      premiumMonthly: Number(policy.premiumMonthly ?? 0),
+    }],
+    p_savings_pct: 100,
+    p_method: method,
+  });
+  if (error) {
+    // The optimistic session override was set before we knew whether the charge
+    // would land. Roll it back so the policy does not read as renewed on a
+    // failure, then let the caller surface the error toast.
+    setRenewalOverride(id, type, false);
+    throw error;
+  }
+
+  // Prefer the reference the RPC actually stamped on the transaction row, so the
+  // member's receipt matches their activity feed. Falls back to the locally
+  // minted RN- reference (the shape the mock path uses).
+  return { policy, reference: data?.reference ?? reference };
 }
 
 /**
