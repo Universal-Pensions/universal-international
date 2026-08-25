@@ -13,6 +13,15 @@
 // copy, tsc compiles this one with NodeNext/`rootDir: ..` which cannot reach
 // `src/`). Any change to the redaction rules below must be mirrored there.
 //
+// DRIFT NOTICE (A07-001, 2026-08-25): the NIN_RE pattern + 'nin'/'nationalid'/
+// 'national_id' SENSITIVE_KEYS entries below were added to THIS (backend)
+// half only — the P6-observability write-set for that fix covered
+// server/sentryScrub.ts but not src/utils/sentryScrub.js. The frontend half
+// needs the identical addition to restore parity; see
+// docs/audits/2026-08-23/a07/observability-notes.md for the exact diff to
+// mirror and this repo's own parity-check method (audit A09 §7 — 13/13 keys,
+// 3/3 regexes compared byte-for-byte between the two files).
+//
 // PII vectors specific to this app (audit BL-26 / H-4):
 //   - Ugandan phone numbers (synthetic `+25671XXXXXXX` demo range, but redact
 //     any `+256…` / bare `25671…` shape). Phone is a thrown-error parameter in
@@ -20,6 +29,10 @@
 //   - `users.id` is `` `${role}:${phone}` `` and becomes the JWT `sub`, so a
 //     `subscriber:+256701234567` substring can ride along in a Supabase error
 //     forwarded to Sentry by the central error handler.
+//   - Ugandan National ID Numbers (NIN) — `C[MF]` + 12 alphanumeric chars,
+//     handled by the KYC flow (`api/kyc/nira-verify.ts`, `id-ocr.ts`,
+//     `face-match.ts`) and persisted on `subscribers.nin`; a NIN can ride
+//     inside an exception value or breadcrumb on that path (A07-001).
 //   - Bearer tokens / Authorization headers / JWT-shaped strings.
 //   - `password` fields.
 
@@ -31,6 +44,15 @@ const REDACTED = '[redacted]';
 // with 7. Catches `+256701234567`, `256701234567`, `0701234567`, and the
 // `role:phone` id form (`subscriber:+256…`).
 const PHONE_RE = /(?:\+?256|0)?7\d{8}/g;
+// Ugandan NIN (National ID Number, A07-001): 'C' + M/F + 12 alphanumeric
+// chars, 14 total — the exact shape minted by `api/kyc/id-ocr.ts` and
+// validated by `src/signup/steps/ReviewStep.jsx`'s own `NIN_RE`
+// (`/^C[MF][A-Z0-9]{12}$/`), here unanchored with a word boundary so it also
+// matches a NIN embedded inside a longer error string. The KYC flow
+// (nira-verify, id-ocr, face-match) handles NINs, and a NIN can ride inside
+// an exception `value` or breadcrumb on that path — this had no redaction
+// pattern before A07-001, so it forwarded to Sentry unredacted.
+const NIN_RE = /\bC[MF][A-Z0-9]{12}\b/g;
 // JWTs: three base64url segments separated by dots (header.payload.signature).
 const JWT_RE = /\beyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+/g;
 // `Bearer <token>` anywhere in a string.
@@ -51,6 +73,12 @@ const SENSITIVE_KEYS = new Set<string>([
   'refresh_token',
   'jwt',
   'otp',
+  // A07-001 — a National ID Number is PII on par with phone; drop it
+  // wholesale wherever it rides as a keyed field (both spellings, since KYC
+  // payloads use both camelCase and snake_case field names in this app).
+  'nin',
+  'nationalid',
+  'national_id',
 ]);
 
 /** Redact PII/secret substrings inside a single string. */
@@ -59,6 +87,11 @@ export function scrubString(value: unknown): unknown {
   return value
     .replace(JWT_RE, REDACTED)
     .replace(BEARER_RE, `Bearer ${REDACTED}`)
+    // NIN before phone: a NIN's 12-char alphanumeric suffix could coincidentally
+    // contain a phone-shaped digit run, so redact the whole NIN as one unit
+    // first — otherwise PHONE_RE could chew a hole out of the middle of it and
+    // leave the 'C[MF]' prefix plus fragment sitting next to '[redacted]'.
+    .replace(NIN_RE, REDACTED)
     .replace(PHONE_RE, REDACTED);
 }
 
