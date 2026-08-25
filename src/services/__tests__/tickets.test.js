@@ -11,7 +11,9 @@
 // tickets, metric reconciliation) rather than absolute seed counts — every
 // assertion holds regardless of what earlier tests created.
 
-import { describe, it, expect } from 'vitest';
+import {
+  describe, it, expect, vi, beforeEach, afterEach,
+} from 'vitest';
 import {
   listTicketsForSubscriber,
   listTicketsForAgent,
@@ -422,5 +424,83 @@ describe('tickets service — employer↔platform (Phase 7)', () => {
     const afterReply = await getEmployerTicketMetrics(EMPLOYER);
     // Once support replies it is no longer unanswered.
     expect(afterReply.unansweredCount).toBe(before.unansweredCount);
+  });
+});
+
+// ── sessionStorage persistence (A22-006) ────────────────────────────────────
+// The store mirrors itself to sessionStorage on every write so a same-tab
+// refresh — the same JS module reloading fresh — rehydrates a rep's
+// session-local writes instead of silently reseeding and dropping them (the
+// bug: a confirmed-success ticket create, then "Open 3→2" with no
+// explanation after a reload). A real refresh is simulated with
+// vi.resetModules() + a fresh dynamic import: that resets the module's own
+// `_store` back to null exactly as a real reload resets every module-level
+// variable, while jsdom's sessionStorage — like a real tab's — is left
+// untouched by resetModules and survives across the "reload".
+describe('tickets service — sessionStorage persistence (A22-006)', () => {
+  // Must match STORAGE_KEY in ../tickets.js — duplicated here (not imported)
+  // because it is a private module constant, matching this file's existing
+  // convention of asserting against known literals (e.g. SUB = 's-0001').
+  const STORAGE_KEY = 'upensions_tickets_session';
+
+  beforeEach(() => {
+    window.sessionStorage.clear();
+  });
+
+  afterEach(() => {
+    window.sessionStorage.clear();
+  });
+
+  it('every mutation mirrors the whole store to sessionStorage', async () => {
+    const t = await createTicket(SUB, draft({ subject: 'Persistence probe' }));
+
+    const raw = window.sessionStorage.getItem(STORAGE_KEY);
+    expect(raw).toBeTruthy();
+    const persisted = JSON.parse(raw);
+    expect(Array.isArray(persisted)).toBe(true);
+    expect(persisted.some((row) => row.id === t.id)).toBe(true);
+  });
+
+  it('a ticket created before a simulated refresh is still there after it — the exact A22-006 repro', async () => {
+    const created = await createTicket(SUB, draft({ subject: 'Survives refresh' }));
+    expect(window.sessionStorage.getItem(STORAGE_KEY)).toBeTruthy();
+
+    // Simulate the page reload: reset the module registry so the NEXT import
+    // re-evaluates tickets.js from scratch (_store back to null) — while
+    // sessionStorage is left exactly as a real tab's would be.
+    vi.resetModules();
+    const fresh = await import('../tickets.js');
+
+    const thread = await fresh.getThread(created.id);
+    expect(thread).not.toBeNull();
+    expect(thread.subject).toBe('Survives refresh');
+
+    const subList = await fresh.listTicketsForSubscriber(SUB);
+    expect(subList.some((x) => x.id === created.id)).toBe(true);
+  });
+
+  it('falls back to the normal seed when sessionStorage is empty (first-ever load, or a genuinely new tab)', async () => {
+    window.sessionStorage.clear();
+    vi.resetModules();
+    const fresh = await import('../tickets.js');
+
+    const subList = await fresh.listTicketsForSubscriber(SUB);
+    // The frozen seed ships pre-existing tickets for the real demo chain — an
+    // empty sessionStorage must still produce the normal baseline, not a
+    // crash or an empty inbox.
+    expect(subList.length).toBeGreaterThan(0);
+  });
+
+  it('a sessionStorage write failure (quota / private browsing) does not break ticket creation', async () => {
+    const setItemSpy = vi.spyOn(window.sessionStorage, 'setItem').mockImplementation(() => {
+      throw new Error('QuotaExceededError');
+    });
+
+    try {
+      const t = await createTicket(SUB, draft({ subject: 'Still works without storage' }));
+      expect(t.subject).toBe('Still works without storage');
+    } finally {
+      setItemSpy.mockRestore();
+    }
   });
 });
