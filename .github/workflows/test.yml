@@ -22,6 +22,19 @@
 # below so concurrent runs in the same job don't race on the same rows; the
 # `concurrency` block at workflow level cancels in-flight runs on the same ref
 # so a follow-up push pre-empts the previous one.
+#
+# Delta gate (A09-002 / A25-011, docs/audits/2026-08-23/a25/ci-guard.md): as of
+# the 2026-08-23 audit, 30 Playwright tests fail DETERMINISTICALLY (not
+# flakily — see docs/audits/2026-08-23/00-baseline.md §10) and will keep
+# failing until Phase 7 fixes them one by one. Gating on the raw
+# `playwright test` exit code can therefore never go green — that is exactly
+# why every one of the last 41 pushes to main showed CI as cancelled/red with
+# nobody investigating. Both Playwright run steps below now run with
+# `continue-on-error: true` + `--reporter=json` and hand their JSON report to
+# `scripts/e2e-delta.mjs`, which is the actual gate: it passes iff every
+# failure this run is already in the frozen allowlist at
+# docs/audits/2026-08-23/a25/baseline-failures.txt, and fails (listing them)
+# on any NEW failure. See that script's header comment for the full contract.
 
 name: CI
 
@@ -75,7 +88,26 @@ jobs:
     name: Playwright E2E
     runs-on: ubuntu-latest
     needs: lint-and-unit
-    timeout-minutes: 20
+    # A09-002: was 20. The full matrix (`npx playwright test --workers=1`, all
+    # 4 projects) alone measures 24.4-26.0 min LOCALLY WITH ZERO RETRIES
+    # (docs/audits/2026-08-23/00-baseline.md §10: "Runtime 24.4 min"; a25/
+    # pw-rerun2.txt: "306 passed (26.0m)") — already past the old 20-minute
+    # ceiling before a single dependency installs. Confirmed live: run
+    # 31484332571 (headSha bd637f6, the current HEAD) was cancelled at
+    # exactly 20m16s wall time with the full-matrix step still in flight
+    # (11:00:49→cancelled 11:19:39) and every downstream step (§15-M1 guard,
+    # both artifact uploads) skipped as a result — repeated on 41/41 push
+    # runs (`gh run list --workflow=test.yml --limit 60`), so this guard has
+    # never actually executed against main. CI additionally runs with
+    # `retries: 1` (playwright.config.ts:51, `CI ? 1 : 0`) on top of the ~30
+    # currently-failing tests the local baseline didn't retry, plus job
+    # overhead the 24.4 min figure doesn't include: checkout, npm ci,
+    # build:api type-check, the Playwright browser cache/install step (can
+    # run several minutes on a cache miss), the separate §15-M1 db-only
+    # re-run below (its own fresh webServer boot), and 2 artifact uploads.
+    # 50 min leaves real headroom over that realistic worst case without
+    # being open-ended.
+    timeout-minutes: 50
     env:
       VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
       VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
@@ -131,10 +163,28 @@ jobs:
         # so they add only seconds) and catch security/money regressions before
         # merge rather than only post-merge on main (§15-H1). Two projects only
         # so we stay under the 5-min-per-combo SLA from §6.H of the audit plan.
+        #
+        # continue-on-error + --reporter=json: this subset already overlaps
+        # several of the 30 known-baseline failures (e.g. mobile-chromium ×
+        # smoke/subscriber-dashboard), so a raw non-zero exit here would fail
+        # every PR on pre-existing, already-triaged breakage. The "Delta gate"
+        # step right below is the real gate (A09-002 / A25-011).
+        continue-on-error: true
+        env:
+          PLAYWRIGHT_JSON_OUTPUT_NAME: pr-results.json
         run: |
           npx playwright test e2e/specs/smoke e2e/specs/flows e2e/specs/db \
             --project=chromium --project=mobile-chromium \
-            --workers=1
+            --workers=1 \
+            --reporter=json,github,html
+
+      - name: Delta gate (PR — only NEW failures block the merge)
+        if: github.event_name == 'pull_request'
+        # Gates on the DELTA, not the suite's exit code: passes iff every
+        # failure above is already in the frozen allowlist at
+        # docs/audits/2026-08-23/a25/baseline-failures.txt. See
+        # scripts/e2e-delta.mjs's header comment for the full contract.
+        run: node scripts/e2e-delta.mjs pr-results.json
 
       - name: Run Playwright full matrix (main post-merge — chromium + webkit, smoke + flow + regression + db)
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
@@ -142,19 +192,38 @@ jobs:
         # against the live `ilkhfnoyxlxwqadebnkp` project (service-role
         # query), so this also guarantees the schema state is intact after
         # each merge to main.
+        #
+        # continue-on-error + --reporter=json: see the PR step above — the
+        # suite is expected to exit 1 at the current baseline (§10 of
+        # 00-baseline.md), so its raw exit code must not be what fails the
+        # job. The "Delta gate" step right below is the real gate.
+        continue-on-error: true
+        env:
+          PLAYWRIGHT_JSON_OUTPUT_NAME: e2e-results.json
         run: |
-          npx playwright test --workers=1
+          npx playwright test --workers=1 --reporter=json,github,html
+
+      - name: Delta gate (push — only NEW failures block main)
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: node scripts/e2e-delta.mjs e2e-results.json
 
       - name: Assert db/ specs actually executed (not silently skipped) (§15-M1)
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-        # Guard against silent hollowing-out: every test in e2e/specs/db/ is
-        # wrapped in `test.skip(!hasEnv, …)`, so a MISSING secret turns the whole
-        # db/ guard suite into all-skipped — which still reports GREEN and would
-        # let a cross-tenant RLS / money-idempotency regression sail through on
-        # main. Re-run just the db/ specs with the JSON reporter and fail the job
-        # if zero tests EXECUTED (stats.expected === 0 ⇒ everything was skipped or
-        # nothing was discovered). A real db-test failure already fails the full
-        # matrix above; this step specifically catches the "0 ran" case.
+        # A25-011: was `if: github.event_name == 'push' && github.ref ==
+        # 'refs/heads/main'` — i.e. this guard ran ONLY on push-to-main, never
+        # on the PR job just above, even though that PR step deliberately
+        # includes e2e/specs/db specifically to "catch security/money
+        # regressions before merge rather than only post-merge on main
+        # (§15-H1)". A fork PR, or any run while a secret is rotating/unset,
+        # silently lost every cross-tenant RLS / money-idempotency guard on
+        # exactly the surface that gates merges, and still showed green.
+        # `always()` (rather than reinstating the push-main check, or nothing
+        # at all) also means this step survives the Playwright run step above
+        # failing/soft-failing on baseline noise — it does NOT survive the
+        # whole JOB being cancelled (GitHub Actions stops scheduling further
+        # steps on a hard cancellation regardless of `if:`), which is exactly
+        # the A09-002 failure mode; the raised timeout above is what actually
+        # fixes that half of the problem.
+        if: always()
         env:
           PLAYWRIGHT_JSON_OUTPUT_NAME: db-results.json
         run: |
@@ -167,13 +236,33 @@ jobs:
             const file = process.env.PLAYWRIGHT_JSON_OUTPUT_NAME;
             const report = JSON.parse(fs.readFileSync(file, "utf8"));
             const { expected = 0, skipped = 0, unexpected = 0, flaky = 0 } = report.stats || {};
-            console.log(`db/ specs — expected(ran+passed): ${expected}, skipped: ${skipped}, unexpected: ${unexpected}, flaky: ${flaky}`);
-            if (expected < 1) {
+            // executed = ran to completion, REGARDLESS of pass/fail verdict.
+            // Deliberately NOT just `expected` (A25-011 suggested tightening
+            // "expected < 1" to "expected < 13", but expected alone only
+            // counts PASSED-as-expected tests — a run where every db/ test
+            // executed and one genuinely FAILED would show expected < total
+            // too, and this step would then print the misleading "all
+            // skipped or none discovered" message for an unrelated real
+            // failure that the full-matrix step above already caught). This
+            // guard exists to catch ONLY the silent-skip pathology, so it
+            // must count unexpected + flaky as "executed" alongside expected.
+            const executed = expected + unexpected + flaky;
+            // 17 = verified count of `test(...)` definitions across
+            // e2e/specs/db/*.spec.ts for a single project (chromium):
+            // deactivate-entities 4, invariants 8, money-idempotency 2,
+            // rls-isolation 3. Re-verify with:
+            //   grep -c "^\s*test(" e2e/specs/db/*.spec.ts
+            // if a db spec is added/removed — this is a verified count, not
+            // the rough count of 13 the audit report guessed.
+            const REQUIRED_DB_TESTS = 17;
+            console.log(`db/ specs — executed: ${executed}/${REQUIRED_DB_TESTS} (expected: ${expected}, unexpected: ${unexpected}, flaky: ${flaky}, skipped: ${skipped})`);
+            if (executed < REQUIRED_DB_TESTS) {
               console.error(
-                "§15-M1 FAILURE: 0 db/ specs executed (all skipped or none discovered). " +
-                "This usually means a required secret (SUPABASE_SERVICE_ROLE_KEY / " +
-                "VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY / SUPABASE_JWT_SECRET) is " +
-                "missing, so the RLS / money-idempotency / invariant guards did NOT run."
+                `§15-M1 FAILURE: only ${executed}/${REQUIRED_DB_TESTS} db/ specs executed ` +
+                `(${skipped} skipped). This usually means a required secret ` +
+                "(SUPABASE_SERVICE_ROLE_KEY / VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY / " +
+                "SUPABASE_JWT_SECRET) is missing, so the RLS / money-idempotency / invariant " +
+                "guards did NOT fully run — whole-suite or partial skip, either way."
               );
               process.exit(1);
             }

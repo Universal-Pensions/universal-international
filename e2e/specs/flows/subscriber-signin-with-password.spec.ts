@@ -41,6 +41,7 @@ import { cleanupSubscriberByPhone, supabaseAdmin } from '../../fixtures/db';
 import { walkSignupToFirstContribution } from '../../helpers/signup';
 import { selectors } from '../../helpers/selectors';
 import { PHONE_PREFIX } from '../../helpers/signup-constants';
+import { stubWebkitCamera } from '../_shared/webkitCamera';
 
 test.setTimeout(120_000);
 
@@ -67,15 +68,33 @@ test.describe('subscriber → sign in with password', () => {
 
     // Defensive: tear down any leftover state from a previous crashed run.
     await cleanupSubscriberByPhone(uniquePhone);
-    await supabaseAdmin.from('users').delete().eq('phone', uniquePhone).eq('role', 'subscriber');
+    const { error: preDelErr } = await supabaseAdmin
+      .from('users')
+      .delete()
+      .eq('phone', uniquePhone)
+      .eq('role', 'subscriber');
+    expect(preDelErr, `pre-cleanup: deleting stale users row for ${uniquePhone}`).toBeNull();
   });
 
   test.afterEach(async () => {
     await cleanupSubscriberByPhone(uniquePhone);
-    await supabaseAdmin.from('users').delete().eq('phone', uniquePhone).eq('role', 'subscriber');
+    const { error: delErr } = await supabaseAdmin
+      .from('users')
+      .delete()
+      .eq('phone', uniquePhone)
+      .eq('role', 'subscriber');
+    expect(delErr, `cleanup: deleting users row for ${uniquePhone}`).toBeNull();
   });
 
-  test('A) signs in with password after fresh signup', async ({ page }) => {
+  test('A) signs in with password after fresh signup', async ({ page, browserName }) => {
+    // WebKit has no working fake camera device — walkSignupToFirstContribution
+    // below walks through LivenessStep's "Take selfie" step just like the
+    // dedicated signup spec does. Stub getUserMedia before any navigation;
+    // see stubWebkitCamera's doc comment for the full diagnosis. No-op on
+    // chromium, which already has a working fake device via
+    // playwright.config.ts's launchOptions.
+    await stubWebkitCamera(page, browserName);
+
     // 1. Walk the full signup flow. The helper stops once the
     //    create_subscriber_from_signup RPC has returned 200 — i.e. auth is
     //    persisted, the user is signed in, and the dashboard about to render.

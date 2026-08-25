@@ -1,8 +1,10 @@
 > **Agent guide.** The operational runbook for the `uganda-dashboard-api` backend on Render (free tier, Singapore) — deploy triggers, env, cold-start behaviour, and the incident playbook. Read it when deploying or debugging the hosted API (Render is manual-deploy: `npm run deploy:api`), not for application logic. For the code itself see `BACKEND.md`; start from `CLAUDE.md`.
+>
+> **Verified against the live Singapore DB (`ilkhfnoyxlxwqadebnkp`) on 2026-08-25.**
 
 # Render Operational Notes
 
-Operational runbook for the `uganda-dashboard-api` service on Render (free tier, Singapore region). Authored during Phase 3 of the Render migration; see `/Users/shubhang/.claude/plans/dynamic-sparking-kite.md` for the full plan and `/Users/shubhang/Desktop/renderaudit-findings.md` for the underlying audit findings (B6, B7, B14, B15, B21, G5, G14, G15, G41, G59, G60, G61, G62, G63, G64, N27).
+Operational runbook for the `uganda-dashboard-api` service on Render (free tier, Singapore region). Authored during Phase 3 of the Render migration. The plan doc and pre-audit findings file this line used to cite (`~/.claude/plans/dynamic-sparking-kite.md`, `~/Desktop/renderaudit-findings.md`) no longer exist on disk (audit A26-013); for current audit records see `docs/audits/2026-08-23/` (`findings.json` plus the long-form `09-infra-deploy.md`, `21-performance.md`, `26-documentation.md`) (B6, B7, B14, B15, B21, G5, G14, G15, G41, G59, G60, G61, G62, G63, G64, N27).
 
 ---
 
@@ -11,7 +13,7 @@ Operational runbook for the `uganda-dashboard-api` service on Render (free tier,
 - **Frontend:** Vercel (Vite + React SPA) — `uganda-dashboard-*.vercel.app`.
 - **Backend:** Render web service (Node 22, Express 5) — `uganda-dashboard-api.onrender.com` (hostname confirmed after service creation).
 - **Database:** Supabase (`ap-southeast-1`, **Singapore** — new project, cutover **2026-06-05**; was `ap-northeast-1` Tokyo before). Render is also in Singapore, so backend and Postgres are now **co-located in the same region** (intra-region RTT, ~1–5ms).
-- **Wake:** GHA cron (14 min) + cron-job.org/UptimeRobot (5 min backup) + frontend `useWarmup()` ping.
+- **Wake:** GHA cron pings `/readyz` every 10 min **as configured** — real-world scheduler jitter widens the *measured* median gap to ~35 min (max observed ~103–114 min); see "Free-tier Resource Caps" below and **open finding A09-007 (unowned)** — + cron-job.org/UptimeRobot (5 min backup) + frontend `useWarmup()` ping.
 
 ---
 
@@ -33,9 +35,9 @@ The frontend (Vercel) is the opposite posture — it **auto-deploys** on merge t
 Before the first post-cutover manual deploy, confirm:
 
 1. **Render tracks `main` (BL-7).** `render.yaml:19` is now `branch: main` (was `cleanup/post-audit-2026-05-26`). Confirm in the Render dashboard that the service's tracked branch is `main`, otherwise "Deploy latest commit" ships the stale branch. Keep `autoDeployTrigger: off`.
-2. **Live DB schema applied first, ledger NOT pushed blindly (BL-6).** Apply schema to live via the Supabase MCP path (`mcp__supabase__apply_migration` / `execute_sql`), **not** `supabase db push` — the live `schema_migrations` ledger is missing 6 local migrations (`0022`/`0023`/`0024`/`0025`/`0027`/`0028`) whose effects are already applied, and `0003`/`0006`/`0010`/`0025` contain non-idempotent statements that would error on a blind re-push. See `BACKEND.md §16 → "Migration-ledger drift"`. Take and verify a full backup before touching the live ledger (pairs with the lossy `0029.down.sql` gate).
+2. **Live DB schema applied first, ledger NOT pushed blindly (BL-6).** Apply schema to live via the Supabase MCP path (`mcp__supabase__apply_migration` / `execute_sql`), **not** `supabase db push`. ⚠️ **The ledger and the files are structurally unjoinable, not just "behind."** The live `schema_migrations` ledger versions rows as TIMESTAMPS (head `20260811100047 → 0108_nominee_claims_seed`, 96 rows as of 2026-08-25) while the migration files are named `0001_*`–`0126_*` (120 files on disk as of the same date) — the two namespaces share **no key**, so a filename-prefix diff against the ledger is meaningless ("missing N migrations" is not a fact this ledger can support; confirm applied state per-migration by introspecting live objects instead). `0003`/`0006`/`0010`/`0025` also contain non-idempotent statements that would error on a blind re-push. See `BACKEND.md §16 → "Migration-ledger drift"`. Take and verify a full backup before touching the live ledger (pairs with the lossy `0029.down.sql` gate).
 3. **Sequence:** DB schema apply → verify → Vercel frontend + Render backend deploy (DB contract first).
-4. **Re-enable the gated settlement E2E.** After applying `0032`, remove the `describe.fixme`/`skip` on `e2e/specs/flows/distributor-apply-settlement.spec.ts` (and the per-line 0032-only `test.fixme`s inside) and re-run e2e — the spec is gated until the two-arg `apply_settlement(p_rows, p_nonce)` is live.
+4. **Re-enable the gated settlement E2E — DONE at cutover, one item still open.** The outer `describe.fixme`/`skip` on `e2e/specs/flows/distributor-apply-settlement.spec.ts` was removed once `0032` went live (2026-06-05); that file is the canonical live E2E coverage for the settlement path (audit A26-013 confirmed this against the current tree 2026-08-23). **Open TODO, not migration-gated:** one `test.fixme` still stands at `distributor-apply-settlement.spec.ts:426` — the nonce-idempotency assertion ("re-submitting the same upload nonce records no second batch") has a placeholder body (`expect(true).toBe(true)`) because the UI replay vehicle isn't wired yet, not because `0032` is missing. Enable it once a real replay path exists (a second confirm against a reopened modal carrying the same nonce, or a service-level replay with the captured nonce), asserting `settlement_batches` gains exactly one row across both submits.
 
 ---
 
@@ -53,7 +55,7 @@ Between step 2 and 3 there's a **30–60s window of 502s** as the old container 
 
 ## Free-tier Resource Caps (N27)
 
-- **Instance hours:** 750/month free. The 14-min GHA keepalive keeps the service warm for ~720h/mo — under the cap with headroom.
+- **Instance hours:** 750/month free. The GHA keepalive is **configured** for `*/10 * * * *` (10 min, not 14) — if it fired exactly on schedule that would keep the service continuously warm (~720h/mo, under the cap with headroom). In practice, GitHub Actions cron jitter means the **measured** median gap between runs is ~35 min (max observed ~103–114 min across two audit samples), well past Render's 15-min free-tier spin-down window — yet the service has shown an unbroken memory series with no observed spin-down, so something beyond the GHA cron alone (real demo traffic, the frontend `useWarmup()` ping) appears to be the thing actually keeping it warm. The gap between the configured and measured cadence is tracked as **open finding A09-007 (unowned)** — treat "~720h/mo" as a configured-case estimate, not a verified one.
 - **Memory:** 512MB ceiling. The current handler set + Express + Supabase client stays well under this in normal use; sustained spikes above ~400MB RSS suggest a leak (see "Silent-failure modes" below).
 - **CPU:** shared (0.1 vCPU). Password hashing uses pure-JS **`bcryptjs`** (cost 10) via the async API in `api/auth/_lib/password.ts` — a native `bcrypt` swap was considered (audit B17) but **not adopted**; the event-loop exposure is mitigated by the async hashing + rate limiters on the credential routes rather than a native binding.
 
@@ -69,6 +71,30 @@ Render free tier rotates logs after **~7 days**. The Render dashboard log viewer
 
 For this demo project, 7-day retention is acceptable; revisit if we move past sales-rep demos.
 
+### Health traffic is now in the log stream (A09-010)
+
+Until 2026-08-25, `/healthz` and `/readyz` produced **no log lines at all**. They are registered at `server/index.ts` blocks 4 and 4b, and `morgan` used to be registered after them at block 7 — Express middleware only wraps what is registered *after* it, so every health request bypassed the logger. The measured effect: over a 34-hour window the Render log stream contained exactly **one** application line, despite roughly 60 keepalive pings plus every browser warmup call.
+
+That mattered because the two questions you actually ask during a cold-start incident — *is the keepalive still running?* and *has `/readyz` been failing?* — were both unanswerable from the logs, which is the first thing anyone reaches for. `morgan` now sits at block 3b, before every route, so both appear:
+
+```
+GET /healthz 200 1.508 ms - 11
+GET /readyz 200 430.550 ms - 11
+```
+
+Two consequences worth knowing:
+
+- **Response bodies are unchanged.** `morgan` writes to stdout on the response's `finished` event; it adds no header and no body byte. The ~1 KB budget that free-tier uptime monitors impose — the reason `/healthz` is deliberately registered ahead of `helmet` — is intact, and `/readyz` (the keepalive target) behaves exactly as before.
+- **Volume.** The 10-minute GHA keepalive plus the 5-minute backup pingers now add roughly 400–500 lines/day. That is immaterial against a 7-day rotating window, but it is no longer true that the log stream is nearly empty, so "no recent lines" now genuinely means *the service is not being pinged* rather than *the logger cannot see it*.
+
+### ⚠️ An external monitor is polling `/api/health`, which does not exist
+
+The single log line that existed before the fix was `GET /api/health 404`. There is no such route — the 16 mounts are at `server/index.ts` block 9, and the health endpoints are `/healthz` and `/readyz` at the root, not under `/api`.
+
+Whatever is polling it has therefore been **recording a 404 as "up"** for as long as it has been configured, which means it would also report "up" for a completely broken deploy. It is not one of the pingers named in this document (the GHA keepalive targets `/readyz`; the cron-job.org / UptimeRobot backups are configured for `/healthz`), so it is an unidentified third monitor.
+
+**Action, requiring dashboard access this repo does not have:** find it (cron-job.org, UptimeRobot, or a Render-side check) and repoint it at `/readyz`, which actually verifies database reachability. Until then, treat any "up" signal from it as meaningless. Now that morgan wraps the health routes, its next poll will appear in the log stream with a timestamp and user-agent, which is the cheapest way to identify it.
+
 ---
 
 ## Failure Alerting (G59)
@@ -81,7 +107,7 @@ For this demo project, 7-day retention is acceptable; revisit if we move past sa
 
 ## Silent-failure Recovery Procedures (G64)
 
-These are the 3 documented failure modes where Render keeps running but the symptom is invisible without monitoring:
+These are the 4 documented failure modes where Render keeps running but the symptom is invisible without monitoring:
 
 ### 1. `npm ci` deploy failure
 
@@ -110,7 +136,80 @@ These are the 3 documented failure modes where Render keeps running but the symp
 - If RSS climbs monotonically over hours, suspect a leak; capture a heap snapshot locally with `node --inspect dist-server/server/index.js` and reproduce.
 - Verify `auth.persistSession: false` on the Supabase admin client (audit G66) — sessions retained in memory across requests are a common leak source under a long-lived process.
 
+### 4. `xlsx` CDN dependency unreachable (A24-011)
+
+**Symptom:** `npm ci` fails during the build step — on Render (this service), on Vercel (the frontend), or in CI (`.github/workflows/test.yml`) — with a **generic network error that never mentions `xlsx` or SheetJS**. Verified empirically (2026-08-25) against an unreachable host, npm's actual output is:
+```
+npm error code ENOTFOUND
+npm error syscall getaddrinfo
+npm error network request to https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz failed, reason: getaddrinfo ENOTFOUND cdn.sheetjs.com
+npm error network This is a problem related to network connectivity.
+npm error network In most cases you are behind a proxy or have bad network settings.
+```
+Skimmed quickly, this reads as "proxy problem" or "flaky network," not "one dependency's CDN is down" — the only clue is the hostname, buried mid-line.
+
+**What happened:** `package.json` pins `"xlsx": "https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz"` — a direct CDN tarball URL, not a normal registry version range. This is **deliberate and correct**, not an error to "fix": SheetJS stopped publishing new `xlsx` releases to the npm registry after `0.18.5` (2022-03-24) and now self-hosts at `cdn.sheetjs.com`. The abandoned registry copy carries two CVEs (prototype pollution CVE-2023-30533, ReDoS CVE-2024-22363) that were never patched on npm; this repo's CDN-pinned `0.20.3` is past both fixes. **Do not "fix" this by pointing the dependency back at the npm registry** — that would reintroduce both CVEs. The cost is availability, not security: every `npm ci` now needs `cdn.sheetjs.com` reachable, with no npm-registry fallback for this one package. Full writeup, sourcing, and a costed recommendation for closing the availability gap (vendoring the tarball vs. mirroring to an org-controlled registry) live at `docs/audits/2026-08-23/a24/supply-chain.md`.
+
+**Recovery:**
+- Run `node scripts/check-xlsx-cdn.mjs` (this repo, no install needed) to confirm or rule out the CDN as the cause before chasing a phantom "network config" problem.
+- If the CDN is genuinely down: wait and retry (SheetJS's CDN is Cloudflare-fronted; outages have historically been short), or vendor the tarball as an emergency unblock — see the costed recommendation in the evidence doc above for the exact `package.json` diff. **That edit is a `package.json` dependency change and is outside this doc's and this script's scope — get it reviewed, don't apply it under deploy pressure without reading the trade-offs first.**
+- This is NOT one of the "lock-file drift, missing dep, native module compile error" causes procedure #1 above assumes — if procedure #1's usual fixes don't apply, check this one next.
+
 ---
+
+## ⚠️ The live service has drifted from `render.yaml` (A09-006)
+
+**Verified 2026-08-25 via the Render API.** The blueprint is NOT what is deployed.
+
+| | build command |
+|---|---|
+| `render.yaml` says | `npm ci **--include=dev** && npm run build:api && npm prune --omit=dev` |
+| the live service runs | `npm ci && npm run build:api && npm prune --omit=dev` |
+
+`--include=dev` is missing. That matters because `NODE_ENV: production` IS set on the service, and
+npm honours it by skipping devDependencies — which would drop `@types/*`, `@vercel/node` and
+`tsx`, all of which `npm run build:api` needs to **compile**. (`npm prune --omit=dev` then removes
+them again afterwards, which is the point: needed to build, not to run.)
+
+It builds today, so this is a latent failure rather than a live one. The real cost is the one the
+finding names: **a blueprint-driven rebuild would not reproduce the running service**, so the
+documented disaster-recovery path rebuilds the wrong thing.
+
+**A human must fix this — the Render API exposes no way to change a build command.**
+Dashboard → `uganda-dashboard-api` → Settings → Build Command → set it to match `render.yaml`,
+then redeploy and confirm `/readyz` returns 200.
+
+Corrected while verifying: `render.yaml`'s own comment claimed "@sentry/* are devDeps". Only
+**@sentry/react** is, and it is a FRONTEND package Vercel builds — not Render. **@sentry/node**,
+the one this service uses, is a regular dependency and is unaffected either way.
+
+## Rollback — see `docs/rollback.md` (A09-009)
+
+There was no documented rollback for the frontend, the API, or the database. There is now, and it
+lives in one place rather than scattered here: **`docs/rollback.md`**.
+
+Verified rather than assumed, because the details are the part that bites:
+
+- **Vercel** auto-deploys from `main`, so merging *is* shipping. Roll back by promoting a prior
+  production deployment from the dashboard — it re-points the alias at an already-built artefact,
+  so it cannot fail on a build error. The `vercel` CLI is **not** installed on the maintainer's
+  machine, so the dashboard route is primary.
+- **Render** does NOT auto-deploy (`autoDeployTrigger: off`). Roll back from the dashboard.
+  ⚠️ **`npm run deploy:api` only moves FORWARD** — it builds from the current branch. It is not
+  an undo, and reaching for it as one ships whatever is in the tree.
+- **Migrations: 22 are forward-only** and cannot be reverted by file. They are numbered
+  ≤ 0028; every migration from 0029 up has a `.down.sql`. (The exact list is in
+  `docs/rollback.md`. Note that "≤0028" is an upper bound, not a rule — 0016 and 0022–0026 *do*
+  have downs.)
+- ⚠️ **Four down-migrations are booby-trapped.** `0042`, `0043`, `0072` and `0089` each replace
+  `trg_transactions_contribution` with a body hardcoding `v_unit_price := 1000`, silently
+  reverting NAV pricing and corrupting every subsequent contribution. Each now carries a guard
+  header. Read it before running the file.
+- **Data**: the free tier has **no point-in-time recovery**. A `pg_dump` you have actually
+  restored is the only safety net. The restore drill is proven and recorded at
+  `docs/audits/2026-08-23/a25/restore-drill.md` — 37 tables, 99,265 rows, byte-identical
+  manifest. Note it needs an `auth` schema stub or 108 RLS policies silently fail to restore,
+  leaving the data present with row-level security quietly missing.
 
 ## Provisioning Checklist
 
@@ -172,11 +271,11 @@ The Vercel project no longer holds this secret post-migration; nothing to update
 
 | Metric | Free-tier cap | Actual demo workload | Headroom |
 |---|---|---|---|
-| Instance hours | 750/month | ~720/mo (14-min keepalive + 24/7 wake) | ~30h/mo |
+| Instance hours | 750/month | ~720/mo *configured* (10-min keepalive + 24/7 wake) — measured cadence drifts well past this; see "Free-tier Resource Caps" above and open finding A09-007 | ~30h/mo, **unverified** |
 | Bandwidth | 100 GB/month | ~250KB per demo session × ~1000 demos/mo ≈ 250 MB/mo | ~99.7 GB |
 | Build minutes | 500/month | ~3 min cold deploy, ~2 min cached (N41) | Routine deploys far under cap |
 
-The keepalive is sized to stay just under the 750h cap; the bandwidth cap is effectively unbounded for the demo workload. Build cache (keyed by `package-lock.json` hash) cuts routine deploy time from ~5–7 min cold to ~2–3 min cached (N41).
+The keepalive is **configured** to stay just under the 750h cap; its measured cadence drifts well past that design margin (open finding A09-007, unowned — see "Free-tier Resource Caps" above), so the ~30h/mo instance-hour headroom is a configured-case estimate, not a verified one. The bandwidth cap is effectively unbounded for the demo workload. Build cache (keyed by `package-lock.json` hash) cuts routine deploy time from ~5–7 min cold to ~2–3 min cached (N41).
 
 ---
 

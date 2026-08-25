@@ -1,4 +1,6 @@
 > **Agent guide.** This is the product spec — personas, workflows, and business rules — written so a backend developer can grasp the whole system without reading frontend code. An AI agent should read it for product intent and business-rule context, but must verify each "Current state" note against the code, since several flows labelled here as mock or planned have since shipped. For code-level detail start at `CLAUDE.md`, then `docs/FRONTEND.md` and `docs/BACKEND.md`; do not treat this file as the sole source of truth on what is or isn't built.
+>
+> **Verified against the live Singapore DB (`ilkhfnoyxlxwqadebnkp`) on 2026-08-25.** Seed-entity counts decay fast — re-measure before relying on them.
 
 # Universal Pensions Uganda — Platform Specification
 
@@ -84,11 +86,12 @@ Universal Pensions is a digital long-term savings and pension platform designed 
 
 ```
 Country (Uganda)
-└── Region (4) — Central, Eastern, Northern, Western
-    └── District (136) — real GADM administrative districts
-        └── Branch (~316) — physical branch offices
-            └── Agent (~2,049) — field workers
-                └── Subscriber (~5,000) — individual savers
+└── Distributor (3) — ownership edge only (branches.distributor_id), NOT a geographic level
+    └── Region (4) — Central, Eastern, Northern, Western
+        └── District (136) — real GADM administrative districts
+            └── Branch (~321) — physical branch offices
+                └── Agent (~2,046) — field workers
+                    └── Subscriber (~5,000) — individual savers
 ```
 
 ### How the Hierarchy Works
@@ -97,15 +100,17 @@ Country (Uganda)
 - The distributor dashboard allows drill-down navigation through all levels
 - The branch dashboard is fixed to a single branch (no hierarchy navigation)
 - GeoJSON boundaries exist for districts and regions (used for map visualization)
+- **Distributor is an ownership edge, not a geographic containment edge**: `branches.distributor_id → agents.branch_id → subscribers.agent_id`. A distributor's branches can span multiple regions/districts. One branch currently has `distributor_id IS NULL` and belongs to no distributor.
 
 ### Real-World Mapping
 | Level | Real World | Count | Notes |
 |-------|-----------|-------|-------|
 | Country | Uganda | 1 | Root entity |
+| Distributor | Network operator | 3 | Ownership edge (`branches.distributor_id`), not geographic — `d-001` (national), `d-002` (Busoga), `d-003` (Karamoja Pilot Network) |
 | Region | Statistical region | 4 | Aligned to Uganda Bureau of Statistics regions |
 | District | Administrative district | 136 | Real GADM names, used for GeoJSON map |
-| Branch | Physical branch office | ~316 | 2-8 per district, more in urban areas |
-| Agent | Field enrollment worker | ~2,049 | 5-8 per branch |
+| Branch | Physical branch office | ~321 | 2-8 per district, more in urban areas |
+| Agent | Field enrollment worker | ~2,046 | 5-8 per branch |
 | Subscriber | Individual pension saver | ~5,000 | ~2-3 per agent (reseeded smaller on the new DB; was ~30,000 / ~60 per agent) |
 
 ---

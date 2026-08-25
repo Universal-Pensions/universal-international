@@ -268,6 +268,32 @@ test.describe('Modal Escape regression', () => {
         .filter({ hasText: /confirm settlement/i });
       await expect(modal).toBeVisible({ timeout: 15_000 });
 
+      // Wait for focus to actually land INSIDE the confirm modal before
+      // pressing Escape — the same race the ViewBranches block above already
+      // guards against (see its comment for the full explanation). `Modal`
+      // binds its key handler to the BACKDROP, so Escape is only seen once
+      // focus is within the portal; the portal mounts asynchronously
+      // (AnimatePresence), so there is a brief window after the dialog
+      // appears where focus is still on the "Upload settlement" trigger. A
+      // real user never hits that window — they read the prompt first — but
+      // Playwright presses within milliseconds. THIS was the genuinely flaky
+      // window audit finding A25-013 pins to this exact line
+      // (modal-escape.spec.ts:224, chromium + webkit): this block was the one
+      // place in the file that pressed Escape without first confirming focus
+      // had moved. Scope the poll to the confirm modal specifically (not
+      // "any open dialog") because it is portaled alongside the
+      // CommissionPanel dialog, which is also role="dialog".
+      await expect
+        .poll(
+          () => page.evaluate(() => {
+            const dialogs = Array.from(document.querySelectorAll('[role="dialog"]'));
+            const confirmDlg = dialogs.find((d) => /confirm settlement/i.test(d.textContent || ''));
+            return !!(confirmDlg && document.activeElement && confirmDlg.contains(document.activeElement));
+          }),
+          { timeout: 5_000, message: 'focus should move into the confirm modal when it opens' },
+        )
+        .toBe(true);
+
       // Press Escape inside the modal. The shared <Modal> primitive calls
       // e.preventDefault + e.stopPropagation + nativeEvent.stopImmediatePropagation
       // (Modal.jsx) so the document-level "Escape closes the panel" listener in

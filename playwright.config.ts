@@ -53,6 +53,11 @@ export default defineConfig({
   reporter: process.env.CI ? [['github'], ['html', { open: 'never' }]] : [['list'], ['html', { open: 'never' }]],
 
   globalSetup: './e2e/global-setup.ts',
+  // Fails the run if the suite leaked residue into the live demo DB that it
+  // did not clean up (audit A25-004 / the missing Phase-0 leak sweep). Scoped
+  // to a run-start baseline so it does not trip on known pre-existing
+  // residue — see e2e/global-teardown.ts's header for the full design.
+  globalTeardown: './e2e/global-teardown.ts',
 
   use: {
     baseURL: BASE_URL,
@@ -82,7 +87,25 @@ export default defineConfig({
     //   --use-fake-device-for-media-stream — provide a synthetic video device
     //
     // The combination unblocks LivenessStep without granting any real media
-    // access. Mirrored to the webkit + mobile projects below.
+    // access.
+    //
+    // ⚠️ CORRECTED 2026-08-25 (docs/audits/2026-08-23/a25/webkit-diagnosis.md,
+    // finding A25-001/Phase 7): this comment used to claim these flags were
+    // "Mirrored to the webkit + mobile projects below". They never were —
+    // `git log -S"use-fake-ui-for-media-stream"` shows the webkit project
+    // block below has never had a `launchOptions` entry, and Chromium's CLI
+    // flags would not apply to WebKit's engine even if copied. With no fake
+    // device, real WebKit's getUserMedia() never settles (headless WebKit has
+    // no permission UI to auto-accept), so `cameraReady` never flips true and
+    // "Take selfie" stayed disabled forever — the root cause of the two
+    // webkit-only baseline failures subscriber-signin-with-password.spec.ts:78
+    // and subscriber-signup-to-contribute.spec.ts:116. Fixed at the CALL SITE
+    // instead of here: those two specs stub
+    // `navigator.mediaDevices.getUserMedia` for the webkit project only via
+    // `page.addInitScript()` (see `stubWebkitCamera()` in
+    // e2e/specs/_shared/webkitCamera.ts), returning a real MediaStream from a
+    // plain canvas's `captureStream()`. Chromium's fake device above is
+    // untouched and keeps working as before.
     {
       name: 'chromium',
       use: {
@@ -131,6 +154,12 @@ export default defineConfig({
         // so they must be proven on the mobile projects too — not just desktop.
         '**/regression/subscriber-payment-methods.spec.ts',
         '**/regression/employer-kyc-nudge.spec.ts',
+        // A25-002: admin and branch each ship a dedicated PHONE shell
+        // (AdminMobileShell / BranchMobileShell) that route-matrix.md
+        // measured at 0% real-device mobile coverage. Both specs self-skip
+        // via the `isMobile` fixture on the desktop projects below.
+        '**/smoke/admin-dashboard-mobile.spec.ts',
+        '**/smoke/branch-dashboard-mobile.spec.ts',
       ],
     },
     // Mobile WebKit (iPhone 12 viewport, WebKit engine) — Safari/iOS
@@ -150,6 +179,12 @@ export default defineConfig({
         // so they must be proven on the mobile projects too — not just desktop.
         '**/regression/subscriber-payment-methods.spec.ts',
         '**/regression/employer-kyc-nudge.spec.ts',
+        // A25-002: admin and branch each ship a dedicated PHONE shell
+        // (AdminMobileShell / BranchMobileShell) that route-matrix.md
+        // measured at 0% real-device mobile coverage. Both specs self-skip
+        // via the `isMobile` fixture on the desktop projects below.
+        '**/smoke/admin-dashboard-mobile.spec.ts',
+        '**/smoke/branch-dashboard-mobile.spec.ts',
       ],
     },
   ],

@@ -13,8 +13,9 @@
     "dev:all": "concurrently -k -n vite,api -c blue,green \"npm run dev\" \"npm run dev:api\"",
     "build": "vite build",
     "build:api": "tsc -p server/tsconfig.json",
+    "typecheck": "tsc -p server/tsconfig.typecheck.json --noEmit && tsc -p api/tsconfig.json --noEmit && tsc -p e2e/tsconfig.json --noEmit",
     "start": "node dist-server/server/index.js",
-    "lint": "eslint .",
+    "lint": "eslint . --max-warnings=204",
     "preview": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest",
@@ -24,6 +25,7 @@
     "test:e2e:ui": "playwright test --ui",
     "test:e2e:smoke": "playwright test e2e/specs/smoke",
     "test:e2e:flows": "playwright test e2e/specs/flows",
+    "test:e2e:delta": "node scripts/e2e-delta.mjs",
     "seed": "dotenv -e .env.local -- node scripts/seed-supabase.mjs",
     "deploy:api": "dotenv -e .env.local -- node scripts/render-deploy.mjs"
   },
@@ -59,6 +61,7 @@
     "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz"
   },
   "devDependencies": {
+    "@axe-core/playwright": "^4.13.0",
     "@eslint/js": "^9.39.4",
     "@playwright/test": "^1.60.0",
     "@sentry/react": "^10.57.0",

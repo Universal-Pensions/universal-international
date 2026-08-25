@@ -1,8 +1,10 @@
 > **Agent guide.** The field-level data model — every entity, its fields (each classified Stored / Derived / Aggregated / Mock-only), their relationships, and the business rules + aggregation formulas that bind them. Read it before you compute a metric, add a column, or trust a field's origin, so you never treat a derived or mock-only value as stored truth. Start at `CLAUDE.md` for orientation; see `BACKEND.md` for the SQL/RPC that produces these fields.
+>
+> **Re-verified against the live Singapore DB (`ilkhfnoyxlxwqadebnkp`) and `information_schema.columns` on 2026-08-25.**
 
 # Universal Pensions Uganda — Data Model
 
-> This document describes every entity in the system, their fields, relationships, and business rules.
+> This document describes the entities the dashboards render, their fields, relationships and business rules. ⚠️ It is **not** a complete table census — the live database has 47 tables (re-measured 2026-08-25 against `pg_class`; this count moves fast during active remediation — re-run `SELECT count(*) FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname='public' AND c.relkind='r'` rather than trusting the number printed here) and only 17 get a field-level section here (30 tables including `subscriber_balances`, `transactions`, `nav_snapshots` and `contribution_schedules` — several of which carry the money — have no entry). For the authoritative column list for any table, query `information_schema.columns` or see `docs/audits/2026-08-23/baseline/columns.csv`.
 > Fields are classified as **Stored** (persisted in DB), **Derived** (computed from other data), **Aggregated** (rolled up from children), or **Mock-only** (prototype artifact).
 
 ---
@@ -48,9 +50,10 @@ Each entity references its parent via `parentId`. Metrics roll up from subscribe
 ### Fields
 | Field | Type | Storage | Description |
 |-------|------|---------|-------------|
-| id | string | Stored | Format: `d-{seq}`; the seed ships two — `d-001` (National) + `d-002` (Secondary) |
+| id | string | Stored | Format: `d-{seq}`; the seed ships **three** as of 2026-08-25 — `d-001` (National), `d-002` (Secondary), `d-003` (Karamoja Pilot Network) |
 | name | string | Stored | Distributor name (`"Universal Pensions Uganda — National"`) |
 | parentId | string | Stored | Always `"ug"` (the Country) |
+| registrationNo | string | Stored | Company registration number (`registration_no`); populated by `approve_access_request` (`0095`) — undocumented here until now |
 | managerName | string | Stored | National operations lead |
 | managerEmail | string | Stored | Contact email |
 | managerPhone | string | Stored | Ugandan phone (+256 prefix) |
@@ -64,9 +67,9 @@ Each entity references its parent via `parentId`. Metrics roll up from subscribe
 - Children: Regions (4) — geographic; `d-001` (National) owns the entire agent→subscriber network, so for it this is equivalent to "the whole tree below Country"
 
 ### Business Rules
-- **Two distributors seeded (was a singleton).** The seed now ships **two** rows: `d-001` "Universal Pensions Uganda — National" and `d-002` "Universal Pensions Uganda — Secondary" (both `status='active'`, both stamped at the seed timestamp; audit §4b.3 / D15). `d-002` is a **deliberately-seeded, loginnable** second distributor — `demo_personas` carries `distributor +256700000022 → d-002`. The agent→subscriber tree currently hangs entirely off `d-001`. The schema always permitted multiple distributors; the admin `create_distributor` RPC (`0049`) + the platform-overview rollups handle N distributors. ⚠️ Mock-backed mode (`VITE_USE_SUPABASE=false`) still knows only `d-001` (`mockData.js#DISTRIBUTORS`) — a known mock↔live parity gap, not a code-assumes-singleton bug.
+- **Three distributors live (was a singleton, then two — re-verified 2026-08-25).** `d-001` "Universal Pensions Uganda — National", `d-002` "Universal Pensions Uganda — Secondary" (both `status='active'`, both stamped at the seed timestamp; audit §4b.3 / D15), and `d-003` "Karamoja Pilot Network" (`status='active'`, created through the admin `create_distributor` RPC / access-request approval path rather than the original seed — entities can now be provisioned at runtime, not just at seed time). `d-002` is a **deliberately-seeded, loginnable** second distributor — `demo_personas` carries `distributor +256700000022 → d-002`; `d-003` has no dedicated demo login phone. The agent→subscriber tree currently hangs mostly off `d-001` (291 branches) with `d-002` at 27 and `d-003` at 2; one branch has `distributor_id IS NULL` and belongs to no distributor. The schema always permitted multiple distributors; the admin `create_distributor` RPC (`0049`) + the platform-overview rollups handle N distributors. ⚠️ Mock-backed mode (`VITE_USE_SUPABASE=false`) still knows only `d-001` (`mockData.js#DISTRIBUTORS`) — a known mock↔live parity gap, not a code-assumes-singleton bug.
 - **Metrics.** `useDistributorMetrics()` returns `{ totalSubscribers, totalAgents, totalBranches, aum }` derived from `getAllAtLevel('subscriber' | 'agent' | 'branch')` + a `subscriber_balances` aggregate. Mock fallback returns `aum: 0` plus an `aumNote` string.
-- **RLS.** Read-across-levels via `distributors_select USING (true)` (every authenticated role can read all distributor rows — used for "Operated by …" attribution surfaces). Self-update via `distributors_update_self USING (auth.jwt() ->> 'distributorId' = id)` — only the distributor role may update, and only against its own row. See `docs/role-permissions.md` and `BACKEND.md §8`.
+- **RLS (corrected 2026-08-25 — no blanket read policy exists).** `distributors_select_admin` (admin sees all rows) + `distributors_select_self` (`app_role='distributor' AND id = current_distributor_id()`, own row only) — **not** a `USING (true)` policy readable by every authenticated role. ⚠️ No subscriber / agent / branch / employer can read `distributors` at all, so any "Operated by …" attribution surface for those roles resolves to nothing (A02-007). Self-update via `distributors_update_self USING (auth.jwt() ->> 'distributorId' = id)` — only the owning distributor may update, and only its own row. See `docs/role-permissions.md` and `BACKEND.md §8`.
 
 ---
 
@@ -207,6 +210,8 @@ Each entity references its parent via `parentId`. Metrics roll up from subscribe
 | employerId | string \| null | Stored | FK → `employers(id)` when the subscriber is an employer-tagged staff member; NULL for individual subscribers |
 | compensation | number | Stored | **`compensation NUMERIC NOT NULL DEFAULT 0` (migration 0062)** — total monthly compensation (UGX). The driver field for the employer's two-leg contribution run. For employer members it is the source of truth (their `contributionSchedule.amount` is 0; `monthlyContribution` is vestigial); individual subscribers stay at 0 |
 
+⚠️ **Provenance correction (2026-08-25).** The table above mixes the mock-object shape with real `subscribers` columns without saying so. Two rows are **mock-only, not DB columns**: `parentId` (the real FK is `agent_id`) and `totalWithdrawals` (not a stored column at all — it's a mock-generation artifact; there is no live equivalent). The live `subscribers` table has 25 columns; the following exist live but are **missing from the table above entirely**: `dob`, `nin`, `occupation`, `district_id`, `is_demo_signup`, `insurance_same_as_pension`, `consent_at`, `last_contribution_date`, `current_unit_value`, `unit_value_as_of`, `created_at` (plus `agent_id`, the real name for what this table calls `parentId`). `current_unit_value` / `unit_value_as_of` are part of the NAV pricing model (`0103`–`0106`) — see the "Unit price (NAV)" glossary entry in `CLAUDE.md §9`. For the authoritative column list query `information_schema.columns` or see `docs/audits/2026-08-23/baseline/columns.csv`.
+
 ### Relationships
 - Parent: Agent
 - References: Commission (subscriber's first contribution triggers a commission)
@@ -238,7 +243,7 @@ Each entity references its parent via `parentId`. Metrics roll up from subscribe
 
 ## Employer
 
-> A B2B account (migration `0034`). The Employer owns a **standalone** staff roster (`employees`) that sits **outside** the agent→subscriber hierarchy — employees are NOT subscribers, are not in `transactions`/`subscriber_balances`, and generate **no agent commissions**. Scoped by the `employerId` JWT claim.
+> A B2B account (migration `0034`, **unified by `0043`–`0045`** — corrected 2026-08-25, this paragraph previously described the retired pre-`0045` model in the present tense). An employer's staff **ARE** subscribers: real `subscribers` rows tagged via `subscribers.employer_id`, with a normal subscriber identity + dashboard login, riding the normal `transactions` ledger (`source='employer'`, `agent_id` NULL ⇒ no agent commission). The standalone `employees` table this paragraph used to describe was **dropped by `0045`** and does not exist live. Scoped by the `employerId` JWT claim. (See the full "⚠️ Model change" banner further down this section, and the **Subscriber** entity above for the live field shape.)
 
 ### Fields
 | Field | Type | Storage | Description |
@@ -251,6 +256,7 @@ Each entity references its parent via `parentId`. Metrics roll up from subscribe
 | district | string | Stored | Operating district — **free text**, NOT an FK. The admin Platform Overview employer geo rollup (`get_employer_geo_rollup`, 0058) places the employer on the map by resolving `district = districts.name` (case-insensitive) → `region_id`; unmatched text buckets under `'unmapped'`. |
 | payrollCadence | string | Stored | `"monthly"` \| `"weekly"` \| … |
 | defaultContributionConfig | object (JSONB) | Stored | The single company-wide funding template a run applies to every member — **company-wide only; there is no per-member override.** **PERCENT-ONLY TWO-LEG MODEL (migration `0093`):** both pension keys are ALWAYS written — `{ employeePct, employerPct }` — plus the company-wide group-insurance keys `insuranceEnabled` / `groupCoverAmount` / `groupInsuranceProducts`, which ride along untouched. `mode`, `employerMatchPct`, `matchPct` and the `0092` basis/amount keys are **DELETED** and were backfilled out of every row by `0093`. Either leg may be `0`, and `0/0` is legal. See [Contribution Config shape](#contribution-config-shape) |
+| status | string | Stored | `'active'` \| `'inactive'` (`0060`) — undocumented here until now. Flipped by `set_employer_status` (reversible since `0080`). A deactivated employer cannot obtain a JWT, admit new members, or submit contribution runs (BEFORE-INSERT/UPDATE gate triggers, `0060`/`0061`) |
 | createdAt / updatedAt | timestamptz | Stored | Row timestamps (`updated_at` maintained inline by the `0035` RPCs — no shared trigger) |
 
 ### Relationships
@@ -291,7 +297,7 @@ Each entity references its parent via `parentId`. Metrics roll up from subscribe
 
 ### Business Rules
 - **Lifecycle.** `pending → completed` (invitee finishes KYC via `create_subscriber_from_employer_invite`) or `pending → expired` (7-day TTL elapses with no completion). `create_employer_invite` dedupes against the existing roster + other pending invites (same normalized phone) so an employer can't double-invite.
-- **RLS.** `employer_invites_self_select USING (app_role='employer' AND employer_id = auth.jwt() ->> 'employerId')` — an employer reads only its own invites. The pre-login invitee read (`get_employer_invite(token)`) is an **anon** SECURITY DEFINER RPC (the invitee has no JWT yet). All writes go through the `0047` DEFINER RPCs. See `BACKEND.md §8` "Domain: Employer".
+- **RLS (policy name corrected 2026-08-25).** `employer_invites_select_employer USING (app_role='employer' AND employer_id = auth.jwt() ->> 'employerId')` — an employer reads only its own invites; `employer_invites_select_admin` grants admin the full table. This document previously named the policy `employer_invites_self_select`, which does not exist live. The pre-login invitee read (`get_employer_invite(token)`) is an **anon** SECURITY DEFINER RPC (the invitee has no JWT yet). All writes go through the `0047` DEFINER RPCs. See `BACKEND.md §8` "Domain: Employer".
 
 ---
 
@@ -413,6 +419,7 @@ For each leg `> 0` the run posts ONE `transactions` row: the **employee leg as `
 | employerTotal | number | Stored | Sum of all line `employerAmount`s |
 | employeeTotal | number | Stored | Sum of all line `employeeAmount`s |
 | grandTotal | number | Stored | `employerTotal + employeeTotal` |
+| insuranceTotal | number | Stored | `insurance_total` — the group-insurance leg posted alongside the two pension legs (`0066`) — undocumented here until now |
 | runAt | timestamptz | Stored | When the run executed |
 | createdAt | timestamptz | Stored | Row timestamp |
 
@@ -426,6 +433,8 @@ For each leg `> 0` the run posts ONE `transactions` row: the **employee leg as `
 ---
 
 ## Contribution Run Line
+
+> **HISTORICAL (pre-`0045`) — added 2026-08-25; this section previously had no banner of its own, unlike the Employee section above.** `contribution_run_lines` was dropped by `0045` (`to_regclass('public.contribution_run_lines')` → NULL live) and is retained here for provenance only. Employer money now rides `transactions` (`source='employer'` + `contribution_run_id`) — see the Subscriber entity and the "⚠️ Model change" banner in the Employer section above.
 
 > The per-employee line inside a run (`contribution_run_lines`, migration `0034`). **Doubles as the employee's contribution ledger** — employees are not in `transactions`. RLS-scoped via an EXISTS join to the parent run.
 

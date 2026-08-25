@@ -57,6 +57,7 @@ import {
 } from '../../fixtures/db';
 import { PHONE_PREFIX, QUICK_CONTRIBUTION_LABEL } from '../../helpers/signup-constants';
 import { walkContributionAndPay } from '../../helpers/contribution';
+import { stubWebkitCamera } from '../_shared/webkitCamera';
 
 test.setTimeout(120_000);
 
@@ -98,7 +99,12 @@ test.describe('subscriber → signup wizard → first contribution (UI + DB)', (
 
     // Defensive: in case a previous run crashed mid-flow, clean up first.
     await cleanupSubscriberByPhone(uniquePhone);
-    await supabaseAdmin.from('users').delete().eq('phone', uniquePhone).eq('role', 'subscriber');
+    const { error: preDelErr } = await supabaseAdmin
+      .from('users')
+      .delete()
+      .eq('phone', uniquePhone)
+      .eq('role', 'subscriber');
+    expect(preDelErr, `pre-cleanup: deleting stale users row for ${uniquePhone}`).toBeNull();
   });
 
   test.afterEach(async () => {
@@ -109,11 +115,27 @@ test.describe('subscriber → signup wizard → first contribution (UI + DB)', (
     // The `users(phone, role)` row that verify-otp upserts (with the bcrypt
     // password_hash) lives outside the subscriber FK chain and isn't covered
     // by cleanupSubscriberByPhone. Delete it explicitly so reruns start with
-    // a fresh "no password yet" state.
-    await supabaseAdmin.from('users').delete().eq('phone', uniquePhone).eq('role', 'subscriber');
+    // a fresh "no password yet" state. Asserted — an unchecked failure here is
+    // exactly how fixture rows leak into the live demo DB unnoticed (A25-004).
+    const { error: delErr } = await supabaseAdmin
+      .from('users')
+      .delete()
+      .eq('phone', uniquePhone)
+      .eq('role', 'subscriber');
+    expect(delErr, `cleanup: deleting users row for ${uniquePhone}`).toBeNull();
   });
 
-  test('completes 9-step signup + contribution and writes the subscriber chain', async ({ page }) => {
+  test('completes 9-step signup + contribution and writes the subscriber chain', async ({
+    page,
+    browserName,
+  }) => {
+    // WebKit has no working fake camera device (see stubWebkitCamera's doc
+    // comment for the full diagnosis); stub getUserMedia before any
+    // navigation so LivenessStep's "Take selfie" can enable in Step 5 below.
+    // No-op on chromium, which already has a working fake device via
+    // playwright.config.ts's launchOptions.
+    await stubWebkitCamera(page, browserName);
+
     // ── Step 1 · id-upload ───────────────────────────────────────────────
     // Upload front + back. The id-quality route always passes for files
     // ≥ 20 KiB (services/kyc.js:53 enforces that client-side); we pass a
@@ -154,11 +176,14 @@ test.describe('subscriber → signup wizard → first contribution (UI + DB)', (
     // The `name="phone"` input is unique on the page.
     await page.locator('input[name="phone"]').fill(uniquePhoneDigits);
 
-    // Override the OCR-provided NIN so parallel workers don't collide on the
-    // partial unique index `ux_subscribers_nin` (migration 0017). The mock
-    // returns a fixed `CF92018AB3CD45`; we derive a unique value from the
-    // unique phone. Format `^C[MF][A-Z0-9]{12}$` — 14 chars total
-    // (ReviewStep.jsx:10). 'CF' + 9-digit phone + 'ABC' = 14 chars.
+    // Override the OCR-provided NIN with one derived from the unique phone.
+    // The OCR mock no longer returns one fixed NIN forever (A11-002 — it
+    // mints a fresh identity per call, seeded off the onboarding session id;
+    // see api/kyc/id-ocr.ts), so this isn't dodging a collision with itself
+    // anymore, but pinning the NIN to the same unique phone this spec already
+    // generates keeps its uniqueness independent of the mock's own hashing.
+    // Format `^C[MF][A-Z0-9]{12}$` — 14 chars total (ReviewStep.jsx:10). 'CF'
+    // + 9-digit phone + 'ABC' = 14 chars.
     await page.locator('#nin').fill(`CF${uniquePhoneDigits}ABC`);
 
     // District — combobox: focus opens the listbox, then we click the option.

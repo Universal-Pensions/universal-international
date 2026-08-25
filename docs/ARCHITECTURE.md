@@ -1,4 +1,6 @@
 > **Agent guide.** This is the system-architecture reference for Universal Pensions Uganda — the layered patterns, role boundaries, and auth/write/realtime models that hold across the React SPA, the Render Express API, and Supabase Postgres. Read it when you need to see how the tiers fit together or which boundary a change crosses; for file-level detail go to `docs/FRONTEND.md` or `docs/BACKEND.md` instead, and start from `CLAUDE.md` for orientation. Treat it as cross-cutting patterns, not a file inventory — and note it is pinned to a May 2026 post-cleanup snapshot, so verify concrete counts (roles, shells, migration ranges) against `CLAUDE.md` and the code before relying on them.
+>
+> **Census numbers spot-checked against the live Singapore DB (`ilkhfnoyxlxwqadebnkp`) on 2026-08-25** and corrected where stale; the May-2026 narrative pin above still applies to the prose. Re-measure before relying on any count here.
 
 # ARCHITECTURE.md — Universal Pensions Uganda
 
@@ -20,16 +22,16 @@ The platform is a thin, three-tier stack with a deliberately narrow contract bet
 │  ┌───────────────────────────────────────────────────────────────────────┐  │
 │  │  React 19 SPA (Vite 6.3.5, CSS Modules, alias `@` → `./src`)          │  │
 │  │  ─────────────────────────────────────────────────────────────────    │  │
-│  │  4 role-scoped dashboard shells (subscriber, agent, branch,           │  │
-│  │  distributor) under `src/{subscriber,agent,branch}-dashboard/` +      │  │
-│  │  `src/dashboard/` for the distributor. Shared shell:                  │  │
+│  │  6 role-scoped dashboard shells (subscriber, agent, branch,           │  │
+│  │  employer, admin) under `src/{subscriber,agent,branch,employer,       │  │
+│  │  admin}-dashboard/` + `src/dashboard/` for the distributor. Shared:   │  │
 │  │  `src/components/` + `src/contexts/` + design tokens (`src/index.css`)│  │
 │  │  Signup flow: `src/signup/`  (KYC steps + contribution sub-flow)      │  │
 │  │                                                                       │  │
 │  │  Data layer (top → bottom):                                           │  │
 │  │     components → hooks (`src/hooks/`, TanStack Query 5)               │  │
 │  │                   ↓                                                   │  │
-│  │                 services (`src/services/`, 11 files)                  │  │
+│  │                 services (`src/services/`, 20 files)                  │  │
 │  │                   ↓                                                   │  │
 │  │     ┌─── `api.js` (fetch wrapper, JWT injection, 401 → onAuthExpired) │  │
 │  │     └─── `supabaseClient.js` (PostgREST + Realtime + RPC)             │  │
@@ -49,13 +51,15 @@ The platform is a thin, three-tier stack with a deliberately narrow contract bet
        │ Express 5 / Node 22 / Sing. │  │   (rest/v1 + realtime channels)  │
        │ server/index.ts mounts      │  │                                  │
        │ api/*.ts (TypeScript)       │  │   Reads: anon client via SDK     │
-       │ • api/auth/* — 4            │  │   Writes: never direct — every   │
-       │   (send-otp, verify-otp,    │  │     write goes through a         │
-       │    verify-password,         │  │     SECURITY DEFINER RPC         │
-       │    change-password)         │  │                                  │
-       │ • api/kyc/*  — 8 (mocked)   │  │                                  │
+       │ • api/auth/* — 4            │  │   Writes: SUPPOSED to be never   │
+       │   (send-otp, verify-otp,    │  │   direct (SECURITY DEFINER RPC)  │
+       │    verify-password,         │  │   — NOT enforced as of 2026-08-  │
+       │    change-password)         │  │   25; RLS permits several direct │
+       │ • api/kyc/*  — 8 (mocked)   │  │   writes. See CLAUDE.md §7.      │
        │ • api/chat.ts               │  │                                  │
        │ • api/contact.ts            │  │                                  │
+       │ • api/access-request.ts     │  │                                  │
+       │ • api/nominee-claim.ts      │  │                                  │
        │                             │  │                                  │
        │ Shared helpers:             │  │                                  │
        │ • api/_lib/      (jwt,      │  │                                  │
@@ -76,14 +80,18 @@ The platform is a thin, three-tier stack with a deliberately narrow contract bet
                   ▼                                      ▼
          ┌─────────────────────────────────────────────────────────────────┐
          │                Supabase Postgres (single project)               │
-         │  28 tables · 2 ENUMs · pg_trgm · 5 triggers                     │
-         │  40 functions (29 SECURITY DEFINER + 11 INVOKER)                │
-         │  ~90 RLS policies (zero `auth.uid()` calls — all read app_role) │
+         │  47 tables · 2 ENUMs · pg_trgm · 14 triggers (verified 08-25)   │
+         │  99 functions (76 SECURITY DEFINER + 23 INVOKER; 0 overloads)   │
+         │  106 RLS policies (zero `auth.uid()` calls — all read app_role) │
          │  supabase_realtime publication: empty (no tables)               │
          │                                                                 │
-         │  57 migrations on the new DB (cutover 2026-06-05):              │
-         │    0001 → 0057 inclusive (0019 backfilled, no longer            │
-         │    skipped). New Singapore DB — no ledger drift. See §13.       │
+         │  129 forward migration files on disk (0001→0132, some gaps)    │
+         │    as of 2026-08-25 — re-count, this branch adds fast (moved   │
+         │    twice in one working session already). Live ledger head    │
+         │    matches 0132 (100 rows) but is TIMESTAMP-versioned, NOT     │
+         │    joinable to 0001_* filenames by version in EITHER direction │
+         │    — some applied migrations have no ledger row at all. Never  │
+         │    version-diff; introspect live objects. See BACKEND.md §16.  │
          └─────────────────────────────────────────────────────────────────┘
 ```
 
@@ -384,17 +392,17 @@ Two layers, each catching a different class of regression. The cleanup sprint mo
 | **Unit** | Vitest 4.1.4 + jsdom + `src/test/supabaseMock.js` | `src/**/__tests__/`, `src/**/*.test.{js,jsx}`, `api/**/*.test.ts` | Service shape contracts, util correctness, hook caching, component primitives, API route handlers, mock-branch parity |
 | **E2E** | Playwright; service-role fixtures in `e2e/fixtures/db.ts`; auth fixtures in `e2e/.auth/` | `e2e/specs/{smoke,flows,regression,db}/` | Real-browser flows: signup → contribute → withdraw; commission settlement (`due → paid`) end-to-end; cross-laptop demo loops |
 
-### 7.1 Unit layer — 1221 tests across 76 files
+### 7.1 Unit layer — 4456 tests across 184 files (measured 2026-08-25)
 
-Current suite (`npx vitest run`):
+Current suite (`npx vitest run --silent`):
 
 ```
 $ npm test
- Test Files  76 passed (76)
-      Tests  1221 passed (1221)
+ Test Files  1 failed | 183 passed (184)
+      Tests  1 failed | 4455 passed (4456)
 ```
 
-That is ~**491 new unit tests added across the cleanup**. Coverage delta is broken out per Phase-2 commit:
+The 1 failing test is `src/services/__tests__/search.test.js` ("real and mock branches produce the same field names on a hit") — outside this documentation pass's write-set, unrelated, flagged as an escalation rather than fixed here. This section previously read "2195 tests across 151 files (2 files / 3 tests failing in `deriveBranchAnalytics.test.js`)" — that failure is gone and the suite has roughly doubled since, a live illustration of how fast this number moves; before that it briefly read "2010 tests across 140 files," sourced from a slightly older audit snapshot. **Re-measure with `npm test` rather than trusting any number printed here, including this one** — it has now been wrong at least three times within the same remediation programme. Coverage delta is broken out per Phase-2 commit:
 
 | Commit | Files added | What | Finding |
 |---|---|---|---|
@@ -456,6 +464,7 @@ The architecture rule for an opaque test suite: **no `test.fail()` count > 0** (
 | `test.fail()` | **0** | T11 (`distributor-create-branch.spec.ts`) was un-failed in Phase 3B `3684dc9` after `useCreateBranch` was wired into the Distributor panel. |
 | Conditional `test.skip()` (seed-window guards, mobile-only/desktop-only, missing env, destructive) | Several, all documented inline | Includes destructive `empty-states` skip (requires `ALLOW_DESTRUCTIVE_E2E=true`), mobile/desktop projection skips, seed-window data skips. |
 | Unconditional `test.skip()` (FEATURE-GATED, **not** seed/data) | **1** | `e2e/specs/regression/modal-escape.spec.ts:84` — guards an upstream `BranchDetail` render crash on certain branches whose metrics shape diverges. Coverage of the Modal Escape primitive is preserved by two sibling tests in the same file. |
+| Hard failures (measured 2026-08-23, `--workers=1`, all 4 projects) | **30 of 370** | Deterministic, not flaky — this table's fail()/skip() accounting doesn't capture them because they're plain assertion failures on unannotated tests, not `test.fail()`/`test.skip()`. `mobile-chromium` + `mobile-webkit` fail an identical set of 11; `chromium` + `webkit` both fail `agent-onboard-subscriber.spec.ts:109` and `modal-escape.spec.ts:224`. Two independent engines failing identical line numbers is a defect set, not contention. See `docs/audits/2026-08-23/00-baseline.md §10` and `.claude/skills/qa.md`. |
 
 The single FEATURE-GATED skip is documented in-line; an unconditional skip on a real bug should be either a `test.fail` or removed once the bug is fixed. See `e2e/specs/regression/modal-escape.spec.ts:75-88` for the rationale comment.
 
@@ -537,7 +546,7 @@ Every `/api/*` call from the frontend goes through `src/services/api.js`. The wr
 4. On HTTP 401: clears `upensions_token` + `upensions_auth`, notifies all `onAuthExpired` listeners (consumed by `AuthContext` → graceful logout), and throws.
 5. On other non-OK: throws an `Error` carrying `code` (from response body's `error` or `code` field), `status`, and `body`.
 
-**Phase 1D (`43f67e5`, B1/B2/B16/B18/B19) unified the error envelope** across all 14 routes:
+**Phase 1D (`43f67e5`, B1/B2/B16/B18/B19) unified the error envelope** across all 16 routes:
 
 | Route family | Pre-cleanup envelope drift | Post-cleanup canonical |
 |---|---|---|
@@ -658,7 +667,7 @@ SELECT tablename
 
 ## 13. Migration & schema-evolution discipline
 
-**Forward-only migrations** under `supabase/migrations/`. Sequential 4-digit prefix; never edit a shipped migration. The full list today runs `0001` → `0057` (**57 migrations**, with `0019` backfilled as the captured remote hotfix); `0029`–`0031` deliver the commission-flow simplification (`due → paid`), `0032`–`0036` the settlement fixes + employer family, `0037`–`0039` the funder-redesign, `0040`–`0042` the post-restore cleanup + commission-aggregate RPCs + signup/write-flow hardening, `0043`–`0048` the subscriber⇄employer unification + invite-based onboarding (`employer_invites`, `0047`), `0049`–`0051` the **admin** role (shipped — platform-wide RLS + create/overview/settlement RPCs), and `0052`–`0057` the 2026-06-08 audit-remediation batch (`0052` re-pins `_insert_subscriber_chain`'s `search_path`; `0053` schema-hygiene; `0054` subscriber money RPCs; `0055` `set_commission_rate`; `0056` atomic employer config; `0057` perf rollups). All are applied to the new Singapore DB (`ilkhfnoyxlxwqadebnkp`, cutover 2026-06-05). See `BACKEND.md §12` for the per-migration table.
+**Forward-only migrations** under `supabase/migrations/`. Sequential 4-digit prefix; never edit a shipped migration. The original 2026-06-05 cutover batch ran `0001` → `0057` (**57 migrations**, with `0019` backfilled as the captured remote hotfix); `0029`–`0031` deliver the commission-flow simplification (`due → paid`), `0032`–`0036` the settlement fixes + employer family, `0037`–`0039` the funder-redesign, `0040`–`0042` the post-restore cleanup + commission-aggregate RPCs + signup/write-flow hardening, `0043`–`0048` the subscriber⇄employer unification + invite-based onboarding (`employer_invites`, `0047`), `0049`–`0051` the **admin** role (shipped — platform-wide RLS + create/overview/settlement RPCs), and `0052`–`0057` the 2026-06-08 audit-remediation batch (`0052` re-pins `_insert_subscriber_chain`'s `search_path`; `0053` schema-hygiene; `0054` subscriber money RPCs; `0055` `set_commission_rate`; `0056` atomic employer config; `0057` perf rollups). ⚠️ **The list has grown well past `0057` since** — 129 forward migration files exist on disk as of 2026-08-25, numbered `0001`–`0132` with a few gaps (re-count with `ls supabase/migrations/*.sql | grep -v .down.sql | wc -l` before trusting any endpoint printed here — it moved twice within a single working session already). `0058` onward (distributor scoping, NAV pricing, admin-attention signals, nominee claims, and more) is narrated in `docs/BACKEND.md §10`/§16 and the `docs/audits/2026-08-23/` set, not enumerated in this document. The live `supabase_migrations` ledger is TIMESTAMP-versioned and shares no key with these `0001_*` filenames — never establish "applied" state by version-diffing the two, in **either** direction: some ledger rows carry no numeric prefix at all, and some applied migrations (`0118`, `0119`, `0122` — confirmed live 2026-08-25) have **no ledger row whatsoever**, having been applied out-of-band. Introspect live objects instead (see §12 below). `0001`–`0108` are confirmed applied via the tracked ledger; the applied/not-applied state of `0109`–`0132` is genuinely mixed — see `BACKEND.md §16` for the full table (short version: `0118`/`0119`/`0122`/`0127`/`0128`/`0131`/`0132` are live, `0129`/`0130` are deliberately not, the rest are unconfirmed this pass). `0118`, the RLS direct-write fix once cited here as "still being drafted," **is now applied** — see `CLAUDE.md §7.3`. See `BACKEND.md §12` for the per-migration table.
 
 **Discipline rules:**
 

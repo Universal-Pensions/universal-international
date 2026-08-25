@@ -20,7 +20,21 @@ services:
     branch: main                                            # G14 — swapped to main at cutover (was cleanup/post-audit-2026-05-26)
     autoDeployTrigger: off                                  # G14
     healthCheckPath: /healthz                               # G16
-    buildCommand: npm ci --include=dev && npm run build:api && npm prune --omit=dev   # G15 — --include=dev required because NODE_ENV=production would otherwise make `npm ci` skip devDeps (@types/*, @vercel/node, tsx, @sentry/* are devDeps)
+    # A09-006 — RESOLVED 2026-08-25. The live service had drifted from this line
+    # (it was missing `--include=dev`); the build command was corrected in the
+    # Render dashboard and re-verified via the API, and now matches exactly.
+    #
+    # `--include=dev` is load-bearing: `NODE_ENV: production` is set below, and npm
+    # honours that by skipping devDependencies — which would drop @types/*,
+    # @vercel/node and tsx, all of which `npm run build:api` needs to COMPILE.
+    # (`npm prune --omit=dev` then removes them after the build. Needed to build,
+    #  not to run.) If this line and the dashboard ever disagree again, the
+    #  dashboard is what actually runs.
+    #
+    # Corrected from the original comment: it said "@sentry/* are devDeps". Only
+    # @sentry/REACT is, and it is a FRONTEND package Vercel builds, not Render.
+    # @sentry/NODE — the one this service uses — is a regular dependency.
+    buildCommand: npm ci --include=dev && npm run build:api && npm prune --omit=dev   # G15
     startCommand: node dist-server/server/index.js
     envVars:
       - key: NODE_VERSION

@@ -100,6 +100,11 @@ test.describe('money RPC idempotency + atomicity (DB layer)', () => {
     // Remove any transactions created by the test's nonces (the result JSON stores
     // the tx id; simplest robust cleanup is to delete the money_nonces rows AND
     // the contribution/withdrawal transactions they spawned, then restore balance).
+    // Every delete's error is COLLECTED rather than asserted inline so a single
+    // failure can't skip the balance restore below — but the collected list IS
+    // asserted at the end; a silently-swallowed cleanup failure is exactly how
+    // fixture rows leak into the live demo DB unnoticed (audit A25-004).
+    const teardownErrors: string[] = [];
     for (const nonce of createdNonces) {
       const { data: ledger } = await supabaseAdmin
         .from('money_nonces')
@@ -108,10 +113,13 @@ test.describe('money RPC idempotency + atomicity (DB layer)', () => {
         .maybeSingle();
       const txId = (ledger as { result?: { id?: string } } | null)?.result?.id;
       if (txId) {
-        await supabaseAdmin.from('transactions').delete().eq('id', txId);
-        await supabaseAdmin.from('withdrawals').delete().eq('id', txId);
+        const { error: txnErr } = await supabaseAdmin.from('transactions').delete().eq('id', txId);
+        if (txnErr) teardownErrors.push(`transactions ${txId}: ${txnErr.message}`);
+        const { error: wErr } = await supabaseAdmin.from('withdrawals').delete().eq('id', txId);
+        if (wErr) teardownErrors.push(`withdrawals ${txId}: ${wErr.message}`);
       }
-      await supabaseAdmin.from('money_nonces').delete().eq('nonce', nonce);
+      const { error: nonceErr } = await supabaseAdmin.from('money_nonces').delete().eq('nonce', nonce);
+      if (nonceErr) teardownErrors.push(`money_nonces ${nonce}: ${nonceErr.message}`);
     }
     // Restore the balance row to its pre-test snapshot (the AFTER INSERT trigger
     // moved it; deleting the tx does not move it back).
@@ -127,6 +135,10 @@ test.describe('money RPC idempotency + atomicity (DB layer)', () => {
         .eq('subscriber_id', SUBSCRIBER_ID);
     }
     snapshot = null;
+    expect(
+      teardownErrors,
+      `cleanup: all teardown deletes must succeed — failures: ${teardownErrors.join('; ')}`,
+    ).toEqual([]);
   });
 
   test('make_contribution is idempotent: same nonce twice credits exactly once', async () => {

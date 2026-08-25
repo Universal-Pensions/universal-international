@@ -17,13 +17,20 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 2
     steps:
-      - name: Ping /healthz
+      - name: Ping /readyz
         run: |
           set -euo pipefail
+          # /readyz performs one real read against Supabase (unlike /healthz,
+          # which is deliberately I/O-free for the platform's own liveness
+          # probe — see server/index.ts:95-97). Pinging /readyz here means
+          # this cron both generates the DB activity that defers the
+          # Supabase free-tier auto-pause and actually goes red when the DB
+          # is unreachable, instead of staying green through an outage
+          # (audit A09-001). Do not point this back at /healthz.
           code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 30 \
-            "https://uganda-dashboard-api.onrender.com/healthz")
+            "https://uganda-dashboard-api.onrender.com/readyz")
           if [ "$code" != "200" ]; then
-            echo "Render /healthz returned HTTP $code"
+            echo "Render /readyz returned HTTP $code"
             exit 1
           fi
-          echo "Render /healthz ok"
+          echo "Render /readyz ok"

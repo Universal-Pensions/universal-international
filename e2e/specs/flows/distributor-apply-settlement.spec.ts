@@ -77,6 +77,24 @@ async function readDueSlice(agentId: string): Promise<DueRow[]> {
 // the real function and every test below runs end-to-end. The file is enabled
 // (no describe.fixme); the per-line 0032 behaviours are enabled inline too.
 test.describe('distributor → apply settlement (UI → RPC → DB → notifications)', () => {
+  // SERIAL — mandatory, not a style choice. Every test in this file shares
+  // ONE fixed live agent id (AGENT_ID = PERSONA_FOR.agent.entityId, 'a-001')
+  // and mutates its `commissions` rows in beforeEach/afterEach
+  // (seedDueCommissionForFixture / revert). Under `fullyParallel: true` with
+  // more than one worker (the local default — playwright.config.ts only pins
+  // `workers: 1` under CI), Playwright is free to run two of these tests on
+  // two different workers AT THE SAME TIME, so two beforeEach calls seed the
+  // SAME agent's due slice concurrently and one test's afterEach can revert
+  // rows the other test is still mid-assertion against. This exact class of
+  // collision already leaked live rows during this remediation programme.
+  // `mode: 'serial'` forces the whole describe block — beforeEach, every
+  // test, afterEach — onto a single worker, in order, which removes the race
+  // entirely regardless of the global worker count. Always additionally pass
+  // `--workers=1` on the CLI when running this file locally (belt and
+  // braces, and required if running it alongside other spec files that touch
+  // the same live rows).
+  test.describe.configure({ mode: 'serial' });
+
   test.use({ storageState: storageStatePathFor('distributor') });
   test.setTimeout(60_000);
 
@@ -87,30 +105,73 @@ test.describe('distributor → apply settlement (UI → RPC → DB → notificat
   let dueHandle: CommissionFixtureHandle | null = null;
   let settledLineIds: string[] = [];
   let createdBatchIds: string[] = [];
+  // Captured from each apply_settlement RPC's own request body — the panel
+  // mints a fresh crypto.randomUUID()-based nonce per upload
+  // (CommissionPanel.jsx newSettlementNonce()) that never surfaces anywhere
+  // else observable, so reading the RPC's outgoing request is the only way a
+  // spec can learn it. settlement_uploads (columns: nonce/result/created_at
+  // only) has no batch/agent/ref column a cleanup could otherwise scope by —
+  // without this it was NEVER cleaned up by the E2E suite (audit A05-014).
+  let capturedNonces: string[] = [];
 
   test.beforeEach(async ({ page }) => {
     await disableAnimations(page);
     dueHandle = await seedDueCommissionForFixture(AGENT_ID, 2);
     settledLineIds = [];
     createdBatchIds = [];
+    capturedNonces = [];
   });
 
   test.afterEach(async () => {
+    // Every delete's error is COLLECTED rather than asserted inline, so a
+    // single failure can't skip dueHandle.cleanup() below — it MUST always
+    // run regardless (it reverts rows the fixture itself flipped paid→due to
+    // build the seed slice, independent of whatever the test settled). The
+    // collected list IS asserted at the end: a silently-swallowed cleanup
+    // failure is exactly how fixture rows leak into the live demo DB
+    // unnoticed (audit A25-004).
+    const teardownErrors: string[] = [];
+
     // Flip any lines the test settled back to `due` (clearing the settlement
     // stamp), then remove the batch + notification rows the RPC created.
     if (settledLineIds.length > 0) {
-      await supabaseAdmin
+      const { error } = await supabaseAdmin
         .from('commissions')
         .update({ status: 'due', paid_date: null, paid_amount: null, txn_ref: null })
         .in('id', settledLineIds);
+      if (error) teardownErrors.push(`commissions revert: ${error.message}`);
     }
     if (createdBatchIds.length > 0) {
-      await supabaseAdmin.from('notifications').delete().in('ref_id', createdBatchIds);
-      await supabaseAdmin.from('settlement_batches').delete().in('id', createdBatchIds);
+      const { error: notifErr } = await supabaseAdmin
+        .from('notifications')
+        .delete()
+        .in('ref_id', createdBatchIds);
+      if (notifErr) teardownErrors.push(`notifications: ${notifErr.message}`);
+      const { error: batchErr } = await supabaseAdmin
+        .from('settlement_batches')
+        .delete()
+        .in('id', createdBatchIds);
+      if (batchErr) teardownErrors.push(`settlement_batches: ${batchErr.message}`);
+    }
+    // settlement_uploads is an idempotency ledger keyed only on `nonce` — until
+    // now the E2E cleanup never touched it at all (A05-014). Delete by the
+    // exact nonce(s) captured off each RPC request this test made.
+    if (capturedNonces.length > 0) {
+      const { error: uploadErr } = await supabaseAdmin
+        .from('settlement_uploads')
+        .delete()
+        .in('nonce', capturedNonces);
+      if (uploadErr) teardownErrors.push(`settlement_uploads: ${uploadErr.message}`);
     }
     // Restore any rows the fixture flipped paid→due to create the seed slice.
+    // MUST run regardless of the outcome above.
     if (dueHandle) await dueHandle.cleanup();
     dueHandle = null;
+
+    expect(
+      teardownErrors,
+      `cleanup: all teardown deletes must succeed — failures: ${teardownErrors.join('; ')}`,
+    ).toEqual([]);
   });
 
   test('full payment flips due→paid, records a batch, notifies agent + branch', async ({ page }) => {
@@ -159,6 +220,8 @@ test.describe('distributor → apply settlement (UI → RPC → DB → notificat
 
     const rpcResponse = await rpcPromise;
     expect(rpcResponse.status(), 'apply_settlement RPC must succeed').toBe(200);
+    const rpcBody = rpcResponse.request().postDataJSON() as { p_nonce?: string | null } | null;
+    if (rpcBody?.p_nonce) capturedNonces.push(rpcBody.p_nonce);
 
     // Success toast appears.
     await expect(
@@ -256,7 +319,17 @@ test.describe('distributor → apply settlement (UI → RPC → DB → notificat
     });
     const modal = distPage.getByRole('dialog').filter({ hasText: /confirm settlement/i });
     await expect(modal).toBeVisible({ timeout: 15_000 });
+    // Register BEFORE confirming so we capture the nonce this upload mints
+    // (needed to clean up its settlement_uploads row — A05-014).
+    const rpcPromise = distPage.waitForResponse(
+      (r) => r.url().includes('/rest/v1/rpc/apply_settlement') && r.request().method() === 'POST',
+      { timeout: 20_000 },
+    );
     await modal.getByRole('button', { name: /confirm settlement/i }).click();
+    const rpcResponse = await rpcPromise;
+    expect(rpcResponse.status(), 'apply_settlement RPC must succeed').toBe(200);
+    const rpcBody = rpcResponse.request().postDataJSON() as { p_nonce?: string | null } | null;
+    if (rpcBody?.p_nonce) capturedNonces.push(rpcBody.p_nonce);
     await expect(
       distPage.getByRole('status').filter({ hasText: /settled \d+ agent/i }),
       'the success toast appears (the confirm modal shows the same phrase, so scope to the toast)',
@@ -340,7 +413,17 @@ test.describe('distributor → apply settlement (UI → RPC → DB → notificat
       });
       const modal = page.getByRole('dialog').filter({ hasText: /confirm settlement/i });
       await expect(modal).toBeVisible({ timeout: 15_000 });
+      // Register BEFORE confirming so we capture the nonce this upload mints
+      // (needed to clean up its settlement_uploads row — A05-014).
+      const rpcPromise = page.waitForResponse(
+        (r) => r.url().includes('/rest/v1/rpc/apply_settlement') && r.request().method() === 'POST',
+        { timeout: 20_000 },
+      );
       await modal.getByRole('button', { name: /confirm settlement/i }).click();
+      const rpcResponse = await rpcPromise;
+      expect(rpcResponse.status(), 'apply_settlement RPC must succeed').toBe(200);
+      const rpcBody = rpcResponse.request().postDataJSON() as { p_nonce?: string | null } | null;
+      if (rpcBody?.p_nonce) capturedNonces.push(rpcBody.p_nonce);
       await expect(
       page.getByRole('status').filter({ hasText: /settled \d+ agent/i }),
       'the success toast appears (the confirm modal shows the same phrase, so scope to the toast)',
@@ -388,7 +471,17 @@ test.describe('distributor → apply settlement (UI → RPC → DB → notificat
       });
       const modal = page.getByRole('dialog').filter({ hasText: /confirm settlement/i });
       await expect(modal).toBeVisible({ timeout: 15_000 });
+      // Register BEFORE confirming so we capture the nonce this upload mints
+      // (needed to clean up its settlement_uploads row — A05-014).
+      const rpcPromise = page.waitForResponse(
+        (r) => r.url().includes('/rest/v1/rpc/apply_settlement') && r.request().method() === 'POST',
+        { timeout: 20_000 },
+      );
       await modal.getByRole('button', { name: /confirm settlement/i }).click();
+      const rpcResponse = await rpcPromise;
+      expect(rpcResponse.status(), 'apply_settlement RPC must succeed').toBe(200);
+      const rpcBody = rpcResponse.request().postDataJSON() as { p_nonce?: string | null } | null;
+      if (rpcBody?.p_nonce) capturedNonces.push(rpcBody.p_nonce);
       await expect(
       page.getByRole('status').filter({ hasText: /settled \d+ agent/i }),
       'the success toast appears (the confirm modal shows the same phrase, so scope to the toast)',

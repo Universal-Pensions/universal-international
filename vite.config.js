@@ -56,17 +56,40 @@ export default defineConfig({
       provider: 'v8',
       reporter: ['text', 'html'],
       include: ['src/**/*.{js,jsx,ts,tsx}', 'api/**/*.ts'],
-      exclude: ['**/*.test.*', '**/__tests__/**', 'src/test/**', 'src/data/**', 'node_modules/**', 'dist/**', 'coverage/**'],
-      // CI-enforced floor (audit §7b.16). MEASURED actual statements coverage is
-      // ~23.22% (2026-06-09) — the bulk of `src/**` is UI components whose only
-      // coverage is the browser-level Playwright E2E suite (§7b.15), not Vitest.
-      // The audit's aspirational 60% is therefore unmeetable at the unit/RTL
-      // layer today; setting it would red-line CI. We pin the threshold at the
-      // measured floor (rounded DOWN to 23) so the gate is a RATCHET — it locks
-      // in the current coverage and any regression below it fails CI. Raise this
-      // as RTL/unit coverage grows; never set it above the measured actual.
+      // '**/* [0-9].*' (audit A25-012, 2026-08-25): this checkout is actively
+      // syncing through a tool that materialises "conflicted copy"-style
+      // duplicates — e.g. `periodSettlement.test 2.js`, `policies.test 2.js`,
+      // byte-identical siblings of real files, appearing and reappearing on
+      // disk without ever being `git add`ed. They fail to match `**/*.test.*`
+      // (the space before the digit breaks the `.test.` substring), so v8's
+      // `include: src/**/*.js` swept them in as phantom 0%-covered files and
+      // measurably deflated every metric below — confirmed by deleting the 5
+      // found at measurement time and re-running: statements alone moved
+      // several points. Untracked and harmless individually, but a coverage
+      // *gate* that a filesystem sync race can silently push down over time
+      // isn't a trustworthy ratchet, so they're excluded defensively rather
+      // than relying on remembering to delete them before every measurement.
+      exclude: ['**/*.test.*', '**/__tests__/**', 'src/test/**', 'src/data/**', 'node_modules/**', 'dist/**', 'coverage/**', '**/* [0-9].*'],
+      // CI-enforced floor (audit A25-012, 2026-08-25 — supersedes the original
+      // §7b.16 pin). MEASURED coverage today (`npx vitest run --coverage`,
+      // after clearing the sync-duplicate contamination above): statements
+      // 38.97%, branches 33.56%, functions 31.96%, lines 40.71%. The 2026-06-09
+      // baseline (§7b.16) pinned statements ONLY at 23 — 10 points below even
+      // its own contemporaneous measured actual (~32.94%) — and left
+      // branches/functions/lines completely ungated, so coverage could regress
+      // freely on three of the four axes and even statements had 10 points of
+      // slack to give back before the gate noticed. All four are pinned here,
+      // each FLOORED to the integer below its measured value (never above —
+      // that would red-line CI on the next run) so the gate is a genuine
+      // RATCHET on every axis: it locks in today's floor and fails CI on any
+      // regression below it. Raise these as RTL/unit coverage grows; the bulk
+      // of `src/**` is UI components whose only coverage is the browser-level
+      // Playwright E2E suite, not Vitest, so 100% here was never the goal.
       thresholds: {
-        statements: 23,
+        statements: 38,
+        branches: 33,
+        functions: 31,
+        lines: 40,
       },
     },
   },

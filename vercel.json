@@ -8,8 +8,15 @@
         {"key": "X-Content-Type-Options", "value": "nosniff"},
         {"key": "Referrer-Policy", "value": "strict-origin-when-cross-origin"},
         {"key": "Strict-Transport-Security", "value": "max-age=63072000; includeSubDomains; preload"},
-        {"key": "Content-Security-Policy-Report-Only", "value": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://*.tile.openstreetmap.org https://*.basemaps.cartocdn.com; connect-src 'self' https://ilkhfnoyxlxwqadebnkp.supabase.co https://uganda-dashboard-api.onrender.com https://*.sentry.io; font-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none'"},
+        {"key": "Content-Security-Policy-Report-Only", "value": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://*.tile.openstreetmap.org https://*.basemaps.cartocdn.com; connect-src 'self' https://ilkhfnoyxlxwqadebnkp.supabase.co https://uganda-dashboard-api.onrender.com https://*.sentry.io; font-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none'; report-to csp-endpoint; report-uri https://uganda-dashboard-api.onrender.com/api/csp-report"},
+        {"key": "Reporting-Endpoints", "value": "csp-endpoint=\"https://uganda-dashboard-api.onrender.com/api/csp-report\""},
         {"key": "Permissions-Policy", "value": "geolocation=(), camera=(self), microphone=(), payment=(), usb=(), magnetometer=(), accelerometer=(), gyroscope=()"}
+      ]
+    },
+    {
+      "source": "/assets/(.*)",
+      "headers": [
+        {"key": "Cache-Control", "value": "public, max-age=31536000, immutable"}
       ]
     }
   ],
