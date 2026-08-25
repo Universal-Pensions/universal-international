@@ -267,3 +267,31 @@ moving 200 → 196 available as real cards were claimed (`idc-0001` "Bosco Otim"
 `idc-0002` "Godfrey Okiror"). Note the ratio: **4 cards for 3 onboardings** —
 some sessions claim and abandon. The RPC's 24-hour reclaim of claimed-but-unused
 cards exists for exactly that.
+
+---
+
+## 2026-08-25 (final) — `0134` + `0135`: the 0126 regression repaired
+
+| migration | live effect | undo |
+|---|---|---|
+| `0134_reanchor_employer_runs` | **UPDATE 210** run-linked transaction dates, **UPDATE 8** run headers (`run_at` + `period_label`), **DELETE 1** orphan run header (`run-73a0e5c8…`, "E2E Run 1785753040826", 0 legs, 4,704,000 phantom). Snapshots `contribution_runs_pre_purge_20260825` + `transactions_runshift_pre_purge_20260825`, both RLS-secured. | `0134_*.down.sql` — restores dates, labels and the deleted header **verbatim from the snapshots**. |
+| `0135_reanchor_employer_recent_hires` | **UPDATE 5** subscriber `registered_date` (+8d) and **UPDATE 5** of their transactions. No snapshot: a pure constant offset is exactly reversible by −8. | `0135_*.down.sql`. |
+
+**Only dates moved.** Both migrations assert AUM and the transaction sum are
+identical to a pre-shift snapshot, and abort otherwise.
+
+### Before → after, measured on live
+
+| | before | after |
+|---|---|---|
+| daily / weekly contributions | **0 / 0** | **2,560,500 / 2,560,500** |
+| new members today / week / month | **0 / 0 / 0** | **2 / 2 / 2** |
+| top employer contribution | **0** | **2,560,500** |
+| future-dated "completed" runs | 3 | **0** |
+| emp-001 run total | 19,294,000 *(incl. 4.7M phantom)* | **14,590,000** |
+| AUM | 2,357,847,446 | **2,357,847,446** (unchanged) |
+| balance invariant | 5059 / 5059 | **5059 / 5059** |
+
+The E2E run header is worth noting: `0110` purged residue by
+`transactions.txn_ref`, so an orphaned **run header with no transactions**
+matched nothing and survived. Same residue class, different shape.

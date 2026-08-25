@@ -77,7 +77,7 @@ export default function ViewEmployers({ fullPage = false }) {
                 <div className={styles.titleWrap}>
                   <h2 className={styles.title}>Employers</h2>
                   <p className={styles.subtitle}>
-                    {formatNumber(totals.employers)} employers · {formatNumber(totals.members)} members · {formatUGXShort(totals.contributed)} contributed
+                    {formatNumber(totals.employers)} employers · {formatNumber(totals.members)} members · {formatUGXShort(totals.contributed)} paid in by members
                   </p>
                 </div>
                 <button className={styles.newBtn} onClick={() => setCreateEmployerOpen(true)}>
@@ -151,9 +151,23 @@ export default function ViewEmployers({ fullPage = false }) {
                           <span className={styles.metricVal}>{formatUGXShort(e.totalBalance ?? 0)}</span>
                           <span className={styles.metricLabel}>AUM</span>
                         </div>
-                        <div className={styles.metric}>
+                        {/* "Paid in by members", NOT "Contributed".
+                            get_all_employers_metrics (0049) sums EVERY
+                            type='contribution' transaction for this employer's
+                            members — payroll runs AND their own personal
+                            top-ups. The employer's own dashboard shows
+                            run-linked funding only (the A14-001 fix, scoped to
+                            that role), so the same company reads 62.4M here and
+                            14.59M one click in. Both figures are correct; the
+                            label was the thing that made them look
+                            contradictory. See
+                            docs/audits/2026-08-23/a14/admin-employers-list-inconsistency.md */}
+                        <div
+                          className={styles.metric}
+                          title="Everything this employer's members have paid in — payroll runs plus their own top-ups. The employer's own dashboard shows payroll runs only."
+                        >
                           <span className={styles.metricVal}>{formatUGXShort(e.totalContributions ?? 0)}</span>
-                          <span className={styles.metricLabel}>Contributed</span>
+                          <span className={styles.metricLabel}>Paid in by members</span>
                         </div>
                         <div className={styles.metric}>
                           <span className={styles.metricVal}>{formatNumber(e.insuredCount ?? 0)}</span>

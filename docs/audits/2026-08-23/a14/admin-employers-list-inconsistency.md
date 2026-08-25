@@ -1,8 +1,18 @@
 # NEW — the admin employers list and the employer's own dashboard disagree
 
 **Found 2026-08-25**, routed from `P3-escalation-owners` while it closed E25.
-Not one of the 221 audit findings. Demo-visible. **Not fixed — it needs a
-product decision, and the obvious fix would make the demo look worse.**
+Not one of the 221 audit findings. Demo-visible.
+
+> ## ✅ RESOLVED 2026-08-25 — option 2, relabel rather than recompute
+>
+> `ViewEmployers.jsx`'s tile now reads **"Paid in by members"** instead of
+> "Contributed", with a `title` spelling out the difference, and the header
+> summary matches. No figure moved.
+>
+> Option 1 (make the admin list run-linked) was **not** taken, for the reason
+> below: it would render "Contributed: 0" for six of eight employers. Both
+> numbers were always correct — the label was what made them look
+> contradictory.
 
 ---
 

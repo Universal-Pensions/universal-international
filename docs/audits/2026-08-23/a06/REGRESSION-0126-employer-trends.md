@@ -1,8 +1,43 @@
 # REGRESSION — `0126` zeroed the admin "Employers" trends strip
 
 **Found 2026-08-25 while verifying `0131`. Not an audit finding — this programme
-caused it.** Severity: demo-visible. Not yet fixed; the fix is a decision for the
-user, and the reasoning is below.
+caused it.** Severity: demo-visible.
+
+> ## ✅ RESOLVED 2026-08-25 — migrations `0134` + `0135`
+>
+> Route 3 (re-anchor the seeded dates) was taken, with the user's approval. The
+> options analysis below is kept as the record of why the other two were wrong.
+>
+> **`0134`** shifts each employer's whole run set so that employer's newest run
+> lands on the demo clock, carrying its transaction legs by the same offset —
+> one rule, applied in both directions (`emp-001` +44d; `emp-002/004/006`
+> −26/−29/−33d, all three having been *future*-dated). It also removed
+> `run-73a0e5c89d06448fb7b49696fe8946b4`, a surviving E2E run header with zero
+> legs that `0110` could not see (it purged by `transactions.txn_ref`; this
+> orphan had no transactions) and which inflated emp-001's run total by 4.7M.
+>
+> **`0135`** fixes the second half — the New-Members tiles. The five seeded
+> recent hires were exactly one bucket early because `0126` deleted the 8-day
+> `MOCK_NOW = _demo_now + 8d` gap their offsets were chosen against, so the
+> repair is precisely **+8 days**: the same 8 the seed's own comment named.
+>
+> Source fixed too, so a reseed cannot regenerate either half:
+> `employerSeed.js`'s `RUN_DATES` are now derived from `MOCK_NOW` **in UTC**
+> (preserving the midday-UTC convention that the original absolute literals
+> existed to protect), and the hire offsets are rebased `8,12,21,41 → 0,4,13,33`.
+>
+> **Measured on live, before → after:**
+>
+> | tile | before | after |
+> |---|---|---|
+> | daily contributions | **0** | **2,560,500** |
+> | weekly contributions | **0** | **2,560,500** |
+> | new members today / week / month | **0 / 0 / 0** | **2 / 2 / 2** |
+> | top employer contribution | **0** | **2,560,500** |
+> | future-dated "completed" runs | 3 | **0** |
+>
+> AUM unchanged at **2,357,847,446**, invariant **5059 / 5059** — only dates
+> moved, and both migrations assert that against a pre-shift snapshot.
 
 ---
 
