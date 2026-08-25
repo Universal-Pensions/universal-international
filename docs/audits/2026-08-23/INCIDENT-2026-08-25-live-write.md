@@ -97,3 +97,57 @@ takes transaction control away from its caller.
 
 "Wrap it in `BEGIN … ROLLBACK`" was treated throughout this programme as a sufficient safety net.
 It is not, whenever the thing being wrapped can commit on its own behalf.
+
+---
+
+## Follow-on: the advisor caught what the incident left behind
+
+Supabase's own security advisor flagged **four CRITICAL** findings shortly after — all four the
+recovery snapshot tables the accidentally-applied migrations created:
+
+```
+RLS Disabled in Public — public.subscribers_pre_purge_20260824
+RLS Disabled in Public — public.branches_pre_purge_20260824
+RLS Disabled in Public — public.settlement_uploads_pre_purge_20260824
+RLS Disabled in Public — public.transactions_wd_sign_fix_20260825
+```
+
+It was right, and this was a defect in the migrations themselves rather than in how they were
+applied — the same tables would have been created unprotected by a perfectly correct deployment.
+
+**`CREATE TABLE x AS SELECT …` inherits nothing.** Not the source table's RLS, not its policies,
+not its grants. A verbatim copy of protected production rows lands wide open. Combined with
+finding A02-101 (`anon` holds SELECT on essentially every table in `public`), these were readable
+through PostgREST by an unauthenticated caller.
+
+**Actual exposure, measured before fixing — contained:**
+
+| table | rows | content |
+|---|---|---|
+| `subscribers_pre_purge_20260824` | 5 | all `tst-sub-*` / `s-e2e-*` fixtures |
+| `branches_pre_purge_20260824` | 1 | `tst-branch-msc7w8vm` |
+| `transactions_wd_sign_fix_20260825` | 1 | one sign-flip ledger row |
+| `settlement_uploads_pre_purge_20260824` | 157 | nonces + result JSON, no PII |
+
+**No real member data was exposed.** The next ones would not have been so lucky — `0110` and
+`0111` are not yet applied and create snapshots holding **1,881 real transaction rows** and
+**19 real balance rows**.
+
+**Fixed two ways.** `0127_secure_snapshot_tables` (applied) sweeps every table matching the
+snapshot naming convention, enabling RLS, FORCING it, and revoking `anon`/`authenticated`. RLS
+with **no policies** is deliberate: `service_role` and the owner bypass it, which is precisely and
+only who should read a recovery snapshot during a restore. It also caught the two `0105`
+`_pre_nav` tables, which had RLS on but still granted SELECT to `anon`.
+
+And `0110`/`0111` now secure each snapshot **in the same block that creates it**, so a clean
+deployment never produces an unprotected copy. Re-verified on a fresh restore: both still purge
+and repair correctly, and all four snapshots come up with RLS on and `anon` revoked.
+
+**Verified through the REST API, not just the catalog** — all four now return `HTTP 401`,
+`42501 permission denied`.
+
+**Advisor after: 0 ERROR-level findings** (was 4). 91 remain, all WARN/INFO: 68
+`authenticated_security_definer_function_executable`, 11 `anon_security_definer_function_executable`
+— both the A02/A03 surface Phase 3 is addressing — and 12 `rls_enabled_no_policy`, which are the
+snapshot tables themselves and are **intentional**: a recovery snapshot should have no policy,
+because nobody should read it through the API.
