@@ -221,14 +221,14 @@
   font-family: var(--font-body);
   font-size: 11px;
   font-weight: 600;
-  color: var(--color-status-good);
+  color: var(--color-green-ink);
 }
 
 .progressLabelDue {
   font-family: var(--font-body);
   font-size: 11px;
   font-weight: 600;
-  color: var(--color-status-warning);
+  color: var(--color-kyc-warning);
 }
 
 /* ── Rate inline ─────────────────────────────────────────────────────────── */
@@ -376,12 +376,12 @@
 
 .primaryCard[data-type='settled'] .primaryIcon {
   background: rgba(46, 139, 87, 0.08);
-  color: var(--color-status-good);
+  color: var(--color-green-ink);
 }
 
 .primaryCard[data-type='pending'] .primaryIcon {
   background: rgba(230, 168, 23, 0.1);
-  color: var(--color-status-warning);
+  color: var(--color-kyc-warning);
 }
 
 .primaryAmount {
@@ -394,11 +394,11 @@
 }
 
 .primaryCard[data-type='settled'] .primaryAmount {
-  color: var(--color-status-good);
+  color: var(--color-green-ink);
 }
 
 .primaryCard[data-type='pending'] .primaryAmount {
-  color: var(--color-status-warning);
+  color: var(--color-kyc-warning);
 }
 
 .primaryLabel {
@@ -518,7 +518,7 @@
 }
 
 .attentionCount[data-type='disputed'] {
-  color: var(--color-status-poor);
+  color: var(--color-poor-ink);
 }
 
 .attentionCount[data-type='requests'] {
@@ -749,11 +749,11 @@
 }
 
 .detailStatValue[data-color='green'] {
-  color: var(--color-status-good);
+  color: var(--color-green-ink);
 }
 
 .detailStatValue[data-color='orange'] {
-  color: var(--color-status-warning);
+  color: var(--color-kyc-warning);
 }
 
 /* ── Section divider ─────────────────────────────────────────────────────── */
@@ -837,11 +837,11 @@
 }
 
 .txAmount[data-status='paid'] {
-  color: var(--color-status-good);
+  color: var(--color-green-ink);
 }
 
 .txAmount[data-status='due'] {
-  color: var(--color-status-warning);
+  color: var(--color-kyc-warning);
 }
 
 .txBadge {
@@ -855,12 +855,12 @@
 
 .txBadge[data-confirmed='true'] {
   background: rgba(46, 139, 87, 0.1);
-  color: var(--color-status-good);
+  color: var(--color-green-ink);
 }
 
 .txBadge[data-confirmed='false'] {
   background: rgba(230, 168, 23, 0.1);
-  color: var(--color-status-warning);
+  color: var(--color-kyc-warning);
 }
 
 .txDays {
@@ -873,7 +873,7 @@
 }
 
 .txDays[data-overdue='true'] {
-  color: var(--color-status-poor);
+  color: var(--color-poor-ink);
   font-weight: 600;
 }
 
@@ -1381,7 +1381,7 @@
 
 .floatingReject {
   background: rgba(220, 53, 69, 0.1);
-  color: var(--color-status-poor);
+  color: var(--color-poor-ink);
 }
 
 .floatingApprove:hover,
@@ -1408,7 +1408,7 @@
 }
 
 .approveBtn {
-  color: var(--color-status-good);
+  color: var(--color-green-ink);
 }
 
 .approveBtn:hover {
@@ -1416,7 +1416,7 @@
 }
 
 .rejectBtn {
-  color: var(--color-status-poor);
+  color: var(--color-poor-ink);
 }
 
 .rejectBtn:hover {
@@ -1432,7 +1432,7 @@
   font-family: var(--font-display);
   font-size: 12px;
   font-weight: 700;
-  color: var(--color-status-warning);
+  color: var(--color-kyc-warning);
   background: rgba(230, 168, 23, 0.08);
   border: 1px solid rgba(230, 168, 23, 0.18);
   cursor: pointer;
@@ -2206,23 +2206,23 @@
 
 .runStateBadge[data-state='released'] {
   background: rgba(46, 139, 87, 0.12);
-  color: var(--color-status-good);
+  color: var(--color-green-ink);
 }
 
 .runStateBadge[data-state='approved'] {
   background: rgba(46, 139, 87, 0.12);
-  color: var(--color-status-good);
+  color: var(--color-green-ink);
 }
 
 .runStateBadge[data-state='branch_review'],
 .runStateBadge[data-state='pending'] {
   background: rgba(230, 168, 23, 0.14);
-  color: var(--color-status-warning);
+  color: var(--color-kyc-warning);
 }
 
 .runStateBadge[data-state='cancelled'] {
   background: rgba(220, 53, 69, 0.1);
-  color: var(--color-status-poor);
+  color: var(--color-poor-ink);
 }
 
 /* ── Run header (inside run-detail / branch-review views) ───────────────── */

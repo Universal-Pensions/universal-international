@@ -190,6 +190,12 @@
   outline: none;
   transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
+@media (max-width: 1023.98px) {
+  .input {
+    font-size: 16px; /* was var(--text-sm) (14px) — iOS Safari zoom-on-focus fix, A18-001 */
+  }
+}
+
 
 .input:focus {
   border-color: var(--color-indigo);
@@ -254,7 +260,7 @@
 .errorLine {
   font-family: var(--font-body);
   font-size: 12px;
-  color: var(--color-status-poor);
+  color: var(--color-poor-ink);
 }
 
 .strength {

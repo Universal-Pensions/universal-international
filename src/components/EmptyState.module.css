@@ -64,7 +64,7 @@
 }
 
 .wrap[data-kind='no-match'] .iconBg {
-  color: var(--color-teal);
+  color: var(--color-teal-ink);
 }
 
 .text {

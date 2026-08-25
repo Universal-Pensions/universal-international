@@ -198,7 +198,7 @@
 }
 
 /* Received / incoming = green; Sent / outgoing = indigo. Never red. */
-.label[data-tone='in']  { color: var(--color-green); }
+.label[data-tone='in']  { color: var(--color-green-ink); }
 .label[data-tone='out'] { color: var(--color-indigo); }
 
 .meta {
@@ -234,7 +234,7 @@
   white-space: nowrap;
 }
 
-.amount[data-tone='in']  { color: var(--color-green); }
+.amount[data-tone='in']  { color: var(--color-green-ink); }
 .amount[data-tone='out'] { color: var(--color-indigo); }
 
 .date {

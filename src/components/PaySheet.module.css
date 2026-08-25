@@ -189,7 +189,7 @@
   height: 72px;
   border-radius: 50%;
   background: rgba(46, 139, 87, 0.12);
-  color: var(--color-green);
+  color: var(--color-green-ink);
   display: flex;
   align-items: center;
   justify-content: center;

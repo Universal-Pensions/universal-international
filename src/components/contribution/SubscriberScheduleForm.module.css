@@ -291,7 +291,7 @@
   border-color: var(--color-indigo);
 }
 
-.errorLine { font-family: var(--font-body); font-size: 12px; color: var(--color-status-poor); margin: 0; }
+.errorLine { font-family: var(--font-body); font-size: 12px; color: var(--color-poor-ink); margin: 0; }
 
 /* ── Split + sliders ──────────────────────────────────────────────────────── */
 .splitHead { display: flex; justify-content: space-between; align-items: flex-start; gap: var(--space-3); }
@@ -305,7 +305,7 @@
   text-transform: uppercase;
   color: var(--color-indigo-soft);
 }
-.splitLabel[data-tone='teal'] { color: var(--color-teal); }
+.splitLabel[data-tone='teal'] { color: var(--color-teal-ink); }
 
 .splitNote { flex-basis: 100%; font-family: var(--font-body); font-size: 11px; color: var(--color-gray); line-height: 1.25; }
 
@@ -318,7 +318,7 @@
   font-variant-numeric: tabular-nums;
   line-height: 1.1;
 }
-.splitPct[data-tone='teal'] { color: var(--color-teal); }
+.splitPct[data-tone='teal'] { color: var(--color-teal-ink); }
 
 .slider {
   -webkit-appearance: none;
@@ -608,7 +608,7 @@
 .savePctCell[data-tone='cover'] { text-align: right; }
 .savePctK { font-family: var(--font-body); font-size: 10.5px; letter-spacing: 0.03em; text-transform: uppercase; color: var(--color-gray); }
 .savePctV { font-family: var(--font-display); font-weight: 700; font-size: 13px; color: var(--color-indigo); font-variant-numeric: tabular-nums; }
-.savePctCell[data-tone='cover'] .savePctV { color: var(--color-teal); }
+.savePctCell[data-tone='cover'] .savePctV { color: var(--color-teal-ink); }
 .savePctV small { font-size: 10px; font-weight: 600; color: var(--color-gray); }
 
 /* ── The tin (Route B projection) ─────────────────────────────────────────── */
@@ -756,7 +756,7 @@
   background: color-mix(in srgb, var(--color-status-poor) 8%, transparent);
   border: 1px solid color-mix(in srgb, var(--color-status-poor) 32%, transparent);
   border-radius: var(--radius-md);
-  color: var(--color-status-poor);
+  color: var(--color-poor-ink);
 }
 .zeroWarn svg { flex: 0 0 auto; margin-top: 1px; }
 .zeroWarnTx { font-family: var(--font-body); font-size: 12px; line-height: 1.5; color: color-mix(in srgb, var(--color-status-poor) 72%, #000); }

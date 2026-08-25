@@ -159,7 +159,7 @@
   border: none;
   padding: 10px 12px;
   border-radius: var(--radius-md);
-  color: var(--color-status-poor);
+  color: var(--color-poor-ink);
   font-family: var(--font-display);
   font-weight: 600;
   font-size: var(--text-sm);
@@ -171,7 +171,7 @@
 
 .logout:hover {
   background: color-mix(in srgb, var(--color-status-poor) 9%, transparent);
-  color: var(--color-status-poor);
+  color: var(--color-poor-ink);
 }
 
 .logout:focus-visible {

@@ -296,7 +296,7 @@
 }
 .tintTeal {
   background: color-mix(in srgb, var(--color-teal) 12%, transparent);
-  color: var(--color-teal);
+  color: var(--color-teal-ink);
 }
 .tintGreen {
   background: color-mix(in srgb, var(--color-green) 12%, transparent);

@@ -562,6 +562,13 @@
   color: var(--color-slate);
   transition: border-color 0.18s ease, box-shadow 0.18s ease;
 }
+@media (max-width: 1023.98px) {
+  .textInput,
+  .select {
+    font-size: 16px; /* was 0.875rem (14.0px) — iOS Safari zoom-on-focus fix, A18-001 */
+  }
+}
+
 
 .textInput:focus-visible,
 .select:focus-visible {

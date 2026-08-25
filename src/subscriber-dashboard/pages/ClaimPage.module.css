@@ -319,7 +319,7 @@
 }
 
 .claimStatus[data-tone='ok'] {
-  color: var(--color-green);
+  color: var(--color-green-ink);
   background: color-mix(in srgb, var(--color-green) 10%, transparent);
 }
 .claimStatus[data-tone='info'] {
@@ -331,7 +331,7 @@
   background: color-mix(in srgb, var(--color-kyc-warning-amber) 12%, transparent);
 }
 .claimStatus[data-tone='alert'] {
-  color: var(--color-status-poor);
+  color: var(--color-poor-ink);
   background: color-mix(in srgb, var(--color-status-poor) 10%, transparent);
 }
 
@@ -405,6 +405,12 @@
   outline: none;
   transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
+@media (max-width: 1023.98px) {
+  .input {
+    font-size: 16px; /* was var(--text-sm) (14px) — iOS Safari zoom-on-focus fix, A18-001 */
+  }
+}
+
 
 .input:focus {
   border-color: var(--color-indigo);
@@ -540,7 +546,7 @@
 
 .fileRemove:hover {
   background: rgba(220, 53, 69, 0.1);
-  color: var(--color-status-poor);
+  color: var(--color-poor-ink);
 }
 
 .fileRemove:focus-visible {
@@ -644,7 +650,7 @@
   height: 72px;
   border-radius: 50%;
   background: rgba(46, 139, 87, 0.12);
-  color: var(--color-green);
+  color: var(--color-green-ink);
   display: flex;
   align-items: center;
   justify-content: center;

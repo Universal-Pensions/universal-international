@@ -172,7 +172,7 @@
   font-family: var(--font-display);
   font-weight: 700;
   font-size: 11px;
-  color: var(--color-status-good);
+  color: var(--color-green-ink);
   letter-spacing: 0.04em;
   text-transform: uppercase;
 }
@@ -215,7 +215,7 @@
   flex: 0 0 auto;
   width: 36px;
   height: 36px;
-  border-radius: 50%;
+  border-radius: var(--radius-md);
   background: color-mix(in srgb, var(--color-indigo) 8%, transparent);
   color: var(--color-indigo);
   display: flex;
@@ -321,6 +321,13 @@
   outline: none;
   transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
+@media (max-width: 1023.98px) {
+  .input,
+  .select {
+    font-size: 16px; /* was 13px (13.0px) — iOS Safari zoom-on-focus fix, A18-001 */
+  }
+}
+
 
 .select { appearance: none; background-color: var(--color-cloud); }
 
@@ -388,7 +395,7 @@
   gap: 6px;
   background: transparent;
   border: 1px solid var(--color-lavender);
-  color: var(--color-status-poor);
+  color: var(--color-poor-ink);
   font-family: var(--font-display);
   font-weight: 700;
   font-size: 12px;

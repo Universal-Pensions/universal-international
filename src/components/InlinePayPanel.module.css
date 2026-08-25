@@ -257,7 +257,7 @@
   height: 64px;
   border-radius: 50%;
   background: color-mix(in srgb, var(--color-green) 12%, transparent);
-  color: var(--color-green);
+  color: var(--color-green-ink);
   display: grid;
   place-items: center;
   margin-bottom: var(--space-3);

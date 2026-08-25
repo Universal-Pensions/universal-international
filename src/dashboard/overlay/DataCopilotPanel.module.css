@@ -258,6 +258,12 @@
   font-size: var(--text-sm);
   color: var(--color-indigo);
 }
+@media (max-width: 1023.98px) {
+  .input {
+    font-size: 16px; /* was var(--text-sm) (14px) — iOS Safari zoom-on-focus fix, A18-001 */
+  }
+}
+
 
 .input::placeholder { color: var(--color-gray); }
 

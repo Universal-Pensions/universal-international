@@ -158,7 +158,7 @@
   font-variant-numeric: tabular-nums;
   letter-spacing: -0.01em;
 }
-.statStrip b.good { color: var(--color-status-good); }
+.statStrip b.good { color: var(--color-green-ink); }
 .statStrip b.warn { color: #8a6209; }
 .statStrip small {
   display: block;
@@ -240,8 +240,8 @@
 /* tints */
 .tintIndigo { background: color-mix(in srgb, var(--color-indigo) 9%, transparent); color: var(--color-indigo); }
 .tintSoft { background: color-mix(in srgb, var(--color-indigo-soft) 13%, transparent); color: var(--color-indigo-soft); }
-.tintTeal { background: color-mix(in srgb, var(--color-teal) 12%, transparent); color: var(--color-teal); }
-.tintGreen { background: color-mix(in srgb, var(--color-status-good) 12%, transparent); color: var(--color-status-good); }
+.tintTeal { background: color-mix(in srgb, var(--color-teal) 12%, transparent); color: var(--color-teal-ink); }
+.tintGreen { background: color-mix(in srgb, var(--color-status-good) 12%, transparent); color: var(--color-green-ink); }
 .tintAmber { background: color-mix(in srgb, #fbbf24 18%, transparent); color: #8a6209; }
 
 /* ── pills + tags ── */
@@ -259,7 +259,7 @@
   white-space: nowrap;
 }
 .pill i { width: 6px; height: 6px; border-radius: var(--radius-full); background: currentColor; }
-.pillOk { color: var(--color-status-good); background: color-mix(in srgb, var(--color-status-good) 12%, #fff); }
+.pillOk { color: var(--color-green-ink); background: color-mix(in srgb, var(--color-status-good) 12%, #fff); }
 .pillWarn { color: #8a6209; background: color-mix(in srgb, #fbbf24 18%, #fff); }
 .pillOff { color: var(--color-gray); background: var(--color-cloud); }
 .tag {
@@ -357,6 +357,12 @@
   color: var(--color-slate);
   background: none;
 }
+@media (max-width: 1023.98px) {
+  .search input {
+    font-size: 16px; /* was 14px (14.0px) — iOS Safari zoom-on-focus fix, A18-001 */
+  }
+}
+
 .search input::placeholder { color: var(--color-gray); }
 
 /* ── profile bits ── */
@@ -459,7 +465,7 @@
   font-family: var(--font-display);
   font-weight: 700;
   font-size: 14px;
-  color: var(--color-status-poor);
+  color: var(--color-poor-ink);
   background: #fff;
   border: 1px solid var(--color-lavender);
   border-radius: 13px;
@@ -621,7 +627,7 @@
 }
 .kpiLbl { font-family: var(--font-display); font-weight: 600; font-size: 11px; letter-spacing: 0.04em; text-transform: uppercase; color: var(--color-gray); }
 .kpiV { font-family: var(--font-display); font-weight: 800; font-size: 21px; letter-spacing: -0.02em; color: var(--color-indigo); margin-top: 5px; font-variant-numeric: tabular-nums; }
-.kpiV.grow { color: var(--color-status-good); }
+.kpiV.grow { color: var(--color-green-ink); }
 .kpiV small { font-size: 11px; font-weight: 700; color: var(--color-gray); }
 
 /* ── analytics: horizontal bars ── */
@@ -668,6 +674,12 @@
 .bubbleThem { background: var(--color-cloud); color: var(--color-slate); border: 1px solid var(--color-lavender); border-bottom-left-radius: 10px; }
 .composer { display: flex; align-items: center; gap: 8px; border: 1.5px solid var(--color-lavender); border-radius: 13px; padding: 6px 6px 6px 15px; background: #fff; }
 .composer input { flex: 1; min-width: 0; border: none; outline: none; font-family: var(--font-body); font-size: 13px; color: var(--color-indigo); background: none; }
+@media (max-width: 1023.98px) {
+  .composer input {
+    font-size: 16px; /* was 13px (13.0px) — iOS Safari zoom-on-focus fix, A18-001 */
+  }
+}
+
 .composer input::placeholder { color: var(--color-gray); }
 .composerSend { width: 40px; height: 40px; flex: 0 0 auto; border: none; border-radius: 10px; background: var(--color-indigo); color: #fff; display: flex; align-items: center; justify-content: center; cursor: pointer; }
 .composerSend:disabled { opacity: 0.5; }

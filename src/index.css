@@ -105,6 +105,24 @@
   --color-status-warning: #E6A817;
   --color-status-poor:    #DC3545;
 
+  /* "Ink" (AA-contrast-on-white/tint) pairs for the status/accent colors above.
+     A20-002: 108 call sites across dashboard components already read these via
+     `var(--color-X-ink, var(--color-X))` (statusPill/chg/rankChip/headBadge and
+     the Save/Withdraw positive-value text), expecting a darker fallback for text
+     use — but the --color-*-ink custom properties were never actually declared,
+     so every one of those 108 sites was silently falling through to the
+     lower-contrast base color (measured 3.58:1 on tint, 4.24:1 on white — both
+     AA fails; see NeedsAttentionCard.module.css's header comment, which found
+     the same gap and worked around it with file-local --attn-* vars rather than
+     fix it globally). Declaring them here closes A20-002 at every existing call
+     site in one place instead of re-tinting each component. Values match the
+     ones already proven out locally (landing.module.css's --green-ink/--teal-ink,
+     NeedsAttentionCard's --attn-*), so nothing visually shifts beyond the fix. */
+  --color-green-ink: var(--color-kyc-success); /* #1f6e44 · 6.23:1 on white, 5.26:1 on the green tint */
+  --color-teal-ink:  #1f6e7a; /* 5.88:1 on white — matches landing.module.css --teal-ink */
+  --color-amber-ink: #B45309; /* 5.02:1 on white — amber-700, matches NeedsAttentionCard's --attn-amber */
+  --color-poor-ink:  #B02530; /* 6.66:1 on white — matches NeedsAttentionCard's --attn-red-ink */
+
   /* Health & trend accents (branch-dashboard) */
   --color-positive:       #4ADE80;
   --color-positive-soft:  #818CF8;
@@ -292,6 +310,21 @@ a:focus-visible {
   outline: none;
   transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
 }
+@media (max-width: 1023.98px) {
+  /* Form primitive: `.input`
+  Canonical 48px frosted form-input — used by modal/panel forms across the
+  admin / branch / dashboard surfaces (CreateAgent, CreateBranch,
+  ViewBranches, ViewAgents, Settings, …). CSS Modules consume it via
+  `composes: input from global;` so each module can layer module-specific
+  overrides (width, error state, readonly look) without redefining the
+  shared shape. Other input variants (chat composer, sign-in 56px,
+  subscriber-card soft inputs) are intentionally distinct and not
+  composed from this primitive. F16. */
+  .input {
+    font-size: 16px; /* was var(--text-sm) (14px) — iOS Safari zoom-on-focus fix, A18-001 */
+  }
+}
+
 
 .input:focus-visible {
   box-shadow: 0 0 0 2px rgba(41, 40, 103, 0.15);

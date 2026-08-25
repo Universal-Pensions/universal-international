@@ -156,7 +156,7 @@
 
 .entryCard[data-type='earned'] .entryIcon {
   background: rgba(74, 222, 128, 0.14);
-  color: var(--color-green);
+  color: var(--color-green-ink);
 }
 
 .entryCard[data-type='owed'] .entryIcon {
@@ -225,7 +225,7 @@
   padding: 1px 7px;
   border-radius: var(--radius-full);
   background: color-mix(in srgb, var(--color-green) 14%, transparent);
-  color: var(--color-green);
+  color: var(--color-green-ink);
   font-family: var(--font-body);
   font-size: 0.625rem;
   font-weight: 700;

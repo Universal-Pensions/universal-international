@@ -144,7 +144,7 @@
 .avatar {
   width: 44px;
   height: 44px;
-  border-radius: 50%;
+  border-radius: var(--radius-md);
   color: var(--color-white);
   display: flex;
   align-items: center;
@@ -229,7 +229,7 @@
   padding: 1px 7px;
   border-radius: var(--radius-full);
   background: color-mix(in srgb, var(--color-green) 14%, transparent);
-  color: var(--color-green);
+  color: var(--color-green-ink);
   font-family: var(--font-body);
   font-size: 0.625rem;
   font-weight: 700;

@@ -120,7 +120,7 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  color: var(--color-teal);
+  color: var(--color-teal-ink);
 }
 
 .outstandingValue {
@@ -222,7 +222,7 @@
   font-weight: 600;
 }
 
-.progressLabelPaid { color: var(--color-green); }
+.progressLabelPaid { color: var(--color-green-ink); }
 .progressLabelDue  { color: var(--color-gray); }
 
 /* ── Primary cards ── */
@@ -287,7 +287,7 @@
 
 .primaryCard[data-type='settled'] .primaryIcon {
   background: rgba(74, 222, 128, 0.14);
-  color: var(--color-green);
+  color: var(--color-green-ink);
 }
 
 .primaryCard[data-type='pending'] .primaryIcon {
@@ -530,7 +530,7 @@
   color: var(--color-indigo-soft);
 }
 
-.badge[data-tone='confirmed'] { background: rgba(46, 139, 87, 0.16); color: var(--color-green); }
+.badge[data-tone='confirmed'] { background: rgba(46, 139, 87, 0.16); color: var(--color-green-ink); }
 .badge[data-tone='due']       { background: rgba(251, 191, 36, 0.18); color: #B07A0F; }
 
 /* ── Empty + loading ── */

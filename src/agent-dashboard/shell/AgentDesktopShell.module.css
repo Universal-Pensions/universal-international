@@ -113,7 +113,7 @@
 
 .askAiIcon {
   display: inline-flex;
-  color: var(--color-amber, #fbbf24);
+  color: var(--color-amber-ink);
 }
 
 .askAiActive .askAiIcon {

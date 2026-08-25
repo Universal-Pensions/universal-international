@@ -128,7 +128,7 @@
 .nudged {
   margin-top: 2px;
   font-weight: 600;
-  color: var(--color-green);
+  color: var(--color-green-ink);
 }
 
 .reachTags {
@@ -170,7 +170,7 @@
 }
 
 .cancelBtn {
-  color: var(--color-status-poor);
+  color: var(--color-poor-ink);
 }
 
 .linkBtn:hover,
@@ -227,7 +227,7 @@
   align-items: center;
   justify-content: center;
   background: color-mix(in srgb, var(--color-amber, #D97706) 14%, #fff);
-  color: var(--color-amber, #D97706);
+  color: var(--color-amber-ink);
 }
 
 .sendTitle {

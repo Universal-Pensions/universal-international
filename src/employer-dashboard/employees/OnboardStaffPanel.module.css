@@ -49,6 +49,12 @@
   background: #fff;
   color: #111827;
 }
+@media (max-width: 1023.98px) {
+  .input {
+    font-size: 16px; /* was 0.92rem (14.72px) — iOS Safari zoom-on-focus fix, A18-001 */
+  }
+}
+
 .input:focus-visible { outline: 2px solid #292867; outline-offset: 1px; border-color: #292867; }
 
 .note {

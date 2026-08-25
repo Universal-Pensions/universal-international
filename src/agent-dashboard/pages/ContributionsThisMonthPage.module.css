@@ -84,7 +84,7 @@
 .avatar {
   width: 40px;
   height: 40px;
-  border-radius: 50%;
+  border-radius: var(--radius-md);
   background: var(--color-indigo-soft);
   color: var(--color-white);
   display: flex;
@@ -124,7 +124,7 @@
   font-family: var(--font-display);
   font-weight: 800;
   font-size: var(--text-sm);
-  color: var(--color-positive);
+  color: var(--color-green-ink);
   font-variant-numeric: tabular-nums;
   letter-spacing: -0.02em;
   white-space: nowrap;

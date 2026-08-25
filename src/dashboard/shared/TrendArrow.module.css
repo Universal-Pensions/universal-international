@@ -9,12 +9,12 @@
 }
 
 .trendBadge[data-trend='up'] {
-  color: var(--color-status-good);
+  color: var(--color-green-ink);
   background: rgba(46, 139, 87, 0.1);
 }
 
 .trendBadge[data-trend='down'] {
-  color: var(--color-status-poor);
+  color: var(--color-poor-ink);
   background: rgba(220, 53, 69, 0.1);
 }
 

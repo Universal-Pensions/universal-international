@@ -110,7 +110,7 @@
 /* Amber sparkle — the distinctive AI cue carried over from the desktop CTA. */
 .aiBtn svg {
   flex: 0 0 auto;
-  color: var(--color-amber);
+  color: var(--color-amber-ink);
 }
 
 .aiBtn:active {

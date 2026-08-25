@@ -139,9 +139,9 @@
 }
 
 .contactIcon[data-tone='indigo'] { background: color-mix(in srgb, var(--color-indigo) 9%, transparent); color: var(--color-indigo); }
-.contactIcon[data-tone='green']  { background: color-mix(in srgb, var(--color-green) 12%, transparent); color: var(--color-status-good); }
-.contactIcon[data-tone='teal']   { background: color-mix(in srgb, var(--color-teal) 12%, transparent); color: var(--color-teal); }
-.contactIcon[data-tone='amber']  { background: color-mix(in srgb, var(--color-status-warning) 14%, transparent); color: var(--color-status-warning); }
+.contactIcon[data-tone='green']  { background: color-mix(in srgb, var(--color-green) 12%, transparent); color: var(--color-green-ink); }
+.contactIcon[data-tone='teal']   { background: color-mix(in srgb, var(--color-teal) 12%, transparent); color: var(--color-teal-ink); }
+.contactIcon[data-tone='amber']  { background: color-mix(in srgb, var(--color-status-warning) 14%, transparent); color: var(--color-kyc-warning); }
 
 .contactText {
   flex: 1;
