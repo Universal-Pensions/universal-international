@@ -43,6 +43,7 @@
 // mints behaviourally identical.
 
 import type { VercelRequest, VercelResponse } from '@vercel/node';
+import supabaseAdmin from '../_lib/supabase-admin.js';
 
 const SIMULATED_LATENCY_MS = 2200;
 
@@ -99,6 +100,60 @@ type IdExtraction = {
   barcodeRaw: string;
   confidence: number;
 };
+
+type DemoIdCard = {
+  nin: string;
+  first_name: string;
+  other_name: string;
+  last_name: string;
+  gender: 'male' | 'female';
+  dob: string;
+  card_number: string;
+};
+
+/**
+ * Claim a pre-seeded ID card from `public.demo_id_cards` (migration 0133).
+ *
+ * WHY A TABLE AND NOT MORE GENERATED DATA
+ * The PRNG below mints plausible-looking STRINGS; a curated pool holds coherent
+ * PEOPLE, and NIRA — which this step stands in for — genuinely is a registry you
+ * look a citizen up in. The pool also has something a generator fundamentally
+ * cannot: shared claim state, so two reps demoing at the same moment cannot draw
+ * the same identity. That collision is what A11-002 actually was.
+ *
+ * `claim_demo_id_card` is retry-stable: a session that already holds a card gets
+ * the SAME card back, so "Try again" never swaps the person mid-wizard.
+ *
+ * Returns null on an exhausted pool OR any error — the caller falls back to the
+ * PRNG. A demo that hard-fails because a pool ran dry would be A11-002 all over
+ * again, which is the one outcome this must never reproduce.
+ */
+async function claimPooledCard(sessionId: unknown): Promise<IdExtraction | null> {
+  if (typeof sessionId !== 'string' || !sessionId) return null;
+  try {
+    const { data, error } = await supabaseAdmin.rpc('claim_demo_id_card', {
+      p_session_id: sessionId,
+    });
+    if (error || !data) return null;
+    const card = (Array.isArray(data) ? data[0] : data) as DemoIdCard | null;
+    if (!card?.nin) return null;
+
+    const fullName = `${card.first_name} ${card.last_name}`;
+    return {
+      fullName,
+      nin: card.nin,
+      cardNumber: card.card_number,
+      dob: card.dob,
+      gender: card.gender,
+      barcodeRaw: `${card.nin}|${card.card_number}|${card.dob}|${card.last_name.toUpperCase()},${card.first_name.toUpperCase()},${card.other_name.toUpperCase()}`,
+      confidence: 0.94,
+    };
+  } catch {
+    // Network/config failure reaching Supabase. Degrade, never throw: this is a
+    // demo ID scanner, and a rep mid-pitch must still get an identity.
+    return null;
+  }
+}
 
 function mintIdentity(sessionId: unknown): IdExtraction {
   // No sessionId isn't the production path (ReviewStep always sends
@@ -180,5 +235,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   // it manually on ReviewStep, so we deliberately omit it from the OCR
   // response — otherwise the "Auto-filled" badge would appear on a value the
   // ID never actually contained.
-  return res.status(200).json(mintIdentity(body.sessionId));
+  // Pool first; the seeded PRNG is the fallback, not the primary source.
+  const pooled = await claimPooledCard(body.sessionId);
+  return res.status(200).json(pooled ?? mintIdentity(body.sessionId));
 }

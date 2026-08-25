@@ -221,3 +221,49 @@ revoking it** — the guard asserts, it does not auto-fix. Full write-up in
 
 `anon` against `nav_fixture_rollback_0117` now returns
 `ERROR: permission denied for table nav_fixture_rollback_0117`.
+
+---
+
+## 2026-08-25 (later still) — `0133_demo_id_cards`
+
+| migration | live effect | undo |
+|---|---|---|
+| `0133_demo_id_cards` | **CREATE TABLE** `public.demo_id_cards` + **INSERT 200 rows** (curated demo national ID cards); `CREATE FUNCTION claim_demo_id_card(text)`. RLS enabled + FORCE, no policies, `anon`/`authenticated` revoked on both table and function. **No existing row was read, written or deleted.** | `0133_demo_id_cards.down.sql` — drops the function and the table. Safe: `api/kyc/id-ocr.ts` treats a missing pool exactly like an exhausted one and falls back to the PRNG, so reverting degrades to the previous working behaviour, not to the original A11-002 breakage. |
+
+Applied over `psql -f` (the file's own `BEGIN`/`COMMIT` makes it atomic) rather
+than the migration API, to avoid pasting 420 lines. The in-migration guards ran
+and passed: `guards OK — 200 cards, 0 NIN collisions with subscribers, all ages
+in range`.
+
+### Why a table rather than more generated data
+
+The A11-002 fix (`493e90c`) replaced a constant NIN with a PRNG seeded on the
+wizard's `sessionId`. It works, but it mints plausible-looking *strings* rather
+than coherent people, and a generator has no shared claim state — so two reps
+demoing simultaneously can still draw the same identity. The pool has both.
+`subscribers.nin` is the only unique index that binds here
+(`subscribers_phone_unique_non_demo_idx` is partial on `is_demo_signup = FALSE`
+and every signup stamps TRUE; there is no unique index on email at all).
+
+### Verified after applying
+
+| check | value |
+|---|---|
+| cards seeded / available | **200 / 200** at apply |
+| RLS enabled · anon SELECT · authenticated SELECT | **true · false · false** |
+| `authenticated` may EXECUTE `claim_demo_id_card` | **false** |
+| pool NIN collisions with `subscribers` | **0** |
+| rows violating the distinct-names CHECK | **0** |
+| `0132` guard 1 — tables with RLS disabled | **0** |
+| `0132` guard 2 — policy-less AND API-readable | **0** |
+| balance invariant | **5059 / 5059** |
+
+Retry-stability proven in a rolled-back probe before applying: `sess-A` claimed
+`idc-0001` on two consecutive calls; `sess-B` got `idc-0002`.
+
+Then proven end-to-end against live — three consecutive wizard runs creating
+`s-100167`, `s-100168`, `s-100169`, teardown leak sweep clean, and the pool
+moving 200 → 196 available as real cards were claimed (`idc-0001` "Bosco Otim",
+`idc-0002` "Godfrey Okiror"). Note the ratio: **4 cards for 3 onboardings** —
+some sessions claim and abandon. The RPC's 24-hour reclaim of claimed-but-unused
+cards exists for exactly that.

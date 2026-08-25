@@ -239,3 +239,94 @@ describe('POST /api/kyc/id-ocr', () => {
     expect(res.headers['Cache-Control']).toBe('no-store');
   });
 });
+
+// ---------------------------------------------------------------------------
+// The demo ID-card pool (migration 0133).
+//
+// The route claims a pre-seeded card and falls back to the PRNG when the pool
+// is dry or unreachable. That fallback is not a nicety: a demo that hard-fails
+// because a pool ran out would be A11-002 all over again, which is the exact
+// failure this whole line of work exists to end.
+//
+// NOTE the tests ABOVE already exercise the fallback for real — there is no
+// Supabase config in the unit environment, so `supabaseAdmin.rpc` rejects and
+// every one of them still gets a valid identity. These add the pool path.
+// ---------------------------------------------------------------------------
+const rpcMock = vi.hoisted(() => vi.fn());
+vi.mock('../_lib/supabase-admin.js', () => ({ default: { rpc: rpcMock } }));
+
+const CARD = {
+  nin: 'CF34071A2B3C4D',
+  first_name: 'Prossy',
+  other_name: 'Nabirye',
+  last_name: 'Nakato',
+  gender: 'female' as const,
+  dob: '1992-07-14',
+  card_number: 'UG7654321',
+};
+
+describe('POST /api/kyc/id-ocr — demo ID-card pool', () => {
+  beforeEach(() => { rpcMock.mockReset(); });
+
+  it('returns a claimed card, mapped onto the IdExtraction shape', async () => {
+    rpcMock.mockResolvedValue({ data: CARD, error: null });
+    const res = buildRes();
+    await handler(buildReq({ body: { front: 'f', back: 'b', sessionId: 'sess-pool-1' } }), res);
+
+    expect(rpcMock).toHaveBeenCalledWith('claim_demo_id_card', { p_session_id: 'sess-pool-1' });
+    expect(res.body as OcrBody).toMatchObject({
+      fullName: 'Prossy Nakato',   // first + last; other_name is barcode-only
+      nin: CARD.nin,
+      cardNumber: CARD.card_number,
+      dob: CARD.dob,
+      gender: 'female',
+      confidence: 0.94,
+    });
+    // Barcode keeps the provider's SURNAME,GIVEN,OTHER ordering.
+    expect((res.body as OcrBody).barcodeRaw).toBe(
+      `${CARD.nin}|${CARD.card_number}|${CARD.dob}|NAKATO,PROSSY,NABIRYE`,
+    );
+  });
+
+  it('accepts a single-row array, as PostgREST returns for a RETURNS-record RPC', async () => {
+    rpcMock.mockResolvedValue({ data: [CARD], error: null });
+    const res = buildRes();
+    await handler(buildReq({ body: { front: 'f', back: 'b', sessionId: 'sess-pool-2' } }), res);
+    expect((res.body as OcrBody).nin).toBe(CARD.nin);
+  });
+
+  it('falls back to the PRNG when the pool is EXHAUSTED (data null)', async () => {
+    rpcMock.mockResolvedValue({ data: null, error: null });
+    const res = buildRes();
+    await handler(buildReq({ body: { front: 'f', back: 'b', sessionId: 'sess-dry' } }), res);
+    expect(res.statusCode).toBe(200);
+    expect((res.body as OcrBody).nin).toMatch(/^C[MF][A-Z0-9]{12}$/);
+    expect((res.body as OcrBody).fullName).toBeTruthy();
+  });
+
+  it('falls back to the PRNG when the claim ERRORS', async () => {
+    rpcMock.mockResolvedValue({ data: null, error: { message: 'permission denied' } });
+    const res = buildRes();
+    await handler(buildReq({ body: { front: 'f', back: 'b', sessionId: 'sess-err' } }), res);
+    expect(res.statusCode).toBe(200);
+    expect((res.body as OcrBody).nin).toMatch(/^C[MF][A-Z0-9]{12}$/);
+  });
+
+  it('falls back to the PRNG when Supabase is unreachable (rpc throws)', async () => {
+    rpcMock.mockRejectedValue(new Error('ECONNREFUSED'));
+    const res = buildRes();
+    await handler(buildReq({ body: { front: 'f', back: 'b', sessionId: 'sess-down' } }), res);
+    expect(res.statusCode).toBe(200);
+    expect((res.body as OcrBody).nin).toMatch(/^C[MF][A-Z0-9]{12}$/);
+  });
+
+  it('does not claim a card when no sessionId is supplied', async () => {
+    rpcMock.mockResolvedValue({ data: CARD, error: null });
+    const res = buildRes();
+    await handler(buildReq({ body: { front: 'f', back: 'b' } }), res);
+    // A claim with no session could never be returned again on retry, so it
+    // would burn one card per render. Skip straight to the PRNG.
+    expect(rpcMock).not.toHaveBeenCalled();
+    expect((res.body as OcrBody).nin).toMatch(/^C[MF][A-Z0-9]{12}$/);
+  });
+});

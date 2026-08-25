@@ -9,8 +9,11 @@ export default function OnboardPage() {
   // the provider (no top-level early return) — desktop swaps OnboardFlow for the
   // OnboardDesktop chrome, which itself wraps the SAME OnboardFlow wizard.
   const isDesktop = useIsDesktop();
+  // flow="agent" namespaces this wizard's persisted state. It previously shared
+  // ONE localStorage blob with the public self-signup wizard, so the two
+  // overwrote each other and a stale record replayed the previous person.
   return (
-    <SignupProvider>
+    <SignupProvider flow="agent">
       {isDesktop ? <OnboardDesktop /> : <OnboardFlow />}
     </SignupProvider>
   );

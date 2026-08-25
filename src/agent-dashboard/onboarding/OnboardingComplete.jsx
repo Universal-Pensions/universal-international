@@ -7,6 +7,8 @@ import { formatUGX } from '../../utils/currency';
 import { useAuth } from '../../contexts/AuthContext';
 import { useSignup } from '../../signup/SignupContext';
 import * as subscriberService from '../../services/subscriber';
+import { verifyOtp } from '../../services/auth';
+import { toCanonicalUGPhone } from '../../utils/phone';
 import { formatMemberId } from '../../utils/memberId';
 import MemberCard from '../../components/MemberCard';
 import { buildPayload } from './onboardPayload';
@@ -72,6 +74,35 @@ export default function OnboardingComplete({ subscriberName, awareness, schedule
       // stale for up to 5 min).
       queryClient.invalidateQueries({ queryKey: ['agentSubscribers', agentId] });
       queryClient.invalidateQueries({ queryKey: ['agentContributions', agentId] });
+
+      // Stamp the member's credential so they can actually sign in.
+      //
+      // ReviewStep REQUIRES a password in this flow and tells the agent
+      // "They'll use this to sign in alongside their phone" — but nothing here
+      // ever used it. The member got no `users` row and no password, so that
+      // promise was false: they could never sign in with it.
+      //
+      // Self-signup already does this (contribution/ContributionRoute.jsx) via
+      // the same call; the backend stamps `users.password_hash` on the upsert.
+      // The difference here is that we DISCARD the returned token and never
+      // call login() — the AGENT is the signed-in user and must stay so.
+      // verifyOtp is a pure POST (services/auth.js): it touches no auth state
+      // on its own, so dropping the token is safe.
+      //
+      // Deliberately NON-FATAL and after the invalidations: the subscriber row
+      // is already committed at this point. Failing the whole onboarding over a
+      // credential write would strand the agent on an error card for a member
+      // who was in fact created — the exact A11-002 shape.
+      if (signup.password) {
+        const memberPhone = toCanonicalUGPhone(signup.phone) || signup.phone;
+        try {
+          await verifyOtp(memberPhone, '123456', 'subscriber', signup.password);
+        } catch {
+          // Member exists and can still sign in by OTP; only the password is
+          // missing. Not worth failing a completed onboarding over.
+        }
+      }
+
       setStatus('success');
     } catch (err) {
       setStatus('error');

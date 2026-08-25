@@ -47,11 +47,22 @@ export default function ReviewStep({ onNext }) {
   const [ocrRunId, setOcrRunId] = useState(0);
 
   /* Run OCR silently on mount (and on each retry — see ocrRunId in deps),
-   * unless it already ran (idConfidence set). Gating on idConfidence — not
+   * unless it already ran FOR THIS ATTEMPT. Gating on idConfidence — not
    * fullName — means an employer-invite flow (which pre-fills name/nin/gender)
-   * STILL runs OCR, so card number + DOB auto-fill. */
+   * STILL runs OCR, so card number + DOB auto-fill.
+   *
+   * The session comparison is the important half. Gating on idConfidence ALONE
+   * meant any exit that skips reset() — browser Back, the shell nav rail, a
+   * mid-flow refresh — left a spent OCR result in localStorage, and the next
+   * attempt reused the previous person's name and NIN instead of scanning
+   * again. Comparing against the session the result was captured under keeps
+   * the good half (a refresh WITHIN one attempt must not re-scan and swap the
+   * person mid-wizard) while dropping a result that belongs to a finished one. */
   useEffect(() => {
-    if (signup.idConfidence != null) return;
+    const capturedThisAttempt =
+      signup.idConfidence != null
+      && signup.idCapturedSessionId === signup.onboardingSessionId;
+    if (capturedThisAttempt) return;
     let cancelled = false;
     (async () => {
       try {
@@ -78,6 +89,7 @@ export default function ReviewStep({ onNext }) {
           ...applied,
           barcodeRaw: result.barcodeRaw,
           idConfidence: result.confidence,
+          idCapturedSessionId: signup.onboardingSessionId,
         });
         setInitialValues((prev) => ({ ...prev, ...applied }));
         setOcrState('done');

@@ -259,7 +259,21 @@ function mockTrackingId() {
   return `smile_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
 }
 
-/* ── Seeded identity mint (duplicated in api/kyc/id-ocr.ts) ─────────────────
+/* ── Seeded identity mint (the OFFLINE-path twin of api/kyc/id-ocr.ts) ──────
+ *
+ * ⚠️ THESE TWO NO LONGER MATCH, ON PURPOSE (migration 0133).
+ * The server route now claims a curated card from `public.demo_id_cards` and
+ * only falls back to this PRNG when the pool is exhausted or unreachable. This
+ * copy stays PRNG-only because it is the `VITE_USE_SUPABASE=false` path — it
+ * has no database to claim from.
+ *
+ * So the divergence is: server = pool, then PRNG. Client mock = PRNG. Both
+ * still return the identical IdExtraction shape, and this file remains dead
+ * code on the live path (IS_SUPABASE_ENABLED is true, so extractIdFields takes
+ * the HTTP branch). Do not "fix" the drift by importing from api/ — .vercelignore
+ * strips that directory, so the import would pass local build AND CI and break
+ * only on the production deploy.
+ * ───────────────────────────────────────────────────────────────────────────
  * `mockExtractIdFields` below used to return one fixed identity forever,
  * which collided with the UNIQUE index on subscribers.nin the moment a demo
  * agent onboarded a SECOND subscriber (audit A11-002). This mints a fresh,
