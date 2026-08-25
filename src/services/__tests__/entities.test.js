@@ -33,6 +33,7 @@ const {
   getEntity,
   getChildren,
   getAllAtLevel,
+  getEntityPage,
   createBranch,
   getEntityMetricsRollup,
   createDistributor,
@@ -567,6 +568,137 @@ describe('entities service', () => {
         data: null, error: { code: 'P0001', message: 'admin only' },
       });
       await expect(getEmployerActivityRollup()).rejects.toMatchObject({ code: 'P0001' });
+    });
+  });
+
+  // A21-001: ViewSubscribers used to pull the ENTIRE scoped subscriber
+  // collection (+ every agent + every branch) into memory just to virtualize
+  // a ~20-row viewport. `getEntityPage` is the server-side paginate + filter +
+  // sort path the audit found already built as dead code — these tests are
+  // the regression guard for wiring it up for real, since it had NO test
+  // coverage before (nothing had ever called it against the live schema).
+  describe('getEntityPage()', () => {
+    function subscriberRow(overrides = {}) {
+      return {
+        id: 's-1', name: 'Grace Nakato', phone: '+256700000001', email: null,
+        gender: 'female', age: 34, dob: '1991-01-01', nin: null, occupation: null,
+        agent_id: 'a-1', district_id: 'd-kampala', kyc_status: 'complete',
+        is_active: true, registered_date: '2025-01-05',
+        products_held: [], contribution_history: [], current_unit_value: 1000,
+        unit_value_as_of: '2026-08-01',
+        subscriber_balances: { total_balance: 500000 },
+        ...overrides,
+      };
+    }
+
+    it('issues exactly ONE query for subscribers — no second balance round-trip', async () => {
+      // The embed (`subscriber_balances(total_balance)`) already rides on the
+      // same `listColumns('subscriber')` projection this query uses, so a
+      // second id-bounded `subscriber_balances` query is dead weight, not a
+      // requirement. An earlier version of this function issued one;
+      // regression guard that it's gone.
+      supabaseMock.__queueFrom('subscribers', {
+        data: [subscriberRow()], error: null, count: 1,
+      });
+      const page = await getEntityPage('subscriber', { offset: 0, limit: 50 });
+      expect(page.rows).toHaveLength(1);
+      expect(page.rows[0].totalBalance).toBe(500000);
+      expect(supabaseMock.__getFromCalls('subscribers')).toHaveLength(1);
+      expect(supabaseMock.__getFromCalls('subscriber_balances')).toHaveLength(0);
+    });
+
+    it('sorts "balance" by the embedded subscriber_balances.total_balance column', async () => {
+      supabaseMock.__queueFrom('subscribers', { data: [subscriberRow()], error: null, count: 1 });
+      await getEntityPage('subscriber', { sortKey: 'balance' });
+      const call = supabaseMock.__getFromCalls('subscribers').at(-1);
+      expect(call.chain.order).toHaveBeenCalledWith('total_balance', {
+        ascending: false, nullsFirst: false, foreignTable: 'subscriber_balances',
+      });
+    });
+
+    it('sorts "name" by the plain `name` column (no foreignTable)', async () => {
+      supabaseMock.__queueFrom('subscribers', { data: [subscriberRow()], error: null, count: 1 });
+      await getEntityPage('subscriber', { sortKey: 'name' });
+      const call = supabaseMock.__getFromCalls('subscribers').at(-1);
+      expect(call.chain.order).toHaveBeenCalledWith('name', { ascending: true, nullsFirst: false });
+    });
+
+    it('still substitutes registered_date for "contributions" (documented, pre-existing gap)', async () => {
+      supabaseMock.__queueFrom('subscribers', { data: [subscriberRow()], error: null, count: 1 });
+      await getEntityPage('subscriber', { sortKey: 'contributions' });
+      const call = supabaseMock.__getFromCalls('subscribers').at(-1);
+      expect(call.chain.order).toHaveBeenCalledWith('registered_date', { ascending: false, nullsFirst: false });
+    });
+
+    it('agentId scope pushes a single .eq(agent_id, …) to the server', async () => {
+      supabaseMock.__queueFrom('subscribers', { data: [subscriberRow()], error: null, count: 1 });
+      await getEntityPage('subscriber', { scope: { agentId: 'a-1' } });
+      const call = supabaseMock.__getFromCalls('subscribers').at(-1);
+      expect(call.chain.eq).toHaveBeenCalledWith('agent_id', 'a-1');
+      // Only the one subscribers query — scope must not fan out to agents/branches.
+      expect(supabaseMock.__getFromCalls('agents')).toHaveLength(0);
+    });
+
+    it('branchId scope resolves the branch\'s agents first, then .in(agent_id, …)s the subscribers', async () => {
+      supabaseMock.__queueFrom('agents', {
+        data: [{ id: 'a-1', name: 'A1', branch_id: 'b-1', status: 'active', languages: [], specialties: [] },
+               { id: 'a-2', name: 'A2', branch_id: 'b-1', status: 'active', languages: [], specialties: [] }],
+        error: null,
+      });
+      supabaseMock.__queueFrom('subscribers', { data: [subscriberRow()], error: null, count: 1 });
+      await getEntityPage('subscriber', { scope: { branchId: 'b-1' } });
+
+      const agentsCall = supabaseMock.__getFromCalls('agents').at(-1);
+      expect(agentsCall.chain.eq).toHaveBeenCalledWith('branch_id', 'b-1');
+
+      const subsCall = supabaseMock.__getFromCalls('subscribers').at(-1);
+      expect(subsCall.chain.in).toHaveBeenCalledWith('agent_id', ['a-1', 'a-2']);
+    });
+
+    it('an agentless branch short-circuits to empty WITHOUT querying subscribers at all', async () => {
+      // Mirrors getSubscribersForBranch's guard: in(agent_id, []) would ask
+      // PostgREST for "any row where agent_id is in the empty set", which it
+      // answers with EVERY row — the exact "scoped list leaks the network" bug
+      // the drill-down e2e specs guard against.
+      supabaseMock.__queueFrom('agents', { data: [], error: null });
+      const page = await getEntityPage('subscriber', { scope: { branchId: 'b-empty' } });
+      expect(page).toEqual({ rows: [], total: 0, hasMore: false });
+      expect(supabaseMock.__getFromCalls('subscribers')).toHaveLength(0);
+    });
+
+    it('computes hasMore from offset + returned rows vs. total', async () => {
+      supabaseMock.__queueFrom('subscribers', {
+        data: [subscriberRow({ id: 's-1' }), subscriberRow({ id: 's-2' })],
+        error: null, count: 5,
+      });
+      const page = await getEntityPage('subscriber', { offset: 0, limit: 2 });
+      expect(page.total).toBe(5);
+      expect(page.hasMore).toBe(true); // 0 + 2 < 5
+
+      supabaseMock.__queueFrom('subscribers', {
+        data: [subscriberRow({ id: 's-5' })], error: null, count: 5,
+      });
+      const lastPage = await getEntityPage('subscriber', { offset: 4, limit: 2 });
+      expect(lastPage.hasMore).toBe(false); // 4 + 1 >= 5
+    });
+
+    it('search issues an ILIKE .or() across name/phone', async () => {
+      supabaseMock.__queueFrom('subscribers', { data: [], error: null, count: 0 });
+      await getEntityPage('subscriber', { search: 'grace' });
+      const call = supabaseMock.__getFromCalls('subscribers').at(-1);
+      expect(call.chain.or).toHaveBeenCalledWith('name.ilike.%grace%,phone.ilike.%grace%');
+    });
+
+    it('statusFilter "active"/"inactive" push .eq(is_active, …)', async () => {
+      supabaseMock.__queueFrom('subscribers', { data: [], error: null, count: 0 });
+      await getEntityPage('subscriber', { statusFilter: 'active' });
+      expect(supabaseMock.__getFromCalls('subscribers').at(-1).chain.eq)
+        .toHaveBeenCalledWith('is_active', true);
+
+      supabaseMock.__queueFrom('subscribers', { data: [], error: null, count: 0 });
+      await getEntityPage('subscriber', { statusFilter: 'inactive' });
+      expect(supabaseMock.__getFromCalls('subscribers').at(-1).chain.eq)
+        .toHaveBeenCalledWith('is_active', false);
     });
   });
 });

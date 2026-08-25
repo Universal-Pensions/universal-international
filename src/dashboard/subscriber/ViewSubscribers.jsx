@@ -1,10 +1,12 @@
 import { useState, useMemo, useRef, useEffect, useCallback } from 'react';
+import { useInfiniteQuery } from '@tanstack/react-query';
 import { useOutsideClick } from '../../hooks/useOutsideClick';
 import { useDebouncedValue } from '../../hooks/useDebouncedValue';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useVirtualizer } from '@tanstack/react-virtual';
-import { useAllEntities, useSubscribersForBranch } from '../../hooks/useEntity';
+import { useEntity, useEntityMetrics } from '../../hooks/useEntity';
 import { useSubscriberTransactions } from '../../hooks/useSubscriber';
+import * as entities from '../../services/entities';
 import { EASE_OUT_EXPO } from '../../utils/motion';
 
 import { formatUGX, formatUGXShort, formatNumber } from '../../utils/currency';
@@ -17,6 +19,54 @@ import KpiCard from '../shared/KpiCard';
 import SkeletonRow from '../../components/SkeletonRow';
 import EmptyState from '../../components/EmptyState';
 import styles from './ViewSubscribers.module.css';
+
+// One page of the virtualized infinite scroll (A21-001). Small on purpose —
+// this is what actually crosses the network on open, not the whole scoped
+// collection. ~50 rows comfortably covers a full panel viewport + the
+// virtualizer's overscan without a visible "loading" flash on first paint.
+const SUBSCRIBER_PAGE_SIZE = 50;
+
+/**
+ * Nearest ANCESTOR (including the node itself) that is actually acting as a
+ * bounded scroll container right now — i.e. `overflow-y` is auto/scroll AND
+ * it is currently clipping content (`scrollHeight > clientHeight`).
+ *
+ * A19-004: `getScrollElement: () => bodyRef.current` looked right but was
+ * inert in `fullPage` (dash-mode) layout. Root cause: `fullPage` mode
+ * overrides `.panel`'s own bounded box (fixed position + inset) to
+ * `height:'auto', overflow:'visible'` so the routed page can size to its
+ * content instead of floating a fixed-height card — but `.body`'s
+ * `flex:1; overflow-y:auto` can only clip when ITS flex parent is bounded.
+ * With `.panel` sized to content, `.body` grows to fit its content too, so
+ * `.body`'s own overflow never triggers — `.body.scrollHeight ===
+ * .body.clientHeight` (confirmed live: both ~450,044px). The real scrolling
+ * happens two ancestors up, at the dash-mode shell's page canvas
+ * (`DashboardShell`/`AdminDashboardShell`'s `.dashHost`,
+ * `position:absolute;inset:0;overflow-y:auto` — a genuinely bounded box).
+ *
+ * Rather than hardcode a selector for that shell element (which would need a
+ * stable hook on a file this component doesn't own, and would only cover ONE
+ * of the two shells), this walks up from `bodyRef` and asks the DOM which
+ * element is *actually* bounded-and-clipping right now. In the non-fullPage
+ * slide-in panel, `.panel` keeps its fixed-position bounded box, so `.body`
+ * itself matches on the first check and behaviour is unchanged there.
+ */
+export function findScrollParent(node) {
+  let el = node;
+  while (el && el !== document.documentElement) {
+    const style = window.getComputedStyle(el);
+    if (
+      (style.overflowY === 'auto' || style.overflowY === 'scroll') &&
+      el.scrollHeight > el.clientHeight
+    ) {
+      return el;
+    }
+    el = el.parentElement;
+  }
+  // Nothing found (e.g. content doesn't overflow yet) — fall back to the
+  // originally-ref'd node, which is never worse than the old behaviour.
+  return node ?? document.scrollingElement ?? document.documentElement;
+}
 
 /* ═══════════════════════════════════════════════════════════════════════════ */
 /*  Helpers                                                                   */
@@ -53,17 +103,19 @@ function monthlyAverage(sub) {
 /* ═══════════════════════════════════════════════════════════════════════════ */
 /*  Sort options                                                              */
 /* ═══════════════════════════════════════════════════════════════════════════ */
+// Labels only — sorting itself is server-side now (getEntityPage / A21-001),
+// driven by `sortKey` in the list's query params, not a client-side `.fn`.
 const SORT_OPTIONS = [
-  { key: 'balance', label: 'Balance', fn: (a, b) => subscriberBalance(b) - subscriberBalance(a) },
-  { key: 'contributions', label: 'Contributions', fn: (a, b) => b.totalContributions - a.totalContributions },
-  { key: 'registration', label: 'Registration Date', fn: (a, b) => (b.registeredDate || '').localeCompare(a.registeredDate || '') },
-  { key: 'name', label: 'Name', fn: (a, b) => a.name.localeCompare(b.name) },
+  { key: 'balance', label: 'Balance' },
+  { key: 'contributions', label: 'Contributions' },
+  { key: 'registration', label: 'Registration Date' },
+  { key: 'name', label: 'Name' },
 ];
 
 /* ═══════════════════════════════════════════════════════════════════════════ */
 /*  Subscriber Detail                                                         */
 /* ═══════════════════════════════════════════════════════════════════════════ */
-function SubscriberDetail({ subscriber, agentsMap, branchesMap }) {
+function SubscriberDetail({ subscriber }) {
   const status = subscriberStatus(subscriber);
   const balance = subscriberBalance(subscriber);
   const avg = monthlyAverage(subscriber);
@@ -84,8 +136,15 @@ function SubscriberDetail({ subscriber, agentsMap, branchesMap }) {
   }, [txns]);
   const totalContributions = lifetime?.contributions ?? subscriber.totalContributions;
   const totalWithdrawals = lifetime?.withdrawals ?? subscriber.totalWithdrawals;
-  const agent = agentsMap[subscriber.parentId];
-  const branch = agent ? branchesMap[agent.parentId] : null;
+  // On-demand single-row lookups (A21-001) — this pane used to receive
+  // `agentsMap`/`branchesMap` built from the panel pulling EVERY agent (~1,872
+  // rows) and EVERY branch (~291 rows) up front just so this ONE lookup could
+  // be a plain object index, even when the user never opens a detail pane.
+  // `useEntity` is a single `.eq('id', id).maybeSingle()` read (cached,
+  // RLS-scoped) — a two-step dependent fetch (agent, then agent's branch), not
+  // a collection pull.
+  const { data: agent } = useEntity('agent', subscriber.parentId);
+  const { data: branch } = useEntity('branch', agent?.parentId);
 
   return (
     <div className={styles.detailContent}>
@@ -233,42 +292,19 @@ function SubscriberDetail({ subscriber, agentsMap, branchesMap }) {
  *   Unscoped (the default) the panel behaves exactly as before: every subscriber
  *   the caller's RLS allows.
  *
- *   Scoping is pushed to the SERVER (see entities.getAllAtLevel /
- *   getSubscribersForBranch), not applied to a fetched-then-filtered global list
- *   — so the "Showing N of M" total below is the scoped total, and a distributor
- *   drilling into one agent never ships the other ~4,600 rows to the client.
+ *   Scoping is pushed to the SERVER (see entities.getEntityPage), not applied
+ *   to a fetched-then-filtered global list — so a distributor drilling into
+ *   one agent never ships the other ~4,600 rows to the client. Unlike before
+ *   A21-001, the UNSCOPED case is ALSO no longer a full-collection pull: the
+ *   list is paginated (see SUBSCRIBER_PAGE_SIZE) and the "N subscribers in
+ *   your network" headline comes from the same exact rollup RPC the KPI tiles
+ *   use (`useEntityMetrics`), not from counting loaded rows.
  */
 export default function ViewSubscribers({ fullPage = false, scope = null }) {
   const { viewSubscribersOpen, setViewSubscribersOpen } = useDashboard();
 
   const scopedAgentId = scope?.agentId ?? null;
   const scopedBranchId = scope?.branchId ?? null;
-
-  // Agent scope is a single `.eq(agent_id)`; branch scope is a two-hop read
-  // (branch → agents → subscribers) because `subscribers` has no branch_id.
-  // Exactly one of these is ever enabled — the other's `enabled:false` keeps it
-  // from firing.
-  const agentScoped = useAllEntities(
-    scopedAgentId ? 'subscriber' : null,
-    scopedAgentId ? { agentId: scopedAgentId } : null,
-  );
-  const branchScoped = useSubscribersForBranch(scopedBranchId);
-  const unscoped = useAllEntities(scopedAgentId || scopedBranchId ? null : 'subscriber');
-
-  const subsQuery = scopedAgentId ? agentScoped : scopedBranchId ? branchScoped : unscoped;
-  const allSubscribersRaw = subsQuery.data ?? [];
-  const subsLoading = subsQuery.isLoading;
-
-  const { data: allAgentsRaw = [] } = useAllEntities('agent');
-  const { data: allBranchesRaw = [] } = useAllEntities('branch');
-
-  // Skeleton only on a cold fetch (pending AND no cached rows). Once
-  // the ~30k subscriber list is in the cache we never bounce back to
-  // skeleton during a background refetch.
-  const isCold = subsLoading && allSubscribersRaw.length === 0;
-
-  const AGENTS_MAP = useMemo(() => Object.fromEntries(allAgentsRaw.map(a => [a.id, a])), [allAgentsRaw]);
-  const BRANCHES_MAP = useMemo(() => Object.fromEntries(allBranchesRaw.map(b => [b.id, b])), [allBranchesRaw]);
 
   const [view, setView] = useState('list');
   const [selectedSubscriber, setSelectedSubscriber] = useState(null);
@@ -285,47 +321,104 @@ export default function ViewSubscribers({ fullPage = false, scope = null }) {
     setViewSubscribersOpen(false);
   }, [setViewSubscribersOpen]);
 
-  // Aggregate stats for summary strip
-  const totals = useMemo(() => {
-    const t = { active: 0, totalContrib: 0, totalBalance: 0 };
-    allSubscribersRaw.forEach((s) => {
-      if (s.isActive) t.active++;
-      t.totalContrib += s.totalContributions;
-      t.totalBalance += subscriberBalance(s);
-    });
-    return t;
-  }, [allSubscribersRaw]);
-
-  // Debounce the live search input — with ~30k subscribers, running the
-  // filter + sort on every keystroke drops frames. 150ms keeps the input
-  // visibly responsive while collapsing rapid typing into a single recompute.
+  // Debounce the live search input so typing collapses into a single network
+  // request instead of one per keystroke — search/status/sort now drive a
+  // real server round-trip, not a client-side filter (A21-001).
   const debouncedSearch = useDebouncedValue(search, 150);
 
-  const filtered = useMemo(() => {
-    let list = allSubscribersRaw;
-    const q = debouncedSearch.trim().toLowerCase();
-    if (q) {
-      list = list.filter((s) =>
-        s.name.toLowerCase().includes(q) ||
-        s.phone.includes(q)
-      );
-    }
-    if (statusFilter !== 'all') {
-      list = list.filter((s) =>
-        statusFilter === 'active' ? s.isActive : !s.isActive
-      );
-    }
-    const sortOpt = SORT_OPTIONS.find((o) => o.key === sortKey);
-    return [...list].sort(sortOpt ? sortOpt.fn : SORT_OPTIONS[0].fn);
-  }, [allSubscribersRaw, debouncedSearch, statusFilter, sortKey]);
+  // Server-side paginated + filtered + sorted subscriber list (A21-001).
+  // Wires the panel to `entities.getEntityPage` — the server-side path the
+  // audit found already built as DEAD CODE — instead of pulling the whole
+  // scoped collection via `useAllEntities` into memory just to virtualize a
+  // ~20-row viewport. Built directly on `useInfiniteQuery` rather than the
+  // existing `useInfiniteEntityList` wrapper (hooks/useEntity.js) because
+  // that wrapper has no scope parameter; adding one is a hooks/useEntity.js
+  // change, outside this file's write-set (see P6-perf escalations).
+  const scopeForQuery = scopedAgentId
+    ? { agentId: scopedAgentId }
+    : scopedBranchId
+      ? { branchId: scopedBranchId }
+      : null;
+  const listQuery = useInfiniteQuery({
+    queryKey: [
+      'entity-page', 'subscriber',
+      { scopedAgentId, scopedBranchId, search: debouncedSearch, statusFilter, sortKey },
+    ],
+    queryFn: ({ pageParam = 0, signal }) =>
+      entities.getEntityPage('subscriber', {
+        offset: pageParam,
+        limit: SUBSCRIBER_PAGE_SIZE,
+        search: debouncedSearch,
+        statusFilter,
+        sortKey,
+        scope: scopeForQuery,
+        signal,
+      }),
+    initialPageParam: 0,
+    getNextPageParam: (lastPage, allPages) => {
+      if (!lastPage.hasMore) return undefined;
+      return allPages.reduce((acc, p) => acc + p.rows.length, 0);
+    },
+    staleTime: 60 * 1000,
+  });
+
+  const rows = useMemo(
+    () => listQuery.data?.pages.flatMap((p) => p.rows) ?? [],
+    [listQuery.data],
+  );
+  const subsLoading = listQuery.isLoading;
+  const hasNextPage = !!listQuery.hasNextPage;
+  const isFetchingNextPage = listQuery.isFetchingNextPage;
+  const fetchNextPage = listQuery.fetchNextPage;
+
+  // Skeleton only on a cold fetch (pending AND no cached rows). Once the
+  // first page is cached we never bounce back to skeleton on a background
+  // refetch.
+  const isCold = subsLoading && rows.length === 0;
+
+  // Scoped headcount + AUM for the header/summary strip — the SAME
+  // `get_entity_metrics_rollup` RPC the KPI tiles read via `useEntityMetrics`,
+  // so this can never drift from them the way "count what's loaded so far"
+  // would once the list is paginated. distributor-renders-data.spec.ts's
+  // regression guard pins agreement between this number and the Overview
+  // "Subscribers" tile — an ESTIMATED count (what getEntityPage's own `total`
+  // is, see its JSDoc) can't guarantee that on a small scoped set, only this
+  // EXACT rollup can.
+  const metricsLevel = scopedAgentId ? 'agent' : scopedBranchId ? 'branch' : 'country';
+  const metricsId = scopedAgentId ?? scopedBranchId ?? 'ug';
+  const { data: scopeMetrics } = useEntityMetrics(metricsLevel, metricsId);
+  const scopedTotal = scopeMetrics?.totalSubscribers ?? 0;
+  const totals = {
+    active: scopeMetrics?.activeSubscribers ?? 0,
+    totalBalance: scopeMetrics?.aum ?? 0,
+  };
 
   const estimateSize = useCallback(() => 72, []);
+  const getScrollElement = useCallback(() => findScrollParent(bodyRef.current), []);
   const virtualizer = useVirtualizer({
-    count: filtered.length,
-    getScrollElement: () => bodyRef.current,
+    // +1 sentinel row while more pages remain — rendered as a loading
+    // indicator; its arrival in the virtual window is what triggers the next
+    // page fetch (effect below). Standard TanStack Virtual + Query
+    // infinite-scroll pairing.
+    count: hasNextPage ? rows.length + 1 : rows.length,
+    getScrollElement,
     estimateSize,
     overscan: 10,
   });
+
+  // Fetch the next page once the sentinel/tail row scrolls into the
+  // virtualizer's rendered window. `virtualItems` (not `virtualizer` itself)
+  // is the real dependency — TanStack Virtual's returned object carries
+  // functions that can't be identity-compared, which is also why it's exempt
+  // from React Compiler memoization above.
+  const virtualItems = virtualizer.getVirtualItems();
+  useEffect(() => {
+    const lastItem = virtualItems[virtualItems.length - 1];
+    if (!lastItem) return;
+    if (lastItem.index >= rows.length - 1 && hasNextPage && !isFetchingNextPage) {
+      fetchNextPage();
+    }
+  }, [virtualItems, rows.length, hasNextPage, isFetchingNextPage, fetchNextPage]);
 
   // Reset state on close
   useEffect(() => {
@@ -340,8 +433,10 @@ export default function ViewSubscribers({ fullPage = false, scope = null }) {
     return () => clearTimeout(t);
   }, [viewSubscribersOpen]);
 
-  // Scroll to top on view change
-  useEffect(() => { bodyRef.current?.scrollTo(0, 0); }, [view]);
+  // Scroll to top on view change. Uses the same scroll-parent resolution as
+  // the virtualizer (A19-004) — in fullPage/dash mode `.body` itself never
+  // scrolls, so calling `.scrollTo` on it directly was a no-op there.
+  useEffect(() => { findScrollParent(bodyRef.current)?.scrollTo(0, 0); }, [view]);
 
   // Escape key handler
   useEffect(() => {
@@ -372,7 +467,7 @@ export default function ViewSubscribers({ fullPage = false, scope = null }) {
   // "across Uganda" was only true for the national distributor and the admin.
   // The list is RLS-scoped to the caller, so a regional operator was told its
   // 399-member book spanned the country. Describe the set, not the geography.
-  let headerSubtitle = `${formatNumber(allSubscribersRaw.length)} subscribers in your network`;
+  let headerSubtitle = `${formatNumber(scopedTotal)} subscribers in your network`;
   if (view === 'detail' && selectedSubscriber) {
     headerTitle = selectedSubscriber.name;
     headerSubtitle = `Subscriber${selectedSubscriber.phone ? ` \u00B7 ${selectedSubscriber.phone}` : ''}`;
@@ -433,7 +528,7 @@ export default function ViewSubscribers({ fullPage = false, scope = null }) {
                       {headerTitle}
                       {view === 'list' && (
                         <span className={styles.filterCount} style={{ marginLeft: 'var(--space-2)', verticalAlign: 'middle' }}>
-                          {formatNumber(allSubscribersRaw.length)}
+                          {formatNumber(scopedTotal)}
                         </span>
                       )}
                     </motion.h2>
@@ -521,7 +616,7 @@ export default function ViewSubscribers({ fullPage = false, scope = null }) {
                 <div className={styles.summaryStrip}>
                   <div className={styles.summaryChip}>
                     <span className={styles.summaryChipIcon}>{Icons.subscribers}</span>
-                    <span className={styles.summaryChipValue}>{formatNumber(allSubscribersRaw.length)}</span>
+                    <span className={styles.summaryChipValue}>{formatNumber(scopedTotal)}</span>
                     <span className={styles.summaryChipLabel}>Total</span>
                   </div>
                   <div className={styles.summaryChip}>
@@ -546,12 +641,12 @@ export default function ViewSubscribers({ fullPage = false, scope = null }) {
                     <div className={styles.listCount}>
                       {isCold
                         ? 'Loading subscribers…'
-                        : `Showing ${formatNumber(filtered.length)} of ${formatNumber(allSubscribersRaw.length)} subscribers`}
+                        : `Showing ${formatNumber(rows.length)} of ${formatNumber(scopedTotal)} subscribers`}
                     </div>
 
                     {isCold ? (
                       <SkeletonRow count={10} label="Loading subscribers" />
-                    ) : filtered.length === 0 ? (
+                    ) : rows.length === 0 ? (
                       // No filters → truly empty list; with filters → no match.
                       debouncedSearch.trim() === '' && statusFilter === 'all' ? (
                         <EmptyState
@@ -572,7 +667,32 @@ export default function ViewSubscribers({ fullPage = false, scope = null }) {
                         style={{ height: `${virtualizer.getTotalSize()}px`, padding: '0 var(--space-5)' }}
                       >
                         {virtualizer.getVirtualItems().map((virtualRow) => {
-                          const sub = filtered[virtualRow.index];
+                          // The +1 sentinel row past the loaded set (only present
+                          // while hasNextPage) — renders a loading placeholder and
+                          // its arrival in-window is what the fetch-next-page
+                          // effect watches for.
+                          if (virtualRow.index > rows.length - 1) {
+                            return (
+                              <div
+                                key="vs-loading-more"
+                                ref={virtualizer.measureElement}
+                                data-index={virtualRow.index}
+                                className={styles.listCount}
+                                style={{
+                                  position: 'absolute',
+                                  top: 0,
+                                  left: 0,
+                                  width: '100%',
+                                  transform: `translateY(${virtualRow.start}px)`,
+                                  padding: 'var(--space-3) var(--space-5)',
+                                }}
+                              >
+                                Loading more…
+                              </div>
+                            );
+                          }
+                          const sub = rows[virtualRow.index];
+                          if (!sub) return null;
                           const status = subscriberStatus(sub);
                           const balance = subscriberBalance(sub);
                           return (
@@ -623,7 +743,7 @@ export default function ViewSubscribers({ fullPage = false, scope = null }) {
 
                 {view === 'detail' && selectedSubscriber && (
                   <motion.div key="vs-detail" initial={{ opacity: 0, x: 24 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -24 }} transition={{ duration: 0.25, ease: EASE_OUT_EXPO }}>
-                    <SubscriberDetail subscriber={selectedSubscriber} agentsMap={AGENTS_MAP} branchesMap={BRANCHES_MAP} />
+                    <SubscriberDetail subscriber={selectedSubscriber} />
                   </motion.div>
                 )}
               </AnimatePresence>
