@@ -43,3 +43,56 @@ export const Icons = {
     </svg>
   ),
 };
+
+/**
+ * commissionsErrorMessage — turn whatever the commissions query threw into one
+ * plain sentence a field agent can act on (A11-008).
+ *
+ * THE BUG. Both commission screens pass the raw error straight to
+ * `<ErrorCard message={error} />`, and ErrorCard renders `error.message`. When
+ * the network drops, `src/services/commissions.js:_rpcError` copies the message
+ * supabase-js produced for a failed fetch — which is the literal string
+ * `"TypeError: Failed to fetch"`. So an agent demoing on a Ugandan mobile
+ * connection, at the exact moment the connection is worst, is shown a
+ * JavaScript exception name. It tells them nothing, and it looks broken.
+ *
+ * THE RULE THIS ENCODES: never render an exception string to a user. Every
+ * branch below returns copy written for someone with low literacy and no
+ * technical vocabulary, and the fallback is a fixed sentence — the raw text is
+ * not passed through even when nothing matches, because "unrecognised" is
+ * exactly the case most likely to contain a stack trace.
+ *
+ * The three outcomes are chosen by what the agent should DO, not by what went
+ * wrong internally: check the connection, sign in again, or wait and retry.
+ * The retry button that sits beside the message stays useful in all three.
+ *
+ * @param {unknown} error — an Error (usually carrying `.code` from
+ *   `_rpcError` or `services/api.js`), a bare string, or anything at all.
+ * @returns {string} one sentence, safe to render.
+ */
+export function commissionsErrorMessage(error) {
+  const isString = typeof error === 'string';
+  const raw = isString ? error : String(error?.message ?? '');
+  const code = isString ? '' : String(error?.code ?? '');
+  const status = isString ? undefined : error?.status;
+
+  // Signed-out / expired token. `services/api.js` codes this explicitly;
+  // PostgREST answers a stale JWT with 401.
+  if (code === 'session_expired' || status === 401) {
+    return 'Your sign-in has ended. Please sign in again.';
+  }
+
+  // Anything that means "the request never reached a working server".
+  // The codes come from `services/api.js`; the text match catches the
+  // supabase-js path, which produces a message but no useful code — this is
+  // the branch that actually fires for "TypeError: Failed to fetch".
+  const networkCodes = ['network_unreachable', 'timeout', 'backend_down', 'server_unavailable'];
+  const looksLikeNetwork = /failed to fetch|networkerror|network error|load failed|timed? ?out|fetch failed/i;
+  if (networkCodes.includes(code) || looksLikeNetwork.test(raw)) {
+    return 'We could not reach the server. Check your internet connection and try again.';
+  }
+
+  // Everything else, including anything unrecognised. Deliberately does NOT
+  // fall through to `raw`.
+  return 'Something went wrong on our side. Please try again in a moment.';
+}

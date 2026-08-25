@@ -1,0 +1,101 @@
+-- 0129_perf_indexes.sql
+-- A21-004 — redundant/duplicate indexes and the unindexed-FK advisor lint.
+--
+-- THE REPORT'S SUGGESTED FIX IS PARTLY WRONG AND IS NOT FOLLOWED HERE.
+-- A21-004 proposed four changes. Each was checked against LIVE
+-- (project ilkhfnoyxlxwqadebnkp, 2026-08-25) before anything was written; two
+-- are done below, two are refused with the measurement that refuses them.
+--
+-- ── MEASUREMENT (live, `pg_stat_user_indexes`, uptime 1d 22h from 2026-08-23) ─
+--
+--   table          index                                  idx_scan   size
+--   -------------  -------------------------------------  --------  ------
+--   subscribers    idx_subscribers_agent_id                 54,840  312 kB
+--   subscribers    subscribers_agent_id_id_idx              42,625  632 kB
+--   demo_personas  demo_personas_phone_role_key                 31   16 kB
+--   demo_personas  demo_personas_phone_role_unique              27   16 kB
+--   money_nonces   (no index on subscriber_id)                  —     —
+--
+-- ── (1) NOT DONE: drop `idx_subscribers_agent_id` ──────────────────────────
+-- A21-004 calls it "redundant" because `subscribers_agent_id_id_idx` is a
+-- (agent_id, id) composite whose leading column covers it. That is true in
+-- theory and false in practice: the planner used the single-column index
+-- **54,840 times** in the last 46 hours — MORE than the composite (42,625).
+-- It picks the narrow one for equality lookups on agent_id because it is half
+-- the size (312 kB vs 632 kB), and the composite for index-only scans
+-- (13.4M tuples read vs 206k). Both earn their keep.
+--
+-- Dropping it would not break anything — the composite can serve every query —
+-- but it would silently push 54,840 lookups/2 days onto an index twice as wide.
+-- That is exactly the "slow, invisible regression" this migration exists to
+-- avoid. The single-column index STAYS.
+--
+-- (Note the repo has been here before: 0023 dropped a genuinely identical
+-- `subscribers_agent_id_idx`. That one WAS a byte-for-byte duplicate. This one
+-- is not — a prefix is not a duplicate.)
+--
+-- ── (2) DONE: drop the `demo_personas` duplicate ───────────────────────────
+-- These two ARE byte-for-byte identical:
+--   demo_personas_phone_role_unique  UNIQUE (phone, role)  ← backs a CONSTRAINT
+--                                                            (0001_initial_schema:442)
+--   demo_personas_phone_role_key     UNIQUE (phone, role)  ← bare index
+--                                                            (0090_access_request_login_identity:68)
+-- 0090 added "one persona per (phone, role)" without noticing 0001 had already
+-- declared that exact constraint. `pg_constraint` confirms only the `_unique`
+-- one backs a constraint, so the `_key` one is a plain index and can simply be
+-- dropped.
+--
+-- Its idx_scan is 31, not 0 — and that does not matter here, which is the one
+-- place in this file where a non-zero scan count is not a veto. A true
+-- duplicate's scans are served identically by its twin: same columns, same
+-- order, same uniqueness, same opclass. The planner will pick `_unique` for all
+-- 31. Nothing loses an access path, and the (phone, role) uniqueness invariant
+-- 0090 wanted is still enforced — by the constraint, which is the stronger of
+-- the two mechanisms.
+--
+-- ── (3) DONE: index `money_nonces.subscriber_id` ───────────────────────────
+-- `money_nonces_subscriber_id_fkey` is `REFERENCES subscribers(id) ON DELETE
+-- CASCADE` with no index behind it, so every subscriber delete sequentially
+-- scans `money_nonces` to find dependents. The table holds 10 rows today, so
+-- this buys nothing measurable now — it is lint closure plus the cheapest
+-- possible insurance for a table that grows with money activity and is scanned
+-- by the e2e cleanup RPC (0113). Honest accounting: a 16 kB index and a
+-- fractional write cost, in exchange for the cascade staying O(log n).
+--
+-- ── (4) NOT DONE: drop the `*_pre_nav` backup tables ───────────────────────
+-- A21-004 flags `subscribers_unit_value_pre_nav` and `subscriber_balances_pre_nav`
+-- for the `no_primary_key` advisor lint and suggests dropping them "once the NAV
+-- migration is settled". Both are deliberate recovery snapshots taken by 0105
+-- before the NAV repricing, and 0127's header records that both already have RLS
+-- enabled with no policies — i.e. they are already correctly sealed. A snapshot
+-- of a table does not want a primary key, and deciding a recovery artefact is no
+-- longer needed is a data-retention call, not an index tuning call. Out of scope
+-- for a file named `perf_indexes`; left alone deliberately.
+--
+-- ── VERIFICATION ───────────────────────────────────────────────────────────
+--   SELECT indexrelname, idx_scan FROM pg_stat_user_indexes
+--    WHERE schemaname='public' AND relname IN ('demo_personas','money_nonces');
+--   -- expect: demo_personas_phone_role_key ABSENT
+--   --         demo_personas_phone_role_unique present
+--   --         money_nonces_subscriber_id_idx present
+--
+--   -- the invariant 0090 wanted must still hold:
+--   SELECT conname FROM pg_constraint
+--    WHERE conrelid='public.demo_personas'::regclass AND contype='u';
+--   -- expect: demo_personas_phone_role_unique
+-- ============================================================================
+
+BEGIN;
+
+-- (2) The duplicate. `IF EXISTS` because 0090 created it with
+-- `IF NOT EXISTS` and a database bootstrapped from a different point in the
+-- migration chain may not have it.
+DROP INDEX IF EXISTS public.demo_personas_phone_role_key;
+
+-- (3) The unindexed FK. Non-concurrent on purpose: the table has 10 rows, so
+-- the ACCESS EXCLUSIVE lock is instantaneous, and CONCURRENTLY cannot run
+-- inside the transaction block this file (per house convention) opens.
+CREATE INDEX IF NOT EXISTS money_nonces_subscriber_id_idx
+  ON public.money_nonces (subscriber_id);
+
+COMMIT;

@@ -41,6 +41,39 @@ type ReferralBody = {
   sessionId?: string;
 };
 
+/**
+ * A07-002 — strip control characters from free text before it is persisted by
+ * the RLS-bypassing service-role client on this public, pre-JWT route.
+ *
+ * Removes C0 (U+0000–U+001F), DEL (U+007F) and C1 (U+0080–U+009F). Two concrete
+ * problems, neither of them theoretical:
+ *
+ *   NUL. Postgres `text` cannot store U+0000 at all. A `reason` containing one
+ *   makes the INSERT below fail, which this handler reports as a 500 `db_error`
+ *   — a client input problem surfacing as a server fault, and one an operator
+ *   would burn time chasing. Stripping turns it into a normal 200.
+ *
+ *   LOG FORGERY. `reason` is echoed into `console.error('[agent-referral] …')`
+ *   on the failure path and lands in Render's plain-text log stream alongside
+ *   morgan's one-line-per-request output. A newline inside it lets an anonymous
+ *   caller inject a line that reads exactly like a genuine log entry. Removing
+ *   CR/LF removes the ability to forge one.
+ *
+ * WHAT THIS DELIBERATELY DOES NOT DO — and must not be "improved" into doing:
+ * it does not HTML-escape. A07-002's suggested fix is "ensure render side
+ * escapes", and that is right, but the escaping belongs at the render sink, not
+ * here. React escapes text children by default, so a value HTML-escaped at the
+ * API layer would arrive already-encoded and be escaped a second time — the
+ * agent reading the referral would see `it&#39;s urgent` instead of `it's
+ * urgent`. Storing the user's literal text and escaping at render is the
+ * correct split; the only sink that could still be unsafe is one using
+ * `dangerouslySetInnerHTML`, which is a render-side defect to fix there.
+ */
+function stripControlChars(value: string): string {
+  // eslint-disable-next-line no-control-regex
+  return value.replace(/[\u0000-\u001F\u007F-\u009F]/g, '');
+}
+
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') {
     res.setHeader('Allow', 'POST');
@@ -61,7 +94,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   // referral. Without this, a user typing "0712 345 678" creates a referral
   // row no agent dashboard can find. (B3/B4.)
   const phone = toCanonicalUGPhone(body.phone);
-  const reason = typeof body.reason === 'string' ? body.reason.trim() : '';
+  // A07-002: sanitise BEFORE the emptiness check and BEFORE the length cap, so
+  // both act on exactly the string that will be stored. A `reason` made only of
+  // control characters therefore falls out as `reason_required` rather than
+  // being written as an empty-looking row, and the 1000-char cap measures real
+  // characters rather than padding that vanishes on the way to the database.
+  const reason = stripControlChars(
+    typeof body.reason === 'string' ? body.reason.trim() : ''
+  );
 
   if (!phone) {
     return res.status(400).json({ code: 'invalid_phone' });
@@ -79,9 +119,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   // §2a.5 (audit D1): the optional pass-through fields also persist verbatim via
   // the RLS-bypassing service-role client on this public, pre-JWT route, so
   // type-guard (non-string → dropped) and length-cap them before the insert too.
-  const stage = typeof body.stage === 'string' ? body.stage : '';
-  const trackingId = typeof body.trackingId === 'string' ? body.trackingId : '';
-  const sessionId = typeof body.sessionId === 'string' ? body.sessionId : '';
+  // A07-002: same control-character strip as `reason`. These three are opaque
+  // correlation ids rather than prose, so a control character in one is never
+  // legitimate — but they are persisted verbatim by the same service-role
+  // client and read back by the same operator tooling, so they get the same
+  // treatment rather than a narrower guess about what they should contain.
+  const stage = stripControlChars(typeof body.stage === 'string' ? body.stage : '');
+  const trackingId = stripControlChars(typeof body.trackingId === 'string' ? body.trackingId : '');
+  const sessionId = stripControlChars(typeof body.sessionId === 'string' ? body.sessionId : '');
   const optTooLong =
     checkLen(stage, 64, 'stage_too_long') ??
     checkLen(trackingId, 128, 'tracking_id_too_long') ??

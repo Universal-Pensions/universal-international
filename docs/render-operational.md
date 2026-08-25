@@ -71,6 +71,30 @@ Render free tier rotates logs after **~7 days**. The Render dashboard log viewer
 
 For this demo project, 7-day retention is acceptable; revisit if we move past sales-rep demos.
 
+### Health traffic is now in the log stream (A09-010)
+
+Until 2026-08-25, `/healthz` and `/readyz` produced **no log lines at all**. They are registered at `server/index.ts` blocks 4 and 4b, and `morgan` used to be registered after them at block 7 — Express middleware only wraps what is registered *after* it, so every health request bypassed the logger. The measured effect: over a 34-hour window the Render log stream contained exactly **one** application line, despite roughly 60 keepalive pings plus every browser warmup call.
+
+That mattered because the two questions you actually ask during a cold-start incident — *is the keepalive still running?* and *has `/readyz` been failing?* — were both unanswerable from the logs, which is the first thing anyone reaches for. `morgan` now sits at block 3b, before every route, so both appear:
+
+```
+GET /healthz 200 1.508 ms - 11
+GET /readyz 200 430.550 ms - 11
+```
+
+Two consequences worth knowing:
+
+- **Response bodies are unchanged.** `morgan` writes to stdout on the response's `finished` event; it adds no header and no body byte. The ~1 KB budget that free-tier uptime monitors impose — the reason `/healthz` is deliberately registered ahead of `helmet` — is intact, and `/readyz` (the keepalive target) behaves exactly as before.
+- **Volume.** The 10-minute GHA keepalive plus the 5-minute backup pingers now add roughly 400–500 lines/day. That is immaterial against a 7-day rotating window, but it is no longer true that the log stream is nearly empty, so "no recent lines" now genuinely means *the service is not being pinged* rather than *the logger cannot see it*.
+
+### ⚠️ An external monitor is polling `/api/health`, which does not exist
+
+The single log line that existed before the fix was `GET /api/health 404`. There is no such route — the 16 mounts are at `server/index.ts` block 9, and the health endpoints are `/healthz` and `/readyz` at the root, not under `/api`.
+
+Whatever is polling it has therefore been **recording a 404 as "up"** for as long as it has been configured, which means it would also report "up" for a completely broken deploy. It is not one of the pingers named in this document (the GHA keepalive targets `/readyz`; the cron-job.org / UptimeRobot backups are configured for `/healthz`), so it is an unidentified third monitor.
+
+**Action, requiring dashboard access this repo does not have:** find it (cron-job.org, UptimeRobot, or a Render-side check) and repoint it at `/readyz`, which actually verifies database reachability. Until then, treat any "up" signal from it as meaningless. Now that morgan wraps the health routes, its next poll will appear in the log stream with a timestamp and user-agent, which is the cheapest way to identify it.
+
 ---
 
 ## Failure Alerting (G59)

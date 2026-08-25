@@ -14,6 +14,7 @@
 import { describe, it, expect } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import { SettlementMismatchBanner } from './CommissionsParts';
+import { commissionsErrorMessage } from './commissionsConfig';
 
 const RAW_UUID = 'sb-09258a3b9cc94064be51e0a6f0a04fa5';
 const HUMAN_REF = 'MM-SEED-0001';
@@ -68,5 +69,65 @@ describe('SettlementMismatchBanner', () => {
     );
 
     expect(screen.getByText(new RegExp(`ref ${RAW_UUID}\\)`))).toBeInTheDocument();
+  });
+});
+
+// A11-008 — the commissions error card rendered the raw string
+// "TypeError: Failed to fetch" to field agents. commissionsErrorMessage() is
+// the mapper that must sit between the thrown error and <ErrorCard message>.
+describe('commissionsErrorMessage (A11-008)', () => {
+  // The exact value observed in the audit repro: services/commissions.js
+  // _rpcError copies supabase-js's message verbatim for a failed fetch.
+  const OBSERVED = Object.assign(new Error('TypeError: Failed to fetch'), { code: 'rpc_error' });
+
+  it('never leaks a JavaScript exception string', () => {
+    for (const input of [
+      OBSERVED,
+      new Error('TypeError: Failed to fetch'),
+      'TypeError: Failed to fetch',
+      new Error("Cannot read properties of undefined (reading 'map')"),
+      Object.assign(new Error('boom'), { code: 'rpc_error' }),
+      null,
+      undefined,
+      {},
+    ]) {
+      const out = commissionsErrorMessage(input);
+      expect(out).not.toMatch(/TypeError|undefined|Error:|\bnull\b|properties of/);
+      expect(out).toMatch(/^[A-Z].*\.$/); // a real sentence, not a fragment
+    }
+  });
+
+  it('tells the agent to check the connection when the request never landed', () => {
+    const expected = 'We could not reach the server. Check your internet connection and try again.';
+    expect(commissionsErrorMessage(OBSERVED)).toBe(expected);
+    expect(commissionsErrorMessage(new Error('NetworkError when attempting to fetch resource.'))).toBe(expected);
+    expect(commissionsErrorMessage(new Error('Load failed'))).toBe(expected);
+    expect(commissionsErrorMessage(Object.assign(new Error('x'), { code: 'network_unreachable' }))).toBe(expected);
+    expect(commissionsErrorMessage(Object.assign(new Error('x'), { code: 'timeout' }))).toBe(expected);
+    expect(commissionsErrorMessage(Object.assign(new Error('x'), { code: 'server_unavailable' }))).toBe(expected);
+  });
+
+  it('tells the agent to sign in again when the session has expired', () => {
+    const expected = 'Your sign-in has ended. Please sign in again.';
+    expect(commissionsErrorMessage(Object.assign(new Error('Session expired'), { code: 'session_expired' }))).toBe(expected);
+    expect(commissionsErrorMessage(Object.assign(new Error('JWT expired'), { status: 401 }))).toBe(expected);
+  });
+
+  it('falls back to a fixed sentence for anything unrecognised', () => {
+    const expected = 'Something went wrong on our side. Please try again in a moment.';
+    expect(commissionsErrorMessage(Object.assign(new Error('duplicate key value'), { code: '23505' }))).toBe(expected);
+    expect(commissionsErrorMessage(undefined)).toBe(expected);
+    expect(commissionsErrorMessage('')).toBe(expected);
+  });
+
+  it('uses plain language — no jargon a field agent would not recognise', () => {
+    const all = [
+      commissionsErrorMessage(OBSERVED),
+      commissionsErrorMessage(Object.assign(new Error('x'), { code: 'session_expired' })),
+      commissionsErrorMessage(new Error('anything else')),
+    ];
+    for (const msg of all) {
+      expect(msg).not.toMatch(/token|JWT|RPC|API|HTTP|fetch|500|401|null|payload|exception/i);
+    }
   });
 });
