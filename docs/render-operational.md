@@ -107,7 +107,7 @@ Whatever is polling it has therefore been **recording a 404 as "up"** for as lon
 
 ## Silent-failure Recovery Procedures (G64)
 
-These are the 3 documented failure modes where Render keeps running but the symptom is invisible without monitoring:
+These are the 4 documented failure modes where Render keeps running but the symptom is invisible without monitoring:
 
 ### 1. `npm ci` deploy failure
 
@@ -135,6 +135,25 @@ These are the 3 documented failure modes where Render keeps running but the symp
 - Render dashboard → **Metrics** → check the memory chart for the crash window.
 - If RSS climbs monotonically over hours, suspect a leak; capture a heap snapshot locally with `node --inspect dist-server/server/index.js` and reproduce.
 - Verify `auth.persistSession: false` on the Supabase admin client (audit G66) — sessions retained in memory across requests are a common leak source under a long-lived process.
+
+### 4. `xlsx` CDN dependency unreachable (A24-011)
+
+**Symptom:** `npm ci` fails during the build step — on Render (this service), on Vercel (the frontend), or in CI (`.github/workflows/test.yml`) — with a **generic network error that never mentions `xlsx` or SheetJS**. Verified empirically (2026-08-25) against an unreachable host, npm's actual output is:
+```
+npm error code ENOTFOUND
+npm error syscall getaddrinfo
+npm error network request to https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz failed, reason: getaddrinfo ENOTFOUND cdn.sheetjs.com
+npm error network This is a problem related to network connectivity.
+npm error network In most cases you are behind a proxy or have bad network settings.
+```
+Skimmed quickly, this reads as "proxy problem" or "flaky network," not "one dependency's CDN is down" — the only clue is the hostname, buried mid-line.
+
+**What happened:** `package.json` pins `"xlsx": "https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz"` — a direct CDN tarball URL, not a normal registry version range. This is **deliberate and correct**, not an error to "fix": SheetJS stopped publishing new `xlsx` releases to the npm registry after `0.18.5` (2022-03-24) and now self-hosts at `cdn.sheetjs.com`. The abandoned registry copy carries two CVEs (prototype pollution CVE-2023-30533, ReDoS CVE-2024-22363) that were never patched on npm; this repo's CDN-pinned `0.20.3` is past both fixes. **Do not "fix" this by pointing the dependency back at the npm registry** — that would reintroduce both CVEs. The cost is availability, not security: every `npm ci` now needs `cdn.sheetjs.com` reachable, with no npm-registry fallback for this one package. Full writeup, sourcing, and a costed recommendation for closing the availability gap (vendoring the tarball vs. mirroring to an org-controlled registry) live at `docs/audits/2026-08-23/a24/supply-chain.md`.
+
+**Recovery:**
+- Run `node scripts/check-xlsx-cdn.mjs` (this repo, no install needed) to confirm or rule out the CDN as the cause before chasing a phantom "network config" problem.
+- If the CDN is genuinely down: wait and retry (SheetJS's CDN is Cloudflare-fronted; outages have historically been short), or vendor the tarball as an emergency unblock — see the costed recommendation in the evidence doc above for the exact `package.json` diff. **That edit is a `package.json` dependency change and is outside this doc's and this script's scope — get it reviewed, don't apply it under deploy pressure without reading the trade-offs first.**
+- This is NOT one of the "lock-file drift, missing dep, native module compile error" causes procedure #1 above assumes — if procedure #1's usual fixes don't apply, check this one next.
 
 ---
 
