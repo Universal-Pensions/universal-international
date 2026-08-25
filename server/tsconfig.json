@@ -9,6 +9,16 @@
     "allowSyntheticDefaultImports": true,
     "resolveJsonModule": true,
     "isolatedModules": true,
+    // A25-006 — the closest dependency-free equivalent to ESLint's
+    // no-unused-vars for this TS surface: eslint-plugin-@typescript-eslint
+    // isn't installed (no typescript-eslint in package-lock.json anywhere in
+    // the tree — verified 2026-08-25) and this task's guardrails forbid
+    // adding a dependency to get it. tsc's own noUnusedLocals/
+    // noUnusedParameters catch the same class of dead code using only the
+    // `typescript` package already in devDependencies. Verified clean
+    // against the real build:api output before enabling (zero new errors).
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
     "rootDir": "..",
     "outDir": "../dist-server",
     "types": ["node"]

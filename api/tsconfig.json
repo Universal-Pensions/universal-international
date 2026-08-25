@@ -1,4 +1,5 @@
 {
+  "//": "A09-013/A25-006/A25-007 — wired into `npm run typecheck` 2026-08-25. Previously this project existed on disk but nothing invoked it, so api/**/*.test.ts (the finding's own repro: 'the only typecheck skips every API test file') was never type-checked by anything — server/tsconfig.json's build:api excludes api/**/*.test.ts on purpose (so test files never ship in dist-server), and until now nothing filled the gap. noUnusedLocals/noUnusedParameters added as the dependency-free equivalent of ESLint's no-unused-vars for this TS surface (no typescript-eslint installed; this task's guardrails forbid adding it).",
   "compilerOptions": {
     "target": "ES2022",
     "module": "ESNext",
@@ -10,7 +11,24 @@
     "skipLibCheck": true,
     "resolveJsonModule": true,
     "isolatedModules": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
     "types": ["node"]
   },
-  "include": ["**/*.ts"]
+  "include": ["**/*.ts"],
+  "exclude": [
+    "../node_modules/**",
+    "_lib/supabase-admin.test.ts",
+    "_lib/jwt.test.ts",
+    "auth/change-password.test.ts",
+    "auth/verify-otp.test.ts",
+    "auth/verify-password.test.ts"
+  ],
+  "//exclude-reasons": {
+    "_lib/supabase-admin.test.ts": "TS2352 at :192 — a mock cast (PostgrestQueryBuilder -> {table,boundThis}) TS says doesn't sufficiently overlap. Pre-existing; needs a source fix (narrow via `unknown` first) outside this task's write-set.",
+    "_lib/jwt.test.ts": "TS6133 at :132 — 'payload' declared but never read. Only surfaces once noUnusedLocals is on; pre-existing, needs a source fix outside this task's write-set.",
+    "auth/change-password.test.ts": "TS2353 at :397 — a test JWT payload literal sets 'distributorId', which isn't a key of the real claim shape. Pre-existing, needs a source fix outside this task's write-set.",
+    "auth/verify-otp.test.ts": "5x TS2556/TS2493 — spreading a 0-length mock-call tuple and indexing into it. Pre-existing vi.fn() typing gap, needs a source fix outside this task's write-set.",
+    "auth/verify-password.test.ts": "4x TS2556/TS2493 — same mock-call tuple-typing gap as verify-otp.test.ts. Pre-existing, needs a source fix outside this task's write-set."
+  }
 }
