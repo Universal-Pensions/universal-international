@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 import { EASE_OUT_EXPO } from '../utils/motion';
@@ -6,6 +6,8 @@ import { formatUGX } from '../utils/currency';
 import { PAYMENT_METHODS } from '../constants/payment';
 import PaymentMethodPicker from './payment/PaymentMethodPicker';
 import { usePaymentMethod, gatewayPause } from './payment/usePaymentMethod';
+import { useFocusTrap } from '../hooks/useFocusTrap';
+import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
 import styles from './PaySheet.module.css';
 
 // Mobile money + card + bank transfer, matching the Save / Policies flows.
@@ -25,6 +27,12 @@ const DEFAULT_METHODS = PAYMENT_METHODS;
  * label for a card ('Visa •••• 4242') — so callers pass it straight to their
  * RPC. The mocked gateway hop runs here, before `onPay` fires, so callers get
  * the authorising step for free.
+ *
+ * Focus trap + body-scroll-lock come from the shared useFocusTrap /
+ * useBodyScrollLock hooks (src/hooks/) — the same primitives every BottomSheet
+ * copy uses. Escape and the Tab trap both route through `handleClose`, so — like
+ * the Cancel button and scrim click — they no-op while a payment is in flight
+ * (`busy`) instead of letting the sheet close mid-payment.
  *
  * @param {{
  *   open: boolean,
@@ -65,6 +73,7 @@ export default function PaySheet({
 }) {
   const reduceMotion = useReducedMotion();
   const pay = usePaymentMethod(methods);
+  const sheetRef = useRef(null);
 
   // The mocked gateway hop is owned here, so `busy` covers both it and the
   // caller's own in-flight write. Everything that could interrupt a payment —
@@ -76,6 +85,9 @@ export default function PaySheet({
     if (busy) return;
     onClose?.();
   }
+
+  useFocusTrap(open, sheetRef, { onClose: handleClose });
+  useBodyScrollLock(open);
 
   async function handlePay() {
     if (busy || !pay.ready) return;
@@ -100,6 +112,7 @@ export default function PaySheet({
           onClick={handleClose}
         >
           <motion.div
+            ref={sheetRef}
             className={styles.sheet}
             role="dialog"
             aria-modal="true"

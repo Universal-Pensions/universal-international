@@ -71,7 +71,15 @@ export default function LandingNav({ active = 'subscriber', onSignIn, ctaLabel =
       </header>
 
       <button type="button" aria-label="Close menu" tabIndex={drawer ? 0 : -1} className={cx(styles.drawerScrim, drawer && styles.open)} onClick={() => setDrawer(false)} />
-      <aside className={cx(styles.drawer, drawer && styles.open)} role="dialog" aria-modal="true" aria-label="Mobile navigation" aria-hidden={!drawer}>
+      {/* A20-004: the drawer stays MOUNTED when closed (only a class changes), so
+          `aria-hidden` alone left all 7 of its children — close button, 4 audience
+          links, Sign in, CTA — in the tab order while announced as hidden. axe flags
+          that as aria-hidden-focus (serious) on /, /admin, /distributors, /employers.
+          `inert` is what actually removes descendants from BOTH the tab order and the
+          a11y tree; aria-hidden is kept for browsers predating inert support. The
+          scrim button beside this already did the tabIndex dance — the aside's own
+          children were simply missed. */}
+      <aside className={cx(styles.drawer, drawer && styles.open)} role="dialog" aria-modal="true" aria-label="Mobile navigation" aria-hidden={!drawer} inert={!drawer || undefined}>
         <div className={styles.drawerTop}>
           <img src={logo} alt="Universal Pensions" className={styles.brandLogo} width={110} height={33} />
           <button className={styles.xBtn} aria-label="Close menu" onClick={() => setDrawer(false)}>

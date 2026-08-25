@@ -1,7 +1,9 @@
-import { useEffect } from 'react';
+import { useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 import { EASE_OUT_EXPO } from '../../utils/motion';
+import { useFocusTrap } from '../../hooks/useFocusTrap';
+import { useBodyScrollLock } from '../../hooks/useBodyScrollLock';
 import styles from './BottomSheet.module.css';
 
 const CloseIcon = (
@@ -16,8 +18,11 @@ const CloseIcon = (
  * tab bar, dims with a scrim, slides up from the bottom, and closes on
  * scrim-click or Escape. Honours reduced-motion. Mobile-only — the app bar that
  * opens it never renders on desktop (>=1024px uses BranchDesktopShell's chrome).
- * A standalone copy of the agent shell's primitive so the branch shell stays
- * self-contained.
+ * Also reused directly by the admin mobile shell (AdminAttentionMobile /
+ * AdminNavMobile import this file rather than keeping their own copy). Focus
+ * trap + body-scroll-lock come from the shared useFocusTrap / useBodyScrollLock
+ * hooks (src/hooks/), so aria-modal="true" here is a kept promise: Tab cannot
+ * escape the sheet and the page behind it can't scroll while it's open.
  */
 export default function BottomSheet({
   open,
@@ -30,15 +35,10 @@ export default function BottomSheet({
   children,
 }) {
   const reduce = useReducedMotion();
+  const sheetRef = useRef(null);
 
-  useEffect(() => {
-    if (!open) return undefined;
-    function onKey(e) {
-      if (e.key === 'Escape') onClose?.();
-    }
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [open, onClose]);
+  useFocusTrap(open, sheetRef, { onClose });
+  useBodyScrollLock(open);
 
   return createPortal(
     <AnimatePresence>
@@ -54,6 +54,7 @@ export default function BottomSheet({
             aria-hidden="true"
           />
           <motion.div
+            ref={sheetRef}
             className={styles.sheet}
             style={{ height }}
             role="dialog"
