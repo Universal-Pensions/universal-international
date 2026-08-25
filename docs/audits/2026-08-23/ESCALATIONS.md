@@ -96,3 +96,18 @@ Handed directly to `P4-branch-metrics` (it owns the files, and was still running
 (`OverviewDesktop.jsx:64-72`, `deriveBranchAnalytics.js:47`).
 **A11-007** — agent home shows June on one tile and August on another
 (`agentHomeSummary.js`).
+
+## Phase 4 — policy status
+
+| # | Item | Owner | Status |
+|---|---|---|---|
+| E25 | `src/services/employer.js:694` — `insuredCount = members.filter(m => m.insuranceStatus === 'active')` trusts the same raw stored flag A06-004 was about, on the employer dashboard's insured headcount. Verified live: 0 employer-roster members currently have a self-funded lapsed policy, so it is not visibly wrong **today** — but it is the identical unguarded pattern and will drift the same way on the first lapse. Reuse the now-exported `deriveCoverStatus`. | needs an owner | OPEN (latent) |
+| E26 | `PolicyChips.jsx`'s doc comment claims "the service already filters subscriber.policies to active products". The agent-facing list can now include expired entries, so the component's own Active/Expired ternary genuinely renders. Component logic was always right; only the comment drifted. | P7-docs-truth | OPEN (comment only) |
+
+## Phase 6 — observability / CSP
+
+| # | Item | Owner | Status |
+|---|---|---|---|
+| E27 | **`VITE_SENTRY_DSN` must be set in Vercel's BUILD environment.** Proven root cause of A09-005/A24-009: Vite statically folds `if (import.meta.env.VITE_SENTRY_DSN)` to `if (undefined)` and Rollup deletes Sentry *including the import*. **No source edit can fix this** — and a runtime-only value is too late. Steps in `a07/observability-notes.md`. | **user / deploy owner** | **OPEN — blocks A09-005** |
+| E28 | `@sentry/react` is a **devDependency** (A09-012/A24-005). Builds today because Vercel installs devDeps, but a build with `NODE_ENV=production` or `--omit=dev` fails to resolve the import **only at deploy time**. `package.json` holds the user's WIP. | P6-deps | OPEN |
+| E29 | **CSP is still `Report-Only` by design.** Fonts are self-hosted and the sink now exists, but enforcing needs a six-role walk on a preview deploy showing zero violations, which cannot be run from here. Flipping the header without that evidence is the demo-visible risk the plan warns about. | needs a preview deploy | **OPEN — deliberate** |
