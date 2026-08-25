@@ -128,3 +128,66 @@ Handed directly to `P4-branch-metrics` (it owns the files, and was still running
 |---|---|---|
 | U3 | **`SUPABASE_URL` is missing from `.env.local`** (A09-014). Add:<br>`SUPABASE_URL=https://ilkhfnoyxlxwqadebnkp.supabase.co`<br>The template at `.env.local.example:41` already carries it. Until then local `npm run dev:api` boots only via a fallback that `server/env.ts:14-16` says is scheduled for removal. | `.env.local` is the user's file and is never edited by this programme. |
 | U4 | **An unidentified third-party monitor polls `/api/health`, which does not exist**, and has been recording its 404 as "up". It is NOT the GitHub keepalive (`/readyz`) nor the cron-job.org / UptimeRobot backups (`/healthz`). Now that morgan wraps the health routes (A09-010), its next poll appears in the Render log stream with a timestamp and user-agent — the cheapest way to identify and repoint it. | Needs uptime-monitor dashboard access. |
+
+---
+
+## Process incidents — 2026-08-25 (integrator record)
+
+### PI-1 · A bare `git commit` ignores your careful `git add`
+
+**Hit two independent agents and the integrator, within an hour.**
+
+The programme guardrail reads *"Never `git add -A`. Commit by explicit path."*
+Every agent obeyed the letter of it — and it was not enough:
+
+```sh
+git add path/a path/b        # scoped, correct
+git commit -m "..."          # NOT scoped — commits the ENTIRE INDEX
+```
+
+On a checkout where a dozen agents work in parallel, another agent may have
+staged its own file seconds earlier. That file rides along in your commit.
+
+Observed:
+- `83886df` (`P5-design-tokens`) swept in `src/branch-dashboard/mobile/AgentDetailMobile.test.jsx`, owned by `P5-branch-mobile`.
+- `cdc66b7` (integrator) swept in the same file again.
+- `P5-branch-mobile` then committed it properly itself in `5130f86`.
+
+**No data was lost** — the file was verified coherent (4 tests passing) and
+unmodified after. The real risk is worse than misattribution: a bare commit can
+capture a file **mid-write** from an agent still editing it, producing a commit
+that never existed as a working state.
+
+**The fix, now in force:**
+
+```sh
+git commit -o path/a path/b -m "..."    # --only: the pathspec is on the COMMIT
+git add -N path/new                     # a NEW file must be known to git first
+```
+
+Neither agent rewrote history to scrub it, and that was the right call: other
+agents' commits were already stacked on top of a live shared branch, so a rebase
+would have been a far larger risk than the cosmetic blemish it fixed.
+
+### PI-2 · Never capture "before" output by reverting the shared working tree
+
+`P6-supply-chain` ran `git checkout` over its own files to measure a clean
+"before", intending to restore its patch afterwards. A watchdog interrupt landed
+in between and **the patch was lost** — `server/env.ts`, `.env.local.example` and
+`docs/render-operational.md` all reverted, work gone.
+
+Capture "before" without touching the tree: `git show HEAD:<path>`, or copy to a
+scratch file. On a shared checkout a revert is also visible to every other agent
+for as long as it lasts.
+
+### PI-3 · A harness watchdog killed 8 of 11 agents mid-flight
+
+Not an agent fault and not a code fault: `no progress for 600s (stream watchdog
+did not recover)`. Several were mid-verification. All were resumed from their own
+transcripts with `SendMessage`, after the integrator inventoried what had
+survived on disk and told each agent specifically what to re-check rather than
+letting it redo work blindly.
+
+Three stale `* 2.*` duplicate files (macOS-style copies, byte-identical to
+`HEAD`, no unique content) were moved to the session scratchpad rather than
+deleted, since this is the user's live checkout.
