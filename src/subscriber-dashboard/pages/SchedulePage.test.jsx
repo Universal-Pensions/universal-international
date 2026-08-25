@@ -71,6 +71,28 @@ const OWN_SCHEDULE = {
   contributionIndexationPct: 0,
 };
 
+// A06-015: the exact shape `mapSubscriberRow` (services/subscriber.js) produces
+// for one of the 21 live `empe-001..021` rows — a REAL contribution_schedules
+// row, seeded by employer-run enrolment, that nobody ever set: amount 0, no due
+// date. Measured live 2026-08-25 (docs/audits/2026-08-23/findings.json,
+// A06-015). Distinct from "no row at all", which the other 37 employer-channel
+// members have (`contributionSchedule: null` — see OWN_SCHEDULE-less mounts
+// below).
+const PLACEHOLDER_SCHEDULE = {
+  frequency: 'monthly',
+  amount: 0,
+  retirementPct: 80,
+  emergencyPct: 20,
+  includeInsurance: false,
+  insuranceChoiceMade: false,
+  nextDueDate: null,
+  insuranceFundingMode: 'pay_now',
+  insurancePremiumTarget: 0,
+  insurancePremiumAccrued: 0,
+  insuranceSavingsPct: 100,
+  contributionIndexationPct: 0,
+};
+
 function mount({ funding = null, schedule = OWN_SCHEDULE } = {}) {
   state.funding = funding;
   state.sub = { id: 's-0001', age: 32, policies: [], contributionSchedule: schedule };
@@ -142,5 +164,68 @@ describe('SchedulePage — the member’s schedule is their own', () => {
     mount({ funding: null });
     expect(screen.queryByText(/what your job puts in/i)).toBeNull();
     expect(screen.getByTestId('schedule-form')).toBeInTheDocument();
+  });
+});
+
+// A06-015 — https://…/findings.json: 21 live `empe-001..021` rows carry a real
+// contribution_schedules row at amount 0 / next_due_date NULL (an employer-run
+// enrolment placeholder), while the other 37 employer-channel members
+// (emp-002..007) have no row at all. Before this fix the two cohorts rendered
+// differently — "Tune your schedule" for the placeholder vs "Set up
+// contribution schedule" for no row — purely because a truthy-but-empty JS
+// object beat a `!existing` check. Both must now read identically, and neither
+// reading may be reachable by inferring "employer-funded" from amount === 0.
+describe('SchedulePage — A06-015: employer-funded members with no real schedule', () => {
+  it('shows an explanatory employer-funded state when the member has no schedule row at all', () => {
+    mount({ funding: EMPLOYER_FUNDING, schedule: null });
+    expect(screen.getByText(/add extra savings/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(/nile breweries demo ltd already pays your pension for you/i),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/^tune your schedule$/i)).toBeNull();
+  });
+
+  it('converges the placeholder row (amount 0, no due date) onto the exact same state', () => {
+    mount({ funding: EMPLOYER_FUNDING, schedule: PLACEHOLDER_SCHEDULE });
+    // Byte-identical copy to the no-row cohort above — a member should never
+    // be able to tell which representation their own row happens to be.
+    expect(screen.getByText(/add extra savings/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(/nile breweries demo ltd already pays your pension for you/i),
+    ).toBeInTheDocument();
+    // This is the exact regression: before the fix, an empty-but-truthy row
+    // made the page say "Tune your schedule" as if there were something to
+    // tune, with no employer-funded explanation anywhere near it.
+    expect(screen.queryByText(/^tune your schedule$/i)).toBeNull();
+  });
+
+  it('hands the editor a clean slate for the placeholder row, not the zero-amount row', () => {
+    mount({ funding: EMPLOYER_FUNDING, schedule: PLACEHOLDER_SCHEDULE });
+    // Same editor state as the no-row cohort (`initial: null` — see the first
+    // test in this describe block): a genuinely new schedule, not half-seeded
+    // from a row the member never actually set.
+    expect(formProps.current.initial).toBeNull();
+  });
+
+  it('does not use the employer-funded copy for a member who already has their own top-up', () => {
+    mount({ funding: EMPLOYER_FUNDING, schedule: OWN_SCHEDULE });
+    expect(screen.getByText(/tune your schedule/i)).toBeInTheDocument();
+    expect(screen.getByText(/what you save yourself/i)).toBeInTheDocument();
+    expect(screen.queryByText(/add extra savings/i)).toBeNull();
+    expect(formProps.current.initial).toEqual(OWN_SCHEDULE);
+  });
+
+  it('never infers employer-funded from amount === 0 — a self-pay zero row still reads as their own schedule', () => {
+    // Guardrail: employer-funding must come from a reliable signal
+    // (useMyEmployerFunding, backed by subscriber.employer_id), never from
+    // amount === 0 — a self-pay member could legitimately have a real row
+    // that happens to sit at zero.
+    mount({ funding: null, schedule: PLACEHOLDER_SCHEDULE });
+    expect(screen.getByText(/tune your schedule/i)).toBeInTheDocument();
+    expect(screen.queryByText(/add extra savings/i)).toBeNull();
+    expect(screen.queryByText(/already pays your pension/i)).toBeNull();
+    // Not converted to a clean slate — this member's own (if empty) row is
+    // handed to the editor exactly as stored.
+    expect(formProps.current.initial).toEqual(PLACEHOLDER_SCHEDULE);
   });
 });

@@ -43,9 +43,6 @@ export default function SchedulePage() {
   const [settleView, setSettleView] = useState('confirm'); // confirm | success
   const [settleSubmitting, setSettleSubmitting] = useState(false);
 
-  const existing = sub?.contributionSchedule;
-  const isNew = !existing;
-
   // ── Employer-sponsored members ──────────────────────────────────────────────
   // Both contribution legs are COMPANY-WIDE employer settings (migration 0092),
   // remitted every month by the employer's contribution run. The member has no
@@ -72,6 +69,33 @@ export default function SchedulePage() {
   const payLegZero = !funding || isLegZero(funding.employeePct);
   const topUpLegZero = !funding || isLegZero(funding.employerPct);
 
+  const existing = sub?.contributionSchedule;
+  // A06-015: an employer-run enrolment can seed a `contribution_schedules` row
+  // as an inert placeholder — amount 0, no due date, nobody ever chose it —
+  // instead of leaving no row at all. That row is not a personal top-up, but a
+  // plain `!existing` check can't tell the two apart: an empty JS object is
+  // still truthy. SubscriberScheduleForm enforces MIN_CONTRIBUTION on every
+  // save, so amount<=0 can only ever be that placeholder, never a schedule the
+  // member actually saved — but only read it that way once `employerFunded`
+  // (sourced from `employer_id` via `useMyEmployerFunding`, never from the
+  // amount itself) independently confirms this member is on the employer
+  // channel. A self-pay member whose own schedule happens to sit at 0 still
+  // reads as "their own schedule", never as this placeholder state.
+  const isPlaceholderRow = employerFunded && Boolean(existing) && existing.amount <= 0;
+  const hasOwnSchedule = Boolean(existing) && !isPlaceholderRow;
+  const isNew = !hasOwnSchedule;
+
+  // Shared verbatim by desktop and mobile. Names what's already arriving from
+  // payroll so the (still blank) editor below reads as "optional extra" and
+  // not "something is broken" — the actual A06-015 fix. `isNew` above already
+  // folds the placeholder row into "no personal top-up", so this copy — and
+  // the editor beneath it — now looks identical whether the member has no row
+  // at all (the other 37 employer-channel members) or one of the 21
+  // zero-amount placeholders.
+  const employerScheduleSubtitle = isNew
+    ? `${employerName} already pays your pension for you. This part is extra — add your own saving on top if you want to, or leave it for later.`
+    : `What you save yourself. ${employerName}’s money comes on top and goes to your retirement savings.`;
+
   // DECOUPLED. The editor below is the member's OWN schedule for EVERY member,
   // employer-sponsored or not — same initial values, same amount field, same
   // split, same save path.
@@ -92,7 +116,12 @@ export default function SchedulePage() {
   // sponsored member with a real schedule is billed for their own contribution
   // only, and the home dashboard's `ownMonthly + fundedMonthly` counts each side
   // exactly once.
-  const formInitial = existing;
+  //
+  // A placeholder row (isPlaceholderRow above) is handed down as `null`, not
+  // the zero-amount row itself — the editor then starts exactly like a
+  // brand-new schedule (blank amount, "Set up schedule" button) instead of
+  // half-seeding from a row the member never actually set.
+  const formInitial = hasOwnSchedule ? existing : null;
 
   async function handleSave(schedule) {
     if (!sub) return;
@@ -278,13 +307,15 @@ export default function SchedulePage() {
           title={
             settle
               ? 'Settle this month'
-              : (isNew ? 'Set up contribution schedule' : 'Tune your schedule')
+              : (isNew
+                  ? (employerFunded ? 'Add extra savings' : 'Set up contribution schedule')
+                  : 'Tune your schedule')
           }
           subtitle={
             settle
               ? 'Pay for the changes you just made to this month’s plan.'
               : employerFunded
-                ? `What you save yourself. ${employerName}’s money comes on top and goes to your retirement savings.`
+                ? employerScheduleSubtitle
                 : 'How much you save, how often, and how it is split'
           }
           fallback="/dashboard/save"
@@ -367,11 +398,13 @@ export default function SchedulePage() {
           <section className={styles.intro}>
             <p className={styles.introEyebrow}>Contribution plan</p>
             <p className={styles.introTitle}>
-              {isNew ? 'Set up your schedule' : 'Tune your schedule'}
+              {isNew
+                ? (employerFunded ? 'Add extra savings' : 'Set up your schedule')
+                : 'Tune your schedule'}
             </p>
             <p className={styles.introSub}>
               {employerFunded
-                ? `What you save yourself. ${employerName}’s money comes on top and goes to your retirement savings.`
+                ? employerScheduleSubtitle
                 : 'How much you save, how often, and how it is split.'}
             </p>
           </section>
