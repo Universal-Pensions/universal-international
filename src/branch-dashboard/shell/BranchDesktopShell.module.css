@@ -60,31 +60,31 @@
   .topBar { transition: none; }
 }
 
-/* "Ask AI" CTA — filled indigo pill with a sparkle glyph (matches the mockup's
-   primary Ask-AI button). Stays filled while the panel is open. */
+/* "Ask AI" CTA — converged to the agent desktop shell's white-at-rest pill
+   (A17-005): white fill, lavender hairline, indigo text/icon at rest; fills
+   solid indigo with a white icon while the panel is open. See
+   docs/audits/2026-08-23/a17/design-convergence.md. */
 .askAi {
   display: inline-flex;
   align-items: center;
   gap: 8px;
   height: 40px;
   padding: 0 16px;
-  border: 1px solid var(--color-indigo);
-  border-radius: var(--radius-md);
-  background: var(--color-indigo);
-  color: var(--color-white);
+  border: 1px solid var(--color-lavender);
+  border-radius: var(--radius-full);
+  background: var(--color-white);
+  color: var(--color-indigo);
   font-family: var(--font-display);
   font-weight: 700;
   font-size: var(--text-sm);
   cursor: pointer;
   touch-action: manipulation;
-  box-shadow: 0 4px 12px color-mix(in srgb, var(--color-indigo) 22%, transparent);
-  transition: transform 0.15s var(--ease-out-expo), background 0.15s, border-color 0.15s;
+  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
 }
 
 .askAi:hover {
-  transform: translateY(-1px);
-  background: var(--color-indigo-deep);
-  border-color: var(--color-indigo-deep);
+  background: color-mix(in srgb, var(--color-indigo) 6%, transparent);
+  border-color: var(--color-indigo-soft);
 }
 
 .askAi:focus-visible {
@@ -94,11 +94,19 @@
 
 .askAiActive,
 .askAiActive:hover {
-  background: var(--color-indigo-deep);
-  border-color: var(--color-indigo-deep);
+  background: var(--color-indigo);
+  border-color: var(--color-indigo);
+  color: var(--color-white);
 }
 
-.askAiIcon { display: inline-flex; color: var(--color-white); }
+.askAiIcon {
+  display: inline-flex;
+  color: var(--color-amber-ink);
+}
+
+.askAiActive .askAiIcon {
+  color: var(--color-white);
+}
 
 .viewport {
   min-width: 0;

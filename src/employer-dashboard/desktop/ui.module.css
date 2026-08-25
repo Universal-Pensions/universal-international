@@ -154,15 +154,14 @@
   transition: transform 0.18s var(--ease-out-expo), box-shadow 0.18s var(--ease-out-expo);
 }
 
-.tile::before {
-  content: '';
-  position: absolute;
-  left: 0;
-  top: 0;
-  bottom: 0;
-  width: 3px;
-  background: var(--ac, var(--color-indigo));
-}
+/* A17-006: the left accent rail was removed to converge on the flat KPI-tile
+   treatment shared by agent/distributor/admin and the new MetricHero.Tile
+   primitive (Phase 4). --ac/--tint stay on the tile — they still drive the
+   icon chip's tint below. See docs/audits/2026-08-23/a17/design-convergence.md.
+   This file is shared by employer AND branch desktop (Tile/MetricRow are
+   imported from here into both apps), so the flattening applies everywhere
+   Tile is used, not just the two Overview screens — that shared import is
+   also why a per-screen variant isn't possible without a JSX change. */
 
 .tileInteractive { cursor: pointer; text-align: left; width: 100%; display: block; font: inherit; }
 .tileInteractive:hover { transform: translateY(-2px); box-shadow: var(--shadow-md); }

@@ -314,25 +314,16 @@
   transition: transform 0.2s var(--ease-out-expo), box-shadow 0.2s var(--ease-out-expo);
 }
 
-.kpi::before {
-  content: '';
-  position: absolute;
-  left: 0;
-  top: 0;
-  bottom: 0;
-  width: 4px;
-  background: var(--ac);
-  border-radius: var(--r-card) 0 0 var(--r-card);
-  transition: width 0.2s var(--ease-out-expo);
-}
+/* A17-006: the left accent rail was removed to converge on the flat KPI-tile
+   treatment shared by agent/distributor/admin and the new MetricHero.Tile
+   primitive (Phase 4). --ac/--tint stay on the tile — they still drive the
+   icon chip's tint below. See docs/audits/2026-08-23/a17/design-convergence.md. */
 
 .kpi:hover {
   transform: translateY(-3px);
   box-shadow: 0 2px 4px color-mix(in srgb, var(--color-indigo) 6%, transparent),
     0 20px 38px -18px color-mix(in srgb, var(--color-indigo) 40%, transparent);
 }
-
-.kpi:hover::before { width: 6px; }
 
 .kpiChip {
   width: 36px;
