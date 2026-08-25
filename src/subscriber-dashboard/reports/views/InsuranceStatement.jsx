@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { useCurrentSubscriber, useSubscriberClaims } from '../../../hooks/useSubscriber';
+import { useCurrentSubscriber, useSubscriberClaims, useSubscriberTransactions } from '../../../hooks/useSubscriber';
 import { formatUGX } from '../../../utils/currency';
 import { activeCoverTotal, activePolicies } from '../../../utils/policies';
 
@@ -21,11 +21,20 @@ export default function InsuranceStatement() {
   const { data: sub, isLoading, isError, error, refetch } = useCurrentSubscriber();
   const insurance = sub?.insurance || {};
   const { data: claims = [] } = useSubscriberClaims(sub?.id);
+  // `sub.transactions` does not exist — getCurrentSubscriber's single joined
+  // query never selects the transactions table (mapSubscriberRow has no
+  // `transactions` key), so this always read `undefined` -> [], silently
+  // emptying the premiums-paid section for a member who had genuinely paid
+  // (same root cause as A10-001/A10-002, not itself named in a finding — the
+  // claims list below uses its own dedicated hook, which is why the "Working"
+  // audit pass missed this). Read the same dedicated, id-scoped query
+  // AnnualStatement/AllTransactions use instead.
+  const { data: transactions = [], isLoading: txLoading } = useSubscriberTransactions(sub?.id);
   // Both a self-paid annual premium ('premium') and a save-to-cover sweep
   // ('premium_sweep', stored NEGATIVE) count toward premiums paid on this cover.
   const premiumTx = useMemo(
-    () => (sub?.transactions || []).filter((t) => t.type === 'premium' || t.type === 'premium_sweep'),
-    [sub]
+    () => transactions.filter((t) => t.type === 'premium' || t.type === 'premium_sweep'),
+    [transactions]
   );
 
   const totals = useMemo(() => {
@@ -112,8 +121,11 @@ export default function InsuranceStatement() {
   }
 
   // Cold-load skeleton — avoids the "Inactive · 0 / mo" flash before
-  // policy data hydrates.
-  if (isLoading && !sub) {
+  // policy data hydrates. Also waits on `txLoading`: without it, a still-
+  // loading transaction feed would show "0 payments" for a moment —
+  // indistinguishable from the premiums-paid bug this fixes — before the
+  // real rows popped in.
+  if ((isLoading && !sub) || txLoading) {
     return (
       <div className={frameStyles.frame}>
         <div className={frameStyles.headerRow}>

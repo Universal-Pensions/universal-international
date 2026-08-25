@@ -34,24 +34,16 @@
 # ============================================================================
 [chromium] › e2e/specs/flows/agent-onboard-subscriber.spec.ts:109:3 › agent → onboard new subscriber (UI + RPC + DB) › full wizard creates subscriber + balances via RPC
 [chromium] › e2e/specs/regression/modal-escape.spec.ts:224:5 › Modal Escape regression › distributor → settlement confirm modal › Escape closes the confirm modal without closing CommissionPanel
-[mobile-chromium] › e2e/specs/flows/distributor-exports-csv.spec.ts:141:3 › mobile UA → CSV cap notice (>5k rows) › subscriber export does NOT surface the cap toast (legacy path)
-[mobile-chromium] › e2e/specs/flows/distributor-exports-csv.spec.ts:37:3 › subscriber → /dashboard/reports/all-transactions Export CSV › downloads a CSV with BOM and header
 [mobile-chromium] › e2e/specs/smoke/landing.spec.ts:20:3 › landing public routes smoke › FAQ page renders
 [mobile-chromium] › e2e/specs/smoke/landing.spec.ts:27:3 › landing public routes smoke › Contact page renders
 [mobile-chromium] › e2e/specs/smoke/landing.spec.ts:34:3 › landing public routes smoke › About page renders
-[mobile-chromium] › e2e/specs/smoke/subscriber-dashboard.spec.ts:109:3 › subscriber dashboard smoke › All Transactions report loads (/dashboard/reports/all-transactions)
-[mobile-chromium] › e2e/specs/smoke/subscriber-dashboard.spec.ts:115:3 › subscriber dashboard smoke › Contributions Summary report loads (/dashboard/reports/contributions-summary)
 [mobile-chromium] › e2e/specs/smoke/subscriber-dashboard.spec.ts:124:3 › subscriber dashboard smoke › Help loads (/dashboard/help)
 [mobile-chromium] › e2e/specs/smoke/subscriber-dashboard.spec.ts:173:3 › subscriber dashboard smoke › Profile edit form loads (/dashboard/settings/profile)
 [mobile-chromium] › e2e/specs/smoke/subscriber-dashboard.spec.ts:43:3 › subscriber dashboard smoke › Schedule loads (/dashboard/save/schedule)
 [mobile-chromium] › e2e/specs/smoke/subscriber-dashboard.spec.ts:54:3 › subscriber dashboard smoke › Withdrawals hub loads (/dashboard/withdraw)
-[mobile-webkit] › e2e/specs/flows/distributor-exports-csv.spec.ts:141:3 › mobile UA → CSV cap notice (>5k rows) › subscriber export does NOT surface the cap toast (legacy path)
-[mobile-webkit] › e2e/specs/flows/distributor-exports-csv.spec.ts:37:3 › subscriber → /dashboard/reports/all-transactions Export CSV › downloads a CSV with BOM and header
 [mobile-webkit] › e2e/specs/smoke/landing.spec.ts:20:3 › landing public routes smoke › FAQ page renders
 [mobile-webkit] › e2e/specs/smoke/landing.spec.ts:27:3 › landing public routes smoke › Contact page renders
 [mobile-webkit] › e2e/specs/smoke/landing.spec.ts:34:3 › landing public routes smoke › About page renders
-[mobile-webkit] › e2e/specs/smoke/subscriber-dashboard.spec.ts:109:3 › subscriber dashboard smoke › All Transactions report loads (/dashboard/reports/all-transactions)
-[mobile-webkit] › e2e/specs/smoke/subscriber-dashboard.spec.ts:115:3 › subscriber dashboard smoke › Contributions Summary report loads (/dashboard/reports/contributions-summary)
 [mobile-webkit] › e2e/specs/smoke/subscriber-dashboard.spec.ts:124:3 › subscriber dashboard smoke › Help loads (/dashboard/help)
 [mobile-webkit] › e2e/specs/smoke/subscriber-dashboard.spec.ts:173:3 › subscriber dashboard smoke › Profile edit form loads (/dashboard/settings/profile)
 [mobile-webkit] › e2e/specs/smoke/subscriber-dashboard.spec.ts:43:3 › subscriber dashboard smoke › Schedule loads (/dashboard/save/schedule)
