@@ -25,6 +25,7 @@ import { IS_SUPABASE_ENABLED } from './api';
 import { normalizeFrequency } from '../utils/finance';
 import { groupInsurancePremiumPerMember } from '../utils/groupInsurance';
 import { deriveContributionLegs, splitEmployerLeg } from '../utils/contributionModel';
+import { deriveCoverStatus } from '../utils/policies';
 import { NUDGE_LATENCY_MS, reachableChannels } from '../constants/nudge';
 import { currentTime } from '../data/mockData';
 import {
@@ -691,7 +692,19 @@ export async function getEmployerMetrics(employerId) {
     // live RPC's bug exists here, so the mock path needs no override.
     const ownContributions = members.reduce((s, m) => s + (m.ownContributions || 0), 0);
     const employerContributions = members.reduce((s, m) => s + (m.employerContributions || 0), 0);
-    const insuredCount = members.filter((m) => m.insuranceStatus === 'active').length;
+    // E25 / A06-004-class fix: derive through the SAME shared predicate the
+    // subscriber policies page and the agent member-detail chips use, instead
+    // of trusting the raw stored flag — nothing sweeps a lapsed self-funded
+    // policy's status from 'active' to 'expired', so the flag alone goes
+    // stale. `fundedBy` is deliberately omitted (not just always 'employer'):
+    // the flat per-member insurance record here doesn't carry a funding-source
+    // field, so this falls through deriveCoverStatus's default (self-funded,
+    // date-derived) branch — the conservative read for a status this file
+    // cannot independently corroborate.
+    const now = currentTime();
+    const insuredCount = members.filter(
+      (m) => deriveCoverStatus({ status: m.insuranceStatus, renewalDate: m.insuranceRenewalDate }, now) === 'active',
+    ).length;
     // No funding-shape field is returned: with one unified two-leg model there is
     // nothing to split the roster by, and every member is funded from the SAME
     // company config. `get_employer_metrics` (0092) drops the old `modeSplit` too.

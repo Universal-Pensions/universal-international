@@ -39,7 +39,11 @@ export default function BranchesMobile() {
   const [statusFilter, setStatusFilter] = useState('all');
 
   const { data: branchesRaw = [], isLoading, isError, error, refetch } = useAllEntities('branch');
-  const { data: branchMetrics = {} } = useAllEntitiesMetrics('branch');
+  // A13-002: metrics resolve on a SEPARATE, later query than the branch list
+  // itself — gate the metric-derived figures on their own isPending so the
+  // summary strip and rows show a placeholder instead of a confident "0" while
+  // branchMetrics is still empty.
+  const { data: branchMetrics = {}, isPending: metricsLoading } = useAllEntitiesMetrics('branch');
   const { data: districts = [] } = useAllEntities('district');
 
   const districtsMap = useMemo(() => {
@@ -93,11 +97,11 @@ export default function BranchesMobile() {
             <small>Branches</small>
           </div>
           <div>
-            <b>{formatNumber(totals.agents)}</b>
+            <b>{metricsLoading ? '—' : formatNumber(totals.agents)}</b>
             <small>Agents</small>
           </div>
           <div>
-            <b>{formatUGXShort(totals.aum)}</b>
+            <b>{metricsLoading ? '—' : formatUGXShort(totals.aum)}</b>
             <small>Funds</small>
           </div>
         </div>
@@ -142,10 +146,13 @@ export default function BranchesMobile() {
                   <span className={styles.av} aria-hidden="true">{initials(b.name)}</span>
                   <span className={styles.lMid}>
                     <b>{b.name}</b>
-                    <small>{district} · {formatNumber(m.totalSubscribers || 0)} subs · {rate}% active</small>
+                    <small>
+                      {district} · {metricsLoading ? '—' : formatNumber(m.totalSubscribers || 0)} subs
+                      {' '}· {metricsLoading ? '—' : rate}% active
+                    </small>
                   </span>
                   <span className={styles.lEnd}>
-                    <span className={styles.lAmt} style={{ fontSize: 13 }}>{formatUGXShort(m.aum || 0)}</span>
+                    <span className={styles.lAmt} style={{ fontSize: 13 }}>{metricsLoading ? '—' : formatUGXShort(m.aum || 0)}</span>
                     <span className={styles.stBadge} data-status={isActive ? 'active' : 'inactive'}>{isActive ? 'Active' : 'Inactive'}</span>
                   </span>
                   <span className={styles.chev}>{ChevIcon}</span>

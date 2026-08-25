@@ -750,6 +750,55 @@ describe('employer service — mock-fallback branch (IS_SUPABASE_ENABLED=false)'
     // from both the RPC (0092) and this mock: funding is one company-wide two-leg
     // config, so there is no per-member funding shape left to split members by.
     expect(m).not.toHaveProperty('modeSplit');
+    // Every seeded member holds the (never-lapsed) group cover — the happy-path
+    // baseline for E25's deriveCoverStatus swap below.
+    expect(m.insuredCount).toBe(MEMBERS.length);
+  });
+});
+
+// =============================================================================
+// E25 — insuredCount must derive cover status through the shared
+// deriveCoverStatus predicate (src/utils/policies.js), not trust the raw
+// stored insuranceStatus flag. Same class of bug as A06-004: nothing sweeps a
+// lapsed policy's status from 'active' to 'expired', so the flag alone goes
+// stale. The frozen seed never exercises this on its own (every member's
+// insuranceRenewalDate is 180 days in the future), so this overrides ONE
+// member's renewal date into the past via importOriginal — the exact "flag
+// still says active, date says lapsed" drift the finding describes. This is
+// the test that fails against the old `m.insuranceStatus === 'active'` check
+// (it would still count the lapsed member) and passes against the fix.
+// =============================================================================
+describe('getEmployerMetrics — insuredCount derives through deriveCoverStatus (E25)', () => {
+  let svc;
+  let lapsedId;
+
+  beforeEach(async () => {
+    lapsedId = MEMBERS[0].id;
+    vi.stubEnv('VITE_USE_SUPABASE', 'false');
+    vi.resetModules();
+    vi.doMock('../supabaseClient', () => ({
+      supabase: supabaseMock, default: supabaseMock,
+      getToken: vi.fn(), setToken: vi.fn(), clearToken: vi.fn(),
+    }));
+    vi.doMock('../../data/employerSeed', async (importOriginal) => {
+      const actual = await importOriginal();
+      return {
+        ...actual,
+        MEMBERS: actual.MEMBERS.map((m) => (m.id === lapsedId
+          // Stored flag still 'active' — nothing sweeps it — but the renewal
+          // date is long past. The exact A06-004 drift shape.
+          ? { ...m, insuranceStatus: 'active', insuranceRenewalDate: '2000-01-01' }
+          : m)),
+      };
+    });
+    svc = await import('../employer');
+  });
+  afterEach(() => { vi.unstubAllEnvs(); vi.resetModules(); });
+
+  it('excludes a member whose renewal date has lapsed even though insuranceStatus is still "active"', async () => {
+    const m = await svc.getEmployerMetrics();
+    expect(m.headcount).toBe(MEMBERS.length); // headcount is unaffected — only cover status changed
+    expect(m.insuredCount).toBe(MEMBERS.length - 1); // only the lapsed member drops out
   });
 });
 

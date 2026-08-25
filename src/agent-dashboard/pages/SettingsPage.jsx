@@ -2,7 +2,7 @@ import { useState, useCallback, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { EASE_OUT_EXPO } from '../../utils/motion';
 
-import { isValidUGPhone } from '../../utils/phone';
+import { isValidUGPhone, formatUGPhone } from '../../utils/phone';
 import { useAuth } from '../../contexts/AuthContext';
 import { useDashboard } from '../../contexts/DashboardContext';
 import { useEntity } from '../../hooks/useEntity';
@@ -11,14 +11,6 @@ import { getInitials } from '../../utils/dashboard';
 import { useIsDesktop } from '../../hooks/useIsDesktop';
 import SettingsDesktop from './SettingsDesktop';
 import styles from './SettingsPage.module.css';
-
-function formatPhone(raw) {
-  if (!raw) return '';
-  const digits = raw.replace(/\D/g, '');
-  if (digits.length <= 3) return digits;
-  if (digits.length <= 6) return `${digits.slice(0, 3)} ${digits.slice(3)}`;
-  return `${digits.slice(0, 3)} ${digits.slice(3, 6)} ${digits.slice(6)}`;
-}
 
 export default function SettingsPage() {
   const { user, updateUser } = useAuth();
@@ -98,7 +90,7 @@ export default function SettingsPage() {
           </span>
           <div className={styles.profileInfo}>
             <span className={styles.profileName}>{name || agent?.name || user?.name || 'Agent'}</span>
-            <span className={styles.profilePhone}>+256 {formatPhone(phone || agent?.phone || user?.phone)}</span>
+            <span className={styles.profilePhone}>{formatUGPhone(phone || agent?.phone || user?.phone)}</span>
             <span className={styles.roleBadge}>Agent</span>
           </div>
         </motion.div>
@@ -137,7 +129,7 @@ export default function SettingsPage() {
               <input
                 type="tel"
                 className={styles.phoneInput}
-                value={formatPhone(phone)}
+                value={formatUGPhone(phone).replace(/^\+256 /, '')}
                 onChange={(e) => { setPhone(e.target.value.replace(/\D/g, '')); clearFieldError('phone'); }}
                 autoComplete="tel"
                 inputMode="numeric"

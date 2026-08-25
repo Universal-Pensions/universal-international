@@ -38,7 +38,11 @@ export default function AgentsMobile() {
   const [statusFilter, setStatusFilter] = useState('all');
 
   const { data: agentsRaw = [], isLoading, isError, error, refetch } = useAllEntities('agent');
-  const { data: agentMetrics = {} } = useAllEntitiesMetrics('agent');
+  // A15-004 (same defect as A13-002): agentMetrics resolves on a separate,
+  // later query than the agent list — gate the metric-derived figures on
+  // their own isPending so the summary strip and rows show a placeholder
+  // instead of a confident "0 Subscribers · 0 Funds" while it's still empty.
+  const { data: agentMetrics = {}, isPending: metricsLoading } = useAllEntitiesMetrics('agent');
   const { data: branches = [] } = useAllEntities('branch');
 
   const branchesMap = useMemo(() => {
@@ -91,11 +95,11 @@ export default function AgentsMobile() {
             <small>Agents</small>
           </div>
           <div>
-            <b>{formatNumber(totals.subs)}</b>
+            <b>{metricsLoading ? '—' : formatNumber(totals.subs)}</b>
             <small>Subscribers</small>
           </div>
           <div>
-            <b>{formatUGXShort(totals.aum)}</b>
+            <b>{metricsLoading ? '—' : formatUGXShort(totals.aum)}</b>
             <small>Funds</small>
           </div>
         </div>
@@ -139,7 +143,7 @@ export default function AgentsMobile() {
                   <span className={styles.av} data-tone="teal" aria-hidden="true">{initials(a.name)}</span>
                   <span className={styles.lMid}>
                     <b>{a.name}</b>
-                    <small>{branch} · {formatNumber(m.totalSubscribers || 0)} subs</small>
+                    <small>{branch} · {metricsLoading ? '—' : formatNumber(m.totalSubscribers || 0)} subs</small>
                   </span>
                   <span className={styles.lEnd}>
                     {a.performance != null && <span className={styles.lAmt} style={{ fontSize: 13 }}>{a.performance}%</span>}
