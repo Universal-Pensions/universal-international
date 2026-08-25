@@ -6,5 +6,10 @@
     "moduleResolution": "bundler"
   },
   "include": ["./**/*.ts"],
-  "exclude": ["../node_modules/**", "../dist/**"]
+  "exclude": [
+    // Sync-conflict copies ("foo 2.ts") from the Desktop folder sync.
+    // NOT "[0-9]": TypeScript exclude globs support only *, ? and **, never
+    // character classes, so a [0-9] pattern silently matches nothing.
+    "**/* ?.*",
+    "**/* ??.*","../node_modules/**", "../dist/**"]
 }

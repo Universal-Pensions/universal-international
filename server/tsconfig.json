@@ -25,6 +25,11 @@
   },
   "include": ["../api/**/*.ts", "./**/*.ts"],
   "exclude": [
+    // Sync-conflict copies ("foo 2.ts") from the Desktop folder sync.
+    // NOT "[0-9]": TypeScript exclude globs support only *, ? and **, never
+    // character classes, so a [0-9] pattern silently matches nothing.
+    "**/* ?.*",
+    "**/* ??.*",
     "../node_modules/**",
     "../dist/**",
     "../api/**/*.test.ts",

@@ -18,6 +18,40 @@
 -- ORDER MATTERS. The transactions sign CHECK has to go before the signs are put
 -- back, or the restore violates the constraint it is undoing.
 -- =============================================================================
+--
+-- ⚠️⚠️ THIS FILE ALSO UN-SHIPS 0115, SILENTLY. ⚠️⚠️
+-- The three bodies below were captured from live BEFORE 0115 was applied, so
+-- they contain ZERO `pg_advisory_xact_lock` calls. 0115 later rewrote all three
+-- of these same RPCs to claim the nonce BEFORE moving money (A04-011, the
+-- double-tap double-spend). Running this down against today's database restores
+-- the pre-0115 bodies over the top and deletes that fix — while leaving 0115's
+-- indexes and trigger in place, so nothing errors and nothing looks wrong.
+--
+-- That is precisely the failure mode this header already warns about two
+-- paragraphs up: 0095 silently un-shipping 0090. The warning was written about
+-- OTHER people's migrations and then reproduced here.
+--
+-- The guard below refuses to run while 0115 is live. To genuinely revert 0114:
+-- revert 0115 first (`0115_money_idempotency.down.sql`, which correctly
+-- PRESERVES 0114's assert_finite_money calls), then run this.
+-- =============================================================================
+
+DO $$
+DECLARE v_locked INT;
+BEGIN
+  SELECT count(*) INTO v_locked
+    FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
+   WHERE n.nspname = 'public'
+     AND p.proname IN ('make_contribution', 'request_withdrawal', 'submit_employer_contribution_run')
+     AND pg_get_functiondef(p.oid) LIKE '%pg_advisory_xact_lock%';
+
+  IF v_locked > 0 THEN
+    RAISE EXCEPTION
+      'ABORT: % money RPC(s) live carry 0115''s advisory-lock nonce claim. The bodies in this file predate 0115 and would silently delete it (A04-011, double-tap double-spend), leaving 0115''s indexes and trigger in place so nothing errors. Run 0115_money_idempotency.down.sql FIRST, then re-run this.',
+      v_locked USING ERRCODE = 'P0001';
+  END IF;
+  RAISE NOTICE 'pre-flight OK — 0115 is not live, safe to restore the pre-0114 bodies.';
+END $$;
 
 BEGIN;
 

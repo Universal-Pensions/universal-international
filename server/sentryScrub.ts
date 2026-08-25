@@ -103,19 +103,23 @@ export function scrubString(value: unknown): unknown {
 export function scrubValue(
   value: unknown,
   depth = 0,
-  seen: WeakSet<object> = new WeakSet(),
+  seen: Map<object, unknown> = new Map(),
 ): unknown {
   if (depth > 8) return REDACTED;
   if (typeof value === 'string') return scrubString(value);
   if (value == null || typeof value !== 'object') return value;
-  if (seen.has(value as object)) return value; // cycle — leave the existing ref
-  seen.add(value as object);
+  // The scrubbed twin, NEVER the raw input — see the note above.
+  if (seen.has(value as object)) return seen.get(value as object);
 
   if (Array.isArray(value)) {
-    return value.map((v) => scrubValue(v, depth + 1, seen));
+    const arr: unknown[] = [];
+    seen.set(value as object, arr);
+    for (const v of value) arr.push(scrubValue(v, depth + 1, seen));
+    return arr;
   }
 
   const out: Record<string, unknown> = {};
+  seen.set(value as object, out);
   for (const [key, v] of Object.entries(value as Record<string, unknown>)) {
     if (SENSITIVE_KEYS.has(key.toLowerCase())) {
       out[key] = REDACTED;

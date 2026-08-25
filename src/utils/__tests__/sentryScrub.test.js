@@ -152,3 +152,45 @@ describe('scrubBreadcrumb', () => {
     expect(scrubBreadcrumb(null)).toBe(null);
   });
 });
+
+// ---------------------------------------------------------------------------
+// The cycle guard must return the SCRUBBED twin, never the raw input.
+//
+// It used to be `if (seen.has(value)) return value` over a WeakSet — which
+// fires on any REPEATED REFERENCE, not just a cycle. An event holding the same
+// object twice got one scrubbed copy and one pristine original, so the payload
+// Sentry serialised still carried the NIN and phone this module exists to
+// remove. The original 197-line suite had no cycle or shared-reference case,
+// which is why it never showed.
+// ---------------------------------------------------------------------------
+describe('scrubValue — repeated references and cycles', () => {
+  it('scrubs a shared reference on BOTH paths', () => {
+    const shared = { note: 'call +256701234567 now' };
+    const out = scrubValue({ a: shared, b: shared });
+
+    expect(JSON.stringify(out)).not.toContain('+256701234567');
+    expect(out.a.note).toBe(out.b.note);
+    // and the same original maps to the same scrubbed object
+    expect(out.a).toBe(out.b);
+  });
+
+  it('never hands back the raw object for a cycle', () => {
+    const node = { nin: 'CM12345678901X', label: 'ring' };
+    node.self = node;
+    const out = scrubValue(node);
+
+    expect(out).not.toBe(node);
+    expect(out.self).not.toBe(node);   // the leak: used to be the original
+    expect(out.self).toBe(out);        // resolves to the scrubbed twin
+    // NOT JSON.stringify — the scrubbed output is still legitimately circular
+    // (a cycle in, a cycle out), so stringifying it throws. Assert the field.
+    expect(out.nin).not.toBe('CM12345678901X');
+    expect(out.self.nin).not.toBe('CM12345678901X');
+  });
+
+  it('scrubs a shared reference inside an array too', () => {
+    const shared = { phone: '+256701234567' };
+    const out = scrubValue([shared, shared, { nested: shared }]);
+    expect(JSON.stringify(out)).not.toContain('+256701234567');
+  });
+});

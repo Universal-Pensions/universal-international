@@ -29,6 +29,10 @@ const REDACTED = '[redacted]';
 // and `+256 701 234 567` once separators are collapsed by the caller path —
 // here we match the compact form most error/id strings carry.
 const PHONE_RE = /(?:\+?256|0)?7\d{8}/g;
+
+/** Ugandan NIN: C + M|F + 12 alphanumerics, the format ReviewStep.jsx's
+ *  NIN_RE enforces on entry. Matched case-sensitively — a real NIN is upper. */
+const NIN_RE = /\bC[MF][A-Z0-9]{12}\b/g;
 // JWTs: three base64url segments separated by dots (header.payload.signature).
 const JWT_RE = /\beyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+/g;
 // `Bearer <token>` anywhere in a string.
@@ -49,6 +53,15 @@ const SENSITIVE_KEYS = new Set([
   'refresh_token',
   'jwt',
   'otp',
+  // National ID. NOT previously here, and no pattern matched it either — so
+  // every NIN this platform handles went to Sentry in the clear, from the one
+  // module whose entire purpose is stripping PII. Found while testing the cycle
+  // guard: a NIN survived a scrub that was otherwise working correctly.
+  'nin',
+  'nationalid',
+  'national_id',
+  'idnumber',
+  'id_number',
 ]);
 
 /** Redact PII/secret substrings inside a single string. */
@@ -57,7 +70,8 @@ export function scrubString(value) {
   return value
     .replace(JWT_RE, REDACTED)
     .replace(BEARER_RE, `Bearer ${REDACTED}`)
-    .replace(PHONE_RE, REDACTED);
+    .replace(PHONE_RE, REDACTED)
+    .replace(NIN_RE, REDACTED);
 }
 
 /**
@@ -65,18 +79,28 @@ export function scrubString(value) {
  * `SENSITIVE_KEYS`; scrubs substrings everywhere else. Guards against cycles
  * and caps recursion depth so a pathological event can't hang the tab.
  */
-export function scrubValue(value, depth = 0, seen = new WeakSet()) {
+export function scrubValue(value, depth = 0, seen = new Map()) {
   if (depth > 8) return REDACTED;
   if (typeof value === 'string') return scrubString(value);
   if (value == null || typeof value !== 'object') return value;
-  if (seen.has(value)) return value; // cycle — leave the existing ref
-  seen.add(value);
+  // ⚠️ The SCRUBBED twin, never the raw input. This was
+  //     if (seen.has(value)) return value;
+  // over a WeakSet, which fires on any REPEATED REFERENCE, not just a cycle. An
+  // event holding the same object twice ({ a: ctx, b: ctx }) got one scrubbed
+  // copy and one pristine original, so the payload Sentry serialised still
+  // carried the NIN/phone this module exists to remove. Registering the twin
+  // BEFORE recursing fixes cycles and shared references in one move.
+  if (seen.has(value)) return seen.get(value);
 
   if (Array.isArray(value)) {
-    return value.map((v) => scrubValue(v, depth + 1, seen));
+    const arr = [];
+    seen.set(value, arr);
+    for (const v of value) arr.push(scrubValue(v, depth + 1, seen));
+    return arr;
   }
 
   const out = {};
+  seen.set(value, out);
   for (const [key, v] of Object.entries(value)) {
     if (SENSITIVE_KEYS.has(key.toLowerCase())) {
       out[key] = REDACTED;
