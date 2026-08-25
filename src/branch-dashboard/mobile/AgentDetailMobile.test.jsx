@@ -27,7 +27,7 @@
 // A12-004 case, which renders through the real DashboardNavContext.
 
 import React from 'react';
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import { MemoryRouter, Routes, Route } from 'react-router-dom';
 
@@ -47,13 +47,7 @@ const mockMetrics = {
 const mockCommission = { totalPaid: 120000, totalDue: 40000, settlementRate: 75 };
 
 vi.mock('../../hooks/useEntity', () => ({
-  useEntity: vi.fn(() => ({
-    data: mockAgent,
-    isLoading: false,
-    isError: false,
-    error: null,
-    refetch: vi.fn(),
-  })),
+  useEntity: vi.fn(),
   useEntityMetrics: vi.fn(() => ({ data: mockMetrics })),
 }));
 vi.mock('../../hooks/useCommission', () => ({
@@ -61,6 +55,17 @@ vi.mock('../../hooks/useCommission', () => ({
 }));
 
 const { default: AgentDetailMobile } = await import('./AgentDetailMobile');
+const { useEntity } = await import('../../hooks/useEntity');
+
+beforeEach(() => {
+  vi.mocked(useEntity).mockReturnValue({
+    data: mockAgent,
+    isLoading: false,
+    isError: false,
+    error: null,
+    refetch: vi.fn(),
+  });
+});
 
 function renderAt(agentId) {
   return render(
@@ -89,5 +94,21 @@ describe('<AgentDetailMobile /> — "View subscribers" affordance (AUDIT A12-005
     renderAt('a-231');
     const link = screen.getByRole('link', { name: /view subscribers for namukasa sarah/i });
     expect(link).toHaveAttribute('href', '/dashboard/agents/a-231/subscribers');
+  });
+
+  it('renders no dangling "View subscribers" link while the agent is still loading', () => {
+    // Mirrors AgentDetailMobile's own early return (`isLoading && !agent` ->
+    // spinner). The link is built from useParams()'s agentId, not agent.id,
+    // so without this guard a loading render could ship a technically-valid
+    // href pointing at data the page hasn't confirmed exists yet.
+    vi.mocked(useEntity).mockReturnValue({
+      data: undefined,
+      isLoading: true,
+      isError: false,
+      error: null,
+      refetch: vi.fn(),
+    });
+    renderAt('a-087');
+    expect(screen.queryByRole('link', { name: /view subscribers/i })).not.toBeInTheDocument();
   });
 });
