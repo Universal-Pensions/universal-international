@@ -221,9 +221,11 @@ describe('employer service — real (Supabase) branch', () => {
     // screen. This pins that getEmployerMetrics() no longer trusts the RPC's
     // contribution fields: it overrides them with the SAME run-linked source
     // getEmployerContributions() exposes, so the Hero/leg-tiles/Runs/Analytics
-    // can never disagree again, while demographic fields the RPC computes
-    // correctly (headcount/active/suspended/totalBalance/insuredCount) pass
-    // through untouched.
+    // can never disagree again. Demographic fields the RPC computes correctly
+    // (headcount/active/suspended/totalBalance) pass through untouched;
+    // insuredCount is now ALSO overridden (E25 — see the dedicated describe
+    // block below) rather than passed through, so it is asserted separately
+    // here instead of folded into the pass-through toMatchObject.
     it('overrides the RPC contribution totals with the run-linked total (not the RPC sum)', async () => {
       const thisYear = new Date().getFullYear();
       supabaseMock.__queueRpc('get_employer_metrics', {
@@ -233,6 +235,7 @@ describe('employer service — real (Supabase) branch', () => {
           // REPLACED, not surfaced.
           totalContributions: 182689000, ownContributions: 120292000, employerContributions: 62397000,
           employerYtd: 62397000, employeeYtd: 120292000,
+          // Also inflated / untrustworthy (E25) — must be REPLACED too.
           insuredCount: 21,
         },
         error: null,
@@ -246,11 +249,22 @@ describe('employer service — real (Supabase) branch', () => {
         ],
         error: null,
       });
+      // getEmployerMetrics now also calls getEmployees() (E25) to re-derive
+      // insuredCount — one roster row, active, so it doesn't confuse the
+      // contribution-override assertions below (see the dedicated E25
+      // describe block for the derivation itself).
+      supabaseMock.__queueFrom('subscribers', {
+        data: [{
+          id: 'empe-001', employer_id: 'emp-001', name: 'A', is_active: true,
+          insurance_policies: { status: 'active', renewal_date: '2099-01-01', funded_by: 'employer' },
+        }],
+        error: null,
+      });
 
       const m = await svc.getEmployerMetrics('emp-001');
 
       // Demographic fields: untouched pass-through from the RPC.
-      expect(m).toMatchObject({ headcount: 21, active: 19, suspended: 2, totalBalance: 197491903, insuredCount: 21 });
+      expect(m).toMatchObject({ headcount: 21, active: 19, suspended: 2, totalBalance: 197491903 });
       // Contribution fields: the run-linked sum (105000 + 210000 = 315000), NOT
       // the RPC's inflated 182,689,000.
       expect(m.totalContributions).toBe(315000);
@@ -260,6 +274,75 @@ describe('employer service — real (Supabase) branch', () => {
       // YTD splits by the transaction's own year, not the RPC's YTD fields.
       expect(m.employeeYtd).toBe(105000); // this year's 'own' txn only
       expect(m.employerYtd).toBe(0); // the 'employer' txn is 5 years old
+    });
+
+    // =========================================================================
+    // E25 — live branch. insuredCount must derive through deriveCoverStatus
+    // over the roster (getEmployees), not pass through the RPC's raw
+    // `WHERE ip.status = 'active'` count. Same class of bug as A06-004: nothing
+    // sweeps a lapsed self-funded policy's status from 'active' to 'expired',
+    // so the flag alone goes stale. Mirrors the mock-branch E25 describe block
+    // above, plus one case that block can't exercise: an EMPLOYER-funded
+    // policy must stay active regardless of its renewal_date, because live
+    // verification (2026-08-25) found every current employer-roster insurance
+    // row is funded_by='employer' — a naive "always self-funded, date-derived"
+    // read (the mock branch's necessarily-conservative fallback, since the
+    // frozen seed carries no funding-source field) would silently start
+    // flipping every one of them to "expired" the moment the demo clock
+    // crosses their renewal_date, which is exactly the kind of drift this
+    // escalation warns about, just in the opposite direction.
+    // =========================================================================
+    describe('getEmployerMetrics — insuredCount derives through deriveCoverStatus, live branch (E25)', () => {
+      it('excludes a self-funded member whose renewal date has lapsed even though status is still "active"', async () => {
+        supabaseMock.__queueRpc('get_employer_metrics', {
+          data: { headcount: 2, active: 2, suspended: 0, totalBalance: 0, insuredCount: 2 },
+          error: null,
+        });
+        supabaseMock.__queueFrom('transactions', { data: [], error: null });
+        supabaseMock.__queueFrom('subscribers', {
+          data: [
+            {
+              id: 'empe-001', employer_id: 'emp-001', name: 'Still covered', is_active: true,
+              insurance_policies: { status: 'active', renewal_date: '2099-01-01', funded_by: null },
+            },
+            {
+              // Stored flag still 'active' — nothing sweeps it — but the
+              // renewal date is long past and this is NOT employer-funded.
+              // The exact A06-004 drift shape.
+              id: 'empe-002', employer_id: 'emp-001', name: 'Lapsed', is_active: true,
+              insurance_policies: { status: 'active', renewal_date: '2000-01-01', funded_by: null },
+            },
+          ],
+          error: null,
+        });
+
+        const m = await svc.getEmployerMetrics('emp-001');
+
+        expect(m.insuredCount).toBe(1); // only the non-lapsed member counts
+        expect(m.insuredCount).not.toBe(2); // the RPC's raw pass-through
+      });
+
+      it('keeps an employer-funded policy active regardless of its renewal_date (does not lapse by date)', async () => {
+        supabaseMock.__queueRpc('get_employer_metrics', {
+          data: { headcount: 1, active: 1, suspended: 0, totalBalance: 0, insuredCount: 1 },
+          error: null,
+        });
+        supabaseMock.__queueFrom('transactions', { data: [], error: null });
+        supabaseMock.__queueFrom('subscribers', {
+          data: [{
+            id: 'empe-003', employer_id: 'emp-001', name: 'Group cover', is_active: true,
+            // A stale/placeholder renewal_date on employer-funded cover is a
+            // maintenance artefact, not an expiry — group premiums are paid
+            // monthly by the company, not renewed annually by the member.
+            insurance_policies: { status: 'active', renewal_date: '2000-01-01', funded_by: 'employer' },
+          }],
+          error: null,
+        });
+
+        const m = await svc.getEmployerMetrics('emp-001');
+
+        expect(m.insuredCount).toBe(1);
+      });
     });
 
     // A21-101 — two defects that were invisible at today's row counts.

@@ -114,6 +114,12 @@ export function mapMember(row) {
     insurancePremiumMonthly: Number(ins?.premium_monthly ?? 0),
     insuranceStatus: ins?.status ?? 'inactive',
     insuranceRenewalDate: ins?.renewal_date ?? null,
+    // E25: `insurance_policies.funded_by` ('employer' | null/'self') — already
+    // selected by MEMBER_SELECT's `insurance_policies(*)` embed but previously
+    // dropped on the floor here. getEmployerMetrics needs it to call
+    // deriveCoverStatus correctly for the live roster (an employer-funded
+    // group policy doesn't lapse by renewal_date; only a self-funded one does).
+    insuranceFundedBy: ins?.funded_by ?? null,
     nominees: Array.isArray(row.nominees) ? row.nominees : [],
   };
 }
@@ -663,20 +669,30 @@ function summarizeRunLinkedContributions(rows) {
 }
 
 /**
- * @endpoint RPC get_employer_metrics() — headcount/active/suspended/totalBalance/
- *   insuredCount over tagged subscribers. The RPC's OWN totalContributions/
- *   ownContributions/employerContributions/employerYtd/employeeYtd are NOT
- *   trusted as-is (Supabase branch only) — see A14-001: the SQL sums every
- *   type='contribution' row for a tagged member with no `contribution_run_id`
- *   filter, so it also counts a member's personal contribution history from
- *   before/outside employer sponsorship, up to an 11.6x overcount on live data.
- *   Those four fields are replaced with the SAME run-linked total the leg
- *   tiles / Contributions page already compute (getEmployerContributions),
- *   so the Hero, the leg tiles, Runs and Analytics can never disagree again.
- *   headcount/active/suspended/totalBalance/insuredCount are untouched — they
- *   are not part of this mismatch.
- * @param {string} [employerId] - needed to recompute the run-linked figures;
- *   the RPC itself stays JWT-scoped and needs no argument.
+ * @endpoint RPC get_employer_metrics() — headcount/active/suspended/totalBalance
+ *   over tagged subscribers. Three fields the RPC also returns are NOT trusted
+ *   as-is (Supabase branch only):
+ *   - totalContributions/ownContributions/employerContributions/employerYtd/
+ *     employeeYtd — A14-001: the SQL sums every type='contribution' row for a
+ *     tagged member with no `contribution_run_id` filter, so it also counts a
+ *     member's personal contribution history from before/outside employer
+ *     sponsorship, up to an 11.6x overcount on live data. Replaced with the
+ *     SAME run-linked total the leg tiles / Contributions page already
+ *     compute (getEmployerContributions), so the Hero, the leg tiles, Runs
+ *     and Analytics can never disagree again.
+ *   - insuredCount — E25 / A06-004-class: the RPC's SQL does
+ *     `WHERE ip.status = 'active'`, the same raw-stored-flag trust A06-004
+ *     already fixed for the subscriber policies page and the agent
+ *     member-detail chips (nothing sweeps a lapsed self-funded policy's
+ *     status from 'active' to 'expired', so the flag alone goes stale).
+ *     Re-derived here through the shared `deriveCoverStatus` predicate over
+ *     the roster (getEmployees), the same call shape the mock branch below
+ *     already uses.
+ *   headcount/active/suspended/totalBalance are untouched — they are not part
+ *   of either mismatch.
+ * @param {string} [employerId] - needed to recompute the run-linked figures
+ *   and the roster-derived insuredCount; the RPC itself stays JWT-scoped and
+ *   needs no argument.
  * @cache ['employerMetrics', employerId]
  */
 export async function getEmployerMetrics(employerId) {
@@ -717,12 +733,28 @@ export async function getEmployerMetrics(employerId) {
       employeeYtd: ownContributions,
     };
   }
-  const [{ data, error }, runLinked] = await Promise.all([
+  const [{ data, error }, runLinked, employees] = await Promise.all([
     supabase.rpc('get_employer_metrics'),
     getEmployerContributions(employerId),
+    getEmployees(employerId),
   ]);
   if (error) throw error;
-  return { ...(data ?? {}), ...summarizeRunLinkedContributions(runLinked) };
+  // E25: currentTime() (the demo clock), not the real wall clock — matches
+  // every other cover-status read in this codebase (subscriber.js's
+  // derivePolicies call, and the mock branch above), since `policies.js` is a
+  // pure util that never reads the clock itself (CLAUDE.md §4.1).
+  const now = currentTime();
+  const insuredCount = employees.filter(
+    (m) => deriveCoverStatus(
+      { status: m.insuranceStatus, renewalDate: m.insuranceRenewalDate, fundedBy: m.insuranceFundedBy },
+      now,
+    ) === 'active',
+  ).length;
+  return {
+    ...(data ?? {}),
+    ...summarizeRunLinkedContributions(runLinked),
+    insuredCount,
+  };
 }
 
 /**

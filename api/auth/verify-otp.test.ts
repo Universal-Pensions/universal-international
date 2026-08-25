@@ -19,7 +19,7 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 
 type CannedResult = { data: unknown; error: unknown };
 const fromQueues = new Map<string, CannedResult[]>();
-const fromCalls: Array<{ table: string; upsertArg?: unknown }> = [];
+const fromCalls: Array<{ table: string; upsertArg?: unknown; updateArg?: unknown }> = [];
 
 function queueFrom(table: string, result: CannedResult) {
   if (!fromQueues.has(table)) fromQueues.set(table, []);
@@ -29,7 +29,7 @@ function queueFrom(table: string, result: CannedResult) {
 function makeChain(table: string) {
   const chain: Record<string, unknown> = {};
   const passThrough = [
-    'select', 'insert', 'update', 'delete',
+    'select', 'insert', 'delete',
     'eq', 'neq', 'gt', 'gte', 'lt', 'lte',
     'in', 'is', 'not', 'or', 'filter', 'match',
     'order', 'limit', 'range', 'offset',
@@ -37,9 +37,16 @@ function makeChain(table: string) {
   for (const m of passThrough) {
     chain[m] = vi.fn().mockReturnValue(chain);
   }
-  // `upsert` captures its argument so we can assert the patch shape.
+  // `upsert` / `update` each capture their argument — E18's fix (see
+  // verify-otp.ts's `upsertOrTouchUser`) is precisely which of the two gets
+  // called, so the tests below need to tell them apart, not just see that
+  // "something" was queued for the `users` table.
   chain.upsert = vi.fn((arg: unknown) => {
     fromCalls.push({ table, upsertArg: arg });
+    return chain;
+  });
+  chain.update = vi.fn((arg: unknown) => {
+    fromCalls.push({ table, updateArg: arg });
     return chain;
   });
   // Terminal — resolves with the queued result for this table.
@@ -458,6 +465,97 @@ describe('POST /api/auth/verify-otp', () => {
     expect(
       (res.__getPayload() as { user: { hasPassword: boolean } }).user.hasPassword,
     ).toBe(true);
+  });
+
+  // -------------------------------------------------------------------------
+  // E18 / A06-013 (recurring) — verify-otp must stop planting a fresh
+  // entity_id-less, password_hash-less `users` row on every OTP sign-in.
+  // `0121` pruned the 32 that had accumulated; without this fix the same
+  // unconditional upsert keeps refilling the table (re-measured live
+  // 2026-08-25: back down to 2, both created earlier TODAY by ordinary demo
+  // OTP logins during this remediation session).
+  // -------------------------------------------------------------------------
+
+  describe('users table write — E18 / A06-013 (upsertOrTouchUser)', () => {
+    it('does not upsert (never INSERTs a fresh row) on a password-less OTP login for a phone/role never seen before', async () => {
+      queueFrom('subscribers', { data: null, error: null }); // unseeded phone → fallback id
+      queueFrom('users', { data: null, error: null }); // no existing users row either
+
+      await call(
+        makeReq({
+          body: { phone: '+256799999999', otp: '123456', role: 'subscriber' },
+        }),
+        res,
+      );
+
+      expect(res.__getStatus()).toBe(200);
+      // The whole point of the fix: no upsert call at all when nothing is
+      // being persisted, so no row can be created.
+      expect(fromCalls.find((c) => c.table === 'users' && c.upsertArg)).toBeUndefined();
+      // It still touches last_login_at via UPDATE — which is a no-op (not an
+      // error) when zero rows match, exactly as it should be here.
+      const usersUpdate = fromCalls.find((c) => c.table === 'users' && c.updateArg);
+      expect(usersUpdate).toBeTruthy();
+      expect((usersUpdate!.updateArg as { last_login_at?: string }).last_login_at).toEqual(
+        expect.any(String),
+      );
+      expect(
+        (res.__getPayload() as { user: { hasPassword: boolean } }).user.hasPassword,
+      ).toBe(false);
+    });
+
+    it('updates last_login_at (not upsert) on a password-less login for a phone/role that already has a row', async () => {
+      // A seeded demo account (or one that previously set a password) — the
+      // row already exists, so this must still get touched on every login.
+      queueFrom('demo_personas', {
+        data: { entity_id: 'a-042', label: 'Alice' },
+        error: null,
+      });
+      queueFrom('users', { data: { password_hash: 'existing-hash' }, error: null });
+
+      await call(
+        makeReq({
+          body: { phone: '+256777247884', otp: '123456', role: 'agent' },
+        }),
+        res,
+      );
+
+      expect(res.__getStatus()).toBe(200);
+      expect(fromCalls.find((c) => c.table === 'users' && c.upsertArg)).toBeUndefined();
+      const usersUpdate = fromCalls.find((c) => c.table === 'users' && c.updateArg);
+      expect(usersUpdate).toBeTruthy();
+      // The existing hash is read back unchanged — password-login is unaffected.
+      expect(
+        (res.__getPayload() as { user: { hasPassword: boolean } }).user.hasPassword,
+      ).toBe(true);
+    });
+
+    it('still upserts (can still INSERT) when a password IS supplied for a brand-new phone/role — signup-completion must keep working', async () => {
+      // No pre-existing users row (data: null) — the exact shape of a
+      // subscriber's very first OTP verification right after self-signup
+      // (ContributionRoute.jsx passes the chosen password on that call).
+      queueFrom('subscribers', { data: { id: 's-9999', name: 'New Signup' }, error: null });
+      queueFrom('users', { data: { password_hash: 'bcrypted' }, error: null });
+
+      await call(
+        makeReq({
+          body: {
+            phone: '+256799999999',
+            otp: '123456',
+            role: 'subscriber',
+            password: 'Demo1234',
+          },
+        }),
+        res,
+      );
+
+      expect(res.__getStatus()).toBe(200);
+      const usersUpsert = fromCalls.find((c) => c.table === 'users' && c.upsertArg);
+      expect(usersUpsert).toBeTruthy();
+      expect(
+        (res.__getPayload() as { user: { hasPassword: boolean } }).user.hasPassword,
+      ).toBe(true);
+    });
   });
 
   // -------------------------------------------------------------------------
