@@ -225,9 +225,18 @@ SELECT p.subscriber_id,
  GROUP BY p.subscriber_id;
 
 -- Step 1 — undo the trigger's accumulation.
+-- total_balance is subtracted IN THE SAME STATEMENT as its two parts.
+-- 0114 added `CHECK (retirement_balance + emergency_balance = total_balance)`,
+-- which is NOT deferrable and is therefore evaluated at the end of EVERY
+-- statement. An earlier version of this block updated the two parts and left
+-- total_balance for the revaluation step below, so the row was momentarily
+-- inconsistent and the constraint fired — correctly. Caught when 0110 was first
+-- applied to live: it aborted after DELETE 1881 and rolled the whole thing back,
+-- which is exactly what a non-deferrable invariant is for.
 UPDATE public.subscriber_balances b
    SET retirement_balance = b.retirement_balance - d.d_ret_bal,
        emergency_balance  = b.emergency_balance  - d.d_emg_bal,
+       total_balance      = b.total_balance      - (d.d_ret_bal + d.d_emg_bal),
        units              = b.units              - d.d_units,
        invested           = COALESCE(b.invested, 0) - d.d_invested,
        updated_at         = now()
