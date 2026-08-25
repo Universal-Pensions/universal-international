@@ -1,4 +1,6 @@
 > **Agent guide.** This is the root orientation index for the Universal Pensions Uganda codebase — read it FIRST; it carries the routing table plus the hard rules, anti-patterns, brand/security constraints, and demo-scope boundaries every change must respect. When you need file-level depth it points you (via §2) to the specialist docs under `docs/` (`FRONTEND.md`, `BACKEND.md`, `ARCHITECTURE.md`, …). Treat its Hard rules (§4) and Anti-patterns (§5) as binding, not advisory.
+>
+> **Verified against the live Singapore DB (`ilkhfnoyxlxwqadebnkp`) on 2026-08-25.** Counts (tables, functions, policies, migrations, routes, seed entities) decay fast — re-measure before relying on any number in this file rather than trusting the date on this line.
 
 # CLAUDE.md — Universal Pensions Uganda
 
@@ -104,8 +106,10 @@ File | What it does
 3. Don't write `outline: none` without a `:focus-visible` replacement (or a wrapping `:focus-within` indicator). Global `:focus-visible` baseline lives in `src/index.css`.
 4. Don't write `transition: all` — always enumerate the properties.
 5. Don't bypass `normalizeFrequency` when reading/writing contribution schedules.
-6. Don't write raw SQL from the frontend — every database write goes through a SECURITY DEFINER RPC (`BACKEND.md §9`).
+6. Don't write raw SQL from the frontend. Every *money* write is supposed to go through a SECURITY DEFINER RPC (`BACKEND.md §9`). ⚠️ **This rule is currently BREACHED**: `src/services/subscriber.js` and `src/services/entities.js` still `.insert()`/`.update()`/`.upsert()` tables directly through PostgREST (11 call sites), and RLS does not block it — see §7.3 below. Treat this rule as the target state, not a description of the code, until migration `0118` (drafted, not yet applied as of 2026-08-25) closes the gap.
 7. Don't trust `auth.uid()` inside RLS policies — it's `NULL` for our custom HS256 JWTs. Read `auth.jwt() ->> 'app_role'/'subscriberId'/'agentId'/'branchId'/'distributorId'` instead (`BACKEND.md §8`). **Trap**: `auth.jwt() ->> 'role'` returns `'authenticated'` (the Postgres role for PostgREST `SET ROLE`), not the application role. Reading `'role'` and gating on app values (`'distributor'`, `'agent'`, …) silently fails — this exact mistake produced both the 0018 rollup regression (zeros across every drill-down) and the 0004 commission-RPC silent failures. Always read `'app_role'`.
+
+> **Enforcement reality (verified 2026-08-25).** Of the 13 rules above (§4.1–4.6, §5.1–5.7), only anti-pattern 7's `->> 'role'` half is mechanically enforced — `src/test/jwt-claim-contract.test.js` greps `supabase/migrations/*.sql` for it (it does NOT check `auth.uid()`). The other twelve are PROSE ONLY: `eslint.config.js` carries no `no-restricted-imports`/`no-restricted-syntax` rule, there is no stylelint config, and there are no pre-commit hooks. A change that violates §4.1, §5.2, §5.3, §5.4 or §5.6 passes `npm run lint`, `npm test`, `npm run build` and CI without a warning. §5.6 is already breached in shipped code (see above).
 
 ---
 
@@ -123,7 +127,7 @@ File | What it does
 
 1. **Never log JWTs** or include them in error reports — they are bearer tokens for the entire session.
 2. **Never expose `SUPABASE_SERVICE_ROLE_KEY`** to the frontend. It bypasses RLS. Server-only, used by `api/_lib/supabase-admin.ts`.
-3. **All writes flow through SECURITY DEFINER RPCs** (`create_subscriber_from_signup`, `apply_settlement`, etc.) — never write directly to a table from the client. RLS would block it, and the RPCs enforce business invariants atomically.
+3. **Writes are *supposed* to flow through SECURITY DEFINER RPCs** (`create_subscriber_from_signup`, `apply_settlement`, etc.) — never write directly to a table from the client. ⚠️ **As of 2026-08-25, RLS does NOT block direct client writes on every table.** Reproduced live under `BEGIN…ROLLBACK`: a subscriber JWT `INSERT`ed straight into `/rest/v1/transactions` — no RPC — and took subscriber `s-0002` from 110.93 units / 174,314 UGX to **635,849 units / 999,174,314 UGX**. `transactions_insert_self` constrains `subscriber_id` but places no constraint on `amount`, `type` or `status`. A fix is drafted (migration `0118`) but **NOT yet applied** — the hole is open right now. Do not rely on "RLS would block it" as a security argument until it ships and is verified. The RPCs still enforce business invariants atomically when used; the problem is that using them is not currently mandatory.
 4. **RLS policies read JWT claims, not `auth.uid()`** — `auth.uid()` is `NULL` for our custom HS256 tokens. See `BACKEND.md §8`.
 5. **The demo OTP route accepts any 6-digit code.** It is **not** production-grade and must never ship as-is to a real customer — it's intentional demo scope (see §10a).
 
@@ -142,9 +146,9 @@ The seeded demo data is generated via `npm run seed` (`scripts/seed-supabase.mjs
 Role | Quick login | Seeded count
 --- | --- | ---
 Subscriber | 5 seeded phones, e.g. `+25671 100 0001`, `…0002`, `…0003`, `…0004`, `…0005` | ~5,000
-Agent | Any `agent` role login; `demo_personas` falls back to `a-001` if no phone match | ~2,049
-Branch | Any `branch` role login; fallback to `b-kam-015` (Kampala branch) | ~316
-Distributor | `+25670 000 0021` → `d-001` (national), `+25670 000 0022` → `d-002` (Busoga). Any other `distributor` login falls back to `d-001` | 2 (each sees only its own network)
+Agent | Any `agent` role login; `demo_personas` falls back to `a-001` if no phone match | ~2,046
+Branch | Any `branch` role login; fallback to `b-kam-015` (Kampala branch) | ~321
+Distributor | `+25670 000 0021` → `d-001` (national), `+25670 000 0022` → `d-002` (Busoga). Any other `distributor` login falls back to `d-001` | 3 (each sees only its own network) — a third, `d-003` (Karamoja Pilot Network), exists with no dedicated demo phone; see §9 Glossary
 Employer | `EMPLOYER_DEMO_PHONE` = `+25670 000 0031` (`src/data/employerSeed.js`); `demo_personas` falls back to `emp-001` if no phone match | 1 employer / 16 employees
 Admin | Any `admin` role login; `demo_personas` falls back to `admin-001`. **Password login uses the pinned admin phone `+25670 000 0099`** (only seeded admin `users` row) | 1 (head-office, global)
 
@@ -161,7 +165,7 @@ Term | Meaning
 Subscriber | Individual saver — a member with a balance and contribution schedule.
 Agent | Field agent who onboards and supports subscribers (mobile-first, routed dashboard).
 Branch | Sub-distributor entity that supervises agents in a district.
-Distributor | Top-of-tree network operator. **Two in the demo seed:** `d-001` (national — 289 branches) and `d-002` (Busoga sub-region — 27 branches), split by `branches.distributor_id`. That column is the ownership edge every distributor-scoped read resolves through (`branches.distributor_id → agents.branch_id → subscribers.agent_id`, migrations `0081`/`0084`); a distributor sees only its own network, and commission rates are per-distributor (`0089`).
+Distributor | Top-of-tree network operator. **Three in the demo seed:** `d-001` (national — 291 branches), `d-002` (Busoga sub-region — 27 branches) and `d-003` (Karamoja Pilot Network — 2 branches), split by `branches.distributor_id`. One branch still has `distributor_id IS NULL` and belongs to no distributor. That column is the ownership edge every distributor-scoped read resolves through (`branches.distributor_id → agents.branch_id → subscribers.agent_id`, migrations `0081`/`0084`); a distributor sees only its own network, and commission rates are per-distributor (`0089`).
 Employer | B2B account managing a **standalone** staff roster (`employees`, outside the agent→subscriber tree — no agent commissions). Funds staff pension via "contribution runs"; desktop-first dashboard mirroring branch admin. Scoped by the `employerId` JWT claim. See `BACKEND.md §8`/§12 + `docs/data-model.md`.
 Admin | Head-office platform admin with global rights. Map-theme dashboard (`src/admin-dashboard/`) reusing the distributor map/panels (platform-wide reads via `*_select_admin` RLS) plus Distributors & Employers managers (list/metrics/create via `0049` RPCs). No scope claim — sees everything.
 Commission settlement | Two-state flow `due → paid`. Commissions auto-generate as `due` at the configured flat rate-per-subscriber on a subscriber's first contribution. The distributor pays offline, then downloads a per-agent Excel template (prefilled with pending dues), fills Amount Paid + payment reference/date, and re-uploads; the matching agent's `due` lines flip to `paid` via the `apply_settlement` RPC, which also records a `settlement_batches` row and notifies the agent + branch. No maker-checker, runs, branch review, holds, disputes, or cadence. See `BACKEND.md §11`.
@@ -198,7 +202,7 @@ See `FRONTEND.md §16a` and `BACKEND.md §14a` for the role-specific demo-scope 
 
 ### 10b. Awareness items (worth knowing, not urgent)
 
-- **`MOCK_NOW = new Date(2026, 4, 26)`** (2026-05-26) in `src/data/mockData.js` anchors "due in N days" demos. Slide it forward (or flip to `new Date()`) when the demo's relative dates start looking stale.
+- **`MOCK_NOW = new Date(2026, 6, 1)`** (2026-07-01) in `src/data/mockData.js:25` anchors "due in N days" demos. ⚠️ Two copies have NOT been rolled forward with it: `scripts/seed-supabase.mjs:169` still hardcodes `new Date(2026, 4, 26)` (2026-05-26) under a comment asserting it MUST mirror `mockData.js`, and `e2e/specs/db/invariants.spec.ts:52` documents the same stale anchor. A third, independent frozen clock also exists: `public._demo_now()` = 2026-05-18. Slide `MOCK_NOW` forward (or flip to `new Date()`) when the demo's relative dates start looking stale, and fix the two drifted copies at the same time.
 - **NPM deps inventory (verified 2026-05-22 in audit Phase 6):** every direct dep in `package.json` is actually used. `dotenv` is used by `e2e/fixtures/db.ts:13` + `playwright.config.ts:16` (NOT unused). `react-is` is required transitively by `recharts` (build fails without it). `jose` is used in `api/_lib/jwt.ts`; `pg` is used in `scripts/seed-supabase.mjs`. None should be removed.
 - **Real bugs in the demo experience** (not demo-scope) are catalogued in `docs/FRONTEND.md §16b` (subscriber Settings/notifications + Settings/security now redirect to `/dashboard/settings` — the `StubPage` component was removed in the audit-remediation cleanup) and `docs/BACKEND.md §14b` (nominee shares can sum >100%). The employer role is **shipped to production** (migrations `0032`–`0036`, part of the full chain now on the new Singapore DB). Employee **onboarding** is no longer a deferred placeholder — it shipped as the invite-based KYC flow (migrations `0043`–`0047`). The commission dispute/maker-checker flow was removed in the 0029–0031 simplification, so the old `agent_dispute_line` / `disputeCommission` items no longer apply.
 

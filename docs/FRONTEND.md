@@ -1,4 +1,6 @@
 > **Agent guide.** The deep frontend reference for this codebase (React/Vite/CSS-Modules/Framer/Router/TanStack) — open it when you're touching components, hooks, services, contexts, dashboard shells, or design tokens and need file-level "how it actually works" detail. Read `CLAUDE.md` first for the binding rules; come here for the map of `src/`. Per repo discipline (`CLAUDE.md` §11), update this doc in the same change whenever you add a service, hook, route, context, or dashboard variant.
+>
+> **File-inventory counts and `MOCK_NOW` re-verified against the working tree on 2026-08-25** and corrected where stale or self-contradictory. Re-measure before relying on any count here — this codebase changes fast.
 
 # FRONTEND.md — Universal Pensions Uganda
 
@@ -49,7 +51,7 @@ See `CLAUDE.md` for the slim entry index, `BACKEND.md` for SQL/RPC/RLS detail, a
 | `npm run build` | Production Vite build |
 | `npm run preview` | Serve the built bundle |
 | `npm run lint` | ESLint 9 flat config |
-| `npm test` | Vitest one-shot (1221 tests across 76 files at last sync) |
+| `npm test` | Vitest one-shot (2195 tests across 151 files, measured 2026-08-25 — 149/151 files and 2192/2195 tests passing; 2 files / 3 tests currently fail in `deriveBranchAnalytics.test.js`, unrelated to this doc pass. Re-run `npm test`; this number moves fast.) |
 | `npm run test:watch` | Vitest watch |
 | `npm run test:coverage` | Vitest + v8 coverage — requires `npm i -D @vitest/coverage-v8` (currently NOT installed, see §17) |
 | `npm run test:e2e` | Playwright suite (`:smoke`, `:flows`, `:headed`, `:ui`) — see `.claude/skills/qa.md` |
@@ -71,7 +73,7 @@ See `CLAUDE.md` for the slim entry index, `BACKEND.md` for SQL/RPC/RLS detail, a
 - `build.sourcemap: 'hidden'` (BL-29 / H-5) — emits `.map` files to `dist/assets/` **without** the trailing `//# sourceMappingURL=` comment, so the shipped bundle stays minified to end users (no source leak in devtools) while the maps remain on disk for a future symbolication step. **There is intentionally no `@sentry/vite-plugin` upload wired.** This is a demo platform, so the frontend Sentry init in `src/main.jsx` is **best-effort**: when `VITE_SENTRY_DSN` is set, captured frontend stack frames are **minified** (`index-abc123.js:1:48211`) unless these maps are manually uploaded to the Sentry release. The PII scrubber + `release`/`environment` tags (BL-26) are wired; only symbolication is deferred. The backend `@sentry/node` traces (`server/index.ts`) are unaffected — Node runs the unminified `dist-server/` output.
 - Vitest block embedded in the same config: `globals: true`, `environment: 'jsdom'`, `setupFiles: './src/test/setup.js'`, CSS modules use `classNameStrategy: 'non-scoped'`, `exclude: ['node_modules', 'dist', 'e2e/**']`.
 
-**No Tailwind.** All styling is CSS Modules (`.module.css` per component, 118 files). Global design tokens live in `src/index.css`; no component-library imports.
+**No Tailwind.** All styling is CSS Modules (`.module.css` per component, 230 files as of 2026-08-25). Global design tokens live in `src/index.css`; no component-library imports.
 
 **Boot path.** `src/main.jsx` mounts a React 19 root with this provider order:
 
@@ -298,7 +300,7 @@ Uses the modern kit (`employer-dashboard/desktop/ui`) like `AdminAttentionDeskto
 
 ⚠️ **The list is FLAT — ten rows, one level (2026-08-08).** The withdrawals row used to nest a "Retirement payout" and an "Emergency payout" child, each drilling into the same table filtered to one bucket. That was removed: the withdrawals drill-down already names every row's bucket in its `secondary` column, so the two children re-asked a question the very next screen answers, and cost two rows on the platform's most-scanned card. `get_admin_attention()` still returns `delayedWithdrawals.{retirement,emergency}` and `get_admin_attention_rows` (0097) still accepts the two bucket `p_type`s, so a per-bucket view is a filter away — it is just not a top-level signal. Do not reintroduce `subRows`; `adminAttentionDerive.spec` and `NeedsAttentionCard.test.jsx` both guard against it.
 
-Data comes from `useAdminAttention()` → `get_admin_attention()` (0097) in ONE round-trip, merged with `usePlatformTicketMetrics()` for the complaints count — ticketing has **no Supabase tables** (`src/services/tickets.js` is an in-memory session store), so that one signal is session-local and is labelled "Open support threads" rather than making an SLA claim. Everything else is a real query. **The client does no date maths and hardcodes no SLA**: the RPC echoes `asOf` + a `thresholds` object and every sub-label is built from it — there are three different "now"s in this codebase (`_demo_now()` 2026-05-18, JS `MOCK_NOW` 2026-05-26, and the wall clock the live ledger actually uses), so deriving lateness client-side would silently disagree with the server.
+Data comes from `useAdminAttention()` → `get_admin_attention()` (0097) in ONE round-trip, merged with `usePlatformTicketMetrics()` for the complaints count — ticketing has **no Supabase tables** (`src/services/tickets.js` is an in-memory session store), so that one signal is session-local and is labelled "Open support threads" rather than making an SLA claim. Everything else is a real query. **The client does no date maths and hardcodes no SLA**: the RPC echoes `asOf` + a `thresholds` object and every sub-label is built from it — there are three different "now"s in this codebase (`_demo_now()` 2026-05-18, JS `MOCK_NOW` 2026-07-01 — corrected 2026-08-25, this previously read 2026-05-26 — and the wall clock the live ledger actually uses), so deriving lateness client-side would silently disagree with the server.
 
 Clicking a row drills in. **Desktop admin has no routes**, so a row sets `attentionType` on `AdminPanelContext` and the shell's `selectedPage` chain (which `attentionType` heads, so a drill-down always wins) renders `AdminAttentionDesktop`; **mobile is genuinely routed**, so the same rows are `<Link>`s to `/dashboard/attention/:type` → `AdminAttentionMobile`. `NeedsAttentionCard` takes `hrefFor(item)` and renders a `<Link>` when it returns a URL and a `<button>` when it returns null — that is what lets one component serve both shells. Two signals hand off to the purpose-built panel they already own (access requests → `ViewAccessRequests`, complaints → `ViewTickets`) instead of the generic table.
 
@@ -384,7 +386,7 @@ Detection: react-router stores its own index on `window.history.state.idx`. Inde
 
 ---
 
-## 5. Services inventory (`src/services/` — 14 files)
+## 5. Services inventory (`src/services/` — 20 files, verified 2026-08-25)
 
 All public exports below. Every service file follows the `IS_SUPABASE_ENABLED ? supabase : mock` dual-branch pattern.
 
@@ -403,6 +405,8 @@ All public exports below. Every service file follows the `IS_SUPABASE_ENABLED ? 
 | `search.js` | `search_entities` PG RPC (pg_trgm fuzzy) | `searchEntities(query)` | `useSearch` |
 | `contact.js` | Public `/api/contact` POST | `submitContactForm({ name, email, message })` | `pages/Contact.jsx` |
 | `requestAccess.js` | Public `/api/access-request` POST (employer/distributor lead form) | `submitAccessRequest({ type, orgName, registrationNo, contactName?, contactEmail?, contactPhone?, sector?, district? })` | `pages/RequestAccess.jsx`, `pages/landing/mobile/RequestAccessMobile.jsx` |
+| `adminAttention.js` | Admin "Needs attention" signal feed (`0097` RPCs) | `getAdminAttention()`, `getAdminAttentionRows(type, limit?)`, `EMPTY_ATTENTION` | `useAdminAttention` hooks → admin dashboard attention widgets |
+| `nav.js` | Admin-published fund NAV / unit-price reads + publish (`0103`–`0106` RPCs) | `DEFAULT_FUND`, `getNavOverview(fundCode?)`, `listNavSnapshots(opts?)`, `publishNavSnapshot(input)`, `EMPTY_NAV_OVERVIEW` | `useNav` hooks → admin dashboard unit-price panel |
 
 **`nomineeClaim.js` / `nomineeClaims.js` (new).** Two files, deliberately: `nomineeClaim.js` is the PUBLIC submit (`POST /api/nominee-claim`, no auth, carries the G53 rule — fall back to the mock only when `VITE_USE_SUPABASE === 'false'`, and treat a 200 without a `reference` as a contract violation rather than telling a bereaved family their claim is filed when it isn't). `nomineeClaims.js` is the ADMIN read/triage pair (`list_nominee_claims` / `review_nominee_claim`, 0100), mirroring `accessRequests.js`. Hook: `useNomineeClaims(status)` + `useReviewNomineeClaim()` in `src/hooks/useNomineeClaims.js`, invalidating every `['nomineeClaims']` bucket because a decision moves the row between lists.
 
@@ -714,7 +718,7 @@ The audit flagged four context providers as building a new `value` object every 
 
 ---
 
-## 7. Hooks inventory (`src/hooks/` — 10 files; the table below omits `useNotifications.js` + `useTickets.js`, documented in §5.5b / the tickets work)
+## 7. Hooks inventory (`src/hooks/` — 18 files as of 2026-08-25; the table below omits `useNotifications.js` + `useTickets.js`, documented in §5.5b / the tickets work, plus six more listed just below the table)
 
 | Hook file | What it returns | Side-effects | Wraps |
 | --- | --- | --- | --- |
@@ -728,6 +732,17 @@ The audit flagged four context providers as building a new `value` object every 
 | `useOutsideClick.js` | `void` (effect only) | `mousedown` + `Escape` listeners on `document` | — |
 | `useCountUp.js` | `number` (animated target) | `requestAnimationFrame` ease-out-expo curve. Returns 0 when `run` is false (reduced motion) | — |
 | `useDebouncedValue.js` | `T` (delayed) | Centralised debounce; `delayMs` defaults to 300; non-finite / negative coerced to 0 | — |
+
+**Six more hook files (added since this table's last full pass, undocumented until now):**
+
+| Hook file | What it returns | Wraps |
+| --- | --- | --- |
+| `useAccessRequests.js` | `useAccessRequests(status?)`, `useApproveAccessRequest()`, `useDenyAccessRequest()` | `services/accessRequests.js` |
+| `useAdminAttention.js` | `useAdminAttention()`, `useAdminAttentionRows(type, limit?)` | `services/adminAttention.js` |
+| `useNav.js` | `useNavOverview(fundCode?)`, `useNavSnapshots(opts?)`, `usePublishNav()` | `services/nav.js` |
+| `useNomineeClaims.js` | `useNomineeClaims(status?)`, `useReviewNomineeClaim()` | `services/nomineeClaims.js` |
+| `useBodyScrollLock.js` | `void` (effect only) | Locks body scroll while `active` — used by full-screen mobile panels/modals |
+| `useFocusTrap.js` | `void` (effect only); also exports `FOCUSABLE_SELECTOR`, `getFocusableElements(root)` | Traps Tab focus inside `containerRef` while `open`, marking `inertSelector` (default `#root`) inert — the shared focus-trap primitive behind drawers/dialogs |
 
 ### 7.1 `useEntity.js` — query keys
 
@@ -1135,7 +1150,7 @@ A shared shell would have to standardise the CSS contract (visual change) or pas
 
 ## 15. Shared utilities, constants & component subdirs
 
-### 15.1 `src/utils/` (18 files)
+### 15.1 `src/utils/` (21 files as of 2026-08-25)
 
 | File | Key exports |
 | --- | --- |
@@ -1159,10 +1174,12 @@ A shared shell would have to standardise the CSS contract (visual change) or pas
 | `contributionModel.js` | `normalizeContributionConfig(config)` → `{employeePct, employerPct}`, **`deriveContributionLegs(config, compensation)`**, `contributionParticipants(config)` → `'staff'\|'both'\|'company'\|'none'`, `isLegZero(pct)`, `formatLegRate(pct)` / `formatLegRateForMember(pct)`, `contributionFundingLabel(config)`, `memberFundingSummary(config, employerName)`. **THE single source of truth for the employer's two-leg contribution math and its wording** (percent-only model, migration `0093`) — see §5 "Contribution-run write path". Two INDEPENDENT legs, each a percentage of the member's monthly compensation (the `0092` `'fixed'` basis and its flat-amount partners were deleted by `0093`); the employer leg is never a function of the employee leg; either leg may be 0 and 0/0 is legal. `normalizeContributionConfig` absorbs the legacy `mode` shapes money-preservingly (`employeePct 10` + `employerMatchPct 50` → `employerPct 5`) and `{}` → all zeros, so **no caller ever reads a raw config key**. ⚠️ **SQL parity obligation:** migration `0093` mirrors `normalizeContributionConfig` (`public._normalize_contribution_config`) and `deriveContributionLegs` (inside `submit_employer_contribution_run`) in PL/pgSQL — the three must change in ONE commit. Pure, no mockData, no imports. |
 | `periodSettlement.js` | **`isRunPosted(tx)`** (`tx.contributionRunId != null`), `paidThisMonth(txns, now)`, `contributionOwed(amount, paid)`, `newlyAddedProducts(prev, next)`, `buildSettleLineItems({owed, addedProductIds, freqPerYear})`. Pure money-math for the schedule "settle this period" prompt (the demo clock + txn feed are passed in). **`isRunPosted` is the canonical "who paid this?" predicate** — an employer run posts the EMPLOYEE leg as `source='own'` with the EMPLOYER's payment method, so `source` alone cannot tell a payroll deduction from a self-paid top-up. Every attribution surface (Activity, All Transactions, Annual Statement, notifications, Home feed) imports THIS predicate rather than re-deriving it, and `paidThisMonth` excludes run-posted rows so a payroll deduction no longer marks the member's own schedule as already paid. Distinct from the distributor `settlement.js`. Tested in `periodSettlement.test.js`. |
 | `sentryScrub.js` (new) | `scrubEvent`, `scrubBreadcrumb`, `scrubValue`, `scrubString` — the frontend Sentry PII scrubber wired into `src/main.jsx`'s `beforeSend`/`beforeBreadcrumb` (BL-26 / H-4). Redacts Ugandan phone numbers, `role:phone` ids (the JWT `sub`), bearer tokens / JWTs, and password/auth fields from event messages, exception values, breadcrumbs, request data/headers, extra, contexts, and user. Pure (no Sentry import) so it unit-tests cleanly. **Intentionally identical to `server/sentryScrub.ts`** (the `@sentry/node` half) — separate build graphs, keep the two in sync. |
+| `card.js` (undocumented until now) | `UNKNOWN_BRAND`, `detectCardBrand(value)`, `formatCardNumber(value)`, `formatExpiry(value)`, `isExpiryValid(value, now?)`, `cvcLengthFor(value)`, `isCardComplete(card, now?)`, `maskedCardNumber(card)`, `cardRecordLabel(card)`. Pure card-form helpers behind the mocked card gateway (§10a demo scope) — brand detection, formatting/masking, expiry validation. No network, no real PAN handling. |
+| `groupInsurance.js` (undocumented until now) | `GROUP_LIFE_MONTHLY_RATE` (= `INSURANCE_PREMIUM_MONTHLY / INSURANCE_COVER`), `GROUP_INSURANCE_PRODUCTS`, `groupPremiumPerMember(cover)`, `groupInsuranceProducts(config)`, `groupInsuranceOn(config)`, `groupInsurancePremiumPerMember(config)`, `groupInsurancePremiumTotal(config, coveredCount)`. Company-wide group-cover pricing for the employer roster (referenced above, in "Insurance cover ladders" — the rate divides `savings.js`'s `INSURANCE_PREMIUM_MONTHLY`/`INSURANCE_COVER`). |
 
 **Frequency normalisation rule:** ALWAYS pass schedules through `normalizeFrequency(value)` — defends against legacy aliases (`half-yearly`, `halfYearly`, `semi-annually`, `semiAnnually`).
 
-### 15.2 `src/constants/` (3 files)
+### 15.2 `src/constants/` (8 files as of 2026-08-25 — this table does not enumerate every one; `demoClock.js`, `districts.js`, `nudge.js`, `payment.js` and `scopes.js` exist on disk with no row below)
 
 | File | Exports |
 | --- | --- |
@@ -1409,7 +1426,7 @@ These behaviours are intentional limits of a sales-rep demo platform. Do not pro
 
 - **`VITE_USE_SUPABASE` rollback flag.** Read once at module load (`src/services/api.js` → `IS_SUPABASE_ENABLED`). When the env var is the literal string `'false'`, every service falls back to a `mockData`-backed branch (entities, commissions, subscriber, agent, kyc, chat, search, contact). Lets demos run offline / without backend.
 - **Per-session mutation stores.** `entities._entityOverrides` (branch status flips, branch/agent creates) and `subscriber._sessionMutations` (contributions, withdrawals, schedule edits, nominees, claims) layer over frozen `mockData.js` for the duration of the tab. Resets on refresh — intentional for the demo's "what-if" flows.
-- **`MOCK_NOW = new Date(2026, 4, 26)`** in `src/data/mockData.js` (currently 2026-05-26 — synced with today). Consumed by `commissions.js` and surfaced via `currentTime()`. Anchors every "due in N days" and settlement timestamp so demo data tells a coherent story. Slide it forward when relative dates start looking stale.
+- **`MOCK_NOW = new Date(2026, 6, 1)`** in `src/data/mockData.js:25` (2026-07-01 — corrected 2026-08-25; this line previously read `new Date(2026, 4, 26)` / "currently 2026-05-26 — synced with today", which was stale and, as of 2026-08-25, not synced with the wall clock either). Consumed by `commissions.js` and surfaced via `currentTime()`. Anchors every "due in N days" and settlement timestamp so demo data tells a coherent story. ⚠️ Two other copies have drifted from it: `scripts/seed-supabase.mjs:169` and `e2e/specs/db/invariants.spec.ts:52` both still hardcode the old `2026-05-26` anchor. Slide `MOCK_NOW` forward (or flip to `new Date()`) when relative dates start looking stale, and fix the two drifted copies at the same time.
 - **Mocked chat.** `getChatResponse`, `getAgentReply`, `getSubscriberChatResponse` POST to `/api/chat`; the route returns keyword-matched mock replies. The local fallback (under `VITE_USE_SUPABASE=false`) is identical.
 - **Mocked KYC.** All 8 KYC services (`assessImageQuality`, `extractIdFields`, `verifyNira`, `sendOtp`, `verifyOtp`, `faceMatch`, `screenAml`, `referToAgent`) are Smile ID v2-shaped mocks with realistic latency. QA force-overrides via `localStorage['upensions_<stage>_force']` are intentional for demo failure-path walkthroughs.
 - **Demo OTP.** `verifyOtp(phone, code, role)` accepts any 6-digit code — see BACKEND.md §15a for the route detail; the frontend service surfaces the response unchanged. No rate limiting, no lockout.
@@ -1516,7 +1533,7 @@ These are residual issues that survived the Phase 4–5 cleanup. Listed so anyon
 | `src/components/Modal.test.jsx` | Portal, focus trap, Escape, backdrop dismiss, scroll lock |
 | `src/test/jwt-claim-contract.test.js` | JWT claim shape contract |
 
-**48 test files, 871 passing tests at last sync** (`npm test`). The earlier T2 / T5 / T6 gaps are closed at the unit layer. The E2E suite (Playwright) still owns happy-path regression coverage; see `.claude/skills/qa.md`.
+**151 test files, 2192 passing / 2195 total tests, measured 2026-08-25** (`npm test` — see §1's npm-scripts table for the current failure detail; this line previously read "48 test files, 871 passing tests", which had been stale for a long time and contradicted §1's own count in the same document). The earlier T2 / T5 / T6 gaps are closed at the unit layer. The E2E suite (Playwright) still owns happy-path regression coverage; see `.claude/skills/qa.md`.
 
 **Coverage script.** `npm run test:coverage` is wired in `package.json` (Phase 2G `3002c14`) and reads the coverage config from the embedded Vitest block in `vite.config.js`. **`@vitest/coverage-v8` is currently NOT installed** — run `npm i -D @vitest/coverage-v8` to enable coverage reports. The script will fail with a clear "missing dependency" message until then.
 

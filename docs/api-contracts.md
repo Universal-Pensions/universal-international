@@ -1,12 +1,14 @@
-> **Agent guide.** This is the HTTP request/response contract reference for the platform's real backend surface — the 14 `api/` routes, the Supabase RPCs called via `supabase.rpc()`, and the RLS-governed PostgREST reads, together with their cache-key and invalidation conventions. Read it when you are wiring or debugging a concrete request/response shape, error `code`, or RPC signature; for the wider auth flow, schema, and RLS narrative open `docs/BACKEND.md`, and for role × capability questions open `docs/role-permissions.md`. Do NOT read it as the aspirational ~30-route REST design in `docs/archive/api-contracts-2024-original.md` (that shape was never built), and note the intentional demo mocks (OTP / KYC / `chat`) documented below are current behavior, not TODOs.
+> **Agent guide.** This is the HTTP request/response contract reference for the platform's real backend surface — the 16 `api/` routes, the Supabase RPCs called via `supabase.rpc()`, and the RLS-governed PostgREST reads, together with their cache-key and invalidation conventions. Read it when you are wiring or debugging a concrete request/response shape, error `code`, or RPC signature; for the wider auth flow, schema, and RLS narrative open `docs/BACKEND.md`, and for role × capability questions open `docs/role-permissions.md`. Do NOT read it as the aspirational ~30-route REST design in `docs/archive/api-contracts-2024-original.md` (that shape was never built), and note the intentional demo mocks (OTP / KYC / `chat`) documented below are current behavior, not TODOs.
+>
+> **Verified against the live Singapore DB (`ilkhfnoyxlxwqadebnkp`) and the `api/`/`server/index.ts` source tree on 2026-08-25.** Route counts and RLS-write claims decay fast — re-measure before relying on them.
 
 # Universal Pensions Uganda — API Contracts
 
 Current request/response contract for the platform's backend surface. The old `~30-route REST` design has been archived in `docs/archive/api-contracts-2024-original.md` — it described an aspirational shape that was never built. The real surface is much smaller:
 
-1. **14 API routes** under `api/` (Vercel-shape TypeScript handlers, now mounted by `server/index.ts` on **Render Express** at `https://uganda-dashboard-api.onrender.com`. The Vercel-style request/response signature is preserved via the `toExpress(handler)` adapter in `server/adapter.ts`).
+1. **16 API routes** under `api/` (Vercel-shape TypeScript handlers, now mounted by `server/index.ts` on **Render Express** at `https://uganda-dashboard-api.onrender.com`. The Vercel-style request/response signature is preserved via the `toExpress(handler)` adapter in `server/adapter.ts`).
 2. **Supabase RPCs** (PostgreSQL `SECURITY DEFINER` functions) called via `supabase.rpc(name, args)` from the frontend with the user's HS256-signed JWT.
-3. **PostgREST direct table reads** governed by row-level security policies (no writes — writes always go through RPCs).
+3. **PostgREST direct table reads** governed by row-level security policies. ⚠️ Writes are *intended* to go through RPCs only, but as of 2026-08-25 several tables still accept direct client writes — see `docs/audits/2026-08-23/02-rls-matrix.md §5` (13 measured direct-write successes, incl. a subscriber minting arbitrary money by POSTing straight to `/rest/v1/transactions`) and `CLAUDE.md §7`.
 
 Cross-references:
 - `BACKEND.md §3-§5` — full route inventory, error vocabulary, auth flow.
@@ -20,7 +22,7 @@ Cross-references:
 
 ### 1.1 Error envelope
 
-All 14 API routes return errors as JSON in the form:
+All 16 API routes return errors as JSON in the form:
 
 ```json
 { "code": "snake_case_reason", "message": "optional human string" }
@@ -54,7 +56,7 @@ CLAUDE.md §10a is the canonical list. Relevant to this doc:
 
 ---
 
-## 2. API routes (14 total)
+## 2. API routes (16 total)
 
 All routes live under `api/` and are served by Express on Render — `server/index.ts` mounts each handler via `app.all('/api/...', toExpress(<handler>))`. (`app.all` instead of `app.post` preserves the per-handler manual 405 contract.) All return JSON. All accept only `POST` unless noted; non-POST returns 405 `{ code: 'method_not_allowed' }` with an `Allow: POST` header. Frontend points at `VITE_API_BASE_URL` (`http://localhost:3001/api` in local dev, absolute Render URL in prod).
 
@@ -123,7 +125,7 @@ A KYC step **failing its check is a business verdict, not an HTTP error** — th
 
 Consequence for the client: KYC service callers branch on the **body verdict** (`result`/`outcome`/`verified`), and only treat a thrown `err.code` (the 4xx/`apiFetch` path) as a true error. Do not "fix" the 200-on-failed-verdict by promoting it to a 4xx — it would break the signup branch logic and is explicitly out of scope (demo behavior, CLAUDE.md §10a).
 
-### 2.3 Misc (2 routes)
+### 2.3 Misc (4 routes)
 
 #### `POST /api/contact`
 Public. Validates the landing-page contact form and inserts into `contact_submissions` via the service-role Supabase client (RLS bypassed because the form is open to unauthenticated visitors).
@@ -132,6 +134,22 @@ Public. Validates the landing-page contact form and inserts into `contact_submis
 - **Response 200:** `{ submitted: true, id: string }`
 - **Errors:** `400 invalid_name | invalid_email | invalid_message`, `500 db_error`
 - **Source:** `api/contact.ts`
+
+#### `POST /api/access-request`
+Public. Employer/distributor "request access" lead form. **Every** field is required server-side independent of the client form — `contactPhone` matters most, because it becomes the sign-in key `demo_personas` is provisioned with when an admin later approves the request (the `0090`/`0095` RPCs). INSERTs into `access_requests` via the service-role client (RLS bypassed, same posture as `/api/contact` — no anon RPC or anon INSERT policy exists for this table). Idempotent: a repeat submit matching an existing `pending` row of the same `(kind, contact_phone)` returns the existing id instead of filing a duplicate.
+
+- **Body:** `{ type: 'employer'|'distributor', orgName, registrationNo, contactName, contactEmail, contactPhone, sector, district, message? }` (`sector`/`district` required only when `type === 'employer'`)
+- **Response 200:** `{ submitted: true, id: string }`
+- **Errors:** `400 invalid_type | invalid_org_name | invalid_registration_no | invalid_contact_name | invalid_email | invalid_phone | invalid_sector | invalid_district | <field>_too_long`, `500 db_error`
+- **Source:** `api/access-request.ts`
+
+#### `POST /api/nominee-claim`
+Public. A nominee reports a member's death and claims the life/funeral benefit. The claimant has no account — the member has died — so this is a service-role INSERT into `nominee_claims`, deliberately **not** an anon RPC: migration `0094` fixed the anon-executable RPC set at exactly 3 functions, and an anon phone/NIN-keyed lookup against `nominees` would be a member-enumeration oracle (submit a number, learn whether that person holds a policy). The route never confirms or denies membership — it just accepts the claim. Requires the deceased's phone or NIN (at least one) and a UG-mobile-shaped claimant phone. Idempotent on a repeat submit matching an existing `pending` row of the same `(claimant_phone, deceased_name)`. A super-admin later triages the row via the `0100` RPCs. See the "Nominee claim" glossary entry in `CLAUDE.md §9`.
+
+- **Body:** `{ product: 'life'|'funeral', deceasedName, deceasedNin?, deceasedPhone?, dateOfDeath (ISO date, ≤10 years ago, not in the future), claimantName, claimantNin?, claimantPhone, claimantEmail?, relationship, district?, notes? }` (one of `deceasedNin`/`deceasedPhone` required)
+- **Response 200:** `{ submitted: true, id: string, reference: string }`
+- **Errors:** `400 invalid_product | invalid_deceased_name | invalid_date_of_death | invalid_deceased_identifier | invalid_claimant_name | invalid_relationship | invalid_phone | invalid_email | <field>_too_long`, `500 db_error`
+- **Source:** `api/nominee-claim.ts`
 
 #### `POST /api/chat`
 JWT-optional. When a token is present, `req.user.role` selects the flavour (admin vs agent vs subscriber). When absent, the body's `context` field is honoured (intentional demo-scope policy — see B14 in the audit). Keyword-matching mock; no LLM.
@@ -222,7 +240,7 @@ Every table has RLS enabled. Policies read `auth.jwt() ->> 'app_role'` (the appl
 - `supabase/migrations/0008_rls_wrap_auth_jwt_initplan.sql` + `0023_rls_initplan_fixes.sql` — initplan caching tightenings.
 - `ARCHITECTURE.md` and `BACKEND.md §8` — narrative of the RLS model.
 
-Writes are NEVER permitted directly through PostgREST — all writes flow through SECURITY DEFINER RPCs (CLAUDE.md §7).
+Writes are *intended* to never go directly through PostgREST — the design is that all writes flow through SECURITY DEFINER RPCs (`CLAUDE.md §7`). ⚠️ That is not the enforced state as of 2026-08-25: RLS permits direct client writes on several tables today (13 measured live, incl. a subscriber minting arbitrary money via a direct `transactions` insert). See `docs/audits/2026-08-23/02-rls-matrix.md §5`.
 
 ---
 
@@ -236,8 +254,8 @@ Supabase realtime is **off for all `public.*` tables**. `0025_drop_realtime_publ
 
 | Surface | Count | Where defined |
 | --- | --- | --- |
-| API routes | 14 | `api/**/*.ts` (excl. `_lib/`, `*.test.ts`) |
-| Migrations | 0001–0108 | `supabase/migrations/*.sql` (range extended past 0042 as the platform matured — see `docs/migrations-runbook.md`. NB: the read RPC `get_top_entities` (0077/0078) backs the distributor/admin bounded top-N landing). **Applied state:** all 108 files are live on the Singapore DB; the `supabase_migrations` ledger head is `0108_nominee_claims_seed` (ledger rows are versioned as TIMESTAMPS, not `0001_*` prefixes — don't attempt a version-level diff between the two). `0092_unified_contribution_config` **is already applied**: it collapsed the employer's mode-switched contribution config into one two-leg model, rewriting `submit_employer_contribution_run`, adding `get_my_employer_funding`, and introducing the `_normalize_contribution_config` helper. `0093`/`0094`/`0099`/`0102` have since re-replaced those same functions (`0093` backfilled the retired `mode` key out of every `employers` row; `0102` made the employer leg fund 100% retirement). ⚠️ **Do not re-apply `0092`** — not via `supabase db push`, not any other way. Doing so would overwrite four migrations' worth of fixes to `submit_employer_contribution_run` / `_normalize_contribution_config` and could regress the 100%-retirement money rule and reintroduce the retired `mode` key |
+| API routes | 16 | `api/**/*.ts` (excl. `_lib/`, `*.test.ts`) — incl. the two public write forms `access-request.ts` + `nominee-claim.ts`, documented in §2.3 |
+| Migrations | 0001–0108 confirmed applied; files extend to 0126 on disk | `supabase/migrations/*.sql` (range extended past 0042 as the platform matured — see `docs/migrations-runbook.md`. NB: the read RPC `get_top_entities` (0077/0078) backs the distributor/admin bounded top-N landing). **Applied state, verified 2026-08-25:** 120 forward migration files exist on disk, numbered `0001`–`0126` with a few gaps (this branch is actively adding migrations — re-count with `ls supabase/migrations/*.sql \| grep -v .down.sql \| wc -l` rather than trusting this number). The tracked `supabase_migrations` ledger holds 96 rows, head `0108_nominee_claims_seed` — **but the ledger under-counts real applied state** (this project has a history of applying migrations out-of-band without a ledger row), so a gap between the ledger and a filename does NOT mean that migration is unapplied. ⚠️ Ledger rows are versioned as TIMESTAMPS, not `0001_*` prefixes — the two namespaces share no key, so a version-level diff will lie to you; confirm applied state per-migration by introspecting live objects (`pg_proc`, `pg_policies`, `information_schema`). One migration IS confirmed not yet applied as of this writing: `0118` (the RLS direct-write fix — see `CLAUDE.md §7`). `0092_unified_contribution_config` **is already applied**: it collapsed the employer's mode-switched contribution config into one two-leg model, rewriting `submit_employer_contribution_run`, adding `get_my_employer_funding`, and introducing the `_normalize_contribution_config` helper. `0093`/`0094`/`0099`/`0102` have since re-replaced those same functions (`0093` backfilled the retired `mode` key out of every `employers` row; `0102` made the employer leg fund 100% retirement). ⚠️ **Do not re-apply `0092`** — not via `supabase db push`, not any other way. Doing so would overwrite four migrations' worth of fixes to `submit_employer_contribution_run` / `_normalize_contribution_config` and could regress the 100%-retirement money rule and reintroduce the retired `mode` key |
 | RPCs (read) | 10 | `0002`, `0020_entity_metrics_rollup_v3.sql`, slimmed commission reads in `0029`, + 3 commission aggregates in `0041` |
 | RPCs (settlement / notification) | 2 | `0031_notifications.sql` (`apply_settlement`, `mark_notifications_read`) — replaced the 14 commission state-machine RPCs dropped in `0029` |
 | RPCs (other write) | 3 | `0002_rpc_functions.sql`, `0024_upsert_nominees.sql` |

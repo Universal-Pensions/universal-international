@@ -1,4 +1,6 @@
 > **Agent guide.** The role × capability matrix — what each role (subscriber, agent, branch, distributor, employer, admin) may see and do. Read it before any access-related change so a UI capability and its RLS/RPC gate stay in agreement. All six roles are now built (desktop + mobile), so any "Planned" markers below are historical — verify against `CLAUDE.md` and the RLS in `BACKEND.md` / `supabase/migrations/*.sql`.
+>
+> **Verified against the live Singapore DB (`ilkhfnoyxlxwqadebnkp`) and live `pg_policies` on 2026-08-25.** This is the document `docs/audits/2026-08-23/02-rls-matrix.md` derived its `expected` column from — several claims below previously disagreed with the measured matrix (some self-contradicting other lines in this same file); those are now corrected inline. Re-verify policy names and counts before relying on them; they decay fast.
 
 # Universal Pensions Uganda — Role-Permission Matrix
 
@@ -35,9 +37,9 @@ Sign-in flow: Role Select → (Distributor Sub-select if applicable) → Phone E
 | Map Overview | Full | Interactive Leaflet map with drill-down |
 | Overlay Panel | Full | KPIs, entity lists, commission summary at every hierarchy level |
 | Breadcrumb Navigation | Full | Country → Region → District → Branch → Agent |
-| View Branches | Full | All ~316 branches, list + detail slide-in |
+| View Branches | Full | All ~321 branches, list + detail slide-in |
 | Create Branch | Full | Multi-step form: Branch Details → Admin Details → Review |
-| View Agents | Full | All ~2,049 agents, list + detail slide-in |
+| View Agents | Full | All ~2,046 agents, list + detail slide-in |
 | View Subscribers | Full | All ~5,000 subscribers, list + detail slide-in |
 | Commission Panel | Full | Home (rate card + Total/Settled/Outstanding summary + pending dues with Branch⇄Agent toggle + Download template + Upload settlement + settlement history), agents list, agent detail, subscribers |
 | Reports Panel | Full | All 11 reports |
@@ -57,9 +59,10 @@ Sign-in flow: Role Select → (Distributor Sub-select if applicable) → Phone E
   > Before `0081` every `*_select_distributor` policy was a bare `app_role = 'distributor'` with no
   > ownership predicate, so any distributor could read the whole platform. That is why the Subscribers
   > page showed 5,062 while the Overview KPI (which always walked the agent tree) showed 5,004.
-  **Still platform-wide, pending `0084`:** `agents` / `branches` (single shared
-  `*_select_authenticated` policy — needs a RESTRICTIVE policy, not an added permissive one) and the
-  region/district/branch/agent drill-down levels of `get_entity_metrics_rollup`.
+  **Closed by `0084` + `0094`** (verified live 2026-08-25): the blanket `*_select_authenticated`
+  policy on `agents` / `branches` is gone. Each table now carries one policy per role
+  (admin/distributor/branch/agent/subscriber; employer has none) plus a RESTRICTIVE
+  `*_scope_distributor` overlay as a second gate.
 - **Drill-down:** Country → Distributor → Region → District → Branch → Agent → Subscriber
 - **Commission scope:** commissions whose `branch_id` is in the distributor's own branches
 - **Distributor row.** `distributors` was readable by every authenticated role via
@@ -247,7 +250,7 @@ All slide-in panels use `splitMode={true}`:
 | View commissions | — | **None** — employer-funded contributions carry `agent_id` NULL ⇒ generate no commissions |
 
 ### Scoping Implementation
-`EmployerScopeProvider` injects `employerId` into context; reads route through `useEmployer*` hooks → `src/services/employer.js`. Under the unified model the roster lives in `subscribers` (tagged `employer_id`), so employer reads are scoped by the **`subscribers`/`transactions` RLS** plus the employer-family SELECT policies (`employers`, `contribution_runs`, `employer_invites`) keyed on `auth.jwt() ->> 'employerId'` — a read only ever returns the caller's own members + runs. **Writes go through the employer SECURITY DEFINER RPCs** (`0044`/`0048`/`0056`/`0062`; no client write policies), each re-checking ownership against the `employerId` claim. **`submit_employer_contribution_run`** (`0062`) derives both legs from each member's `compensation` and posts to the normal `transactions` ledger (`source='employer'`/`'own'`, `agent_id` NULL) — the balance trigger does the math; it writes no commissions. See `BACKEND.md §8`/§10.1 + `docs/data-model.md`.
+`EmployerScopeProvider` injects `employerId` into context; reads route through `useEmployer*` hooks → `src/services/employer.js`. Under the unified model the roster lives in `subscribers` (tagged `employer_id`), so employer reads are scoped by the **`subscribers`/`transactions` RLS** plus the employer-family SELECT policies (`employers`, `contribution_runs`, `employer_invites`) keyed on `auth.jwt() ->> 'employerId'` — a read only ever returns the caller's own members + runs. **Writes go through the employer SECURITY DEFINER RPCs** (`0044`/`0048`/`0056`/`0062`; no client write policies), each re-checking ownership against the `employerId` claim. ⚠️ Measured 2026-08-23, re-confirmed 2026-08-25: "no client write policies" describes intent platform-wide, not the enforced state — RLS does not block direct client writes on every table. 13 direct-write successes were measured live on other tables (`transactions`, `insurance_policies`, `contribution_schedules`, `withdrawals`, `nominees`, `agents`, `branches`, `distributors`); see `docs/audits/2026-08-23/02-rls-matrix.md §5` and `CLAUDE.md §7`. Whether the employer-family tables themselves (`employers`, `contribution_runs`, `employer_invites`) also permit a direct client write has not been independently re-verified here. **`submit_employer_contribution_run`** (`0062`) derives both legs from each member's `compensation` and posts to the normal `transactions` ledger (`source='employer'`/`'own'`, `agent_id` NULL) — the balance trigger does the math; it writes no commissions. See `BACKEND.md §8`/§10.1 + `docs/data-model.md`.
 
 ---
 
@@ -312,7 +315,7 @@ The agent is now a pure observer of commissions. Lines auto-generate as `due` on
 | Branches / Agents / Subscribers / Reports / Commissions / Support / Settings | Full | Reused distributor panels, unscoped (platform-wide) |
 
 ### Data Scope
-- **Visibility:** All data across the entire platform — `*_select_admin` RLS policies (migration `0049`) clone the distributor "see-everything" grants (`USING (auth.jwt() ->> 'app_role' = 'admin')`) on the subscriber/commission tables, plus admin SELECT on the employer family (`employers`, `contribution_runs`, `contribution_run_lines`, `employer_invites`). Reference tables (`regions`/`districts`/`branches`/`agents`) and `distributors` were already authenticated/public-readable.
+- **Visibility:** All data across the entire platform — `*_select_admin` RLS policies (migration `0049`) clone the distributor "see-everything" grants (`USING (auth.jwt() ->> 'app_role' = 'admin')`) on the subscriber/commission tables, plus admin SELECT on the employer family (`employers`, `contribution_runs`, `employer_invites` — NOT `contribution_run_lines`, which was dropped by `0045` and does not exist live). Reference tables (`regions`/`districts`/`branches`/`agents`) are authenticated-readable; `distributors` is readable only by admin (`distributors_select_admin`) and the owning distributor (`distributors_select_self`) — see "Data Scoping Rules Summary" below.
 - **No scope claim:** there is no `adminId` filter in any read policy — admin sees all rows.
 
 ### Actions (CRUD)
@@ -337,16 +340,18 @@ The agent is now a pure observer of commissions. Lines auto-generate as `due` on
 
 | Role | Entity Visibility | Commission Visibility | Report Scope |
 |------|------------------|----------------------|--------------|
-| distributor | All entities, all levels (including read of own `distributors` row + update of own row) | All commissions (set rate + apply settlement uploads) | All 11 reports, network-wide |
-| branch | Own branch + own agents + own subscribers (+ read-only of the singleton `distributors` row for attribution) | Own branch's commissions (read-only) | 8 reports, branch-scoped |
-| agent | Own record + own subscribers (+ read-only of the singleton `distributors` row) | Own commissions (read-only — Earned / Owed) | Client-side analytics over own portfolio |
-| subscriber | Own record only (+ read-only of the singleton `distributors` row) | None | 5 own-account reports (transactions, contributions, withdrawals, insurance, annual) |
+| distributor | Its OWN network only since `0081` (`branches.distributor_id → agents.branch_id → subscribers.agent_id`); a subscriber with `agent_id IS NULL` belongs to no distributor | Own-network commissions (set rate + apply settlement uploads) | All 11 reports, network-scoped |
+| branch | Own branch + own agents + own subscribers | Own branch's commissions (read-only) | 8 reports, branch-scoped |
+| agent | Own record + own subscribers | Own commissions (read-only — Earned / Owed) | Client-side analytics over own portfolio |
+| subscriber | Own record only | None | 5 own-account reports (transactions, contributions, withdrawals, insurance, annual) |
 | employer | Own employer + own tagged-subscriber roster (`subscribers.employer_id`) + own contribution runs (no access to other employers' members, agents, or branches) | None (employer-funded contributions carry `agent_id` NULL ⇒ no commissions) | 4 own-org reports (staff roster, runs summary, funding breakdown, balance growth) |
 | admin | All entities, all levels (incl. all distributors + all employers) | All commissions | All reports, all scopes |
 
+⚠️ **No role except admin and the owning distributor can read `distributors`** (verified live 2026-08-25 — see the corrected rows above and "Scoping Implementation" below). Any "Operated by …" attribution surface for branch / agent / subscriber / employer renders empty (A02-007). The rows above previously claimed a read-only singleton-`distributors` fallback for branch/agent/subscriber; that was measured false (0 rows returned for all three) and has been removed.
+
 ### Scoping Implementation
-- **Distributor:** No scoping applied — all data visible. The `distributors` table is the one exception: `distributors_update_self` restricts UPDATE to `auth.jwt() ->> 'distributorId' = id` (today's singleton seed means this is "distributor edits its own row" — the policy is shaped for the multi-distributor future).
-- **All authenticated roles read `distributors`:** `distributors_select USING (true)` lets the singleton row resolve for every dashboard's "Operated by …" attribution without selectively granting per-role read.
+- **Distributor:** Scoped to its own network by three `SECURITY DEFINER` helpers (`distributor_branch_ids()`, `distributor_agent_ids()`, `distributor_subscriber_ids()`) across 12 tables (`0081`–`0089`), plus RESTRICTIVE `*_scope_distributor` overlays on `agents`/`branches` (`0084`). Fails closed on a missing `distributorId` claim. `distributors_update_self` separately restricts UPDATE on the `distributors` table itself to `auth.jwt() ->> 'distributorId' = id` — each of the three seeded distributors (`d-001`/`d-002`/`d-003`) edits only its own row.
+- **Only admin and the owning distributor read `distributors`:** `distributors_select_admin` + `distributors_select_self` (`0081`). There is no blanket `USING (true)` policy on this table.
 - **Branch:** `BranchScopeProvider` injects `branchId` into context. Report views check `useBranchScope()` and filter data accordingly. Commission endpoints receive `branchId` parameter.
 - **Agent:** `AgentScopeProvider` injects `agentId`. `useAgentSubscribers(agentId)` and commission hooks scope automatically. The auth `user.agentId` comes from the backend's `verifyOtp` response — the client no longer injects it.
 - **Subscriber:** `useCurrentSubscriber()` resolves from authenticated phone (server-side); subscriber is the implicit "self" in every endpoint under `/api/subscribers/me/*`.

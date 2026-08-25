@@ -1,4 +1,6 @@
 > **Agent guide.** This is the repository README — a high-level orientation map (what the platform is, tech stack, quick start, npm scripts, database, deployment topology) for the Universal Pensions Uganda codebase. An AI agent can skim it first for the lay of the land, but should treat `CLAUDE.md` as the binding source for hard rules, anti-patterns, and demo scope, and the specialist docs under `docs/` (`docs/FRONTEND.md`, `docs/BACKEND.md`, `docs/ARCHITECTURE.md`) for file-level depth. Do not treat this README as the authoritative rulebook or the schema/API reference — it is orientation only, and specific counts here (migrations, routes) can lag the code.
+>
+> **Verified against the live Singapore DB (`ilkhfnoyxlxwqadebnkp`) on 2026-08-25.** Migration/route/table counts decay fast — re-measure before relying on them.
 
 # Universal Pensions Uganda
 
@@ -6,7 +8,7 @@ A digital pension platform making long-term retirement savings simple, accessibl
 
 **Live:** [uganda-dashboard.vercel.app](https://uganda-dashboard.vercel.app)
 
-> This repo is a **demo / sales-presentation tool** that sales reps walk prospects through — it is NOT a production fintech. Mocked OTP, mocked KYC, hardcoded unit price, and a 24-hour fixed JWT are intentional demo scope (see `CLAUDE.md §10a`).
+> This repo is a **demo / sales-presentation tool** that sales reps walk prospects through — it is NOT a production fintech. Mocked OTP, mocked KYC, and a 24-hour fixed JWT are intentional demo scope (see `CLAUDE.md §10a`). The unit price is **not** demo scope — it is a real admin-published fund NAV since migrations `0103`–`0106` (verify live: `select public.latest_nav();`).
 
 ## Overview
 
@@ -15,7 +17,7 @@ The codebase covers four surfaces:
 1. **Public landing page** (`/`) — scrollytelling marketing site that demos 40 years of compounded savings via scroll-linked animation.
 2. **Signup / KYC flow** (`/signup/*`) — 9-step subscriber onboarding (phone OTP, NIRA ID OCR, NIRA verify, face match, AML screen, agent fallback).
 3. **Role dashboards** (`/dashboard/...`) — all 6 roles built: Subscriber, Agent, Branch, Distributor, Employer, and Admin (the Employer role shipped to production 2026-06-03; Admin shipped 2026-06-08 with its map-theme shell at `src/admin-dashboard/` and `0049` RLS policies).
-4. **Express backend on Render** (`server/index.ts` mounts `api/*.ts`) — 14 routes covering auth, KYC mocks, contact, chat. Singapore region, Node 22, free tier. Database is Supabase (Postgres + RLS + custom HS256 JWT via `jose`) — a **new Singapore `ap-southeast-1` project, cutover 2026-06-05** (replaced the old Tokyo `ap-northeast-1` project; reseeded to ~5,000 subscribers).
+4. **Express backend on Render** (`server/index.ts` mounts `api/*.ts`) — 16 routes covering auth, KYC mocks, contact, chat, public access-requests, and public nominee claims. Singapore region, Node 22, free tier. Database is Supabase (Postgres + RLS + custom HS256 JWT via `jose`) — a **new Singapore `ap-southeast-1` project, cutover 2026-06-05** (replaced the old Tokyo `ap-northeast-1` project; reseeded to ~5,000 subscribers).
 
 ## Tech stack
 
@@ -27,7 +29,7 @@ The codebase covers four surfaces:
 - **CSS Modules** (no Tailwind, no component library) — design tokens in `src/index.css`
 - **Leaflet 1.9** + **Recharts 3** for the distributor map and charts
 - **Express 5** TypeScript handlers in `api/` mounted by `server/index.ts`; hosted on **Render** (Singapore, free tier, Node 22). Frontend hosted on **Vercel** (Vite preset, no functions).
-- **Supabase** (Postgres + RLS + PostgREST). 78 migrations under `supabase/migrations/` (`0001`–`0078`).
+- **Supabase** (Postgres + RLS + PostgREST). 120 forward migration files on disk as of 2026-08-25 (`0001`–`0126`, with a few numbering gaps — this moves fast, re-count with `ls supabase/migrations/*.sql | grep -v .down.sql | wc -l` before relying on it). The live `supabase_migrations` ledger versions rows as TIMESTAMPS, not `0001_*` prefixes, so it cannot be diffed against these filenames — see `docs/BACKEND.md §16`.
 - **jose** for custom HS256 JWT signing/verification
 - **Playwright 1.60** for E2E (browser-driven full-app suite under `e2e/`)
 - **Vitest 4** for unit tests
@@ -89,7 +91,7 @@ npx playwright test path/to/spec.ts --project chromium
 
 ## Database
 
-Schema lives in `supabase/migrations/*.sql` (78 numbered migrations, `0001`–`0078`). State-machine writes flow through `SECURITY DEFINER` RPCs invoked with `supabase.rpc(name, args)`; direct table writes are blocked by RLS. RLS policies read `auth.jwt() ->> 'app_role'` (NOT `'role'`, which is the Postgres `authenticated` role — see CLAUDE.md §5 anti-pattern 7).
+Schema lives in `supabase/migrations/*.sql` (120 numbered migration files as of 2026-08-25, `0001`–`0126` with gaps — re-count before relying on this number). State-machine writes are *supposed* to flow through `SECURITY DEFINER` RPCs invoked with `supabase.rpc(name, args)`. ⚠️ **Direct table writes are NOT reliably blocked by RLS** — as of 2026-08-25 several tables still accept them (a fix is drafted in migration `0118` but not yet applied); see `CLAUDE.md §7` and `docs/audits/2026-08-23/02-rls-matrix.md §5`. RLS policies read `auth.jwt() ->> 'app_role'` (NOT `'role'`, which is the Postgres `authenticated` role — see CLAUDE.md §5 anti-pattern 7).
 
 Apply migrations with the Supabase CLI:
 
@@ -106,7 +108,7 @@ Seed demo data with `npm run seed`. Phone numbers use the synthetic `+25671XXXXX
 - **`FRONTEND.md`** — services, hooks, contexts, dashboard variants, signup flow, design tokens.
 - **`BACKEND.md`** — env vars, API route inventory, auth flow, schema, RPCs, RLS, commission state machine, seeding.
 - **`ARCHITECTURE.md`** — layered patterns, role boundaries, auth model, realtime + write patterns.
-- **`docs/api-contracts.md`** — HTTP request/response shapes for the 14 API routes + RPC catalogue.
+- **`docs/api-contracts.md`** — HTTP request/response shapes for the 16 API routes + RPC catalogue.
 - **`docs/data-model.md`** — field-level entity model + aggregation rules.
 - **`docs/role-permissions.md`** — role × capability matrix.
 - **`docs/SPEC.md`** — product spec, personas, workflows.

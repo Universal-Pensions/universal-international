@@ -4,16 +4,18 @@ description: Run, debug, and extend the Playwright + Supabase E2E QA suite for t
 ---
 
 > **Agent guide.** This is the operating manual for `/qa` — the Playwright + Supabase service-role end-to-end harness that drives each role's dashboard in a browser and verifies the DB side-effects of every UI action. Read it in full before you run, debug, or extend the E2E suite under `e2e/` (invoke the work through the `/qa` subcommands below); it carries the coverage map, the auth/DB spec patterns, the failure-triage playbook, and the known-bug list. It is not the unit-test guide (those live in `src/**/__tests__/` and run via `npm test`), and for app internals defer to `CLAUDE.md` plus `docs/FRONTEND.md` / `docs/BACKEND.md`.
+>
+> **Spec inventory verified against the `e2e/specs/` tree on 2026-08-25; runtime/pass-fail figures are the 2026-08-23 audit measurement** (`docs/audits/2026-08-23/00-baseline.md §10`) — re-run `/qa fix` before trusting the failure list below if time has passed.
 
 # /qa — Automated QA harness
 
 End-to-end browser tests (Playwright) plus a Supabase service-role client for verifying DB side-effects after every UI action. Unit tests live under `src/**/__tests__/` and run via `npm test` (vitest); E2E lives under `e2e/` and runs via the scripts below.
 
-**Current coverage:** the suite has grown well past its original ~78-test baseline and runs across desktop + mobile projects. Three layers now exist under `e2e/specs/`:
-- **`smoke/`** — every dashboard route × **all 6 roles** (subscriber, agent, branch, distributor, **employer**, **admin**) + landing + a `_health` check. Each route loads, renders its identity element, and shows its primary CTA without crashing.
-- **`flows/`** — golden-path UI actions with DB verification, including subscriber-edit-profile, subscriber-signup-to-contribute (full 9-step wizard + DB), subscriber-signin-with-password, **agent-onboard-subscriber (ENABLED — canonical happy path; the AML-hang is resolved, the test asserts the `create_subscriber_from_agent_onboard` RPC + subscriber/balance rows land)**, agent/branch/distributor drill-to-subscriber, branch-create-agent (live insert + cleanup), distributor-apply-settlement, distributor-exports-csv, employer-contribution-run, admin-create-employer, kyc-failure-paths, auth-otp-retry-lockout, settings-change-password, and distributor-create-branch (marked `test.fail` — UI mock, see bug list below).
-- **`db/`** — service-role DB-contract specs with no browser: `invariants.spec.ts` (schema/business invariants), `money-idempotency.spec.ts` (no double-credit on retried writes), and `rls-isolation.spec.ts` (cross-tenant RLS isolation).
-- **`regression/`** — targeted UI regressions (map-drill, modal-escape, mobile drawer, empty states, subscriber write-failures, settings stubs, subscriber payment methods, employer pending-KYC nudges). The last two run on the **mobile projects too** (see `testMatch` in `playwright.config.ts`) because each ships a distinct phone body over shared logic.
+**Current coverage:** the suite is far past its original ~78-test baseline. Measured 2026-08-23 at `--workers=1` across all 4 Playwright projects (chromium, webkit, mobile-chromium, mobile-webkit): **370 cases — 326 passed / 30 failed / 14 skipped, 24.4 min, exit 1** (`docs/audits/2026-08-23/00-baseline.md §10`). The 30 failures are deterministic, not flaky — see "Currently failing" below. Four layers exist under `e2e/specs/`:
+- **`smoke/`** (8 files) — every dashboard route × **all 6 roles** (subscriber, agent, branch, distributor, **employer**, **admin**) + landing + a `_health` check. Each route loads, renders its identity element, and shows its primary CTA without crashing.
+- **`flows/`** (18 files) — golden-path UI actions with DB verification: subscriber-edit-profile, subscriber-signup-to-contribute (full 9-step wizard + DB), subscriber-signin-with-password, **agent-onboard-subscriber (canonical happy path; the AML-hang is resolved, the test asserts the `create_subscriber_from_agent_onboard` RPC + subscriber/balance rows land)**, agent-dashboard-drill-to-subscriber, branch-dashboard-drill-to-subscriber, distributor-drill-agent-to-subscriber, distributor-drill-branch-to-subscriber, distributor-commission-drill-subscribers, distributor-renders-data, distributor-create-branch (the panel **is now wired** — see bug list below, it is not a `test.fail`), distributor-apply-settlement, distributor-exports-csv, employer-contribution-run, admin-create-employer, kyc-failure-paths, auth-otp-retry-lockout, settings-change-password. (There is no `branch-create-agent` spec — that name never existed under this tree.)
+- **`db/`** (4 files) — service-role DB-contract specs with no browser: `invariants.spec.ts` (schema/business invariants), `money-idempotency.spec.ts` (no double-credit on retried writes), `rls-isolation.spec.ts` (cross-tenant RLS isolation), and `deactivate-entities.spec.ts` (entity deactivate/reactivate journalling, `0060`/`0080`).
+- **`regression/`** (8 files) — targeted UI regressions: map-drill, modal-escape, empty-states, subscriber-write-failures, subscriber-settings-stubs, subscriber-payment-methods, subscriber-insurance-no-scroll, employer-kyc-nudge. `subscriber-payment-methods.spec.ts` and `employer-kyc-nudge.spec.ts` also run on the **mobile projects** (see `testMatch` in `playwright.config.ts`) because each ships a distinct phone body over shared logic.
 
 Subscriber smoke route notes (Phase 6D mobile-redesign — three assertions rewritten in place, not added): `/dashboard/activity` now renders ActivityPage (h1 "Activity" / "THIS YEAR" eyebrow / All-Incoming-Outgoing filters) instead of redirecting to all-transactions; `/dashboard/settings` now renders the account hub whose h1 is "Profile" (not "Settings"), with a "Sign out" action; and `/dashboard/save`'s h1 is "Save" (not "top up", which moved to the footer CTA).
 
@@ -25,7 +27,7 @@ Subscriber smoke route notes (Phase 6D mobile-redesign — three assertions rewr
 ```sh
 npm run test:e2e:smoke
 ```
-Per-role smoke pass. Every page in every role's dashboard navigates without crashing; identity element renders; primary CTA visible. ~45-60s. Covers landing + a `_health` check + all 6 role dashboards: subscriber, agent, branch, distributor, **employer**, and **admin** (one smoke file per role under `e2e/specs/smoke/`).
+Per-role smoke pass. Every page in every role's dashboard navigates without crashing; identity element renders; primary CTA visible. Covers landing + a `_health` check + all 6 role dashboards: subscriber, agent, branch, distributor, **employer**, and **admin** (one smoke file per role under `e2e/specs/smoke/`). Budget minutes, not seconds — the smoke layer alone was not separately timed in the 2026-08-23 measurement, and the full suite (smoke + flows + regression + db, all 4 projects) took 24.4 min at `--workers=1`.
 
 ### `/qa flows`
 ```sh
@@ -37,7 +39,7 @@ Golden-path UI flows with DB verification. Each spec under `e2e/specs/flows/` pe
 ```sh
 npm run test:e2e
 ```
-Runs smoke + flows together (~2 min total).
+`npm run test:e2e` is bare `playwright test` — it runs the **whole suite** (smoke + flows + regression + db) across all 4 configured projects, not just smoke + flows. Measured 2026-08-23: ~24 min at `--workers=1` (370 cases, 326 passed / 30 failed / 14 skipped, exit 1 — see `docs/audits/2026-08-23/00-baseline.md §10`). Budget accordingly; it is not a ~2-minute check.
 
 ### `/qa fix`
 ```sh
@@ -146,10 +148,11 @@ When a spec fails, do NOT immediately blame the product code. Decision tree:
 ## Known product bugs surfaced by this suite
 
 1. **`src/services/entities.js`** (FIXED 2026-05-18) — `mapAgent`/`mapBranch` originally returned `metrics: null`, causing `ViewAgents.jsx` + `ViewBranches.jsx` to crash on `.metrics.totalSubscribers`. Fix: provide `EMPTY_METRICS` zero-shape default at the mapper level.
-2. **`src/dashboard/branch/CreateBranch.jsx`** — distributor-side Create Branch panel is purely a UI mock. `handleConfirm()` (line 253) just calls `setSuccess(true)`; it never invokes `useCreateBranch` or `entities.createBranch`. The hook and service both exist and work — they're not wired to the panel. Spec `distributor-create-branch.spec.ts` is marked `test.fail()` until this is wired.
+2. ~~**`src/dashboard/branch/CreateBranch.jsx`** — UI mock, `handleConfirm()` never invoked `useCreateBranch`~~ — **FIXED** (verified 2026-08-25). `handleConfirm()` (`CreateBranch.jsx:257`, not :253) now calls `createBranch.mutateAsync({…})` (`:260`) against the wired `useCreateBranch()` hook (`:155`). There is no `test.fail()` anywhere under `e2e/specs/` — `distributor-create-branch.spec.ts` runs unmarked (the suite's one `test.fixme` is unrelated, on the settlement nonce-idempotency case — see item 4 below and `distributor-apply-settlement.spec.ts:501`).
 3. ~~**`src/subscriber-dashboard/pages/ProfilePage.jsx`** — hydration bug~~ — FIXED (verified Phase 6D, 2026-05-29). ProfilePage now hydrates name/email/phoneDigits from the `useCurrentSubscriber` query via a `useEffect` (`ProfilePage.jsx:63-74`), so the form no longer renders empty until the user retypes. The hydration-barrier waits in `subscriber-edit-profile.spec.ts` (and the Profile-save regression test) now key off this committed effect rather than working around a defect.
 4. ~~**Agent onboard AML step hang**~~ — RESOLVED. `agent-onboard-subscriber.spec.ts` is now an **enabled** flow spec (`test('full wizard creates subscriber + balances via RPC', …)`, no `test.fixme`/`test.skip`): it walks the full agent onboard wizard under the agent storageState, waits on the `create_subscriber_from_agent_onboard` RPC 200, and verifies the `subscribers` + `subscriber_balances` rows land. It is the canonical agent happy-path. (The `test.setTimeout(60_000)` budget absorbs the stacked mocked-KYC latencies — see the spec header for the timing breakdown.)
-5. **`/dashboard/commissions/due`** (agent dashboard) — `due` isn't in `VALID_VIEWS` (`src/agent-dashboard/pages/CommissionsPage.jsx:26`). The component redirects unknown views to `/dashboard/commissions`. Spec smoke-tests the redirect.
+5. **`/dashboard/commissions/due`** (agent dashboard) — `due` isn't in `VALID_VIEWS` (defined at `src/agent-dashboard/pages/commissions/commissionsConfig.jsx:14`; imported into `CommissionsPage.jsx`, not defined there). The component redirects unknown views to `/dashboard/commissions`. Spec smoke-tests the redirect.
+6. **Currently failing (measured 2026-08-23) — 30 of 370, deterministic.** Two independent engines failing the identical line numbers is a defect set, not flake/contention. `mobile-chromium` and `mobile-webkit` fail an identical set of 11 (`distributor-exports-csv.spec.ts:37,:141`; `landing.spec.ts:20,27,34`; `subscriber-dashboard.spec.ts:43,54,109,115,124,173`); `chromium` + `webkit` both fail `agent-onboard-subscriber.spec.ts:109` and `modal-escape.spec.ts:224`. Screenshots from that run are on disk under `test-results/`. Full breakdown: `docs/audits/2026-08-23/00-baseline.md §10`. Re-run `/qa fix` to confirm this list is still current before treating any of these as new.
 6. **`/dashboard/reports/contributions`** (subscriber dashboard) — `REPORT_VIEWS` map keys the route segment as `contributions-summary` not `contributions`. The legacy URL `/dashboard/reports/contributions` would 404; the spec hits the corrected slug.
 
 When a NEW bug is found, follow the pattern in the entities.js fix: surface clearly, fix at the source if a one-liner, otherwise mark the spec(s) with `test.fail()` + a comment, and document here.
@@ -170,10 +173,10 @@ The harness reads `.env.local` via `dotenv` in `playwright.config.ts` and shares
 ## Phase roadmap
 
 ✅ **Phase 0** — Scaffold (config, fixtures, global-setup, skill skeleton).
-✅ **Phase 1** — Smoke specs (44 tests across all 4 dashboards + landing).
+✅ **Phase 1** — Smoke specs across all 6 role dashboards + landing + `_health`.
 ✅ **Phase 2** — Flow template spec with DB verification (subscriber-edit-profile).
 ✅ **Phase 3** — Finalized skill docs (THIS DOCUMENT). Vision augmentation (`/qa explore`, `/qa screenshot-review`) remains as roadmap below.
 ✅ **Phase 4** — Regression flow specs (signup→contribute, agent onboard, branch create-agent, distributor create-branch) + mobile-chromium project (restricted to viewport-friendly specs).
 ✅ **Phase 5** — GitHub Actions CI (`.github/workflows/test.yml`) with lint+unit job and gated e2e job, Playwright report artifact upload, concurrency control.
 
-⏳ **Future** — Vision: `/qa explore <role>` (computer-use exploratory pass) and `/qa screenshot-review` (multimodal Read on captured PNGs). Fixing the agent-onboard AML-step hang. Wiring the UI-mock `CreateBranch` panel to `useCreateBranch`. (The `ProfilePage.jsx` hydration fix landed in Phase 6D — see bug-list item #3.)
+⏳ **Future** — Vision: `/qa explore <role>` (computer-use exploratory pass) and `/qa screenshot-review` (multimodal Read on captured PNGs). (The `ProfilePage.jsx` hydration fix landed in Phase 6D — see bug-list item #3. The agent-onboard AML-step hang and the UI-mock `CreateBranch` panel are both resolved — see the known-bugs list above; they are not future work.)
