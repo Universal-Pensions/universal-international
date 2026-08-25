@@ -227,10 +227,16 @@ jobs:
         env:
           PLAYWRIGHT_JSON_OUTPUT_NAME: db-results.json
         run: |
+          # `|| true` so the guard below ALWAYS runs. GitHub's default shell is
+          # `bash -e`, so a single genuine db failure aborted this step before
+          # its own check — the guard was only ever reachable on an all-green
+          # run, i.e. the case it least needed to inspect. The full-matrix step
+          # above already reports db test verdicts through the delta gate; this
+          # step exists solely to catch the SILENT-SKIP pathology.
           npx playwright test e2e/specs/db \
             --project=chromium \
             --workers=1 \
-            --reporter=json
+            --reporter=json || true
           node -e '
             const fs = require("fs");
             const file = process.env.PLAYWRIGHT_JSON_OUTPUT_NAME;
@@ -247,14 +253,57 @@ jobs:
             // guard exists to catch ONLY the silent-skip pathology, so it
             // must count unexpected + flaky as "executed" alongside expected.
             const executed = expected + unexpected + flaky;
-            // 17 = verified count of `test(...)` definitions across
-            // e2e/specs/db/*.spec.ts for a single project (chromium):
-            // deactivate-entities 4, invariants 8, money-idempotency 2,
-            // rls-isolation 3. Re-verify with:
-            //   grep -c "^\s*test(" e2e/specs/db/*.spec.ts
-            // if a db spec is added/removed — this is a verified count, not
-            // the rough count of 13 the audit report guessed.
-            const REQUIRED_DB_TESTS = 17;
+            // ⚠️ 17 WAS WRONG BY 40, AND THE RECIPE FOR RE-DERIVING IT WAS WRONG TOO.
+            // Measured 2026-08-25: `npx playwright test e2e/specs/db
+            // --project=chromium --list` reports 57 tests in 5 files —
+            // deactivate-entities 4, invariants 13 (its comment said 8),
+            // money-idempotency 2, rls-isolation 3, and
+            // function-deployment-contract 35, of which 33 are LOOP-GENERATED
+            // and therefore invisible to the documented
+            // `grep -c "^\s*test("` recipe (which yields 24, also not 17).
+            //
+            // The gap was not cosmetic. function-deployment-contract gates on
+            // SUPABASE_DB_URL while the other four gate on
+            // SUPABASE_SERVICE_ROLE_KEY — two independent skip keys. With the
+            // service-role key missing (the exact scenario this step's own
+            // error text names), 22 tests skip — every cross-tenant RLS check,
+            // both money-idempotency checks, every schema invariant — and 35
+            // still execute. 35 >= 17, so the step printed a pass. Any single
+            // db spec file could vanish entirely and this guard would not
+            // notice.
+            //
+            // Counting per FILE instead of a single total, so a whole file
+            // dropping out cannot be masked by another file being large.
+            const PER_FILE_MIN = {
+              "deactivate-entities.spec.ts": 4,
+              "invariants.spec.ts": 13,
+              "money-idempotency.spec.ts": 2,
+              "rls-isolation.spec.ts": 3,
+              "function-deployment-contract.spec.ts": 1,
+            };
+            const ranByFile = {};
+            (function walk(node) {
+              for (const spec of node.specs || []) {
+                const f = (spec.file || "").split("/").pop();
+                for (const t of spec.tests || []) {
+                  if (t.status !== "skipped") ranByFile[f] = (ranByFile[f] || 0) + 1;
+                }
+              }
+              for (const c of node.suites || []) walk(c);
+            })({ suites: report.suites || [] });
+            const shortfall = Object.entries(PER_FILE_MIN)
+              .filter(([f, min]) => (ranByFile[f] || 0) < min)
+              .map(([f, min]) => `${f}: ${ranByFile[f] || 0}/${min}`);
+            if (shortfall.length > 0) {
+              console.error(
+                "§15-M1 FAILURE: db spec file(s) did not execute their minimum: " +
+                shortfall.join(", ") +
+                ". A missing secret silently skips a whole file; a per-file floor " +
+                "catches that where a single grand total could not."
+              );
+              process.exit(1);
+            }
+            const REQUIRED_DB_TESTS = Object.values(PER_FILE_MIN).reduce((a, b) => a + b, 0);
             console.log(`db/ specs — executed: ${executed}/${REQUIRED_DB_TESTS} (expected: ${expected}, unexpected: ${unexpected}, flaky: ${flaky}, skipped: ${skipped})`);
             if (executed < REQUIRED_DB_TESTS) {
               console.error(

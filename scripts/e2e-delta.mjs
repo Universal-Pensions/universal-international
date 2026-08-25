@@ -167,8 +167,18 @@ function collectTests(report) {
     const relFile = specRelPath(spec.file);
     const fullTitlePath = [...titlePath, spec.title];
     for (const test of spec.tests || []) {
-      const id = `[${test.projectName}] › ${relFile}:${spec.line}:${spec.column} › ${fullTitlePath.join(' › ')}`;
-      out.push({ id, status: test.status });
+      // Two ids. `id` is line-free and is what the allowlist is matched on;
+      // `located` keeps line:col purely for human-readable output.
+      //
+      // ⚠️ THE ALLOWLIST USED TO BE KEYED ON line:col AND THAT WAS THE BUG.
+      // Every edit to a spec file shifts the line, so 12 of the 22 frozen
+      // entries stopped matching the moment this branch touched those files.
+      // Each one then looked like a BRAND NEW failure, so the gate failed for
+      // pre-existing breakage — the exact outcome it was built to prevent —
+      // while simultaneously reporting the real entry as "now PASSING".
+      const id = `[${test.projectName}] › ${relFile} › ${fullTitlePath.join(' › ')}`;
+      const located = `[${test.projectName}] › ${relFile}:${spec.line}:${spec.column} › ${fullTitlePath.join(' › ')}`;
+      out.push({ id, located, status: test.status });
     }
   }
 
@@ -240,8 +250,17 @@ function main() {
     process.exit(2);
   }
 
-  if (Array.isArray(report.errors) && report.errors.length > 0 && !Array.isArray(report.suites)) {
-    console.error(`e2e-delta: Playwright reported global error(s) before any suite ran: ${JSON.stringify(report.errors)}`);
+  // `&& !Array.isArray(report.suites)` used to be part of this condition, which
+  // made the whole branch DEAD CODE: JSONReport.suites is non-optional and is
+  // always emitted, so report.errors was never read in any run where tests were
+  // discovered. That is the channel out-of-test failures land in — including
+  // global-teardown's live-DB leak backstop, whose `throw` is otherwise
+  // swallowed by `continue-on-error: true` on the Playwright steps. A run that
+  // leaked rows into production passed both gates.
+  if (Array.isArray(report.errors) && report.errors.length > 0) {
+    console.error(`e2e-delta: Playwright reported ${report.errors.length} out-of-test error(s):`);
+    for (const e of report.errors) console.error(`  ! ${e?.message ?? JSON.stringify(e)}`);
+    console.error('e2e-delta: FAIL — these are teardown/fixture/worker failures, not test results, so no allowlist covers them.');
     process.exit(2);
   }
 
@@ -285,12 +304,31 @@ function main() {
     for (const id of flakyNow) console.log(`  ~ ${id}`);
   }
 
-  if (nowPassing.length > 0) {
-    console.log(
-      `\ne2e-delta: ${nowPassing.length} allowlist entr(y/ies) now PASS — remove from ` +
-        `${path.relative(REPO_ROOT, baselinePath)} as Phase 7 fixes land:`
+  // An allowlist entry that matches NO discovered test is stale, not fixed.
+  // Previously `nowPassing` conflated the two and was only ever printed, so a
+  // 100%-stale allowlist reported as total repair while every real failure was
+  // classed as new.
+  const discovered = new Set(allTests.map((t) => t.id));
+  const unknownIds = [...baseline].filter((id) => !discovered.has(id));
+  const genuinelyPassing = nowPassing.filter((id) => discovered.has(id));
+
+  if (unknownIds.length > 0) {
+    console.error(
+      `\ne2e-delta: ${unknownIds.length} allowlist entr(y/ies) match NO discovered test. ` +
+        'They are STALE, not fixed — a renamed, moved or deleted test silently drops out of ' +
+        'the gate and takes its known failure with it.'
     );
-    for (const id of nowPassing) console.log(`  + ${id}`);
+    for (const id of unknownIds) console.error(`  ? ${id}`);
+    console.error(`\ne2e-delta: FAIL — regenerate ${path.relative(REPO_ROOT, baselinePath)}.`);
+    process.exit(1);
+  }
+
+  if (genuinelyPassing.length > 0) {
+    console.log(
+      `\ne2e-delta: ${genuinelyPassing.length} allowlist entr(y/ies) now PASS — remove from ` +
+        `${path.relative(REPO_ROOT, baselinePath)} as fixes land:`
+    );
+    for (const id of genuinelyPassing) console.log(`  + ${id}`);
   }
 
   if (newFailures.length > 0) {

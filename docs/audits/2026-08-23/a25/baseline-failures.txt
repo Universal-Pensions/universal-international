@@ -1,56 +1,43 @@
 # ============================================================================
-# FROZEN 2026-08-25 — machine-checkable allowlist of pre-existing e2e failures
+# FROZEN allowlist of pre-existing e2e failures. `npm run test:e2e:delta` exits
+# 0 iff the run's failure set is a SUBSET of this file.
+#
+# ⚠️ IDS ARE LINE-FREE, ON PURPOSE (regenerated 2026-08-25).
+# They used to carry :line:col, and that made the file self-invalidating: any
+# edit to a spec shifts the line, so 12 of these 22 entries stopped matching the
+# moment this branch touched those files. Each then looked like a BRAND NEW
+# failure — so the gate failed for pre-existing breakage, the exact outcome it
+# exists to prevent — while reporting the real entry as "now PASSING".
+#
+# scripts/e2e-delta.mjs now matches on [project] › file › title-path and FAILS
+# if any entry here matches no discovered test, so staleness can no longer be
+# mistaken for repair.
+#
+# Regenerate: PLAYWRIGHT_JSON_OUTPUT_NAME=/tmp/l.json npx playwright test --list \
+#             --reporter=json   then rebuild these ids from suites[].
+#
+# Count below is authoritative: 22 entries. (Earlier headers claimed 30; the
+# file has held 22 since 8 were removed as phases landed.)
 # ============================================================================
-# Owner: docs/audits/2026-08-23/REMEDIATION-LEDGER.md  (section "Frozen baseline
-# allowlist"). Frozen as part of the audit-2026-08-23 remediation so that later
-# phases can tell a pre-existing failure from one they introduced.
-#
-# FORMAT — one Playwright test per line, verbatim from the list reporter's
-#          trailing "N failed" block:
-#              [project] > <spec>:<line>:<col> > <describe> > <test>
-#          (the real separator below is Playwright's U+203A, not ">")
-#          30 data lines. LC_ALL=C-sorted. No leading indent, no trailing space.
-#          Lines starting with "#" are this header — parsers MUST skip them.
-#
-# BASELINE RUN — npx playwright test --workers=1   (all 4 projects)
-#          326 passed / 30 failed / 14 skipped, exit 1, 24.4 min.
-#          Full log: docs/audits/2026-08-23/baseline/playwright-full.txt
-#
-# REGENERATE the 30 data lines (verified byte-identical to them on 2026-08-25;
-# the command does NOT reproduce this header, so re-add it afterwards):
-#
-#   awk '/^  [0-9]+ failed$/{f=1;next} /^  [0-9]+ (skipped|passed|flaky)/{f=0} f' \
-#     docs/audits/2026-08-23/baseline/playwright-full.txt \
-#     | sed 's/^    //; s/ *$//' | LC_ALL=C sort \
-#     > docs/audits/2026-08-23/a25/baseline-failures.txt
-#
-# RULE — remediation may only SHORTEN this list. Delete a line in the same change
-#        that fixes it. A failing test that is NOT listed here is a regression
-#        introduced by remediation, not a pre-existing failure.
-#
-# ROUTING — every one of the 30 is routed to an owning finding in the ledger's
-#        "E2E baseline failure routing" table. Exactly one is a true flake:
-#        modal-escape.spec.ts:224 (chromium + webkit) -> A25-013, Phase 7.
-# ============================================================================
-[chromium] › e2e/specs/flows/agent-onboard-subscriber.spec.ts:109:3 › agent → onboard new subscriber (UI + RPC + DB) › full wizard creates subscriber + balances via RPC
-[chromium] › e2e/specs/regression/modal-escape.spec.ts:224:5 › Modal Escape regression › distributor → settlement confirm modal › Escape closes the confirm modal without closing CommissionPanel
-[mobile-chromium] › e2e/specs/smoke/landing.spec.ts:20:3 › landing public routes smoke › FAQ page renders
-[mobile-chromium] › e2e/specs/smoke/landing.spec.ts:27:3 › landing public routes smoke › Contact page renders
-[mobile-chromium] › e2e/specs/smoke/landing.spec.ts:34:3 › landing public routes smoke › About page renders
-[mobile-chromium] › e2e/specs/smoke/subscriber-dashboard.spec.ts:124:3 › subscriber dashboard smoke › Help loads (/dashboard/help)
-[mobile-chromium] › e2e/specs/smoke/subscriber-dashboard.spec.ts:173:3 › subscriber dashboard smoke › Profile edit form loads (/dashboard/settings/profile)
-[mobile-chromium] › e2e/specs/smoke/subscriber-dashboard.spec.ts:43:3 › subscriber dashboard smoke › Schedule loads (/dashboard/save/schedule)
-[mobile-chromium] › e2e/specs/smoke/subscriber-dashboard.spec.ts:54:3 › subscriber dashboard smoke › Withdrawals hub loads (/dashboard/withdraw)
-[mobile-webkit] › e2e/specs/smoke/landing.spec.ts:20:3 › landing public routes smoke › FAQ page renders
-[mobile-webkit] › e2e/specs/smoke/landing.spec.ts:27:3 › landing public routes smoke › Contact page renders
-[mobile-webkit] › e2e/specs/smoke/landing.spec.ts:34:3 › landing public routes smoke › About page renders
-[mobile-webkit] › e2e/specs/smoke/subscriber-dashboard.spec.ts:124:3 › subscriber dashboard smoke › Help loads (/dashboard/help)
-[mobile-webkit] › e2e/specs/smoke/subscriber-dashboard.spec.ts:173:3 › subscriber dashboard smoke › Profile edit form loads (/dashboard/settings/profile)
-[mobile-webkit] › e2e/specs/smoke/subscriber-dashboard.spec.ts:43:3 › subscriber dashboard smoke › Schedule loads (/dashboard/save/schedule)
-[mobile-webkit] › e2e/specs/smoke/subscriber-dashboard.spec.ts:54:3 › subscriber dashboard smoke › Withdrawals hub loads (/dashboard/withdraw)
-[webkit] › e2e/specs/flows/agent-onboard-subscriber.spec.ts:109:3 › agent → onboard new subscriber (UI + RPC + DB) › full wizard creates subscriber + balances via RPC
-[webkit] › e2e/specs/flows/subscriber-signin-with-password.spec.ts:78:3 › subscriber → sign in with password › A) signs in with password after fresh signup
-[webkit] › e2e/specs/flows/subscriber-signup-to-contribute.spec.ts:116:3 › subscriber → signup wizard → first contribution (UI + DB) › completes 9-step signup + contribution and writes the subscriber chain
-[webkit] › e2e/specs/regression/map-drill.spec.ts:250:5 › map drill-down regression — admin › clicking a region then a district drills country → region → district
-[webkit] › e2e/specs/regression/map-drill.spec.ts:250:5 › map drill-down regression — distributor › clicking a region then a district drills country → region → district
-[webkit] › e2e/specs/regression/modal-escape.spec.ts:224:5 › Modal Escape regression › distributor → settlement confirm modal › Escape closes the confirm modal without closing CommissionPanel
+[chromium] › e2e/specs/flows/agent-onboard-subscriber.spec.ts › agent → onboard new subscriber (UI + RPC + DB) › full wizard creates subscriber + balances via RPC
+[chromium] › e2e/specs/regression/modal-escape.spec.ts › Modal Escape regression › distributor → settlement confirm modal › Escape closes the confirm modal without closing CommissionPanel
+[mobile-chromium] › e2e/specs/smoke/landing.spec.ts › landing public routes smoke › FAQ page renders
+[mobile-chromium] › e2e/specs/smoke/landing.spec.ts › landing public routes smoke › Contact page renders
+[mobile-chromium] › e2e/specs/smoke/landing.spec.ts › landing public routes smoke › About page renders
+[mobile-chromium] › e2e/specs/smoke/subscriber-dashboard.spec.ts › subscriber dashboard smoke › Help loads (/dashboard/help)
+[mobile-chromium] › e2e/specs/smoke/subscriber-dashboard.spec.ts › subscriber dashboard smoke › Profile edit form loads (/dashboard/settings/profile)
+[mobile-chromium] › e2e/specs/smoke/subscriber-dashboard.spec.ts › subscriber dashboard smoke › Schedule loads (/dashboard/save/schedule)
+[mobile-chromium] › e2e/specs/smoke/subscriber-dashboard.spec.ts › subscriber dashboard smoke › Withdrawals hub loads (/dashboard/withdraw)
+[mobile-webkit] › e2e/specs/smoke/landing.spec.ts › landing public routes smoke › FAQ page renders
+[mobile-webkit] › e2e/specs/smoke/landing.spec.ts › landing public routes smoke › Contact page renders
+[mobile-webkit] › e2e/specs/smoke/landing.spec.ts › landing public routes smoke › About page renders
+[mobile-webkit] › e2e/specs/smoke/subscriber-dashboard.spec.ts › subscriber dashboard smoke › Help loads (/dashboard/help)
+[mobile-webkit] › e2e/specs/smoke/subscriber-dashboard.spec.ts › subscriber dashboard smoke › Profile edit form loads (/dashboard/settings/profile)
+[mobile-webkit] › e2e/specs/smoke/subscriber-dashboard.spec.ts › subscriber dashboard smoke › Schedule loads (/dashboard/save/schedule)
+[mobile-webkit] › e2e/specs/smoke/subscriber-dashboard.spec.ts › subscriber dashboard smoke › Withdrawals hub loads (/dashboard/withdraw)
+[webkit] › e2e/specs/flows/agent-onboard-subscriber.spec.ts › agent → onboard new subscriber (UI + RPC + DB) › full wizard creates subscriber + balances via RPC
+[webkit] › e2e/specs/flows/subscriber-signin-with-password.spec.ts › subscriber → sign in with password › A) signs in with password after fresh signup
+[webkit] › e2e/specs/flows/subscriber-signup-to-contribute.spec.ts › subscriber → signup wizard → first contribution (UI + DB) › completes 9-step signup + contribution and writes the subscriber chain
+[webkit] › e2e/specs/regression/map-drill.spec.ts › map drill-down regression — admin › clicking a region then a district drills country → region → district
+[webkit] › e2e/specs/regression/map-drill.spec.ts › map drill-down regression — distributor › clicking a region then a district drills country → region → district
+[webkit] › e2e/specs/regression/modal-escape.spec.ts › Modal Escape regression › distributor → settlement confirm modal › Escape closes the confirm modal without closing CommissionPanel
