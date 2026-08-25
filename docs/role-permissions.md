@@ -1,6 +1,8 @@
 > **Agent guide.** The role × capability matrix — what each role (subscriber, agent, branch, distributor, employer, admin) may see and do. Read it before any access-related change so a UI capability and its RLS/RPC gate stay in agreement. All six roles are now built (desktop + mobile), so any "Planned" markers below are historical — verify against `CLAUDE.md` and the RLS in `BACKEND.md` / `supabase/migrations/*.sql`.
 >
-> **Verified against the live Singapore DB (`ilkhfnoyxlxwqadebnkp`) and live `pg_policies` on 2026-08-25.** This is the document `docs/audits/2026-08-23/02-rls-matrix.md` derived its `expected` column from — several claims below previously disagreed with the measured matrix (some self-contradicting other lines in this same file); those are now corrected inline. Re-verify policy names and counts before relying on them; they decay fast.
+> **Re-measured against the live Singapore DB (`ilkhfnoyxlxwqadebnkp`) on 2026-08-25 — role-simulated probes, not policy text.** Every access claim below was checked by executing `count(*)` as each of the six personas under a forged JWT inside a rolled-back transaction, and every write claim against the live grant + policy catalog. The full table × role × verb matrix, the method, and a claim-by-claim verdict are in **`docs/audits/2026-08-23/a26/rls-matrix-remeasured.md`** — read that before trusting or changing any scoping statement here.
+>
+> ⚠️ **These numbers decay in hours, not months.** The `2026-08-23` audit's measured RLS matrix was already stale when this file was corrected against it, and two corrections written on the morning of 2026-08-25 were invalidated by migrations `0118`/`0119`/`0127`/`0128` the same day. **The migration ledger cannot tell you what is applied** — only `0127` and `0128` ever registered in `supabase_migrations.schema_migrations`. Establish applied state by introspecting the live object.
 
 # Universal Pensions Uganda — Role-Permission Matrix
 
@@ -37,10 +39,10 @@ Sign-in flow: Role Select → (Distributor Sub-select if applicable) → Phone E
 | Map Overview | Full | Interactive Leaflet map with drill-down |
 | Overlay Panel | Full | KPIs, entity lists, commission summary at every hierarchy level |
 | Breadcrumb Navigation | Full | Country → Region → District → Branch → Agent |
-| View Branches | Full | All ~321 branches, list + detail slide-in |
+| View Branches | Scoped | Its **own network's** branches — `d-001` sees 291 of the 320 live branches (measured 2026-08-25). List + detail slide-in |
 | Create Branch | Full | Multi-step form: Branch Details → Admin Details → Review |
-| View Agents | Full | All ~2,046 agents, list + detail slide-in |
-| View Subscribers | Full | All ~5,000 subscribers, list + detail slide-in |
+| View Agents | Scoped | Its **own network's** agents — `d-001` sees 1,872 of 2,046. List + detail slide-in |
+| View Subscribers | Scoped | Its **own network's** subscribers — `d-001` sees 4,602 of 5,059. A subscriber with `agent_id IS NULL` belongs to no distributor and appears for none of them. List + detail slide-in |
 | Commission Panel | Full | Home (rate card + Total/Settled/Outstanding summary + pending dues with Branch⇄Agent toggle + Download template + Upload settlement + settlement history), agents list, agent detail, subscribers |
 | Reports Panel | Full | All 11 reports |
 | Settings Panel | Full | Profile + password |
@@ -74,16 +76,30 @@ Sign-in flow: Role Select → (Distributor Sub-select if applicable) → Phone E
 ### Actions (CRUD)
 | Action | Permission | Scope |
 |--------|-----------|-------|
-| View entities at any level | Read | All |
-| Drill down through hierarchy | Read | All |
-| Create branch | Create | Any district |
-| Create agent | Create | Any branch (via branch dashboard pattern, but accessible from distributor too) |
-| View agent commissions | Read | All agents |
-| Set commission rate | Update | Global (flat rate-per-subscriber) |
-| Apply settlement (template upload) | Update | Any agent's due commissions (`apply_settlement` → flips `due → paid`, records a settlement batch, notifies agent + branch) |
+| View entities at any level | Read | **Own network only** (`0081`) — every level of the drill-down is bounded by `branches.distributor_id → agents.branch_id → subscribers.agent_id` |
+| Drill down through hierarchy | Read | Own network only |
+| Create branch | Create | Any district, but always under **its own** distributor — `branches_insert_distributor` pins `distributor_id = current_distributor_id()`, and `0081`'s `branches_default_distributor` BEFORE-INSERT trigger stamps the caller's own claim if the column is omitted |
+| Create agent | — | **None.** `agents_insert_branch` admits `app_role = 'branch'` only; there is no distributor INSERT policy on `agents`, and `createAgent` is called only from `src/branch-dashboard/**`. Agents are created by the branch admin |
+| View agent commissions | Read | Own-network agents — `commissions_select_distributor` is bounded by `distributor_branch_ids()` (`d-001` sees 4,602 of 5,001 commission rows) |
+| Set commission rate | Update | **Its own** `commission_config` row, per-distributor since `0089` (`set_commission_rate`). The admin edits the platform fallback `id='default'`. Live rows: `cfg-d-001`, `cfg-d-002`, `default` |
+| Apply settlement (template upload) | Update | **Own-network agents only** (`apply_settlement` → flips `due → paid`, records a settlement batch, notifies agent + branch). A row naming an agent outside `distributor_branch_ids()` is skipped with reason `not_your_agent` and the rest of the batch still applies — see the hardening note below |
 | Update own profile | Update | Own user |
 | Change own password | Update | Own user |
-| Search entities | Read | All entities (regions, districts, branches, agents) |
+| Search entities | Read | Own network — `search_entities` is `SECURITY INVOKER`, so the same RLS that scopes the lists scopes the search |
+
+> 🔒 **INTENTIONAL HARDENING — do not "restore" these as bugs.**
+> Two rows above describe deliberate narrowings shipped by the 2026-08-23 remediation programme.
+> Their looser predecessors are **not** features that regressed.
+> - **Settlement ownership (`0109`, finding A05-001).** `apply_settlement` previously checked only
+>   the caller's *role*, never that the agent belonged to them — so one distributor could pay out
+>   another's commissions. Proven live: a JWT claiming `distributorId=d-002` settled an agent under
+>   `d-001`. The live function body now carries the `distributor_branch_ids()` predicate and the
+>   per-row `not_your_agent` skip reason; **admin remains platform-wide by design.** Verify with
+>   `SELECT pg_get_functiondef('public.apply_settlement(jsonb,text)'::regprocedure) ILIKE '%not_your_agent%'`.
+> - **Network scoping (`0081`–`0089`, plus `0084`/`0094`).** Before `0081` every
+>   `*_select_distributor` policy was a bare `app_role = 'distributor'` with no ownership predicate.
+>   The "All entities / all levels" wording this table used to carry described that hole, not a
+>   requirement.
 
 ### Reports Available (11 of 11)
 1. Distribution Summary
@@ -191,7 +207,8 @@ All slide-in panels use `splitMode={true}`:
 
 ### Data Scope
 - **Visibility:** Own subscriber record only (resolved server-side from authenticated phone/token)
-- **No access to:** Other subscribers, agents, branches, commissions, or network data
+- **Also reads, one row each:** its **own** assigned agent (`agents_select_subscriber`, keyed on `subscriber_agent_id()`) and that agent's branch (`branches_select_subscriber`) — measured live 2026-08-25 as exactly 1 row each. This is what the Agent (DM) screen resolves a name from.
+- **No access to:** other subscribers, any other agent or branch, commissions, `distributors`, or network data (all measured 0)
 
 ### Actions (CRUD)
 | Action | Permission | Scope |
@@ -250,7 +267,7 @@ All slide-in panels use `splitMode={true}`:
 | View commissions | — | **None** — employer-funded contributions carry `agent_id` NULL ⇒ generate no commissions |
 
 ### Scoping Implementation
-`EmployerScopeProvider` injects `employerId` into context; reads route through `useEmployer*` hooks → `src/services/employer.js`. Under the unified model the roster lives in `subscribers` (tagged `employer_id`), so employer reads are scoped by the **`subscribers`/`transactions` RLS** plus the employer-family SELECT policies (`employers`, `contribution_runs`, `employer_invites`) keyed on `auth.jwt() ->> 'employerId'` — a read only ever returns the caller's own members + runs. **Writes go through the employer SECURITY DEFINER RPCs** (`0044`/`0048`/`0056`/`0062`; no client write policies), each re-checking ownership against the `employerId` claim. ⚠️ Measured 2026-08-23, re-confirmed 2026-08-25: "no client write policies" describes intent platform-wide, not the enforced state — RLS does not block direct client writes on every table. 13 direct-write successes were measured live on other tables (`transactions`, `insurance_policies`, `contribution_schedules`, `withdrawals`, `nominees`, `agents`, `branches`, `distributors`); see `docs/audits/2026-08-23/02-rls-matrix.md §5` and `CLAUDE.md §7`. Whether the employer-family tables themselves (`employers`, `contribution_runs`, `employer_invites`) also permit a direct client write has not been independently re-verified here. **`submit_employer_contribution_run`** (`0062`) derives both legs from each member's `compensation` and posts to the normal `transactions` ledger (`source='employer'`/`'own'`, `agent_id` NULL) — the balance trigger does the math; it writes no commissions. See `BACKEND.md §8`/§10.1 + `docs/data-model.md`.
+`EmployerScopeProvider` injects `employerId` into context; reads route through `useEmployer*` hooks → `src/services/employer.js`. Under the unified model the roster lives in `subscribers` (tagged `employer_id`), so employer reads are scoped by the **`subscribers`/`transactions` RLS** plus the employer-family SELECT policies (`employers`, `contribution_runs`, `employer_invites`) keyed on `auth.jwt() ->> 'employerId'` — a read only ever returns the caller's own members + runs. **Writes go through the employer SECURITY DEFINER RPCs** (`0044`/`0048`/`0056`/`0062`), each re-checking ownership against the `employerId` claim. `employers`, `contribution_runs` and `employer_invites` carry **SELECT policies only** — re-measured live 2026-08-25 — so a direct client write to any of them is denied by RLS. ⚠️ **This paragraph previously carried the opposite warning** ("13 direct-write successes were measured live … the hole is open"). That was true when the 2026-08-23 audit measured it and was closed hours later by `0118` (dropped the `*_insert_self`/`*_update_self` doors on the money and cover tables) and `0119` (floored the client grants). Platform-wide there are now exactly **ten** write policies, every one pinned to the caller's own tenancy, five of them additionally narrowed to a named column list; `transactions`, `withdrawals` and `nominees` grant the client `SELECT` and nothing else. The enumeration is in `docs/audits/2026-08-23/a26/rls-matrix-remeasured.md §3`; `docs/audits/2026-08-23/02-rls-matrix.md §5` records the pre-`0118` state and must be read as history, not as current. **`submit_employer_contribution_run`** (`0062`) derives both legs from each member's `compensation` and posts to the normal `transactions` ledger (`source='employer'`/`'own'`, `agent_id` NULL) — the balance trigger does the math; it writes no commissions. See `BACKEND.md §8`/§10.1 + `docs/data-model.md`.
 
 ---
 
@@ -278,8 +295,9 @@ All slide-in panels use `splitMode={true}`:
 
 ### Data Scope
 - **Visibility:** Own agent record + own subscribers + own commissions
-- **No access to:** Other agents, branch-level data, or network data
-- **Insurance:** sees which active policies a subscriber holds (Life/Health/Funeral product + status) but **never the cover amount or premium**. Insured-vs-uninsured counts (Home) treat a subscriber as **insured if they hold ANY active policy — life, health OR funeral** (`isInsured` in `src/agent-dashboard/home/agentHomeSummary.js` returns true when the agent-facing `policies` list has any active product), so a health-only or funeral-only subscriber now counts as **insured** on Home (matching the product+status chips on their detail page). Null/absent policies (e.g. RLS-filtered on live) count as uninsured.
+- **Also reads, one row each:** its own `agents` row and its own `branches` row (`branches_select_agent`, keyed on `agent_branch_id()`) — measured live 2026-08-25 as exactly 1 each.
+- **No access to:** any other agent, any other branch, `distributors` (0 rows — see A02-007 below), or network data
+- **Insurance:** the agent UI shows which active policies a subscriber holds (Life/Health/Funeral product + status) and **never the cover amount or premium** — but ⚠️ **that redaction is presentational, not enforced by RLS.** `sip_select_agent` and `insurance_policies_select_agent` return the whole row, `cover` and `premium_monthly` included; no column-level grant narrows an agent's SELECT (measured live 2026-08-25). A direct PostgREST call with an agent JWT would see both figures. `services/agent.js` is what drops them. Insured-vs-uninsured counts (Home) treat a subscriber as **insured if they hold ANY active policy — life, health OR funeral** (`isInsured` in `src/agent-dashboard/home/agentHomeSummary.js` returns true when the agent-facing `policies` list has any active product), so a health-only or funeral-only subscriber now counts as **insured** on Home (matching the product+status chips on their detail page). Null/absent policies (e.g. RLS-filtered on live) count as uninsured.
 
 ### Actions (CRUD)
 | Action | Permission | Scope |
@@ -304,7 +322,7 @@ The agent is now a pure observer of commissions. Lines auto-generate as `due` on
 
 ### Dashboard Access
 - **Dashboard shell:** `AdminDashboardShell` (`src/admin-dashboard/`) — clones the distributor map shell (Leaflet drill-down + overlay chrome) with `AdminSidebar`, wrapped in `DashboardProvider` → `AdminPanelProvider`.
-- **Reused verbatim from `src/dashboard/`:** `UgandaMap`, `MetricsRow`, `OverlayPanel`/`Breadcrumb`/`TopBar`, and the `ViewBranches` / `ViewAgents` / `ViewSubscribers` / `ViewReports` / `CommissionPanel` / `Settings` / `ViewTickets` / `CreateBranch` panels — they are role-blind (RLS scopes data) and admin holds the SELECT grants.
+- **Reused verbatim from `src/dashboard/`:** `UgandaMap`, `MetricsRow`, `OverlayPanel`/`Breadcrumb`/`TopBar`, and the `ViewBranches` / `ViewAgents` / `ViewSubscribers` / `ViewReports` / `CommissionPanel` / `Settings` / `ViewTickets` panels — they are role-blind (RLS scopes data) and admin holds the SELECT grants. **`CreateBranch` is deliberately NOT among them** — `AdminDashboardShell.jsx:393` says so in as many words ("no `<CreateBranch>` — admins have no branch-INSERT RLS grant"), and live confirms it: the only INSERT policy on `branches` requires `app_role = 'distributor'`.
 
 ### Pages/Views Accessible
 | View | Access | Notes |
@@ -315,7 +333,7 @@ The agent is now a pure observer of commissions. Lines auto-generate as `due` on
 | Branches / Agents / Subscribers / Reports / Commissions / Support / Settings | Full | Reused distributor panels, unscoped (platform-wide) |
 
 ### Data Scope
-- **Visibility:** All data across the entire platform — `*_select_admin` RLS policies (migration `0049`) clone the distributor "see-everything" grants (`USING (auth.jwt() ->> 'app_role' = 'admin')`) on the subscriber/commission tables, plus admin SELECT on the employer family (`employers`, `contribution_runs`, `employer_invites` — NOT `contribution_run_lines`, which was dropped by `0045` and does not exist live). Reference tables (`regions`/`districts`/`branches`/`agents`) are authenticated-readable; `distributors` is readable only by admin (`distributors_select_admin`) and the owning distributor (`distributors_select_self`) — see "Data Scoping Rules Summary" below.
+- **Visibility:** All data across the entire platform — `*_select_admin` RLS policies (migration `0049`) clone the distributor "see-everything" grants (`USING (auth.jwt() ->> 'app_role' = 'admin')`) on the subscriber/commission tables, plus admin SELECT on the employer family (`employers`, `contribution_runs`, `employer_invites` — NOT `contribution_run_lines`, which was dropped by `0045` and does not exist live). Of the tables often called "reference": `regions` and `districts` are **anon-readable** (`*_select_public USING (true)` granted to `public`, so the landing page and signup can read them unauthenticated), while `branches` and `agents` are **not** blanket-readable by anyone — each carries one scoped SELECT policy per role plus a RESTRICTIVE `*_scope_distributor` overlay, so a subscriber sees exactly its own 1 branch and 1 agent (measured 2026-08-25). `distributors` is readable only by admin (`distributors_select_admin`) and the owning distributor (`distributors_select_self`) — see "Data Scoping Rules Summary" below.
 - **No scope claim:** there is no `adminId` filter in any read policy — admin sees all rows.
 
 ### Actions (CRUD)
@@ -329,7 +347,8 @@ The agent is now a pure observer of commissions. Lines auto-generate as `due` on
 | Deactivate / reactivate a distributor | Update | `set_distributor_status` RPC (admin-gated SECURITY DEFINER, `0060`; made reversible by `0080`) — flips the distributor + its branches + its agents between `active`/`inactive`; on deactivate also detaches every subscriber under the distributor's agent tree (`agent_id → NULL`; `is_active` untouched). **Reversible since `0080`:** the detach and the prior branch/agent statuses are journalled, and reactivate replays them |
 | Deactivate / reactivate an employer | Update | `set_employer_status` RPC (admin-gated SECURITY DEFINER, `0060`; made reversible by `0080`) — flips `employers.status`; on deactivate detaches every member (`employer_id → NULL`), journalled so reactivate restores the roster |
 | Filter platform overview by channel | Read | All / Distributors / Employers scope filter (`get_platform_overview` `byChannel`, `0058`; `get_employer_activity_rollup`, `0059`; `get_employer_geo_rollup`, `0058`) |
-| Reused distributor actions (create branch, settle commissions, etc.) | As distributor | Inherited from the reused panels |
+| Reused distributor actions (settle commissions, view every panel) | As distributor | Inherited from the reused panels. **`apply_settlement` admits admin platform-wide** (no ownership bound — `0109` bounds the *distributor* branch, not this one) |
+| Create branch | — | **None, by design.** `branches_insert_distributor` is the only INSERT policy on `branches` and it requires `app_role = 'distributor'`; there is no `branches_insert_admin` (measured live 2026-08-25). The frontend already matches: `AdminDashboardShell.jsx:393` deliberately does not render `<CreateBranch>` |
 
 > **Enforcement of deactivation:** a deactivated agent/branch/distributor/employer cannot obtain a JWT (login gate in `verify-otp`/`verify-password` via `_lib/entity-status.ts` → `403 account_deactivated`), and a deactivated employer cannot admit new members or submit contribution runs (BEFORE-INSERT/UPDATE triggers, `0060`/`0061`).
 > **Demo scope:** no audit-log / compliance / KYC-queue / user-management features (intentional — see `CLAUDE.md §10a`). Admin is **view + create + deactivate/reactivate** for distributors/employers.
@@ -347,7 +366,16 @@ The agent is now a pure observer of commissions. Lines auto-generate as `due` on
 | employer | Own employer + own tagged-subscriber roster (`subscribers.employer_id`) + own contribution runs (no access to other employers' members, agents, or branches) | None (employer-funded contributions carry `agent_id` NULL ⇒ no commissions) | 4 own-org reports (staff roster, runs summary, funding breakdown, balance growth) |
 | admin | All entities, all levels (incl. all distributors + all employers) | All commissions | All reports, all scopes |
 
-⚠️ **No role except admin and the owning distributor can read `distributors`** (verified live 2026-08-25 — see the corrected rows above and "Scoping Implementation" below). Any "Operated by …" attribution surface for branch / agent / subscriber / employer renders empty (A02-007). The rows above previously claimed a read-only singleton-`distributors` fallback for branch/agent/subscriber; that was measured false (0 rows returned for all three) and has been removed.
+⚠️ **No role except admin and the owning distributor can read `distributors`.** Re-measured live 2026-08-25: subscriber **0**, agent **0**, branch **0**, employer **0**, distributor **1** (its own), admin **3**. The rows above once claimed a read-only singleton-`distributors` fallback for branch / agent / subscriber; that was measured false and has been removed (A02-007).
+
+> 🔒 **Intentional — `0081`. Do not widen this to restore an "Operated by …" line.** The finding
+> offered restoring a narrow `distributors_select_attribution` policy as an alternative. It was
+> checked and rejected: **`grep -rn "Operated by" src/` returns no matches — that surface does not
+> exist.** All five `useEntity('distributor', …)` call sites (`Settings.jsx:37`,
+> `DistributorOverview.jsx:162`, `DistributorHomeMobile.jsx:118`, `DistributorHubMobile.jsx:61`,
+> `SettingsMobile.jsx:16`) sit inside the distributor shell, which holds `distributors_select_self`.
+> Nothing is blank and nothing is broken. Re-opening a cross-tenant read on the tenant table to
+> satisfy a sentence would run straight back into the hole `0080`–`0089` closed.
 
 ### Scoping Implementation
 - **Distributor:** Scoped to its own network by three `SECURITY DEFINER` helpers (`distributor_branch_ids()`, `distributor_agent_ids()`, `distributor_subscriber_ids()`) across 12 tables (`0081`–`0089`), plus RESTRICTIVE `*_scope_distributor` overlays on `agents`/`branches` (`0084`). Fails closed on a missing `distributorId` claim. `distributors_update_self` separately restricts UPDATE on the `distributors` table itself to `auth.jwt() ->> 'distributorId' = id` — each of the three seeded distributors (`d-001`/`d-002`/`d-003`) edits only its own row.
@@ -357,6 +385,52 @@ The agent is now a pure observer of commissions. Lines auto-generate as `due` on
 - **Subscriber:** `useCurrentSubscriber()` resolves from authenticated phone (server-side); subscriber is the implicit "self" in every endpoint under `/api/subscribers/me/*`.
 - **Employer:** `EmployerScopeProvider` injects `employerId` from the auth session (the `employerId` JWT claim). Under the unified model (`0043`–`0045`) the roster lives in `subscribers` (tagged `employer_id`); reads auto-scope via the `subscribers`/`transactions` RLS + the employer-family SELECT policies keyed on `auth.jwt() ->> 'employerId'`; writes go through the employer SECURITY DEFINER RPCs (`0044`/`0048`/`0056`/`0062`), which re-check ownership.
 - **Admin:** No scoping — `*_select_admin` RLS policies (migration `0049`) mirror the distributor "see-everything" grants plus admin SELECT on the employer family. Writes (create distributor/employer) go through admin-gated SECURITY DEFINER RPCs. No scope provider — the admin shell reuses the distributor map/panels directly.
+
+### Client Write Surface (re-measured live 2026-08-25)
+
+The read matrix above says who may *see* what. This says who may *write* what **without going
+through an RPC** — the question every access-related change actually turns on.
+
+**A client write must clear two independent gates: the table/column GRANT, and an RLS policy for
+that command.** `FORCE ROW LEVEL SECURITY` is on for every table below, so a missing policy is a
+deny even for the table owner's role, and a missing grant is a deny regardless of policy.
+
+Platform-wide there are exactly **ten** write policies, and they map one-to-one onto the nine write
+call sites in `src/services/**`. Everything else — all money movement, nominees, claims,
+settlements, employer runs, tenant creation — goes through a `SECURITY DEFINER` RPC that re-derives
+the amounts server-side and carries the `money_nonces` idempotency guard.
+
+| Table | Verb | Who | Extra narrowing |
+|---|---|---|---|
+| `branches` | INSERT / UPDATE | distributor, own `distributor_id` | — |
+| `agents` | INSERT / UPDATE | **branch only**, own `branch_id` | — |
+| `distributors` | UPDATE | distributor, own row | — |
+| `subscribers` | UPDATE | subscriber, own row | columns `consent_at, email, name, occupation, phone` only |
+| `contribution_schedules` | UPDATE | subscriber, own row | columns `amount, contribution_indexation_pct, emergency_pct, frequency, include_insurance, insurance_choice_made, next_due_date, retirement_pct, updated_at` only |
+| `insurance_policies` | INSERT / UPDATE | subscriber, own row | `trg_insurance_policies_enforce_client_writes` column guard |
+| `subscriber_insurance_products` | UPDATE | subscriber, own row | `trg_sip_enforce_client_writes` column guard |
+
+**Everything not in that table is closed to direct client writes**, including `transactions`,
+`withdrawals`, `nominees`, `claims`, `commissions`, `settlement_batches`, `subscriber_balances`,
+`nav_snapshots`, `employers`, `contribution_runs`, `employer_invites`, `money_nonces` and the
+`*_pre_purge_*` snapshot tables. `transactions`, `withdrawals`, `nominees`, `subscribers` and
+`contribution_schedules` grant the client `SELECT` at table level and nothing more.
+
+> 🔒 **INTENTIONAL HARDENING — `0118`, `0119`, `0127`, `0128` (2026-08-25). Do not re-open these.**
+> - `0118` removed `transactions_insert_self`. It let a subscriber JWT POST straight to
+>   `/rest/v1/transactions`; proven live, a fabricated 999,000,000 UGX "contribution" fired the
+>   balance trigger and propagated into every agent, branch, distributor and admin rollup.
+> - `0119` revoked `TRUNCATE` / `REFERENCES` / `TRIGGER` / `MAINTAIN` from `anon` and
+>   `authenticated`. **RLS does not apply to TRUNCATE** — no policy ever protected against it.
+> - `0127` put RLS + `FORCE` on the `*_pre_purge_*` / `*_pre_nav` recovery snapshots.
+> - `0128` revoked `EXECUTE` on `register_login_identity` from `authenticated`. It is
+>   `SECURITY DEFINER` with no role guard, so any signed-in subscriber could mint an **admin**
+>   login identity against any entity and then sign in on it. Verify it is still revoked:
+>   `SELECT has_function_privilege('authenticated','public.register_login_identity(text,text,text,text,text,text)','EXECUTE');`
+>   must return `f`.
+>
+> `0130_rls_policy_consolidation` is authored, reversible and **deliberately unapplied** (EXCLUDE,
+> upheld) — its own header carries the reasoning. Applying it changes this section.
 
 ### Backend Enforcement
 The frontend applies scoping via:
