@@ -134,7 +134,16 @@ async function claimPooledCard(sessionId: unknown): Promise<IdExtraction | null>
     const { data, error } = await supabaseAdmin.rpc('claim_demo_id_card', {
       p_session_id: sessionId,
     });
-    if (error || !data) return null;
+    if (error || !data) {
+      // Log it. A revoked EXECUTE grant, a renamed RPC, a wrong project or a
+      // missing SUPABASE_SERVICE_ROLE_KEY all look EXACTLY like an exhausted
+      // pool from the caller's side — every scan silently falls back to the
+      // PRNG, forever, with no signal anywhere. /readyz probes a different
+      // table and stays green. api/kyc/agent-referral.ts logs in the
+      // equivalent place; this did not.
+      if (error) console.error('[id-ocr] demo card claim failed:', error.message);
+      return null;
+    }
     const card = (Array.isArray(data) ? data[0] : data) as DemoIdCard | null;
     if (!card?.nin) return null;
 
@@ -148,9 +157,13 @@ async function claimPooledCard(sessionId: unknown): Promise<IdExtraction | null>
       barcodeRaw: `${card.nin}|${card.card_number}|${card.dob}|${card.last_name.toUpperCase()},${card.first_name.toUpperCase()},${card.other_name.toUpperCase()}`,
       confidence: 0.94,
     };
-  } catch {
-    // Network/config failure reaching Supabase. Degrade, never throw: this is a
-    // demo ID scanner, and a rep mid-pitch must still get an identity.
+  } catch (err) {
+    // Network/config failure reaching Supabase — including the throw from
+    // supabaseAdmin's lazy proxy when SUPABASE_SERVICE_ROLE_KEY or SUPABASE_URL
+    // is missing. Degrade, never throw: this is a demo ID scanner and a rep
+    // mid-pitch must still get an identity. But say so — a bare `catch {}` made
+    // a misconfiguration indistinguishable from an empty pool.
+    console.error('[id-ocr] demo card claim threw:', (err as Error)?.message ?? err);
     return null;
   }
 }

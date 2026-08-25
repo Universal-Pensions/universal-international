@@ -414,7 +414,10 @@ app.all('/api/auth/verify-password', authLimiter, toExpress(verifyPassword)); //
 app.all('/api/auth/change-password', authLimiter, toExpress(changePassword)); // G18 / BL-17 — bcrypt CPU + current-password brute-force surface for an already-authenticated caller
 app.all('/api/kyc/otp-send', toExpress(kycOtpSend));
 app.all('/api/kyc/otp-verify', toExpress(kycOtpVerify));
-app.all('/api/kyc/id-ocr', toExpress(idOcr));
+app.all('/api/kyc/id-ocr', writeLimiter, toExpress(idOcr)); // DB write since 0133 — each POST permanently CLAIMS one of 200 demo ID
+//   cards, so 200 anonymous POSTs with distinct sessionIds drain the pool for
+//   24h and every subsequent scan falls back to the generated identity. It was
+//   the only DB-writing public route without a limiter; the others are below.
 app.all('/api/kyc/id-quality', toExpress(idQuality));
 app.all('/api/kyc/face-match', toExpress(faceMatch));
 app.all('/api/kyc/aml-screen', toExpress(amlScreen));
