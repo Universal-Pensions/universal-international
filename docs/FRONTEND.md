@@ -16,9 +16,9 @@ See `CLAUDE.md` for the slim entry index, `BACKEND.md` for SQL/RPC/RLS detail, a
 - [§2 — Routing rules](#2-routing-rules)
 - [§3 — Hard rules (anti-patterns)](#3-hard-rules-anti-patterns)
 - [§4 — Three-layer data access + hook → service boundary](#4-three-layer-data-access--hook--service-boundary)
-- [§5 — Services inventory](#5-services-inventory-srcservices--11-files)
-- [§6 — Contexts inventory](#6-contexts-inventory-8-in-srccontexts-1-in-srcsignup)
-- [§7 — Hooks inventory](#7-hooks-inventory-srchooks--9-files)
+- [§5 — Services inventory](#5-services-inventory-srcservices)
+- [§6 — Contexts inventory](#6-contexts-inventory)
+- [§7 — Hooks inventory](#7-hooks-inventory-srchooks)
 - [§8 — Canonical optimistic-mutation pattern](#8-canonical-optimistic-mutation-pattern-useentity-template)
 - [§9 — Per-role dashboard variants](#9-per-role-dashboard-variants--5-built)
 - [§10 — Commission UI patterns](#10-commission-ui-patterns)
@@ -51,7 +51,7 @@ See `CLAUDE.md` for the slim entry index, `BACKEND.md` for SQL/RPC/RLS detail, a
 | `npm run build` | Production Vite build |
 | `npm run preview` | Serve the built bundle |
 | `npm run lint` | ESLint 9 flat config |
-| `npm test` | Vitest one-shot (2195 tests across 151 files, measured 2026-08-25 — 149/151 files and 2192/2195 tests passing; 2 files / 3 tests currently fail in `deriveBranchAnalytics.test.js`, unrelated to this doc pass. Re-run `npm test`; this number moves fast.) |
+| `npm test` | Vitest one-shot (4456 tests across 184 files, measured 2026-08-25 — 183/184 files and 4455/4456 tests passing; 1 test currently fails in `src/services/__tests__/search.test.js`, unrelated to this doc pass. This line previously read "2195 tests across 151 files" — the suite has roughly doubled and the failing file changed within the same working session. Re-run `npm test`; this number moves fast.) |
 | `npm run test:watch` | Vitest watch |
 | `npm run test:coverage` | Vitest + v8 coverage — requires `npm i -D @vitest/coverage-v8` (currently NOT installed, see §17) |
 | `npm run test:e2e` | Playwright suite (`:smoke`, `:flows`, `:headed`, `:ui`) — see `.claude/skills/qa.md` |
@@ -386,7 +386,9 @@ Detection: react-router stores its own index on `window.history.state.idx`. Inde
 
 ---
 
-## 5. Services inventory (`src/services/` — 20 files, verified 2026-08-25)
+## 5. Services inventory (`src/services/`)
+
+**20 files, verified 2026-08-25** (`ls src/services/*.js | grep -v test | wc -l`) — re-count before trusting this number; the count itself, not just this heading, used to embed a stale figure the table-of-contents disagreed with.
 
 All public exports below. Every service file follows the `IS_SUPABASE_ENABLED ? supabase : mock` dual-branch pattern.
 
@@ -669,7 +671,9 @@ Every Overview metric tile leads somewhere; this page is where the two leg tiles
 
 ---
 
-## 6. Contexts inventory (10 in `src/contexts/`, 1 in `src/signup/`)
+## 6. Contexts inventory
+
+10 in `src/contexts/`, 1 in `src/signup/`.
 
 | Context | Provider scope | What it holds | Read by |
 | --- | --- | --- | --- |
@@ -718,7 +722,9 @@ The audit flagged four context providers as building a new `value` object every 
 
 ---
 
-## 7. Hooks inventory (`src/hooks/` — 18 files as of 2026-08-25; the table below omits `useNotifications.js` + `useTickets.js`, documented in §5.5b / the tickets work, plus six more listed just below the table)
+## 7. Hooks inventory (`src/hooks/`)
+
+**18 files as of 2026-08-25** (`ls src/hooks/*.js | grep -v test | wc -l`); the table below omits `useNotifications.js` + `useTickets.js`, documented in §5.5b / the tickets work, plus six more listed just below the table.
 
 | Hook file | What it returns | Side-effects | Wraps |
 | --- | --- | --- | --- |
@@ -1426,7 +1432,7 @@ These behaviours are intentional limits of a sales-rep demo platform. Do not pro
 
 - **`VITE_USE_SUPABASE` rollback flag.** Read once at module load (`src/services/api.js` → `IS_SUPABASE_ENABLED`). When the env var is the literal string `'false'`, every service falls back to a `mockData`-backed branch (entities, commissions, subscriber, agent, kyc, chat, search, contact). Lets demos run offline / without backend.
 - **Per-session mutation stores.** `entities._entityOverrides` (branch status flips, branch/agent creates) and `subscriber._sessionMutations` (contributions, withdrawals, schedule edits, nominees, claims) layer over frozen `mockData.js` for the duration of the tab. Resets on refresh — intentional for the demo's "what-if" flows.
-- **`MOCK_NOW = new Date(2026, 6, 1)`** in `src/data/mockData.js:25` (2026-07-01 — corrected 2026-08-25; this line previously read `new Date(2026, 4, 26)` / "currently 2026-05-26 — synced with today", which was stale and, as of 2026-08-25, not synced with the wall clock either). Consumed by `commissions.js` and surfaced via `currentTime()`. Anchors every "due in N days" and settlement timestamp so demo data tells a coherent story. ⚠️ Two other copies have drifted from it: `scripts/seed-supabase.mjs:169` and `e2e/specs/db/invariants.spec.ts:52` both still hardcode the old `2026-05-26` anchor. Slide `MOCK_NOW` forward (or flip to `new Date()`) when relative dates start looking stale, and fix the two drifted copies at the same time.
+- **`MOCK_NOW = new Date(2026, 6, 1)`** (2026-07-01) now lives in **`src/constants/demoClock.js`**, the single JS anchor every consumer reads; `src/data/mockData.js:25` re-exports it unchanged. Consumed by `commissions.js` and surfaced via `currentTime()`. Anchors every "due in N days" and settlement timestamp so demo data tells a coherent story. **Corrected 2026-08-25:** `scripts/seed-supabase.mjs` and `e2e/specs/db/invariants.spec.ts` no longer hand-copy a second literal — both now import `MOCK_NOW` / `MOCK_NOW_ISO_DATE` directly from `demoClock.js`. (This bullet previously said those two files "still hardcode the old `2026-05-26` anchor" — true when written, false now.) One clock remains genuinely independent: Postgres can't import a JS constant, so `public._demo_now()` is a second literal; migration `0126_demo_clock.sql` would bring it to `2026-07-01` but is **not yet applied** to live. Slide `MOCK_NOW` forward in `demoClock.js` (or flip to `new Date()`) when relative dates start looking stale, and author + apply a matching migration for `_demo_now()` in the same change.
 - **Mocked chat.** `getChatResponse`, `getAgentReply`, `getSubscriberChatResponse` POST to `/api/chat`; the route returns keyword-matched mock replies. The local fallback (under `VITE_USE_SUPABASE=false`) is identical.
 - **Mocked KYC.** All 8 KYC services (`assessImageQuality`, `extractIdFields`, `verifyNira`, `sendOtp`, `verifyOtp`, `faceMatch`, `screenAml`, `referToAgent`) are Smile ID v2-shaped mocks with realistic latency. QA force-overrides via `localStorage['upensions_<stage>_force']` are intentional for demo failure-path walkthroughs.
 - **Demo OTP.** `verifyOtp(phone, code, role)` accepts any 6-digit code — see BACKEND.md §15a for the route detail; the frontend service surfaces the response unchanged. No rate limiting, no lockout.
@@ -1533,7 +1539,7 @@ These are residual issues that survived the Phase 4–5 cleanup. Listed so anyon
 | `src/components/Modal.test.jsx` | Portal, focus trap, Escape, backdrop dismiss, scroll lock |
 | `src/test/jwt-claim-contract.test.js` | JWT claim shape contract |
 
-**151 test files, 2192 passing / 2195 total tests, measured 2026-08-25** (`npm test` — see §1's npm-scripts table for the current failure detail; this line previously read "48 test files, 871 passing tests", which had been stale for a long time and contradicted §1's own count in the same document). The earlier T2 / T5 / T6 gaps are closed at the unit layer. The E2E suite (Playwright) still owns happy-path regression coverage; see `.claude/skills/qa.md`.
+**184 test files, 4455 passing / 4456 total tests, measured 2026-08-25** (`npm test` — see §1's npm-scripts table for the current failure detail; this line has now read three different stale figures in succession — "48 test files, 871 passing tests", then "151 test files / 2195 total tests" — each time contradicting §1's own count in the same document at the time it was written). The earlier T2 / T5 / T6 gaps are closed at the unit layer. The E2E suite (Playwright) still owns happy-path regression coverage; see `.claude/skills/qa.md`.
 
 **Coverage script.** `npm run test:coverage` is wired in `package.json` (Phase 2G `3002c14`) and reads the coverage config from the embedded Vitest block in `vite.config.js`. **`@vitest/coverage-v8` is currently NOT installed** — run `npm i -D @vitest/coverage-v8` to enable coverage reports. The script will fail with a clear "missing dependency" message until then.
 

@@ -80,15 +80,18 @@ The platform is a thin, three-tier stack with a deliberately narrow contract bet
                   ▼                                      ▼
          ┌─────────────────────────────────────────────────────────────────┐
          │                Supabase Postgres (single project)               │
-         │  37 tables · 2 ENUMs · pg_trgm · 10 triggers (verified 08-25)   │
-         │  89 functions (70 SECURITY DEFINER + 19 INVOKER; 0 overloads)   │
-         │  109 RLS policies (zero `auth.uid()` calls — all read app_role) │
+         │  47 tables · 2 ENUMs · pg_trgm · 14 triggers (verified 08-25)   │
+         │  99 functions (76 SECURITY DEFINER + 23 INVOKER; 0 overloads)   │
+         │  106 RLS policies (zero `auth.uid()` calls — all read app_role) │
          │  supabase_realtime publication: empty (no tables)               │
          │                                                                 │
-         │  120 forward migration files on disk (0001→0126, some gaps)    │
-         │    as of 2026-08-25 — re-count, this branch adds fast. Live    │
-         │    ledger is TIMESTAMP-versioned, NOT joinable to 0001_*        │
-         │    filenames by version — never version-diff. See §13.         │
+         │  129 forward migration files on disk (0001→0132, some gaps)    │
+         │    as of 2026-08-25 — re-count, this branch adds fast (moved   │
+         │    twice in one working session already). Live ledger head    │
+         │    matches 0132 (100 rows) but is TIMESTAMP-versioned, NOT     │
+         │    joinable to 0001_* filenames by version in EITHER direction │
+         │    — some applied migrations have no ledger row at all. Never  │
+         │    version-diff; introspect live objects. See BACKEND.md §16.  │
          └─────────────────────────────────────────────────────────────────┘
 ```
 
@@ -389,17 +392,17 @@ Two layers, each catching a different class of regression. The cleanup sprint mo
 | **Unit** | Vitest 4.1.4 + jsdom + `src/test/supabaseMock.js` | `src/**/__tests__/`, `src/**/*.test.{js,jsx}`, `api/**/*.test.ts` | Service shape contracts, util correctness, hook caching, component primitives, API route handlers, mock-branch parity |
 | **E2E** | Playwright; service-role fixtures in `e2e/fixtures/db.ts`; auth fixtures in `e2e/.auth/` | `e2e/specs/{smoke,flows,regression,db}/` | Real-browser flows: signup → contribute → withdraw; commission settlement (`due → paid`) end-to-end; cross-laptop demo loops |
 
-### 7.1 Unit layer — 2195 tests across 151 files (measured 2026-08-25)
+### 7.1 Unit layer — 4456 tests across 184 files (measured 2026-08-25)
 
-Current suite (`npx vitest run`):
+Current suite (`npx vitest run --silent`):
 
 ```
 $ npm test
- Test Files  149 passed | 2 failed (151)
-      Tests  2192 passed | 3 failed (2195)
+ Test Files  1 failed | 183 passed (184)
+      Tests  1 failed | 4455 passed (4456)
 ```
 
-The 2 failing files / 3 failing tests are in `deriveBranchAnalytics.test.js` (unrelated to this documentation pass — flagged as an escalation, not fixed here). That was ~**491 new unit tests added across the cleanup** relative to the pre-cleanup baseline at the time; the suite has grown substantially further since — re-measure with `npm test` rather than trusting any number printed here, including this one. (This section briefly read "2010 tests across 140 files" earlier on 2026-08-25 itself, sourced from a slightly older audit snapshot — a live illustration of how fast this number moves even within a single work session.) Coverage delta is broken out per Phase-2 commit:
+The 1 failing test is `src/services/__tests__/search.test.js` ("real and mock branches produce the same field names on a hit") — outside this documentation pass's write-set, unrelated, flagged as an escalation rather than fixed here. This section previously read "2195 tests across 151 files (2 files / 3 tests failing in `deriveBranchAnalytics.test.js`)" — that failure is gone and the suite has roughly doubled since, a live illustration of how fast this number moves; before that it briefly read "2010 tests across 140 files," sourced from a slightly older audit snapshot. **Re-measure with `npm test` rather than trusting any number printed here, including this one** — it has now been wrong at least three times within the same remediation programme. Coverage delta is broken out per Phase-2 commit:
 
 | Commit | Files added | What | Finding |
 |---|---|---|---|
@@ -664,7 +667,7 @@ SELECT tablename
 
 ## 13. Migration & schema-evolution discipline
 
-**Forward-only migrations** under `supabase/migrations/`. Sequential 4-digit prefix; never edit a shipped migration. The original 2026-06-05 cutover batch ran `0001` → `0057` (**57 migrations**, with `0019` backfilled as the captured remote hotfix); `0029`–`0031` deliver the commission-flow simplification (`due → paid`), `0032`–`0036` the settlement fixes + employer family, `0037`–`0039` the funder-redesign, `0040`–`0042` the post-restore cleanup + commission-aggregate RPCs + signup/write-flow hardening, `0043`–`0048` the subscriber⇄employer unification + invite-based onboarding (`employer_invites`, `0047`), `0049`–`0051` the **admin** role (shipped — platform-wide RLS + create/overview/settlement RPCs), and `0052`–`0057` the 2026-06-08 audit-remediation batch (`0052` re-pins `_insert_subscriber_chain`'s `search_path`; `0053` schema-hygiene; `0054` subscriber money RPCs; `0055` `set_commission_rate`; `0056` atomic employer config; `0057` perf rollups). ⚠️ **The list has grown well past `0057` since** — 120 forward migration files exist on disk as of 2026-08-25, numbered `0001`–`0126` with a few gaps (re-count with `ls supabase/migrations/*.sql | grep -v .down.sql | wc -l` before trusting any endpoint printed here). `0058` onward (distributor scoping, NAV pricing, admin-attention signals, nominee claims, and more) is narrated in `docs/BACKEND.md §10`/§16 and the `docs/audits/2026-08-23/` set, not enumerated in this document. The live `supabase_migrations` ledger is TIMESTAMP-versioned and shares no key with these `0001_*` filenames — never establish "applied" state by version-diffing the two; introspect live objects instead (see §12 below). All are applied to the Singapore DB (`ilkhfnoyxlxwqadebnkp`, cutover 2026-06-05) except a small number still being drafted as of 2026-08-25 — e.g. `0118`, the RLS direct-write fix (see `CLAUDE.md §7`). See `BACKEND.md §12` for the per-migration table.
+**Forward-only migrations** under `supabase/migrations/`. Sequential 4-digit prefix; never edit a shipped migration. The original 2026-06-05 cutover batch ran `0001` → `0057` (**57 migrations**, with `0019` backfilled as the captured remote hotfix); `0029`–`0031` deliver the commission-flow simplification (`due → paid`), `0032`–`0036` the settlement fixes + employer family, `0037`–`0039` the funder-redesign, `0040`–`0042` the post-restore cleanup + commission-aggregate RPCs + signup/write-flow hardening, `0043`–`0048` the subscriber⇄employer unification + invite-based onboarding (`employer_invites`, `0047`), `0049`–`0051` the **admin** role (shipped — platform-wide RLS + create/overview/settlement RPCs), and `0052`–`0057` the 2026-06-08 audit-remediation batch (`0052` re-pins `_insert_subscriber_chain`'s `search_path`; `0053` schema-hygiene; `0054` subscriber money RPCs; `0055` `set_commission_rate`; `0056` atomic employer config; `0057` perf rollups). ⚠️ **The list has grown well past `0057` since** — 129 forward migration files exist on disk as of 2026-08-25, numbered `0001`–`0132` with a few gaps (re-count with `ls supabase/migrations/*.sql | grep -v .down.sql | wc -l` before trusting any endpoint printed here — it moved twice within a single working session already). `0058` onward (distributor scoping, NAV pricing, admin-attention signals, nominee claims, and more) is narrated in `docs/BACKEND.md §10`/§16 and the `docs/audits/2026-08-23/` set, not enumerated in this document. The live `supabase_migrations` ledger is TIMESTAMP-versioned and shares no key with these `0001_*` filenames — never establish "applied" state by version-diffing the two, in **either** direction: some ledger rows carry no numeric prefix at all, and some applied migrations (`0118`, `0119`, `0122` — confirmed live 2026-08-25) have **no ledger row whatsoever**, having been applied out-of-band. Introspect live objects instead (see §12 below). `0001`–`0108` are confirmed applied via the tracked ledger; the applied/not-applied state of `0109`–`0132` is genuinely mixed — see `BACKEND.md §16` for the full table (short version: `0118`/`0119`/`0122`/`0127`/`0128`/`0131`/`0132` are live, `0129`/`0130` are deliberately not, the rest are unconfirmed this pass). `0118`, the RLS direct-write fix once cited here as "still being drafted," **is now applied** — see `CLAUDE.md §7.3`. See `BACKEND.md §12` for the per-migration table.
 
 **Discipline rules:**
 

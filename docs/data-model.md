@@ -4,7 +4,7 @@
 
 # Universal Pensions Uganda — Data Model
 
-> This document describes the entities the dashboards render, their fields, relationships and business rules. ⚠️ It is **not** a complete table census — the live database has 37 tables and only 17 get a field-level section here (21 tables including `subscriber_balances`, `transactions`, `nav_snapshots` and `contribution_schedules` — several of which carry the money — have no entry). For the authoritative column list for any table, query `information_schema.columns` or see `docs/audits/2026-08-23/baseline/columns.csv`.
+> This document describes the entities the dashboards render, their fields, relationships and business rules. ⚠️ It is **not** a complete table census — the live database has 47 tables (re-measured 2026-08-25 against `pg_class`; this count moves fast during active remediation — re-run `SELECT count(*) FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname='public' AND c.relkind='r'` rather than trusting the number printed here) and only 17 get a field-level section here (30 tables including `subscriber_balances`, `transactions`, `nav_snapshots` and `contribution_schedules` — several of which carry the money — have no entry). For the authoritative column list for any table, query `information_schema.columns` or see `docs/audits/2026-08-23/baseline/columns.csv`.
 > Fields are classified as **Stored** (persisted in DB), **Derived** (computed from other data), **Aggregated** (rolled up from children), or **Mock-only** (prototype artifact).
 
 ---

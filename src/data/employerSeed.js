@@ -11,7 +11,8 @@
 //
 // Like every other `src/data` module this is mock data — reached only through a
 // service, NEVER imported by a component (CLAUDE.md §4.1). Dates anchor to
-// `MOCK_NOW` (2026-05-26) for demo stability.
+// `MOCK_NOW` (2026-07-01, src/constants/demoClock.js — corrected 2026-08-25;
+// this comment previously read the stale 2026-05-26) for demo stability.
 //
 // Issue 2: the funding setup is a SINGLE company-wide value on the employer
 // (`defaultContributionConfig`) — applied to every member, never per-member.

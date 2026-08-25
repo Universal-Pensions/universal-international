@@ -4,9 +4,11 @@ import styles from './PolicyChips.module.css';
 /**
  * PolicyChips — agent-facing list of a subscriber's insurance policies as light
  * chips ("Life cover · Active"). PRODUCT + STATUS ONLY: agents must never see a
- * subscriber's cover amount or premium, so this renders neither. The service
- * (`services/agent.js`) already filters `subscriber.policies` to active products
- * (life / health / funeral); each entry is `{ product, status }`.
+ * subscriber's cover amount or premium, so this renders neither. The agent-facing
+ * `subscriber.policies` list can include EXPIRED entries — the service does NOT
+ * filter to active products only (corrected 2026-08-25; this comment previously
+ * claimed it did) — each entry is `{ product, status }`, and the Active/Expired
+ * ternary below is what actually distinguishes them.
  *
  * Shared by the mobile + desktop subscriber-detail forks so they can't drift.
  * Default export only (no helper exports) to keep react-refresh happy.
