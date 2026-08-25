@@ -23,6 +23,7 @@
 // when present; `environment` mirrors NODE_ENV. Init stays strictly DSN-gated —
 // a no-op when SENTRY_DSN is absent (local dev, PR previews).
 import * as Sentry from '@sentry/node';
+import { normaliseCspReports } from './cspReport.js';
 import { scrubEvent, scrubBreadcrumb } from './sentryScrub.js';
 if (process.env.SENTRY_DSN) {
   Sentry.init({
@@ -143,6 +144,41 @@ app.get('/readyz', cors(corsOptions), async (_req, res) => {
     res.status(503).json({ ok: false, code: 'not_ready' });
   }
 });
+
+// ─── 4c. CSP violation sink (A24-002 / A09-004) ──────────────────────────────
+// vercel.json's Content-Security-Policy names this URL in `report-uri` and
+// `Reporting-Endpoints`. Without a route here those headers point at nothing, and
+// the policy would be inert in BOTH directions — blocking nothing (report-only)
+// AND reporting nowhere — which is precisely the defect A24-002 describes. The
+// header existing is not the fix; somewhere for it to report is.
+//
+// Registered BEFORE the global express.json() so it can accept the two content
+// types browsers actually send, neither of which is application/json:
+//   application/csp-report          (the older report-uri format)
+//   application/reports+json        (the newer Reporting API / report-to format)
+// A body parser that only accepts application/json silently drops every report.
+//
+// Always 204. A violation report is telemetry from an untrusted page — it must
+// never be able to make the endpoint fail, retry, or leak anything back.
+app.post(
+  '/api/csp-report',
+  cors(corsOptions),
+  express.json({ type: ['application/csp-report', 'application/reports+json', 'application/json'], limit: '64kb' }),
+  (req, res) => {
+    res.setHeader('Cache-Control', 'no-store');
+    try {
+      for (const rep of normaliseCspReports(req.body)) {
+        // Log only the fields needed to act on a violation. Deliberately NOT the
+        // whole body: `script-sample` can carry page content, and this service
+        // handles Ugandan member data.
+        console.warn('[csp]', JSON.stringify(rep));
+      }
+    } catch {
+      // Never surface a parse failure to the reporting browser.
+    }
+    res.status(204).end();
+  },
+);
 
 // ─── 5. Sentry request instrumentation — in @sentry/node v8 this is set up
 // automatically by the auto-instrumented Express integration when Sentry.init

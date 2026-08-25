@@ -1,0 +1,46 @@
+/* Self-hosted replacement for the Google Fonts CSS2 stylesheet that used to be
+   loaded from fonts.googleapis.com (stylesheet) + fonts.gstatic.com (woff2
+   files) via index.html. Same two type families the brand uses everywhere
+   (CLAUDE.md §6: Plus Jakarta Sans display, Inter body), same exact files
+   Google was serving (fetched verbatim from the CSS2 API with a modern-Chrome
+   UA, latin subset only — this app is English-only, see docs/audits/2026-08-23/
+   a24/csp-notes.md), now same-origin.
+
+   Both non-italic faces are variable fonts (confirmed via fontTools: Inter
+   carries an `fvar` wght axis 100-900, Plus Jakarta Sans 200-800), so ONE file
+   per family covers every weight this app actually requests (300/400/500/600
+   for Inter; 300/400/500/600/700/800 for Plus Jakarta Sans) — declared here as
+   a single ranged font-weight rule per family, exactly as web.dev's variable
+   font guidance recommends. The italic Plus Jakarta Sans file Google served is
+   NOT variable (single static instance at weight 400 — the only italic weight
+   index.html ever requested), so it keeps a plain font-weight: 400 rule.
+
+   Because this is now font-src 'self' / style-src 'self', the CSP in
+   vercel.json needs no fonts.googleapis.com / fonts.gstatic.com allowance. */
+
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 300 600;
+  font-display: swap;
+  src: url('/fonts/inter-v20-latin-variable.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+@font-face {
+  font-family: 'Plus Jakarta Sans';
+  font-style: normal;
+  font-weight: 300 800;
+  font-display: swap;
+  src: url('/fonts/plus-jakarta-sans-v12-latin-variable.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+@font-face {
+  font-family: 'Plus Jakarta Sans';
+  font-style: italic;
+  font-weight: 400;
+  font-display: swap;
+  src: url('/fonts/plus-jakarta-sans-v12-italic-latin-variable.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
