@@ -40,7 +40,7 @@
 
 .otpInput[data-error="true"] {
   border-color: var(--color-status-poor);
-  color: var(--color-status-poor);
+  color: var(--color-poor-ink);
   animation: otp-shake 0.3s ease-in-out;
 }
 
@@ -63,7 +63,7 @@
   min-height: 1.1em;
   font-family: var(--font-body);
   font-size: var(--text-xs);
-  color: var(--color-status-poor);
+  color: var(--color-poor-ink);
   text-align: center;
   margin: 0.5rem 0 0;
 }

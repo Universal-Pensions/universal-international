@@ -108,7 +108,7 @@
 
 .aiBtn svg {
   flex: 0 0 auto;
-  color: var(--color-amber);
+  color: var(--color-amber-ink);
 }
 
 .aiBtn:active {

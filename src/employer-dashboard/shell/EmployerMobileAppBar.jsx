@@ -107,7 +107,7 @@ export default function EmployerMobileAppBar({ onOpenAI }) {
             {InboxIcon}
             {openTickets > 0 && <span className={styles.count} aria-hidden="true">{badgeText(openTickets)}</span>}
           </button>
-          {employerId && <NotificationBell role="employer" entityId={employerId} align="right" />}
+          {employerId && <NotificationBell recipientRole="employer" entityId={employerId} align="right" />}
           <button
             type="button"
             className={styles.aiBtn}

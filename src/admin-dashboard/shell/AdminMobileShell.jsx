@@ -120,7 +120,7 @@ export default function AdminMobileShell() {
     <AdminAppBarContext.Provider value={appBarValue}>
       <div className={styles.shell}>
         <AdminMobileAppBar onOpenAI={openAskAI} />
-        <main ref={viewportRef} className={styles.viewport} id="main" data-mobile-viewport>
+        <main ref={viewportRef} className={styles.viewport} id="main" tabIndex={-1} data-mobile-viewport>
           <AnimatedOutlet />
         </main>
         <AdminBottomTabBar />

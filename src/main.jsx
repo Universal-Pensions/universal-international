@@ -1,15 +1,17 @@
-import { StrictMode } from 'react';
+import { StrictMode, useEffect } from 'react';
 import { createRoot } from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { QueryClient, QueryCache, QueryClientProvider } from '@tanstack/react-query';
 import { MotionConfig } from 'framer-motion';
 import * as Sentry from '@sentry/react';
 import { AuthProvider } from './contexts/AuthContext.jsx';
-import { ToastProvider } from './contexts/ToastContext.jsx';
+import { ToastProvider, useToast } from './contexts/ToastContext.jsx';
 import ToastContainer from './components/Toast.jsx';
 import WarmupBanner from './components/WarmupBanner.jsx';
 import ErrorBoundary from './components/ErrorBoundary.jsx';
 import { scrubEvent, scrubBreadcrumb } from './utils/sentryScrub.js';
+import { forwardSupabaseAuthError } from './services/supabaseClient.js';
+import { getFriendlyErrorMessage } from './utils/friendlyError.js';
 import { registerSW } from './pwa/registerSW.js';
 import './index.css';
 import App from './App.jsx';
@@ -66,7 +68,54 @@ if (typeof window !== 'undefined') {
   });
 }
 
+// A22-007 / A22-002 / A22-003 — global read-failure backstop (P4 remediation,
+// docs/audits/2026-08-23/22-state-errors.md). Per-component isError guards
+// (MetricHero, and the page-level ErrorCard guards already on most surfaces)
+// are the PRIMARY fix; this QueryCache is the safety net so a query nobody
+// explicitly guards still tells the user something failed instead of quietly
+// resolving to an empty/zeroed screen.
+//
+// Auth-expiry is routed to logout, not toasted: forwardSupabaseAuthError
+// (services/supabaseClient.js) already does the full "clear the session +
+// drive AuthContext's logout" dance for a PostgREST-expired/invalid JWT — it
+// was exported for exactly this but had ZERO call sites anywhere in the app
+// (A22-003). Wiring it in here, for every direct-Supabase read, closes that
+// gap without touching supabaseClient.js.
+//
+// The handler runs outside React (QueryCache is constructed before the tree
+// mounts, and stays a plain object for the app's lifetime), so it can't call
+// useToast() directly. It publishes through a tiny bridge — the same pattern
+// services/api.js already uses for onAuthExpired/notifyAuthExpired: the
+// subscribe side lives with the consumer (QueryErrorToastBridge, mounted
+// inside ToastProvider below), the publish side lives here. Both the handler
+// and the bridge setter are exported so tests can drive this wiring directly
+// without mounting the whole app (this file also renders on import — see the
+// `rootEl` guard below).
+let toastBridge = null;
+export function setToastBridge(fn) {
+  toastBridge = fn;
+}
+
+export const GENERIC_READ_FAILURE_MESSAGE = 'Some information on this page could not be loaded.';
+
+export function handleGlobalQueryError(error) {
+  if (forwardSupabaseAuthError(error)) return;
+  toastBridge?.('error', getFriendlyErrorMessage(error, GENERIC_READ_FAILURE_MESSAGE));
+}
+
+/** Registers the toast bridge for as long as ToastProvider is mounted (the
+ * app's whole lifetime) — renders nothing. */
+function QueryErrorToastBridge() {
+  const { addToast } = useToast();
+  useEffect(() => {
+    setToastBridge(addToast);
+    return () => setToastBridge(null);
+  }, [addToast]);
+  return null;
+}
+
 const queryClient = new QueryClient({
+  queryCache: new QueryCache({ onError: handleGlobalQueryError }),
   defaultOptions: {
     queries: {
       staleTime: 5 * 60 * 1000,
@@ -81,31 +130,42 @@ const queryClient = new QueryClient({
   },
 });
 
-createRoot(document.getElementById('root')).render(
-  <StrictMode>
-    {/* MED-7 — root error boundary. The per-route boundaries in App.jsx only
-        wrap the dashboard/signup subtrees, so an uncaught throw on the public
-        landing, the /admin/login portal, or the app-root <SignInModal/> would blank
-        the whole screen. This top-level boundary is the backstop: it renders
-        the shared "Something went wrong" + refresh fallback (and forwards to
-        Sentry) instead. Inner boundaries still catch first for their subtree. */}
-    <ErrorBoundary>
-      <BrowserRouter>
-        <QueryClientProvider client={queryClient}>
-          <AuthProvider>
-            <ToastProvider>
-              <MotionConfig reducedMotion="user">
-                <WarmupBanner />
-                <App />
-                <ToastContainer />
-              </MotionConfig>
-            </ToastProvider>
-          </AuthProvider>
-        </QueryClientProvider>
-      </BrowserRouter>
-    </ErrorBoundary>
-  </StrictMode>,
-);
+// Guarded (rather than a bare `createRoot(document.getElementById('root'))`)
+// so importing this module from a test — to reach handleGlobalQueryError /
+// setToastBridge above — builds queryClient without also trying to mount the
+// whole app into a #root that doesn't exist in a bare jsdom document.
+// Production is unaffected: index.html always has `<div id="root">`.
+const rootEl = document.getElementById('root');
+if (rootEl) {
+  createRoot(rootEl).render(
+    <StrictMode>
+      {/* MED-7 — root error boundary. The per-route boundaries in App.jsx only
+          wrap the dashboard/signup subtrees, so an uncaught throw on the public
+          landing, the /admin/login portal, or the app-root <SignInModal/> would blank
+          the whole screen. This top-level boundary is the backstop: it renders
+          the shared "Something went wrong" + refresh fallback (and forwards to
+          Sentry) instead. Inner boundaries still catch first for their subtree. */}
+      <ErrorBoundary>
+        <BrowserRouter>
+          <QueryClientProvider client={queryClient}>
+            <AuthProvider>
+              <ToastProvider>
+                {/* Renders nothing — registers the bridge handleGlobalQueryError
+                    (wired into the QueryCache above) publishes through. */}
+                <QueryErrorToastBridge />
+                <MotionConfig reducedMotion="user">
+                  <WarmupBanner />
+                  <App />
+                  <ToastContainer />
+                </MotionConfig>
+              </ToastProvider>
+            </AuthProvider>
+          </QueryClientProvider>
+        </BrowserRouter>
+      </ErrorBoundary>
+    </StrictMode>,
+  );
+}
 
 // Register the PWA service worker (prod builds only — no-op in dev/tests).
 registerSW();

@@ -131,7 +131,7 @@
 
 .logout:hover {
   background: rgba(248, 113, 113, 0.1);
-  color: var(--color-alert);
+  color: var(--color-poor-ink);
 }
 
 .logout:focus-visible {

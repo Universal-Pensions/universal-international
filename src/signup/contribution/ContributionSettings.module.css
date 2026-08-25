@@ -685,7 +685,7 @@
 }
 
 .splitLabel[data-tone="teal"] {
-  color: var(--color-teal);
+  color: var(--color-teal-ink);
 }
 
 .splitLabel::before {
@@ -715,7 +715,7 @@
 }
 
 .splitPct[data-tone="teal"] {
-  color: var(--color-teal);
+  color: var(--color-teal-ink);
 }
 
 .splitPct em {
@@ -1335,7 +1335,7 @@
   border: 1px solid rgba(46, 139, 87, 0.3);
   background: rgba(46, 139, 87, 0.07);
   border-radius: 0.5rem;
-  color: var(--color-green);
+  color: var(--color-green-ink);
 }
 
 .aline svg {
@@ -1871,7 +1871,7 @@
 }
 
 .pmtSecure svg {
-  color: var(--color-green);
+  color: var(--color-green-ink);
 }
 
 /* ── Summary / checkout aside ───────────────────────────────────────── */

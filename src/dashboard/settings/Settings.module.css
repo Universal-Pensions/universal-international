@@ -120,7 +120,7 @@
   justify-content: center;
   width: 56px;
   height: 56px;
-  border-radius: 50%;
+  border-radius: var(--radius-md);
   background: var(--color-indigo);
   flex-shrink: 0;
   box-shadow: 0 4px 12px color-mix(in srgb, var(--color-indigo) 20%, transparent);
@@ -556,7 +556,7 @@
   height: 22px;
   border-radius: 50%;
   background: rgba(46, 139, 87, 0.1);
-  color: var(--color-green);
+  color: var(--color-green-ink);
   flex-shrink: 0;
 }
 

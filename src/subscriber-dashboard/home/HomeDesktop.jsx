@@ -163,6 +163,13 @@ export default function HomeDesktop({ subscriber }) {
   // balance in that case.
   const counted = useCountUp(net, 1100, !reduceMotion);
   const balanceDisplay = formatUGX(reduceMotion ? net : counted, { compact: false });
+  // A20-011 (desktop half — mirrors the fix already applied to HomeMobile).
+  // The count-up re-renders ~60x/sec while animating and the visible figure
+  // carries no aria-live, so a screen-reader user is never told the balance
+  // changed after a contribution. Announce the SETTLED figure — keyed off `net`,
+  // not the animating `counted` — once via a polite live region, and hide the
+  // animating digits from the a11y tree so they are not read frame by frame.
+  const settledBalanceLabel = formatUGX(net > 0 ? net : 0, { compact: false });
 
   // Invested principal + growth (demo-derived, deterministic per id; shared with
   // the mobile PulseCard so the two never disagree).
@@ -360,7 +367,8 @@ export default function HomeDesktop({ subscriber }) {
           <div className={styles.heroChip}>{glyph.wallet(26)}</div>
           <div>
             <p className={styles.heroEyebrow}>Total balance</p>
-            <div className={styles.heroValue}>{net > 0 ? balanceDisplay : 'UGX 0'}</div>
+            <div className={styles.heroValue} aria-hidden="true">{net > 0 ? balanceDisplay : 'UGX 0'}</div>
+            <span className="sr-only" aria-live="polite">Total balance {settledBalanceLabel}</span>
             <p className={styles.heroUnits}>
               <span className={styles.uChip}>Units</span>
               <strong>{units.toLocaleString('en-UG', { maximumFractionDigits: 2 })}</strong> units

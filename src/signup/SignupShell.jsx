@@ -100,7 +100,7 @@ export default function SignupShell({ stepId, onBack, canBack = true, pinnedStag
         subTotal={KYC_COUNT}
       />
 
-      <main id="main" className={styles.body}>
+      <main id="main" tabIndex={-1} className={styles.body}>
         <div
           ref={mainRef}
           tabIndex={-1}

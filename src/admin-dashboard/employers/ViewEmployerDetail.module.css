@@ -30,12 +30,12 @@
 
 .statusBadge[data-status='active'] {
   background: rgba(46, 139, 87, 0.08);
-  color: var(--color-status-good);
+  color: var(--color-green-ink);
 }
 
 .statusBadge[data-status='inactive'] {
   background: rgba(220, 53, 69, 0.08);
-  color: var(--color-status-poor);
+  color: var(--color-poor-ink);
 }
 
 .statusDot {

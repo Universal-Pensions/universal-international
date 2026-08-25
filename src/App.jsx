@@ -68,7 +68,7 @@ function ComingSoon() {
   }
 
   return (
-    <div id="main" style={{
+    <main id="main" tabIndex={-1} style={{
       display: 'flex',
       flexDirection: 'column',
       alignItems: 'center',
@@ -126,7 +126,7 @@ function ComingSoon() {
       >
         Back to home
       </button>
-    </div>
+    </main>
   );
 }
 

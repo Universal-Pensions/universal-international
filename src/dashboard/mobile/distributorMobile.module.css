@@ -425,7 +425,7 @@
 }
 .av[data-tone='teal'] {
   background: color-mix(in srgb, var(--color-teal) 12%, transparent);
-  color: var(--color-teal);
+  color: var(--color-teal-ink);
 }
 .lMid {
   flex: 1;
@@ -482,7 +482,7 @@
 }
 .tintTeal {
   background: color-mix(in srgb, var(--color-teal) 12%, transparent);
-  color: var(--color-teal);
+  color: var(--color-teal-ink);
 }
 .tintGreen {
   background: color-mix(in srgb, var(--color-green) 12%, transparent);
@@ -585,7 +585,7 @@
 .btnGhost {
   background: none;
   border: none;
-  color: var(--color-status-poor);
+  color: var(--color-poor-ink);
 }
 .btnBlock {
   width: 100%;
@@ -623,6 +623,12 @@
   color: var(--color-slate);
   background: none;
 }
+@media (max-width: 1023.98px) {
+  .search input {
+    font-size: 16px; /* was 14px (14.0px) — iOS Safari zoom-on-focus fix, A18-001 */
+  }
+}
+
 .search input::placeholder {
   color: var(--color-gray);
 }
@@ -1107,7 +1113,7 @@
   font-family: var(--font-display);
   font-weight: 700;
   font-size: 14px;
-  color: var(--color-status-poor);
+  color: var(--color-poor-ink);
   background: var(--color-white);
   border: 1px solid var(--color-lavender);
   border-radius: var(--radius-md);
@@ -1333,6 +1339,13 @@
   color: var(--color-slate);
   appearance: none;
 }
+@media (max-width: 1023.98px) {
+  .field input,
+  .field select {
+    font-size: 16px; /* was 15px (15.0px) — iOS Safari zoom-on-focus fix, A18-001 */
+  }
+}
+
 .field input::placeholder {
   color: var(--color-gray);
 }
@@ -1350,7 +1363,7 @@
   margin-bottom: 0;
 }
 .req {
-  color: var(--color-status-poor);
+  color: var(--color-poor-ink);
 }
 .formErr {
   font-size: 11.5px;

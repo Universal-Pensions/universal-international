@@ -238,13 +238,13 @@
   min-height: 44px;
 }
 
-.quizYes:hover { border-color: var(--color-green); color: var(--color-green); }
+.quizYes:hover { border-color: var(--color-green); color: var(--color-green-ink); }
 .quizNo:hover { border-color: var(--color-amber); color: #8B5A07; }
 
 .quizYes[data-active] {
   background: rgba(46, 139, 87, 0.1);
   border-color: var(--color-green);
-  color: var(--color-green);
+  color: var(--color-green-ink);
   box-shadow: 0 0 0 3px rgba(46, 139, 87, 0.12);
 }
 
@@ -417,7 +417,7 @@
 .qstatus[data-state='yes'] {
   background: rgba(46, 139, 87, 0.14);
   border-color: transparent;
-  color: var(--color-green);
+  color: var(--color-green-ink);
 }
 
 .qstatus[data-state='no'] {

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { forwardRef, useEffect, useMemo, useRef, useState } from 'react';
 import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 import { EASE_OUT_EXPO } from '../../utils/motion';
 
@@ -9,12 +9,55 @@ import { buildPlatformCopilotContext, PLATFORM_COPILOT_SUGGESTIONS } from './pla
 import { sparkIcon, closeIcon, sendIcon } from '../../employer-dashboard/desktop/icons';
 import styles from './DataCopilotPanel.module.css';
 
+// Matches the focusable-elements selector Modal.jsx uses (duplicated locally —
+// this panel is a fixed drawer, not a Modal.jsx portal — so the Tab trap below
+// is self-contained). Filters out disabled / tabindex="-1" / hidden elements.
+const FOCUSABLE_SELECTOR = [
+  'a[href]',
+  'button:not([disabled])',
+  'input:not([disabled]):not([type="hidden"])',
+  'select:not([disabled])',
+  'textarea:not([disabled])',
+  '[tabindex]:not([tabindex="-1"])',
+].join(',');
+
+function getFocusableElements(root) {
+  if (!root) return [];
+  return Array.from(root.querySelectorAll(FOCUSABLE_SELECTOR)).filter((el) => {
+    if (el.getAttribute('aria-hidden') === 'true') return false;
+    if (el.hasAttribute('hidden')) return false;
+    const style = el.style;
+    if (style && (style.display === 'none' || style.visibility === 'hidden')) return false;
+    return true;
+  });
+}
+
 /**
  * DataCopilotPanel — the Ask-AI slide-in copilot drawer for the map-overlay
  * shells: the ADMIN ("Platform Copilot") and DISTRIBUTOR ("Network Copilot").
  * Structurally mirrors BranchCopilotPanel's chat UX (messages / input / thinking
  * dots / suggestion chips / Esc-to-close / focus-the-input-on-open) but presents
  * as a CommissionPanel-style right-hand drawer rather than a docked grid cell.
+ *
+ * AUDIT A19-007 considered — and rejected — converting this to a non-modal
+ * grid-push panel (the interaction model the other four roles' copilots use:
+ * SubscriberCopilotPanel.jsx et al., an always-mounted `<aside>` with no
+ * role/aria-modal). That would make the Ask-AI drawer the ONE overlay in
+ * this shell that does not behave like its siblings: ViewBranches.jsx,
+ * CommissionPanel.jsx, ViewReports.jsx and Settings.jsx all render
+ * `aria-modal={fullPage ? undefined : 'true'}` — true modal whenever they
+ * appear as a slide-in drawer, non-modal only when they ARE the full-page
+ * dash-mode canvas. This panel has no full-page mode; it is always a
+ * drawer, so per that same established rule it is correctly always modal.
+ * Going non-modal here would trade the cross-role inconsistency A19-007
+ * flags for a worse one — the copilot behaving unlike every other overlay
+ * in its own shell — and would need a coordinated redesign of those four
+ * files (none of them owned by this change) to fix properly. What DID ship
+ * for A19-007: the interaction details that don't depend on modal-ness are
+ * already aligned (Escape-to-close, composer autofocus, focus-restore to
+ * the trigger on close, the mirrored chat UX above) — see A19-005/A19-006
+ * below for the modal contract itself, which is now self-consistent
+ * (aria-modal + an actual Tab trap, not one without the other).
  *
  * It SELF-FETCHES its figures (TanStack dedupes into the shared caches) and
  * answers via the CLIENT-SIDE getPlatformChatResponse — never the server route,
@@ -90,6 +133,31 @@ function CopilotChat({ open, onClose, scope, title, ctx }) {
       if (e.key === 'Escape') {
         e.stopPropagation();
         onClose?.();
+        return;
+      }
+      // Focus trap (AUDIT A19-005) — this panel declares role="dialog" +
+      // aria-modal="true" but had no Tab handler, so focus walked straight
+      // into the background map-shell sidebar. Mirrors Modal.jsx's trap:
+      // Shift+Tab off the first focusable (or from outside the panel) wraps
+      // to the last; Tab off the last (or from outside) wraps to the first.
+      if (e.key !== 'Tab') return;
+      const focusables = getFocusableElements(node);
+      if (focusables.length === 0) {
+        e.preventDefault();
+        node.focus();
+        return;
+      }
+      const first = focusables[0];
+      const last = focusables[focusables.length - 1];
+      const active = document.activeElement;
+      if (e.shiftKey) {
+        if (active === first || !node.contains(active)) {
+          e.preventDefault();
+          last.focus();
+        }
+      } else if (active === last || !node.contains(active)) {
+        e.preventDefault();
+        first.focus();
       }
     }
     node.addEventListener('keydown', onKey);
@@ -159,6 +227,7 @@ function CopilotChat({ open, onClose, scope, title, ctx }) {
             aria-label={title}
             aria-hidden={open ? undefined : 'true'}
             inert={!open}
+            tabIndex={-1}
           >
             <header className={styles.head}>
               <span className={styles.headTitle}>
@@ -251,12 +320,25 @@ function CopilotChat({ open, onClose, scope, title, ctx }) {
  * Floating "Ask AI" button (bottom-right FAB) for the map-overlay shells. Sits
  * above the map/overlay chrome but below any slide-in panel + the mobile drawer,
  * and is hidden in print. Additive — it never touches the map/overlay.
+ *
+ * Forwards its ref to the underlying <button> (AUDIT A19-006) so the owning
+ * shell can return focus here when the Copilot closes — it never restored
+ * focus to the trigger before, unlike the four routed shells' Ask-AI buttons.
+ *
+ * @param {boolean} [active] - AUDIT A17-005: true while the Copilot is open,
+ *   applying the solid-fill `.fabActive` state (matching the other five
+ *   roles' Ask-AI button, which is white-at-rest / filled-when-open — see
+ *   the AUDIT A17-005 comment on `.fab` in DataCopilotPanel.module.css).
+ *   Callers pass their own `copilotOpen` flag; defaults to false so any
+ *   caller that doesn't track it yet still renders the (now white) resting
+ *   state rather than an undefined class.
  */
-export function AskAiFab({ onClick, label = 'Ask AI' }) {
+export const AskAiFab = forwardRef(function AskAiFab({ onClick, label = 'Ask AI', active = false }, ref) {
+  const className = active ? `${styles.fab} ${styles.fabActive}` : styles.fab;
   return (
-    <button type="button" className={styles.fab} onClick={onClick} aria-label={label}>
+    <button ref={ref} type="button" className={className} onClick={onClick} aria-label={label} aria-pressed={active}>
       <span className={styles.fabIcon}>{sparkIcon(18)}</span>
       <span className={styles.fabText}>{label}</span>
     </button>
   );
-}
+});

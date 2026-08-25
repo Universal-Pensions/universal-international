@@ -65,7 +65,7 @@ export default function SubscriberShell() {
         onOpenNotif={() => setSheet('notif')}
         onOpenAI={() => setSheet('ai')}
       />
-      <main ref={viewportRef} className={styles.viewport} id="main">
+      <main ref={viewportRef} className={styles.viewport} id="main" tabIndex={-1}>
         <AnimatePresence mode="wait" initial={false}>
           <motion.div
             key={location.pathname}

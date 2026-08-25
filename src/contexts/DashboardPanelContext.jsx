@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useMemo, useCallback, useEffect } from 'react';
 import { useDashboardNav } from './DashboardNavContext';
+import { useAuth } from './AuthContext';
 
 /**
  * @typedef {Object} DashboardPanelContextValue
@@ -34,9 +35,74 @@ import { useDashboardNav } from './DashboardNavContext';
  * @property {() => void} closeAllPanels - Close every slide-in panel
  */
 
+// ─── AUDIT A19-001 — session-persisted rail destination ─────────────────────
+// Refreshing the distributor/admin DESKTOP shell used to always revert to the
+// National Overview, because which rail panel is open lives only in the
+// useState booleans below. The URL is deliberately NOT the persistence
+// mechanism: CLAUDE.md §4.2 keeps panel/drawer UI state state-based and
+// intentionally unrouted for this shell — see DashboardNavContext.jsx's own
+// `usesReportsPanel` effect, which actively rewrites `/dashboard/reports`
+// back to plain `/dashboard` once it has popped the panel open — and every
+// drill navigation in that same file (drillDown/drillUp/goToLevel/reset)
+// calls a bare `navigate('/dashboard...')` with no search-param
+// preservation, so a `?panel=` query string would be silently stripped on
+// the very next unrelated rail/drill click. sessionStorage sidesteps both.
+//
+// Session-scoped (not localStorage — a stale panel choice should not outlive
+// this tab), keyed per ROLE, and gated to exactly the two roles this finding
+// names. This context is instantiated fresh by FIVE of six roles — the
+// distributor and admin shells via DashboardProvider (DashboardContext.jsx),
+// but ALSO the branch shell (BranchDashboardShell.jsx), the agent shell
+// (AgentDashboardShell.jsx) and the subscriber shell (indirectly, via
+// SubscriberPanelContext.jsx wrapping this same DashboardPanelProvider) —
+// none of which are this finding's scope or this agent's write-set. Gating
+// on role keeps reload behaviour for those three roles byte-identical to
+// before this change; only distributor + admin get the new persistence.
+// Best-effort: falls back to in-memory-only on a quota / private-browsing
+// error or a non-browser test context, mirroring services/tickets.js's
+// A22-006 sessionStorage mirror.
+//
+// The Ask-AI copilot (`copilotOpen`) is deliberately never persisted here —
+// its conversation history is local component state that a refresh already
+// discards, so restoring an empty, unprompted-open drawer would be worse
+// than leaving it closed.
+const PERSISTED_PANEL_ROLES = new Set(['distributor', 'admin']);
+
+function panelStorageKey(role) {
+  return `upensions_${role}_panel`;
+}
+
+function readPersistedPanelKey(role) {
+  if (!PERSISTED_PANEL_ROLES.has(role)) return null;
+  try {
+    if (typeof window === 'undefined') return null;
+    return window.sessionStorage.getItem(panelStorageKey(role));
+  } catch {
+    return null;
+  }
+}
+
+function writePersistedPanelKey(role, key) {
+  if (!PERSISTED_PANEL_ROLES.has(role)) return;
+  try {
+    if (typeof window === 'undefined') return;
+    if (key) window.sessionStorage.setItem(panelStorageKey(role), key);
+    else window.sessionStorage.removeItem(panelStorageKey(role));
+  } catch {
+    // Quota / private-browsing — non-fatal. The panel still opens correctly
+    // for this render; it just won't survive a refresh this particular time.
+  }
+}
+
 const DashboardPanelContext = createContext(null);
 
 export function DashboardPanelProvider({ children }) {
+  // AUDIT A19-001 — see the module comment above. `role` both scopes the
+  // sessionStorage key (so a distributor and an admin session sharing a tab
+  // never rehydrate each other's last-open panel) and gates the feature to
+  // exactly the two roles this finding names.
+  const { role } = useAuth();
+
   // Sidebar submenu state is *derived* from a manual override OR whether a
   // related slide-in panel is open. Modelling it this way means external
   // openers (overlay click, drill-down) automatically flip the submenu open
@@ -45,15 +111,22 @@ export function DashboardPanelProvider({ children }) {
   const [manualAgentMenu, setManualAgentMenu] = useState(false);
   const [manualSubscriberMenu, setManualSubscriberMenu] = useState(false);
 
-  const [createBranchOpen, setCreateBranchOpen] = useState(false);
-  const [viewBranchesOpen, setViewBranchesOpen] = useState(false);
+  // Each initializer reads sessionStorage directly (rather than sharing one
+  // hoisted variable) — React only ever invokes a useState lazy initializer
+  // once, on mount, so this is a handful of cheap synchronous reads at cold
+  // load, not a per-render cost. `createAgentOpen` is deliberately excluded:
+  // it is legacy context state with no rendered page behind it (grep the
+  // dashboard shells — nothing reads it to show a create-agent panel), so it
+  // is not a "rail destination" worth restoring.
+  const [createBranchOpen, setCreateBranchOpen] = useState(() => readPersistedPanelKey(role) === 'createBranch');
+  const [viewBranchesOpen, setViewBranchesOpen] = useState(() => readPersistedPanelKey(role) === 'branches');
   const [createAgentOpen, setCreateAgentOpen] = useState(false);
-  const [viewAgentsOpen, setViewAgentsOpen] = useState(false);
-  const [viewSubscribersOpen, setViewSubscribersOpen] = useState(false);
-  const [viewReportsOpen, setViewReportsOpen] = useState(false);
-  const [commissionsOpen, setCommissionsOpen] = useState(false);
-  const [settingsOpen, setSettingsOpen] = useState(false);
-  const [viewTicketsOpen, setViewTicketsOpen] = useState(false);
+  const [viewAgentsOpen, setViewAgentsOpen] = useState(() => readPersistedPanelKey(role) === 'agents');
+  const [viewSubscribersOpen, setViewSubscribersOpen] = useState(() => readPersistedPanelKey(role) === 'subscribers');
+  const [viewReportsOpen, setViewReportsOpen] = useState(() => readPersistedPanelKey(role) === 'reports');
+  const [commissionsOpen, setCommissionsOpen] = useState(() => readPersistedPanelKey(role) === 'commissions');
+  const [settingsOpen, setSettingsOpen] = useState(() => readPersistedPanelKey(role) === 'settings');
+  const [viewTicketsOpen, setViewTicketsOpen] = useState(() => readPersistedPanelKey(role) === 'tickets');
   const [copilotOpen, setCopilotOpen] = useState(false);
   const [reportContext, setReportContext] = useState(null);
 
@@ -112,6 +185,34 @@ export function DashboardPanelProvider({ children }) {
     setViewTicketsOpen(false);
     setCopilotOpen(false);
   }, []);
+
+  // AUDIT A19-001 — derive which single rail destination is currently active,
+  // matching DashboardShell.jsx / AdminDashboardShell.jsx's `selectedPage`
+  // precedence (those Shells also layer a `childList === 'subscriber'` URL
+  // override on TOP of this, which already correctly restores on reload via
+  // routing — see the module comment above — so it is deliberately not
+  // reproduced here). Sidebar.jsx / AdminSidebar.jsx's click handlers enforce
+  // single-open (closeAllPanels() before setting the target), so at most one
+  // of these flags is ever true and the precedence order below only matters
+  // as a defensive tie-break.
+  const activePanelKey = useMemo(() => {
+    if (viewTicketsOpen) return 'tickets';
+    if (viewReportsOpen) return 'reports';
+    if (commissionsOpen) return 'commissions';
+    if (settingsOpen) return 'settings';
+    if (createBranchOpen) return 'createBranch';
+    if (viewBranchesOpen) return 'branches';
+    if (viewAgentsOpen) return 'agents';
+    if (viewSubscribersOpen) return 'subscribers';
+    return null;
+  }, [
+    viewTicketsOpen, viewReportsOpen, commissionsOpen, settingsOpen,
+    createBranchOpen, viewBranchesOpen, viewAgentsOpen, viewSubscribersOpen,
+  ]);
+
+  useEffect(() => {
+    writePersistedPanelKey(role, activePanelKey);
+  }, [role, activePanelKey]);
 
   const value = useMemo(() => ({
     branchMenuOpen, setBranchMenuOpen,

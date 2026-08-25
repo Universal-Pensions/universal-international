@@ -137,7 +137,6 @@ export default function MemberDetailBody({ employeeId }) {
                     value={draft}
                     onChange={(e) => setDraft(e.target.value)}
                     aria-label="Monthly compensation in UGX"
-                    autoFocus
                     disabled={updateCompensation.isPending}
                   />
                   <button

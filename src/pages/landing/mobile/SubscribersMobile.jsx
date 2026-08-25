@@ -50,7 +50,7 @@ export default function SubscribersMobile({ openCalc }) {
         <p className={styles.eyebrow}>Real stories</p>
         <h2 className={styles.sectTitle}>People saving — and protecting — their future.</h2>
       </div>
-      <div className={styles.quotesScroll}>
+      <div className={styles.quotesScroll} tabIndex={0} aria-label="Customer stories, scroll for more">
         <div className={styles.quote} style={{ '--qc': 'var(--indigo)' }}><div className={styles.qm}>“</div><p>I work for myself. Now I save what I can — and my family is covered too.</p><div className={styles.qby}><span className={styles.qav}>AN</span><div><div className={styles.qn}>Aisha Namukasa</div><div className={styles.qr}>Tailoring business · Kampala</div></div></div></div>
         <div className={styles.quote} style={{ '--qc': 'var(--green)' }}><div className={styles.qm}>“</div><p>Paying 80 staff used to take days. Now I upload one file and it's done.</p><div className={styles.qby}><span className={styles.qav}>RO</span><div><div className={styles.qn}>Robert Ochieng</div><div className={styles.qr}>HR Manager · Logistics company</div></div></div></div>
         <div className={styles.quote} style={{ '--qc': 'var(--teal)' }}><div className={styles.qm}>“</div><p>I see my whole region on one map, compare branches, and settle commissions in a few clicks.</p><div className={styles.qby}><span className={styles.qav}>GA</span><div><div className={styles.qn}>Grace Atim</div><div className={styles.qr}>Network operations · Northern Uganda</div></div></div></div>

@@ -70,3 +70,52 @@ describe('LandingNav audience tabs', () => {
     expect(within(drawer).getByRole('link', { name: 'Administrator' })).toHaveAttribute('aria-current', 'page');
   });
 });
+
+// ── A20-004 ────────────────────────────────────────────────────────────────
+// The mobile drawer stays MOUNTED when closed — only a CSS class changes — so
+// `aria-hidden` alone left its children tabbable while announcing them hidden.
+// A keyboard user tabbing the landing page fell into an invisible menu; axe
+// reports aria-hidden-focus (serious) on /, /admin, /distributors, /employers.
+//
+// Two deliberate choices in how this is asserted:
+//
+//  1. Queried by DOM, not by role. Once the drawer is correctly inert it is no
+//     longer in the accessibility tree at all, so getByRole cannot find it even
+//     with { hidden: true }. That is the fix working, not a broken query.
+//
+//  2. Asserted on the ATTRIBUTE, not the `.inert` DOM property. jsdom does not
+//     implement inert — verified: `'inert' in HTMLElement.prototype` is false and
+//     the property reads `undefined` — while React 19 does emit `inert=""`
+//     correctly. So the attribute is the strongest signal available here. The
+//     real focusability behaviour it triggers is a BROWSER behaviour and needs an
+//     axe run in a real engine to confirm end to end (Phase 5's screenshot/axe
+//     sweep). Recorded honestly rather than claimed.
+describe('LandingNav mobile drawer — closed means inert (A20-004)', () => {
+  const FOCUSABLE = 'a[href], button, input, select, textarea, [tabindex]:not([tabindex="-1"])';
+  const drawerOf = (container) =>
+    container.querySelector('aside[aria-label="Mobile navigation"]');
+
+  it('marks the closed drawer inert, so none of its children are reachable by Tab', () => {
+    const { container } = renderNav();
+    const drawer = drawerOf(container);
+    expect(drawer).not.toBeNull();
+
+    // Guard the test itself: if the drawer ever unmounts when closed, the inert
+    // assertion below would pass vacuously. The audit counted 7 focusables here —
+    // close button, 4 audience links, Sign in, CTA.
+    expect(drawer.querySelectorAll(FOCUSABLE).length).toBeGreaterThanOrEqual(7);
+
+    expect(drawer.hasAttribute('inert')).toBe(true);
+    expect(drawer.getAttribute('aria-hidden')).toBe('true');
+  });
+
+  it('clears inert when the drawer opens, so the menu is usable', () => {
+    const { container } = renderNav();
+    fireEvent.click(screen.getByLabelText('Open menu'));
+
+    const drawer = drawerOf(container);
+    expect(drawer.hasAttribute('inert')).toBe(false);
+    expect(drawer.getAttribute('aria-hidden')).not.toBe('true');
+    expect(drawer.querySelectorAll(FOCUSABLE).length).toBeGreaterThanOrEqual(7);
+  });
+});

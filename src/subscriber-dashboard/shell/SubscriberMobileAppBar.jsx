@@ -43,6 +43,19 @@ const TAB = {
 // Other secondary pages: back + title, actions shown.
 const SECONDARY = {
   '/dashboard/reports': 'Analytics',
+  // The 5 report sub-views (A10-004 / A18-006). Without these, every one of
+  // them fell through to the generic '/dashboard/reports/' fallback below and
+  // rendered the same "Analytics" <h1> — the report's own header is
+  // deliberately suppressed on mobile (ReportsPage.jsx's ReportsHeader
+  // returns null below 1024px), so that shared fallback was the ONLY heading
+  // on screen for all five routes. Titles match ReportsPage.jsx's REPORT_TITLES
+  // (the desktop-canonical name for each report) so mobile never says
+  // something different from desktop for the same route.
+  '/dashboard/reports/all-transactions':      'All Transactions',
+  '/dashboard/reports/contributions-summary': 'Contributions Summary',
+  '/dashboard/reports/withdrawals-history':   'Withdrawals',
+  '/dashboard/reports/insurance-statement':   'Insurance Statement',
+  '/dashboard/reports/annual-statement':      'Annual Tax Statement',
   '/dashboard/policies': 'Policies',
   '/dashboard/help': 'Help',
   '/dashboard/agent': 'Your agent',

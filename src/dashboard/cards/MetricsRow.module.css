@@ -594,12 +594,12 @@
 
 .healthRank[data-status='good'] {
   background: rgba(46, 139, 87, 0.1);
-  color: var(--color-status-good);
+  color: var(--color-green-ink);
 }
 
 .healthRank[data-status='warning'] {
   background: rgba(230, 168, 23, 0.1);
-  color: var(--color-status-warning);
+  color: var(--color-kyc-warning);
 }
 
 .healthName {
@@ -617,8 +617,8 @@
   font-variant-numeric: tabular-nums;
 }
 
-.healthStat[data-status='good'] { color: var(--color-status-good); }
-.healthStat[data-status='warning'] { color: var(--color-status-warning); }
+.healthStat[data-status='good'] { color: var(--color-green-ink); }
+.healthStat[data-status='warning'] { color: var(--color-kyc-warning); }
 
 .healthCaption {
   font-family: var(--font-body);
@@ -652,7 +652,7 @@
 
 .alertItem[data-type='warning'] {
   background: rgba(230, 168, 23, 0.06);
-  color: var(--color-status-warning);
+  color: var(--color-kyc-warning);
 }
 
 .alertItem[data-type='warning'] span { color: var(--color-slate); }
@@ -666,7 +666,7 @@
 
 .alertItem[data-type='good'] {
   background: rgba(46, 139, 87, 0.06);
-  color: var(--color-status-good);
+  color: var(--color-green-ink);
 }
 
 .alertItem[data-type='good'] span { color: var(--color-slate); }

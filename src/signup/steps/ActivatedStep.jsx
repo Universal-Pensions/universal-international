@@ -6,6 +6,7 @@ import { resolveScheduleTier } from '../../utils/insuranceSelection';
 
 import { formatMemberId } from '../../utils/memberId';
 import { useSignup } from '../SignupContext';
+import { useToast } from '../../contexts/ToastContext';
 import { openPolicyCertificate } from '../contribution/insurancePolicyCertificate';
 import MemberCard from '../../components/MemberCard';
 import styles from './Step.module.css';
@@ -19,6 +20,7 @@ function addYears(date, n) {
 
 export default function ActivatedStep({ onFinish, snapshot }) {
   const ctx = useSignup();
+  const { addToast } = useToast();
   const data = snapshot ?? ctx;
   const { fullName, phone, dob, gender, contributionSchedule } = data;
 
@@ -78,8 +80,14 @@ export default function ActivatedStep({ onFinish, snapshot }) {
       showBeneficiaries: policy.showBeneficiaries,
     });
     if (!ok) {
-      // Pop-up blocked. Demo-level fallback — no toast context here.
-      window.alert('Please allow pop-ups for this site and try again to download your certificate.');
+      // Pop-up blocked — surface it the same way the subscriber dashboard's
+      // Policies page does (PoliciesPage.jsx handleCertificate), via the
+      // app's own toast, not a blocking window.alert(). ToastProvider wraps
+      // the whole app from main.jsx, so it's available here exactly like it
+      // is at every other call site in the signup flow (e.g.
+      // ContributionRoute.jsx) — there was never a reason this needed a
+      // different, blocking mechanism.
+      addToast('error', 'Please allow pop-ups for this site and try again to download your certificate.');
     }
   }
 

@@ -84,7 +84,7 @@ export default function RequestAccessMobile() {
     <div className={cx(styles.screen, styles.screenNoBar)}>
       <div className={styles.sect} style={{ marginTop: '2px' }}>
         <p className={styles.eyebrow}>{copy.eyebrow}</p>
-        <h2 className={styles.sectTitle}>{copy.title}</h2>
+        <h1 className={styles.sectTitle}>{copy.title}</h1>
         <p className={styles.sectLead}>{copy.lede}</p>
       </div>
 
@@ -93,7 +93,7 @@ export default function RequestAccessMobile() {
           <span className={styles.tick}>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="m5 13 4 4L19 7" /></svg>
           </span>
-          <h3>Request received</h3>
+          <h2>Request received</h2>
           {/* Promise the call, not an email — there is no mail provider wired
               up anywhere in this repo, so "we'll email you" was a promise the
               platform could not keep. The phone is now always present. */}

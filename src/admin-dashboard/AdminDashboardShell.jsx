@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback, lazy, Suspense } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef, lazy, Suspense } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { EASE_OUT_EXPO } from '../utils/motion';
@@ -48,6 +48,28 @@ import NotificationBell from '../components/notifications/NotificationBell';
 // Reuse the distributor shell layout styles for pixel-identical chrome.
 import styles from '../dashboard/DashboardShell.module.css';
 import chrome from './adminChrome.module.css';
+
+// AUDIT A19-001 — mirrors DashboardShell.jsx's identically-named helpers
+// (see that file, and DashboardPanelContext.jsx's header comment, for the
+// full sessionStorage-not-URL rationale). Separate key (`_admin_` vs
+// `_distributor_`) so the two shells' last-used mode never cross over.
+function readPersistedMode() {
+  try {
+    if (typeof window === 'undefined') return 'dash';
+    return window.sessionStorage.getItem('upensions_admin_mode') === 'map' ? 'map' : 'dash';
+  } catch {
+    return 'dash';
+  }
+}
+
+function writePersistedMode(mode) {
+  try {
+    if (typeof window === 'undefined') return;
+    window.sessionStorage.setItem('upensions_admin_mode', mode);
+  } catch {
+    // Quota / private-browsing — non-fatal.
+  }
+}
 
 const DRAWER_ITEMS = [
   { id: 'overview', label: 'Overview' },
@@ -294,6 +316,17 @@ function AdminDashboardContent({ mode, mapMounted }) {
     setCopilotOpen,
     viewNavOpen,
   } = useAdminPanel();
+
+  // Ask-AI trigger ref + a close handler that restores focus to it (AUDIT
+  // A19-006) — the bare `setCopilotOpen(false)` this used to pass left focus
+  // stranded wherever Tab last moved it in the background sidebar. Mirrors
+  // `closeCopilot` in the four routed shells (e.g. SubscriberDesktopShell).
+  const askAiRef = useRef(null);
+  const closeCopilot = useCallback(() => {
+    setCopilotOpen(false);
+    requestAnimationFrame(() => askAiRef.current?.focus());
+  }, [setCopilotOpen]);
+
   // Open the employer detail panel focused on the clicked employer (from the map
   // district drill-down's Employers tab) — mirrors clicking a branch.
   const handleEmployerSelect = useCallback((id) => {
@@ -326,7 +359,7 @@ function AdminDashboardContent({ mode, mapMounted }) {
 
   return (
     <>
-      <main className={dashMode ? `${styles.main} ${styles.mainDash}` : styles.main} id="main">
+      <main className={dashMode ? `${styles.main} ${styles.mainDash}` : styles.main} id="main" tabIndex={-1}>
         <NavAnnouncer />
         {/* Map: built lazily on the first map-mode entry, then kept mounted and
             hidden via CSS in dash mode so its Leaflet instance + drill state
@@ -408,11 +441,11 @@ function AdminDashboardContent({ mode, mapMounted }) {
           so filtering on the caller's own id would show an empty bell. RLS still
           scopes the read (notifications_select_admin, 0049). */}
       <div className={chrome.topRight}>
-        <NotificationBell role="admin" entityId="*" align="right" portal />
-        <AskAiFab onClick={() => setCopilotOpen(true)} />
+        <NotificationBell recipientRole="admin" entityId="*" align="right" portal />
+        <AskAiFab ref={askAiRef} onClick={() => setCopilotOpen(true)} active={copilotOpen} />
       </div>
       {copilotOpen && (
-        <DataCopilotPanel open scope="admin" onClose={() => setCopilotOpen(false)} />
+        <DataCopilotPanel open scope="admin" onClose={closeCopilot} />
       )}
     </>
   );
@@ -430,11 +463,19 @@ function AdminDesktopShell() {
   // contexts so the distributor + other roles are untouched. Page selection is
   // the panel-open booleans / URL drill state, orthogonal to mode, so toggling
   // mode preserves the current page for free.
-  const [mode, setMode] = useState('dash');
+  //
+  // AUDIT A19-001 — lazily restored from sessionStorage (see the module
+  // comment above) so a reload while in map mode doesn't silently fall back
+  // to the dash canvas.
+  const [mode, setMode] = useState(() => readPersistedMode());
   // Leaflet is expensive and cannot lay out while hidden, so defer mounting
   // UgandaMap until the first map-mode entry. Once mounted it stays mounted —
   // dash mode just hides it via CSS so the instance + drill state survive.
-  const [mapMounted, setMapMounted] = useState(false);
+  //
+  // Restored alongside `mode` (not independently) — see DashboardShell.jsx's
+  // identical note: restoring `mode` to 'map' without also mounting the map
+  // would render a blank canvas on first paint.
+  const [mapMounted, setMapMounted] = useState(() => readPersistedMode() === 'map');
   const handleToggleMode = useCallback(() => {
     setMode((m) => {
       const next = m === 'map' ? 'dash' : 'map';
@@ -442,6 +483,9 @@ function AdminDesktopShell() {
       return next;
     });
   }, []);
+  useEffect(() => {
+    writePersistedMode(mode);
+  }, [mode]);
   const handleMenuToggle = useCallback(() => setMenuOpen((o) => !o), []);
   const handleMenuClose = useCallback(() => setMenuOpen(false), []);
   return (

@@ -66,7 +66,7 @@ export default function EmployerShell() {
     <EmployerAppBarContext.Provider value={appBarValue}>
       <div className={styles.shell}>
         <EmployerMobileAppBar onOpenAI={openAskAI} />
-        <main ref={viewportRef} className={styles.viewport} id="main">
+        <main ref={viewportRef} className={styles.viewport} id="main" tabIndex={-1}>
           <AnimatePresence mode="wait" initial={false}>
             <motion.div
               key={location.pathname}

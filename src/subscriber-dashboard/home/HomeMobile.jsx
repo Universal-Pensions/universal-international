@@ -73,6 +73,13 @@ export default function HomeMobile({ subscriber: sub }) {
   const balance = sub?.netBalance || 0;
   const counted = useCountUp(balance, 1100, !reduce);
   const amountLabel = Math.round(reduce ? balance : counted).toLocaleString('en-UG');
+  // A20-011: the count-up re-renders ~60x/sec while animating, and the visible
+  // <p> carries no aria-live, so a screen-reader user is never told the
+  // balance changed after a contribution. Announce the SETTLED figure (keyed
+  // off `balance`, not the animating `counted`) once via a polite live
+  // region, and hide the animating digits from the a11y tree so they aren't
+  // read frame-by-frame.
+  const settledLabel = Math.round(balance).toLocaleString('en-UG');
   const { invested, growth, growthPct } = deriveInvestmentGrowth(sub);
   const units = sub?.unitsHeld || 0;
 
@@ -137,7 +144,8 @@ export default function HomeMobile({ subscriber: sub }) {
         <p className={styles.greet}>
           {firstName ? <><b>Hi {firstName}</b>, here&apos;s your total balance</> : "Here's your total balance"}
         </p>
-        <p className={styles.heroVal}>UGX {amountLabel}</p>
+        <p className={styles.heroVal} aria-hidden="true">UGX {amountLabel}</p>
+        <span className="sr-only" aria-live="polite">Total balance UGX {settledLabel}</span>
         <div className={styles.statStrip}>
           <div>
             <b>{formatUGX(invested)}</b>

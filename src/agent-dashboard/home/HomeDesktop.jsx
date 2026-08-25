@@ -17,6 +17,7 @@ import {
   isInsured,
   pendingContributors,
   monthRangeIso,
+  sumContributions,
 } from './agentHomeSummary';
 import MetricTile from '../../dashboard/shared/MetricTile';
 import QuickActions from './widgets/QuickActions';
@@ -123,13 +124,23 @@ export default function HomeDesktop() {
   );
 
   // All figures share the SAME selectors as the mobile dome + MonthlyDataCard.
+  //
+  // A11-003 — the "Monthly contributions" tile used to show
+  // computeAgentHomeSummary's `monthly` (sum of monthlyEquivalent(schedule): what
+  // members are SCHEDULED to save) under the caption "What members saved this
+  // month" — a projection presented as a completed fact, ~14% off the real
+  // figure (331K scheduled vs 291K actually collected, in the audit's
+  // evidence). Mobile already got this right (`collected`, summed from the
+  // fetched `contributions` for the anchor month) — desktop now computes the
+  // same real figure the same way, so the two viewports agree.
   const summary = useMemo(() => {
-    const { monthly, total, activePct } = computeAgentHomeSummary(subscribers, null);
+    const { total, activePct } = computeAgentHomeSummary(subscribers, null);
     let lifetime = 0;
     for (const s of subscribers) lifetime += s.totalContributions || 0;
     const onboardedThisMonth = subscribers.filter((s) => isOnboardedSince(s, onboardStart)).length;
     const pendingContribution = pendingContributors(subscribers, contributions).length;
-    return { monthly, total, activePct, lifetime, onboardedThisMonth, pendingContribution };
+    const collected = sumContributions(contributions);
+    return { total, activePct, lifetime, onboardedThisMonth, pendingContribution, collected };
   }, [subscribers, contributions, onboardStart]);
 
   // Owed mirrors CommissionsSnapshotCard / MonthlyDataCard's fallback verbatim.
@@ -181,7 +192,7 @@ export default function HomeDesktop() {
       icon: VolumeIcon,
       accent: 'indigo',
       label: 'Monthly contributions',
-      value: subsResolving ? '—' : formatUGX(summary.monthly),
+      value: subsResolving ? '—' : formatUGX(summary.collected),
       context: 'What members saved this month',
       to: '/dashboard/contributions',
     },

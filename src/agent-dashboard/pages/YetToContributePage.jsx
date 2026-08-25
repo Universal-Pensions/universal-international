@@ -36,9 +36,10 @@ export default function YetToContributePage() {
 
   const { contribStart } = useMemo(() => deriveMonthAnchors(subscribers), [subscribers]);
   const range = useMemo(() => monthRangeIso(contribStart), [contribStart]);
-  const { data: contributions = [] } = useAgentContributions(
+  const hasSubscribers = subscribers.length > 0;
+  const { data: contributions = [], isPending: contributionsPending } = useAgentContributions(
     agentId,
-    subscribers.length ? range : {},
+    hasSubscribers ? range : {},
   );
 
   const pending = useMemo(
@@ -49,7 +50,13 @@ export default function YetToContributePage() {
   const [selected, setSelected] = useState(() => new Set());
   const [nudgeRecipients, setNudgeRecipients] = useState(null);
 
-  const loading = isLoading && subscribers.length === 0;
+  // A11-006: subscribers resolving is not the only thing this page waits on —
+  // once subscribers arrive, contributions is still in flight for a beat, and
+  // pendingContributors(subscribers, []) reads an empty contributions array as
+  // "nobody has paid", flashing the WHOLE roster as pending before it settles
+  // to the real count. Gate on both queries so the list only ever renders once
+  // it can compute the true pending set.
+  const loading = (isLoading && subscribers.length === 0) || (hasSubscribers && contributionsPending);
   const allSelected = pending.length > 0 && selected.size === pending.length;
   const selectedSubs = pending.filter((s) => selected.has(s.id));
   const nudgeKey = nudgeRecipients ? nudgeRecipients.map((r) => r.id).join(',') : '';

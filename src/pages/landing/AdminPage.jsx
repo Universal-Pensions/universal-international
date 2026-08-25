@@ -96,7 +96,7 @@ export default function AdminPage() {
     <div className={styles.page}>
       <LandingNav active="admin" onSignIn={scrollToLogin} ctaLabel="Contact us" ctaTo="/contact" />
 
-      <main id="main">
+      <main id="main" tabIndex={-1}>
         {/* hero — head-office copy + platform stats, console login card on the right */}
         <section ref={heroRef} className={styles.hero} aria-labelledby="hero-title">
           <motion.div className={cx(styles.wrap, styles.heroGrid)} style={parallax ? { y: heroY, opacity: heroOpacity } : undefined}>

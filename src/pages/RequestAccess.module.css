@@ -189,6 +189,12 @@
   border-radius: 10px;
   transition: border-color 160ms ease, box-shadow 160ms ease;
 }
+@media (max-width: 1023.98px) {
+  .field input {
+    font-size: 16px; /* was 0.9375rem (15.0px) — iOS Safari zoom-on-focus fix, A18-001 */
+  }
+}
+
 .field input::placeholder { color: color-mix(in srgb, var(--color-gray) 65%, transparent); }
 .field input:focus-visible {
   outline: none; /* replaced by the ring below */
@@ -208,7 +214,7 @@
   margin-top: 5px;
 }
 .hint { color: var(--color-gray); }
-.fieldErr { color: var(--color-status-poor, #c0392b); font-weight: 500; }
+.fieldErr { color: var(--color-poor-ink); font-weight: 500; }
 
 .actions {
   display: flex;
@@ -247,7 +253,7 @@
   margin: 16px 0 0;
   padding: 10px 12px;
   font-size: 0.875rem;
-  color: var(--color-status-poor, #c0392b);
+  color: var(--color-poor-ink);
   background: rgba(192, 57, 43, 0.07);
   border: 1px solid rgba(192, 57, 43, 0.22);
   border-radius: 10px;
@@ -261,7 +267,7 @@
   border-radius: 50%;
   display: grid;
   place-items: center;
-  color: var(--color-status-good, #2e7d55);
+  color: var(--color-green-ink);
   background: rgba(46, 125, 85, 0.1);
 }
 .check svg { width: 22px; height: 22px; }

@@ -80,16 +80,30 @@ export function DashboardNavProvider({ children }) {
   useEffect(() => {
     pathnameRef.current = location.pathname;
   });
-  // Role gates the panel-style "/dashboard/reports → slide-in" effect below.
-  // Distributor + the branch MOBILE dashboard render Reports as a slide-in
-  // panel, so visiting `/dashboard/reports` should pop the panel and rewrite the
-  // URL back to `/dashboard`. Subscriber + agent dashboards (and now the branch
-  // DESKTOP shell, >=1024px) have *routed* report pages and must be allowed to
-  // render them — bouncing them back to `/dashboard` was the Phase 6.5
-  // regression that made every report page unreachable for those roles.
+  // Role+viewport gates the panel-style "/dashboard/reports → slide-in" effect
+  // below. Only the distributor DESKTOP shell (>=1024px) still renders Reports
+  // as a state-based slide-in/full-page panel (CLAUDE.md §4.2 — panels are
+  // intentionally not routed there), so visiting `/dashboard/reports` should
+  // pop the panel and rewrite the URL back to `/dashboard`.
+  //
+  // Every other combination now has *routed* report pages and must be allowed
+  // to render them:
+  //   - Subscriber + agent dashboards always did.
+  //   - The branch DESKTOP shell got routed reports (→ /dashboard/analytics)
+  //     in the map-theme redesign.
+  //   - The branch MOBILE shell (BranchMobileShell) also owns a routed
+  //     `reports` → `/dashboard/analytics` redirect.
+  //   - The distributor MOBILE shell (DistributorMobileShell) shipped its own
+  //     full `reports` + `reports/:reportId` route tree (ReportsMobile /
+  //     ReportViewMobile) — but this effect used to fire for EVERY distributor
+  //     viewport, so on mobile it redirected to `/dashboard` before those
+  //     routes ever got a chance to render, making all 11 report views
+  //     unreachable below 1024px (AUDIT A13-001). `&& isDesktop` below is the
+  //     fix — distributor mobile now falls through to DistributorMobileShell's
+  //     own <Routes>, exactly like branch mobile already does for `reports`.
   const { role } = useAuth();
   const isDesktop = useIsDesktop();
-  const usesReportsPanel = role === 'distributor' || (role === 'branch' && !isDesktop);
+  const usesReportsPanel = role === 'distributor' && isDesktop;
 
   // Derive drill-down state from URL
   const { level, entityId, section, reportId, childList } = useMemo(() => parsePath(location.pathname), [location.pathname]);

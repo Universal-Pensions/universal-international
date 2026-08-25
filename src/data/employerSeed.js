@@ -11,7 +11,8 @@
 //
 // Like every other `src/data` module this is mock data — reached only through a
 // service, NEVER imported by a component (CLAUDE.md §4.1). Dates anchor to
-// `MOCK_NOW` (2026-05-26) for demo stability.
+// `MOCK_NOW` (2026-07-01, src/constants/demoClock.js — corrected 2026-08-25;
+// this comment previously read the stale 2026-05-26) for demo stability.
 //
 // Issue 2: the funding setup is a SINGLE company-wide value on the employer
 // (`defaultContributionConfig`) — applied to every member, never per-member.
@@ -166,16 +167,27 @@ export const MEMBERS = Object.freeze([
   makeMember({ id: 'empe-015', name: 'Robert Ssempala', phone: '+256700100015', email: 'robert.ssempala@nilebreweries.demo', gender: 'male', age: 55, nin: 'CM55020077889O', occupation: 'Warehouse Hand', compensation: 600000, monthsActive: 36, status: 'suspended', joinedDate: dateDaysAgo(1700) }),
   makeMember({ id: 'empe-016', name: 'Juliet Akello', phone: '+256700100016', email: 'juliet.akello@nilebreweries.demo', gender: 'female', age: 30, nin: 'CF30070099001P', occupation: 'Customer Service', compensation: 700000, monthsActive: 8, joinedDate: dateDaysAgo(240) }),
   // Recent hires (`recentHire`) — drive the admin Employers-scope "New Members"
-  // today/week/month trend. Anchored to _demo_now() (2026-05-18) via days-ago-from-
-  // MOCK_NOW (MOCK_NOW = _demo_now + 8d): day 8 = today/this-week, 12 = last week,
-  // 21 = earlier this month, 41 = last month. monthsActive:1 → a small starting
-  // balance. EXCLUDED from the back-dated contribution history (ACTIVE_MEMBERS
-  // filter) so they have no transactions pre-dating their join.
-  makeMember({ id: 'empe-017', name: 'Aisha Nakimuli', phone: '+256700100017', email: 'aisha.nakimuli@nilebreweries.demo', gender: 'female', age: 26, nin: 'CF26010044556Q', occupation: 'Junior Accountant', compensation: 750000, monthsActive: 1, recentHire: true, joinedDate: dateDaysAgo(8) }),
-  makeMember({ id: 'empe-018', name: 'Tom Bwambale', phone: '+256700100018', email: 'tom.bwambale@nilebreweries.demo', gender: 'male', age: 23, nin: 'CM23050066778R', occupation: 'Machine Operator', compensation: 600000, monthsActive: 1, recentHire: true, joinedDate: dateDaysAgo(8) }),
-  makeMember({ id: 'empe-019', name: 'Grace Apio', phone: '+256700100019', email: 'grace.apio@nilebreweries.demo', gender: 'female', age: 29, nin: 'CF29080011223S', occupation: 'Quality Inspector', compensation: 850000, monthsActive: 1, recentHire: true, joinedDate: dateDaysAgo(12) }),
-  makeMember({ id: 'empe-020', name: 'Daniel Okot', phone: '+256700100020', email: 'daniel.okot@nilebreweries.demo', gender: 'male', age: 34, nin: 'CM34030099001T', occupation: 'Shift Supervisor', compensation: 1100000, monthsActive: 1, recentHire: true, joinedDate: dateDaysAgo(21) }),
-  makeMember({ id: 'empe-021', name: 'Lydia Nansubuga', phone: '+256700100021', email: 'lydia.nansubuga@nilebreweries.demo', gender: 'female', age: 27, nin: 'CF27110033445U', occupation: 'Logistics Clerk', compensation: 700000, monthsActive: 1, recentHire: true, joinedDate: dateDaysAgo(41) }),
+  // today/week/month trend. monthsActive:1 → a small starting balance. EXCLUDED
+  // from the back-dated contribution history (ACTIVE_MEMBERS filter) so they
+  // have no transactions pre-dating their join.
+  //
+  // ⚠️ THESE OFFSETS WERE 8, 12, 21, 41 AND EVERY TILE READ ZERO.
+  // The old comment recorded the calibration they depended on: "Anchored to
+  // _demo_now() (2026-05-18) via days-ago-from-MOCK_NOW (MOCK_NOW = _demo_now
+  // + 8d): day 8 = today/this-week". Migration 0126 set _demo_now() EQUAL to
+  // MOCK_NOW to close audit A06-009, which deleted that 8-day gap — so "8 days
+  // before MOCK_NOW" stopped meaning "today" and every hire landed exactly one
+  // bucket too early. Each offset is now 8 lower, which is the same 8 the old
+  // comment named. Live was repaired by 0135.
+  // See docs/audits/2026-08-23/a06/REGRESSION-0126-employer-trends.md.
+  //
+  // Buckets on a demo clock of MOCK_NOW: 0 = today/this-week/this-month,
+  // 4 = this week, 13 = last week or earlier, 33 = last month.
+  makeMember({ id: 'empe-017', name: 'Aisha Nakimuli', phone: '+256700100017', email: 'aisha.nakimuli@nilebreweries.demo', gender: 'female', age: 26, nin: 'CF26010044556Q', occupation: 'Junior Accountant', compensation: 750000, monthsActive: 1, recentHire: true, joinedDate: dateDaysAgo(0) }),
+  makeMember({ id: 'empe-018', name: 'Tom Bwambale', phone: '+256700100018', email: 'tom.bwambale@nilebreweries.demo', gender: 'male', age: 23, nin: 'CM23050066778R', occupation: 'Machine Operator', compensation: 600000, monthsActive: 1, recentHire: true, joinedDate: dateDaysAgo(0) }),
+  makeMember({ id: 'empe-019', name: 'Grace Apio', phone: '+256700100019', email: 'grace.apio@nilebreweries.demo', gender: 'female', age: 29, nin: 'CF29080011223S', occupation: 'Quality Inspector', compensation: 850000, monthsActive: 1, recentHire: true, joinedDate: dateDaysAgo(4) }),
+  makeMember({ id: 'empe-020', name: 'Daniel Okot', phone: '+256700100020', email: 'daniel.okot@nilebreweries.demo', gender: 'male', age: 34, nin: 'CM34030099001T', occupation: 'Shift Supervisor', compensation: 1100000, monthsActive: 1, recentHire: true, joinedDate: dateDaysAgo(13) }),
+  makeMember({ id: 'empe-021', name: 'Lydia Nansubuga', phone: '+256700100021', email: 'lydia.nansubuga@nilebreweries.demo', gender: 'female', age: 27, nin: 'CF27110033445U', occupation: 'Logistics Clerk', compensation: 700000, monthsActive: 1, recentHire: true, joinedDate: dateDaysAgo(33) }),
 ]);
 
 // Recent hires are excluded from the back-dated contribution history below — they
@@ -194,18 +206,58 @@ const ACTIVE_MEMBERS = MEMBERS.filter((m) => m.status === 'active' && !m.recentH
 // → run detail showed "0 members"). A member with BOTH legs 0 contributes no rows.
 //
 // The five dates double as the Employers-scope trend windows (today / this week /
-// last week / this month / last month), anchored on the FROZEN public._demo_now()
-// (2026-05-18). They are EXPLICIT UTC dates at midday (T12:00Z) so date_trunc('day')
-// stays timezone-stable across machines (a MOCK_NOW + local-tz basis dropped the
-// "today" sample to 05-17 on a UTC+5:30 host). run-001 oldest … run-005 newest, so
-// an ORDER BY run_at DESC lists the newest run first (leaderboard reads runs[0]).
-const RUN_DATES = [
-  { id: 'run-001', date: '2026-03-15', periodLabel: 'March 2026 payroll' },
-  { id: 'run-002', date: '2026-04-15', periodLabel: 'April 2026 payroll' },
-  { id: 'run-003', date: '2026-05-05', periodLabel: 'May 2026 payroll' },
-  { id: 'run-004', date: '2026-05-14', periodLabel: 'May 2026 mid-cycle' },
-  { id: 'run-005', date: '2026-05-18', periodLabel: 'May 2026 latest' },
+// last week / this month / last month), so they MUST track the demo clock.
+//
+// ⚠️ THEY USED TO BE ABSOLUTE LITERALS ('2026-03-15' … '2026-05-18'), anchored to
+// the then-frozen public._demo_now() of 2026-05-18. Migration 0126 moved that
+// clock to 2026-07-01 to close audit A06-009 (five "now"s up to 44 days apart) —
+// and these dates did not follow. Every current-period tile on the admin
+// "Employers" scope silently went to zero while the previous-period tiles kept
+// their data, which reads as "all employer activity stopped". Live was repaired
+// by 0134; deriving them here is what stops the next reseed regenerating it.
+// See docs/audits/2026-08-23/a06/REGRESSION-0126-employer-trends.md.
+//
+// ⚠️ DERIVED IN UTC, ON PURPOSE. The original comment recorded why these were
+// absolute: "a MOCK_NOW + local-tz basis dropped the 'today' sample to 05-17 on
+// a UTC+5:30 host". So the offsets below are applied with UTC getters and kept
+// at midday UTC (see atMidday), which preserves timezone-stability for
+// date_trunc('day') while still following the clock. Do NOT rewrite this using
+// local-time getters.
+//
+// Offsets are days BEFORE MOCK_NOW, preserving the original relative spacing
+// (run-005 lands ON the clock, so the "today" tile is non-zero). run-001 oldest
+// … run-005 newest, so ORDER BY run_at DESC lists the newest first (the
+// leaderboard reads runs[0]).
+const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June',
+  'July', 'August', 'September', 'October', 'November', 'December'];
+
+/** YYYY-MM-DD, `days` before MOCK_NOW, computed entirely in UTC. */
+function runDateUTC(days) {
+  const d = new Date(Date.UTC(
+    MOCK_NOW.getFullYear(), MOCK_NOW.getMonth(), MOCK_NOW.getDate(),
+  ));
+  d.setUTCDate(d.getUTCDate() - days);
+  return d.toISOString().slice(0, 10);
+}
+
+/** "June 2026 mid-cycle" — derived so a label can never contradict its own date. */
+function runLabel(iso, qualifier) {
+  const [y, m] = iso.split('-');
+  return `${MONTHS[Number(m) - 1]} ${y} ${qualifier}`;
+}
+
+const RUN_OFFSETS = [
+  { id: 'run-001', daysBefore: 64, qualifier: 'payroll' },
+  { id: 'run-002', daysBefore: 33, qualifier: 'payroll' },
+  { id: 'run-003', daysBefore: 13, qualifier: 'payroll' },
+  { id: 'run-004', daysBefore: 4,  qualifier: 'mid-cycle' },
+  { id: 'run-005', daysBefore: 0,  qualifier: 'latest' },
 ];
+
+const RUN_DATES = RUN_OFFSETS.map(({ id, daysBefore, qualifier }) => {
+  const date = runDateUTC(daysBefore);
+  return { id, date, periodLabel: runLabel(date, qualifier) };
+});
 const atMidday = (d) => `${d}T12:00:00.000Z`;
 
 // Build the tagged legs and their run headers in one pass so each run's

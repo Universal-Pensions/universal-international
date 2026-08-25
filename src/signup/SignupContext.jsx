@@ -1,5 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useReducer } from 'react';
-import { SIGNUP_STORAGE_KEY } from './signupState';
+import { SIGNUP_STORAGE_KEY, signupStorageKey } from './signupState';
 
 /**
  * Generate a unique onboarding-session id. Backend uses this to correlate
@@ -52,6 +52,9 @@ function createOnboardingSessionId() {
  * @property {'male'|'female'|'other'|null} gender
  * @property {string} barcodeRaw
  * @property {number|null} idConfidence
+ * @property {string|null} idCapturedSessionId — the onboardingSessionId the OCR
+ *   result was captured under. Lets ReviewStep tell "already scanned THIS
+ *   attempt" (skip) from "scanned a PREVIOUS attempt" (re-scan).
  * @property {string} phone                 — manual entry, 9 digits
  * @property {string} email                 — optional, used for statements & notifications
  * @property {string} occupation            — manual entry
@@ -124,6 +127,7 @@ const INITIAL_STATE = {
   gender: null,
   barcodeRaw: '',
   idConfidence: null,
+  idCapturedSessionId: null,
 
   phone: '',
   email: '',
@@ -195,7 +199,7 @@ function reducer(state, action) {
 // lives in memory only and is re-entered on remount if the user navigates back.
 const EPHEMERAL_KEYS = ['idFrontFile', 'idBackFile', 'selfieFile', 'idFrontPreviewUrl', 'idBackPreviewUrl', 'password'];
 
-function loadPersisted() {
+function loadPersisted(storageKey = SIGNUP_STORAGE_KEY) {
   // Always create a fresh session ID + signup nonce by default; if persisted
   // state has them, the spread below overwrites so refresh keeps the same keys.
   const fresh = {
@@ -205,7 +209,7 @@ function loadPersisted() {
   };
   if (typeof window === 'undefined') return fresh;
   try {
-    const raw = window.localStorage.getItem(SIGNUP_STORAGE_KEY);
+    const raw = window.localStorage.getItem(storageKey);
     if (!raw) return fresh;
     const parsed = JSON.parse(raw);
     // Reset ephemeral keys to their INITIAL_STATE default (File/Blob/url fields
@@ -228,12 +232,12 @@ function loadPersisted() {
   }
 }
 
-function persist(state) {
+function persist(state, storageKey = SIGNUP_STORAGE_KEY) {
   if (typeof window === 'undefined') return;
   try {
     const toStore = { ...state };
     EPHEMERAL_KEYS.forEach((k) => { delete toStore[k]; });
-    window.localStorage.setItem(SIGNUP_STORAGE_KEY, JSON.stringify(toStore));
+    window.localStorage.setItem(storageKey, JSON.stringify(toStore));
   } catch {
     // Quota / private-browsing — non-fatal.
   }
@@ -241,8 +245,12 @@ function persist(state) {
 
 const SignupContext = createContext(null);
 
-export function SignupProvider({ children }) {
-  const [state, dispatch] = useReducer(reducer, INITIAL_STATE, loadPersisted);
+export function SignupProvider({ children, flow = 'self' }) {
+  // `flow` namespaces the persisted blob. Agent onboarding and self-signup are
+  // two separate wizards that were sharing one localStorage record — see
+  // signupStorageKey()'s comment for what that caused.
+  const storageKey = signupStorageKey(flow);
+  const [state, dispatch] = useReducer(reducer, INITIAL_STATE, () => loadPersisted(storageKey));
 
   // Debounce localStorage persistence — every signup keystroke patches state,
   // and persisting synchronously to localStorage on every patch is enough work
@@ -252,9 +260,9 @@ export function SignupProvider({ children }) {
   // The unload listener below flushes any pending debounce on tab close so
   // the last keystroke can't get lost.
   useEffect(() => {
-    const t = setTimeout(() => persist(state), 300);
+    const t = setTimeout(() => persist(state, storageKey), 300);
     return () => clearTimeout(t);
-  }, [state]);
+  }, [state, storageKey]);
 
   // Force-flush the pending debounce on tab close / refresh so we don't drop
   // the last keystroke. `beforeunload` is the broadest signal available; we
@@ -288,23 +296,23 @@ export function SignupProvider({ children }) {
     // nonce rotation never depends on the debounce.
     if (typeof window !== 'undefined') {
       try {
-        const raw = window.localStorage.getItem(SIGNUP_STORAGE_KEY);
+        const raw = window.localStorage.getItem(storageKey);
         const stored = raw ? JSON.parse(raw) : {};
         window.localStorage.setItem(
-          SIGNUP_STORAGE_KEY,
+          storageKey,
           JSON.stringify({ ...stored, signupNonce: fresh }),
         );
       } catch { /* quota / private-browsing — the debounce remains as fallback */ }
     }
-  }, []);
+  }, [storageKey]);
 
   const reset = useCallback(() => {
     if (typeof window !== 'undefined') {
-      try { window.localStorage.removeItem(SIGNUP_STORAGE_KEY); } catch { /* ignore */ }
+      try { window.localStorage.removeItem(storageKey); } catch { /* ignore */ }
     }
     // The reducer's 'reset' action mints a fresh onboardingSessionId.
     dispatch({ type: 'reset' });
-  }, []);
+  }, [storageKey]);
 
   const value = useMemo(
     () => ({ ...state, patch, reset, rotateSignupNonce }),

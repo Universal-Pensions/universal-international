@@ -25,6 +25,14 @@
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
+// A12-008 — same guard as branchOverviewDerive.js's monthlyContribStat (this
+// file's sibling pure-derive module for the same branch data — see that
+// file's comment for the full rationale). A baseline more than this many
+// times smaller than the current month is a ramp-up artifact, not a fair
+// comparison; past it, yoyPct reports "not enough history" (null) rather than
+// an absurd percentage.
+const YOY_MAX_MULTIPLE = 20;
+
 // Matches EMPTY_AGE_DISTRIBUTION keys in src/services/entities.js (raw counts).
 const AGE_KEYS = ['18-25', '26-35', '36-45', '46-55', '56+'];
 
@@ -200,9 +208,13 @@ export function deriveBranchAnalytics({
   const thisMonth = num(series[series.length - 1]);
   const prevMonth = num(series[series.length - 2]);
   const momPct = prevMonth > 0 ? Math.round(((thisMonth - prevMonth) / prevMonth) * 100) : 0;
-  // Year-over-year: this month vs the first non-zero month in the 12-element window.
+  // Year-over-year: this month vs the first non-zero month in the 12-element
+  // window. `yoyPct` is `null` — not 0, not a huge number — when the baseline
+  // isn't a fair comparison (see YOY_MAX_MULTIPLE); the UI renders an explicit
+  // "not enough history" state for that case instead of a percentage.
   const firstNonZero = series.find((v) => num(v) > 0) || 0;
-  const yoyPct = firstNonZero > 0 ? Math.round(((thisMonth - firstNonZero) / firstNonZero) * 100) : 0;
+  const yoyUsable = firstNonZero > 0 && thisMonth / firstNonZero <= YOY_MAX_MULTIPLE;
+  const yoyPct = yoyUsable ? Math.round(((thisMonth - firstNonZero) / firstNonZero) * 100) : null;
   const nonZero = series.filter((v) => num(v) > 0);
   const monthlyAvg = nonZero.length
     ? Math.round(nonZero.reduce((s, v) => s + num(v), 0) / nonZero.length)

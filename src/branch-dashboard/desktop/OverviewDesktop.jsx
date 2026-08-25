@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { MOCK_NOW } from '../../constants/demoClock';
 import { useAuth } from '../../contexts/AuthContext';
 import { useBranchScope } from '../../contexts/BranchScopeContext';
 import { useEntity, useChildren, useEntityMetrics, useChildrenMetrics, useBranchPendingContributions } from '../../hooks/useEntity';
@@ -53,6 +54,25 @@ function BranchGauge({ value }) {
   );
 }
 
+/**
+ * `count` short month labels (e.g. "Jan"), oldest first, ending at `now`'s
+ * calendar month — e.g. monthLabelsEndingAt(3, new Date(2026, 6, 15)) =>
+ * ['May', 'Jun', 'Jul']. Pure + exported (A12-001) so the fix — label from the
+ * demo clock, not the real wall clock — has a direct unit test without
+ * needing to render the full data-fetching OverviewDesktop page; see
+ * OverviewDesktop.test.js. Mirrors this directory's existing pattern of
+ * extracting+exporting a page's pure logic for testing (employer
+ * desktop/OverviewDesktop.jsx's `isInviteAwaiting`).
+ */
+export function monthLabelsEndingAt(count, now) {
+  const out = [];
+  for (let i = count - 1; i >= 0; i--) {
+    const m = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    out.push(m.toLocaleString('en-US', { month: 'short' }));
+  }
+  return out;
+}
+
 function ContributionsChart({ stat }) {
   const series = (stat.series || []).filter((v) => typeof v === 'number');
   const max = Math.max(...series, 1);
@@ -61,15 +81,16 @@ function ContributionsChart({ stat }) {
   const avgPct = scaleMax > 0 ? (avg / scaleMax) * 100 : 0;
   const lastIdx = series.length - 1;
 
-  const labels = useMemo(() => {
-    const out = [];
-    const now = new Date();
-    for (let i = series.length - 1; i >= 0; i--) {
-      const m = new Date(now.getFullYear(), now.getMonth() - i, 1);
-      out.push(m.toLocaleString('en-US', { month: 'short' }));
-    }
-    return out;
-  }, [series.length]);
+  // A12-001 — label from the demo clock (MOCK_NOW), not the real wall clock:
+  // the underlying series comes from get_entity_metrics_rollup, which buckets
+  // its 12 months relative to the SQL demo clock (public._demo_now()); MOCK_NOW
+  // is the JS mirror of that same anchor (src/constants/demoClock.js), so the
+  // last bar's label matches the month the data actually is (not "whatever
+  // month it is on the machine running the demo").
+  const labels = useMemo(
+    () => monthLabelsEndingAt(series.length, MOCK_NOW),
+    [series.length],
+  );
 
   if (!series.length) {
     return <p className={styles.feedEmpty}>No contribution history yet for this branch.</p>;
@@ -79,7 +100,9 @@ function ContributionsChart({ stat }) {
     <>
       <div className={styles.chartStat}>
         <span className={styles.chartStatVal}>{formatUGXShort(stat.current)}</span>
-        {stat.yoyPct !== 0 && (
+        {stat.yoyPct == null ? (
+          <span className={`${styles.chartStatDelta} ${styles.chartStatNeutral}`}>Not enough history to compare yet</span>
+        ) : stat.yoyPct !== 0 && (
           <span className={styles.chartStatDelta}>
             {stat.yoyPct >= 0 ? '▲' : '▼'} {Math.abs(stat.yoyPct)}% over the year
           </span>
@@ -181,7 +204,10 @@ export default function OverviewDesktop() {
           <span className={styles.roleBadge}><span className={styles.roleDot} aria-hidden="true" />Branch Admin</span>
         </div>
         <p className={styles.sub}>
-          Welcome back, {user?.name || 'Branch Admin'}&nbsp;·&nbsp;{formatDate(new Date(), { variant: 'long' })}
+          {/* A12-I02 — same identity source as the mobile hub (branches.manager_name
+              first, JWT persona name as fallback), so the signed-in branch admin
+              isn't greeted by two different names on two screens. */}
+          Welcome back, {branch?.managerName || user?.name || 'Branch Admin'}&nbsp;·&nbsp;{formatDate(new Date(), { variant: 'long' })}
         </p>
       </header>
 
@@ -220,7 +246,10 @@ export default function OverviewDesktop() {
         <div className={styles.col}>
           {/* Branch health score */}
           <Card>
-            <SectionHead title="Branch Health Score" tag="Recomputed daily" />
+            {/* A12-003 — "Live" (not "Recomputed daily"): the gauge below is
+                calcScore(derived), computed fresh from this render's metrics/agents
+                every time, never on a daily batch. */}
+            <SectionHead title="Branch Health Score" tag="Live" />
             <div className={styles.scoreRow}>
               <div className={styles.gauge}>
                 <BranchGauge value={score} />
@@ -232,8 +261,14 @@ export default function OverviewDesktop() {
               <div className={styles.scoreMeta}>
                 <div className={styles.sLabel}>Branch Score · out of 100</div>
                 {branch?.districtRank && (
+                  // A12-003 — district rank is ranked on branches.score, a stored
+                  // column that is NOT recomputed alongside the live gauge above
+                  // (verified live: gauge 84 vs stored branches.score 77 for the
+                  // same branch). Showing that stored score alongside the rank
+                  // makes the rank's own basis explicit instead of silently
+                  // implying it tracks the live number next to it.
                   <div className={styles.rankChip}>
-                    #{branch.districtRank} of {branch.districtBranchCount} in district
+                    #{branch.districtRank} of {branch.districtBranchCount} in district · score {branch.score ?? '—'}
                   </div>
                 )}
                 <p className={styles.insight}>{insightText}</p>

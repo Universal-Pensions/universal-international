@@ -8,11 +8,16 @@
 //
 // TWO HARD RULES, both learned from measuring the live database:
 //
-//   1. NO DATE MATHS HERE. The server owns the clock. There are three different
-//      "now"s in this codebase — public._demo_now() (2026-05-18, anchors the
-//      seeded charts), JS MOCK_NOW (2026-05-26) and the real wall clock, which
-//      the live ledger actually uses. Every "days late" number and every SLA in
-//      a sub-label comes from the RPC payload (`thresholds`, `asOf`).
+//   1. NO DATE MATHS HERE. The server owns the clock. There used to be three
+//      different "now"s in this codebase — public._demo_now() at 2026-05-18,
+//      JS MOCK_NOW at 2026-05-26, and the real wall clock the live ledger
+//      actually uses. Migration 0126 collapsed the first two: both now read
+//      2026-07-01 (verified live 2026-08-25 — _demo_now() returns
+//      2026-07-01 23:59:59+00, and src/constants/demoClock.js is the single JS
+//      literal every consumer imports). So there are TWO now: the unified demo
+//      clock and the wall clock. The rule is unchanged and still the point —
+//      every "days late" number and every SLA in a sub-label comes from the RPC
+//      payload (`thresholds`, `asOf`), never from arithmetic done here.
 //
 //   2. ALWAYS TEN ROWS. Zero-valued signals render as a green "Clear" pill
 //      rather than disappearing, so the card is a fixed checklist the admin can

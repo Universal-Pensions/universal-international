@@ -117,11 +117,11 @@
 }
 
 .trend[data-dir='up'] {
-  color: var(--color-status-good);
+  color: var(--color-green-ink);
 }
 
 .trend[data-dir='down'] {
-  color: var(--color-status-poor);
+  color: var(--color-poor-ink);
 }
 
 /* ─── Mini Charts ────────────────────────────────────────────────────── */

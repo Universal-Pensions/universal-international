@@ -120,7 +120,7 @@
 .avatar {
   width: 40px;
   height: 40px;
-  border-radius: 50%;
+  border-radius: var(--radius-md);
   background: var(--color-indigo);
   color: var(--color-white);
   display: flex;

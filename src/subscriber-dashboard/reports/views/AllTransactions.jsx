@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { useCurrentSubscriber } from '../../../hooks/useSubscriber';
+import { useCurrentSubscriber, useSubscriberTransactions } from '../../../hooks/useSubscriber';
 import { formatUGX } from '../../../utils/currency';
 import { txDisplayAmount } from '../../../utils/finance';
 import { isRunPosted } from '../../../utils/periodSettlement';
@@ -74,11 +74,15 @@ function pillTone(status) {
 
 export default function AllTransactions() {
   const { data: sub, isLoading, isError, error, refetch } = useCurrentSubscriber();
+  // `sub.transactions` does not exist — getCurrentSubscriber's single joined
+  // query never selects the transactions table (mapSubscriberRow has no
+  // `transactions` key), so this used to read `undefined` on every live
+  // subscriber (A10-001). Read the same dedicated, id-scoped query
+  // ActivityPage/WithdrawalsHistory already use instead.
+  const { data: transactions = [], isLoading: txLoading } = useSubscriberTransactions(sub?.id);
   const [search, setSearch] = useState('');
   const [typeFilter, setTypeFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
-
-  const transactions = useMemo(() => sub?.transactions || [], [sub?.transactions]);
 
   const filtered = useMemo(() => {
     let rows = transactions;
@@ -197,8 +201,11 @@ export default function AllTransactions() {
   }
 
   // Cold-load skeleton — shows the frame chrome with placeholder rows
-  // instead of a blank report that would otherwise read as "no data".
-  if (isLoading && !sub) {
+  // instead of a blank report that would otherwise read as "no data". Waits
+  // on the transactions fetch too (`txLoading`) — without it, a still-loading
+  // list would show as "0 of 0 transactions" for a moment (indistinguishable
+  // from the A10-001 bug this fixes) before the real rows popped in.
+  if (!sub?.id || isLoading || txLoading) {
     return (
       <div className={frameStyles.frame}>
         <div className={frameStyles.headerRow}>

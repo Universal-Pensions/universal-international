@@ -46,7 +46,7 @@
   height: 34px;
   border-radius: var(--radius-sm);
   background: color-mix(in srgb, var(--color-teal) 12%, transparent);
-  color: var(--color-teal);
+  color: var(--color-teal-ink);
 }
 
 .stats {

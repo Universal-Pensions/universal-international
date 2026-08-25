@@ -257,12 +257,16 @@ export default function AgentPage() {
 
   const handleCreate = useCallback(
     async (payload) => {
-      // The created ticket carries the resolved routing. When an agent resolved,
-      // confirm it reached them; otherwise be honest — the issue is filed for
-      // the branch/distributor support team to pick up, not "sent to your agent".
+      // The created ticket carries the resolved routing, so the confirmation can
+      // name who will pick it up. Neither branch may say "sent" (A22-006): the
+      // demo ticket store is sessionStorage-backed and therefore PER TAB, exactly
+      // like the module-level Map it replaced. The ticket is genuinely recorded
+      // and genuinely routed — it is not transmitted anywhere the recipient can
+      // read it from their own session. "Logged ... will pick it up" is true of
+      // both branches; "sent to your agent" was not.
       const created = await createTicket.mutateAsync(payload);
       if (created?.agentId) {
-        addToast('success', 'Your issue has been sent to your agent.');
+        addToast('success', 'Your issue has been logged — your agent will pick it up.');
       } else {
         addToast('success', "Your issue has been logged — our support team will pick it up.");
       }

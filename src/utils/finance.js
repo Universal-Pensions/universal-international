@@ -88,37 +88,84 @@ export function monthlyEquivalent(schedule) {
   return (amount * periodsPerYear(schedule?.frequency)) / 12;
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// parseAmount internals (A05-011)
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Currency decoration a money cell may legitimately carry, stripped before the
+ * numeric shape is validated: a leading currency word ("UGX 50,000",
+ * "sh 500"), a trailing one, and the East African "/=" / "/-" shilling suffix
+ * ("20,000/=").
+ */
+const CURRENCY_PREFIX_RE = /^(?:ugx|ush|shs|sh)\.?\s*/i;
+const CURRENCY_SUFFIX_RE = /\s*(?:ugx|ush|shs|sh)\.?$/i;
+const SHILLING_SUFFIX_RE = /\/[=-]$/;
+/**
+ * Whitespace used as a group separator ("20 000"). JS `\s` already covers the
+ * non-breaking (U+00A0) and narrow no-break (U+202F) spaces Excel emits.
+ */
+const ANY_SPACE_RE = /\s+/g;
+/**
+ * The ONLY string shape accepted as money: digits, optional comma grouping,
+ * optional decimal part. Deliberately strict — this is what rejects `=1+1`,
+ * `1e9`, `-5`, `1.2.3` and `12,500.` instead of silently coercing them.
+ */
+const MONEY_SHAPE_RE = /^\+?\d+(?:,\d+)*(?:\.\d+)?$/;
+
 /**
  * Canonical UGX money parser — the single source of truth for turning a
  * user/upload-entered amount into a whole-shilling integer.
  *
  * UGX is a zero-decimal currency: the platform never stores sub-shilling
  * amounts. Accepts plain numbers and formatted strings ("12,500", "12500",
- * "UGX 12,500", "12,500.50") and returns a non-negative **integer** (rounded
- * to the nearest whole UGX) or `null` for blank / non-finite / non-positive
- * input.
+ * "UGX 12,500", "20 000", "20,000/=", "12,500.50") and returns a **positive
+ * integer** (rounded to the nearest whole UGX), or `null` for anything that is
+ * not cleanly a positive amount.
  *
- * Decimals are preserved through parsing and then rounded — the old
+ * Decimals are preserved through parsing and then rounded — an older
  * implementation stripped the decimal point outright (`"12,500.50"` → 1250050,
  * off by 100×). The settlement upload path imports this same parser so there
  * is exactly one money-parsing rule across contributions, withdrawals, claims,
  * and settlement (see `src/utils/settlement.js`, BL-8 / M-C1).
  *
+ * ⚠️ REJECT, DON'T COERCE (A05-011). The implementation before this one
+ * *deleted* every character outside `[\d.-]` and parsed whatever was left, so a
+ * spreadsheet cell Excel had stored as a formula string became a real
+ * settlement amount: `"=1+1"` → **11**, `"1e9"` → **19**. A distributor cannot
+ * tell UGX 11 from a rejected row. Anything that is not a clean number after
+ * the currency decoration above is stripped is now `null`, which the settlement
+ * upload surfaces as the plain-language `no_amount` skip.
+ *
+ * The positivity check also runs AFTER rounding, so `"0.4"` returns `null`
+ * rather than the contract-violating `0` it used to return.
+ *
  * @param {string | number} str
- * @returns {number | null}
+ * @returns {number | null} a whole-UGX integer > 0, or null
  */
 export function parseAmount(str) {
   if (typeof str === 'number') {
-    if (!Number.isFinite(str) || str <= 0) return null;
-    return Math.round(str);
+    if (!Number.isFinite(str)) return null;
+    const rounded = Math.round(str);
+    return rounded > 0 ? rounded : null;
   }
-  // Strip everything except digits, the decimal point, and a leading sign so a
-  // fractional cell ("45000.50") parses, then round to whole UGX.
-  const cleaned = String(str ?? '').replace(/[^\d.-]/g, '');
-  if (cleaned === '' || cleaned === '-' || cleaned === '.') return null;
-  const n = Number(cleaned);
-  if (!Number.isFinite(n) || n <= 0) return null;
-  return Math.round(n);
+  // Anything that isn't a string (null, undefined, boolean, object, Date) is
+  // not a money cell. Never String()-coerce it into something parseable.
+  if (typeof str !== 'string') return null;
+
+  const cleaned = str
+    .trim()
+    .replace(CURRENCY_PREFIX_RE, '')
+    .replace(CURRENCY_SUFFIX_RE, '')
+    .replace(SHILLING_SUFFIX_RE, '')
+    .replace(ANY_SPACE_RE, '');       // "20 000" → "20000"
+
+  if (!MONEY_SHAPE_RE.test(cleaned)) return null;
+
+  const n = Number(cleaned.replace(/,/g, ''));
+  if (!Number.isFinite(n)) return null;
+  const rounded = Math.round(n);
+  return rounded > 0 ? rounded : null;
 }
 
 /**

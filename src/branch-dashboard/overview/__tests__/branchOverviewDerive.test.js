@@ -51,6 +51,25 @@ describe('branchOverviewDerive', () => {
     expect(m.current).toBe(20);
     expect(m.prev).toBe(18);
     expect(m.changePct).toBe(Math.round(((20 - 18) / 18) * 100)); // +11%
+    expect(m.yoyPct).toBe(Math.round(((20 - 10) / 10) * 100)); // 100% — a fair 2x baseline, still shown
+  });
+
+  // A12-008 regression guard: a branch's first (ramp-up) month can be a
+  // negligible sliver of a mature month. The live case this reproduces:
+  // 7,904 UGX (first month) -> 1,185,832 UGX (current) = "14903%".
+  it('monthlyContribStat reports yoyPct as null (not a huge number, not 0%) when the baseline is negligible', () => {
+    const rampUp = {
+      monthlyContributions: [7904, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1_100_000, 1_185_832],
+    };
+    const m = monthlyContribStat(rampUp);
+    expect(m.current).toBe(1_185_832);
+    expect(m.yoyPct).toBeNull();
+  });
+
+  it('monthlyContribStat reports yoyPct as null (not 0%) when there is no non-zero baseline at all', () => {
+    const noHistory = { monthlyContributions: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0] };
+    const m = monthlyContribStat(noHistory);
+    expect(m.yoyPct).toBeNull();
   });
 
   it('computeAttention returns Dormant + Overdue + Inactive agents (no KYC, no commission tile)', () => {

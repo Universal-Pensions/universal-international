@@ -17,7 +17,7 @@
   font-family: var(--font-display);
   font-weight: 700;
   font-size: var(--text-xs);
-  color: var(--color-amber, #D97706);
+  color: var(--color-amber-ink);
   cursor: pointer;
   white-space: nowrap;
 }

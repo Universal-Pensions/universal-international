@@ -17,6 +17,7 @@ import {
   SETTLEMENT_TEMPLATE_COLUMNS,
   buildTemplateRows,
   normalizeUploadedRows,
+  partitionRowsByAgentScope,
   detectMissingColumns,
   describeSkippedReason,
 } from '../../utils/settlement';
@@ -358,28 +359,41 @@ export default function CommissionPanel({ splitMode = false, fullPage = false })
     setPendingUpload({ ...normalized, nonce: newSettlementNonce() });
   }
 
-  async function handleConfirmSettlement() {
-    if (!pendingUpload || pendingUpload.rows.length === 0) return;
+  // `summary` is the confirm-modal summary, passed in by the Confirm button
+  // rather than read from the closure: `confirmSummary` is declared below this
+  // handler, and reaching backwards for it defeats the React Compiler's
+  // memoization of that useMemo (react-hooks/preserve-manual-memoization).
+  async function handleConfirmSettlement(summary) {
+    // Submit ONLY what the confirm summary accepted — rows for agents outside
+    // the caller's own roster were pre-blocked there (A05-001) and must never
+    // reach the RPC.
+    const submitRows = summary?.rows || [];
+    if (!pendingUpload || submitRows.length === 0) return;
     try {
       // Carry the per-upload idempotency nonce minted when the upload was
       // staged (BL-13): a reload / second-tab / retry replaying the same nonce
       // is a no-op server-side instead of double-recording the batch.
       const result = await applySettlement.mutateAsync({
-        rows: pendingUpload.rows,
+        rows: submitRows,
         nonce: pendingUpload.nonce,
       });
-      const skipCount = result.skipped?.length || 0;
+      // Every row the distributor uploaded that did NOT settle, in one list:
+      // the ones this panel refused to send (bad Agent ID, no amount, not one
+      // of your agents) plus the ones the server skipped (no_due,
+      // amount_too_low, and its own not_your_agent guard). Reporting only the
+      // server's half would silently swallow the pre-blocked rows.
+      const skippedAll = [...(summary?.skipped || []), ...(result.skipped || [])];
+      const skipCount = skippedAll.length;
       const skippedNote = skipCount ? ` · ${formatNumber(skipCount)} skipped` : '';
       addToast(
         'success',
         `Settled ${formatNumber(result.agentsSettled)} agent${result.agentsSettled === 1 ? '' : 's'} · ${formatUGX(result.totalPaid)}${skippedNote}`,
       );
-      // When the server skipped rows (no_due / amount_too_low), keep the modal
-      // open on a result panel that names each skipped agent + the concrete fix
-      // (BL-19) — a single-line toast can't carry that detail. With nothing
-      // skipped, close straight out.
+      // When rows were skipped, keep the modal open on a result panel that names
+      // each skipped agent + the concrete fix (BL-19) — a single-line toast
+      // can't carry that detail. With nothing skipped, close straight out.
       if (skipCount > 0) {
-        setSettlementResult(result);
+        setSettlementResult({ ...result, skipped: skippedAll });
       } else {
         setPendingUpload(null);
         setSettlementResult(null);
@@ -475,16 +489,38 @@ export default function CommissionPanel({ splitMode = false, fullPage = false })
 
   // ── Confirm-modal summary ──────────────────────────────────────────────────
   // Computed from the normalized rows + current per-agent pending dues:
+  //   - rows: the set that will actually be submitted (foreign agents removed);
   //   - agentCount / sum amountPaid / sum matched pendingCount;
   //   - mismatches: entered Amount Paid ≠ the agent's current pending total;
-  //   - skipped rows (missing id / no amount).
+  //   - skipped rows (missing id / no amount / not one of your agents).
+  //
+  // A05-001 pre-block: a hand-edited sheet could carry an Agent ID belonging to
+  // ANOTHER distributor. That row used to sail through — it matched nothing in
+  // `pendingMap`, so it raised no mismatch and no skip, and the modal offered a
+  // plain green "Confirm settlement" that settled someone else's commissions.
+  // Rows for agents outside the caller's own commission roster are now dropped
+  // from the submitted payload and listed as `not_your_agent`, so a foreign id
+  // cannot even be sent. Migration 0109 enforces the same rule server-side —
+  // that RPC guard is the real protection; this is the plain-language warning.
   const confirmSummary = useMemo(() => {
     if (!pendingUpload) return null;
     const pendingMap = new Map(duesByAgent.map((a) => [a.agentId, a]));
+
+    // Every agent this caller may settle for: the union of their pending-dues
+    // list and their commission roster. Both RPCs are scoped to the caller by
+    // 0087, so an Agent ID in neither is not theirs. `null` while the roster is
+    // still loading — `partitionRowsByAgentScope` then blocks nothing rather
+    // than refusing legitimate rows on an empty list; 0109 still backs it up.
+    const rosterLoaded = !agentListLoading && agentList.length > 0;
+    const ownAgentIds = rosterLoaded
+      ? new Set([...duesByAgent.map((a) => a.agentId), ...agentList.map((a) => a.agentId)])
+      : null;
+    const scoped = partitionRowsByAgentScope(pendingUpload.rows, ownAgentIds);
+
     let totalPaid = 0;
     let matchedLines = 0;
     const mismatches = [];
-    for (const row of pendingUpload.rows) {
+    for (const row of scoped.rows) {
       totalPaid += row.amountPaid;
       const pending = pendingMap.get(row.agentId);
       if (pending) {
@@ -500,13 +536,14 @@ export default function CommissionPanel({ splitMode = false, fullPage = false })
       }
     }
     return {
-      agentCount: pendingUpload.rows.length,
+      rows: scoped.rows,
+      agentCount: scoped.rows.length,
       totalPaid,
       matchedLines,
       mismatches,
-      skipped: pendingUpload.skipped,
+      skipped: [...pendingUpload.skipped, ...scoped.skipped],
     };
-  }, [pendingUpload, duesByAgent]);
+  }, [pendingUpload, duesByAgent, agentList, agentListLoading]);
 
   // Resolve an agent id to a display name from the current pending-dues data
   // (falls back to the id when the agent carries no remaining due — e.g. a
@@ -616,7 +653,6 @@ export default function CommissionPanel({ splitMode = false, fullPage = false })
                                   value={rateInput}
                                   onChange={(e) => setRateInput(e.target.value)}
                                   aria-label="Commission rate in UGX"
-                                  autoFocus
                                 />
                                 <button className={styles.rateSaveBtn} onClick={saveRate}>Save</button>
                                 <button className={styles.rateCancelBtn} onClick={() => setEditingRate(false)}>Cancel</button>
@@ -1131,7 +1167,7 @@ export default function CommissionPanel({ splitMode = false, fullPage = false })
                   <button
                     className={styles.modalConfirmBtn}
                     data-variant={confirmSummary.mismatches.length > 0 ? 'caution' : undefined}
-                    onClick={handleConfirmSettlement}
+                    onClick={() => handleConfirmSettlement(confirmSummary)}
                     disabled={confirmSummary.agentCount === 0 || applySettlement.isPending}
                     type="button"
                   >

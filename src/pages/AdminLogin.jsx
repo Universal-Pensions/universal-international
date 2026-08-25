@@ -30,7 +30,7 @@ export default function AdminLogin() {
 
   return (
     <div className={styles.page}>
-      <div id="main" className={styles.inner}>
+      <main id="main" tabIndex={-1} className={styles.inner}>
         <img src={logo} alt="Universal Pensions" className={styles.logo} width={140} height={40} />
         <div className={styles.card}>
           <span className={styles.badge}>Admin portal · super-admin</span>
@@ -66,7 +66,7 @@ export default function AdminLogin() {
           </div>
         </div>
         <Link to="/" className={styles.backHome}>← Back to the main site</Link>
-      </div>
+      </main>
     </div>
   );
 }

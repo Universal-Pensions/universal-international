@@ -13,6 +13,7 @@ import {
 import { EASE_OUT_EXPO } from '../../utils/motion';
 import { formatNumber, formatUGXShort, formatUGX } from '../../utils/currency';
 import { formatDate } from '../../utils/date';
+import { getFriendlyErrorMessage } from '../../utils/friendlyError';
 import { useCurrentSubscriber, useMakeContribution, useMyEmployerFunding } from '../../hooks/useSubscriber';
 import { memberFundingSummary } from '../../utils/contributionModel';
 import { useToast } from '../../contexts/ToastContext';
@@ -201,7 +202,11 @@ export default function SavePage() {
       contributionNonce.current = null;
       addToast('success', `${formatUGX(amount, { compact: false })} added to your savings.`);
     } catch (err) {
-      addToast('error', err?.message || 'Could not complete the top-up.');
+      // A22-004: err.message is always populated (raw fetch/Postgres errors
+      // included), so `err?.message || fallback` never actually falls
+      // through — a network blip toasted the literal "TypeError: Failed to
+      // fetch". Route through the plain-language classifier instead.
+      addToast('error', getFriendlyErrorMessage(err, 'Could not complete the top-up.'));
     } finally {
       setSubmitting(false);
     }

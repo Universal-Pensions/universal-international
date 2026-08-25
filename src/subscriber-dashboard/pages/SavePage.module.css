@@ -210,7 +210,7 @@
 .errorLine {
   font-family: var(--font-body);
   font-size: 12px;
-  color: var(--color-status-poor);
+  color: var(--color-poor-ink);
   margin: 0;
 }
 
@@ -321,7 +321,7 @@
   color: var(--color-gray);
 }
 .heroField[data-error] .heroInput {
-  color: var(--color-status-poor);
+  color: var(--color-poor-ink);
 }
 .heroEditHint {
   flex: 0 0 auto;
@@ -383,7 +383,7 @@
 }
 
 .splitHead [data-tone='teal'] strong {
-  color: var(--color-teal);
+  color: var(--color-teal-ink);
 }
 
 .splitHead strong {
@@ -670,7 +670,7 @@
   font-weight: 800;
   font-size: var(--text-2xl);
   letter-spacing: -0.025em;
-  color: var(--color-green);
+  color: var(--color-green-ink);
   font-variant-numeric: tabular-nums;
 }
 
@@ -890,7 +890,7 @@
   height: 72px;
   border-radius: 50%;
   background: rgba(46, 139, 87, 0.12);
-  color: var(--color-green);
+  color: var(--color-green-ink);
   display: flex;
   align-items: center;
   justify-content: center;

@@ -5,6 +5,7 @@ import { EASE_OUT_EXPO } from '../../utils/motion';
 import { useAdminPanel } from '../../contexts/AdminPanelContext';
 import { useCreateEmployer } from '../../hooks/useEmployer';
 import { useToast } from '../../contexts/ToastContext';
+import { DISTRICT_NAMES } from '../../constants/districts';
 import styles from '../adminPanels.module.css';
 
 const EMPTY = {
@@ -150,7 +151,6 @@ export default function CreateEmployer() {
                     value={form.name}
                     onChange={(e) => update('name', e.target.value)}
                     placeholder="e.g. Kampala Textiles Ltd"
-                    autoFocus
                   />
                 </div>
 
@@ -173,9 +173,22 @@ export default function CreateEmployer() {
                       value={form.district}
                       onChange={(e) => update('district', e.target.value)}
                       placeholder="e.g. Kampala"
+                      autoComplete="address-level2"
+                      list="ce-districts"
                     />
                   </div>
                 </div>
+                {/* E19: a real picker — mirrors src/pages/RequestAccess.jsx's
+                    `ra-districts` datalist so the admin form and the public
+                    request-access form constrain district the same way. Still
+                    free text underneath (the create_employer RPC — 0121 —
+                    accepts either a districts.id or a districts.name), so a
+                    value outside this list still submits; the datalist only
+                    steers typing toward a name the RPC is guaranteed to
+                    resolve, instead of an arbitrary string. */}
+                <datalist id="ce-districts">
+                  {DISTRICT_NAMES.map((d) => <option key={d} value={d} />)}
+                </datalist>
 
                 <div className={styles.field}>
                   <label className={styles.label} htmlFor="ce-reg">Registration no.</label>

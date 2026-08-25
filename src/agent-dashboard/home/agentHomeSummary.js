@@ -62,16 +62,28 @@ export function monthRangeIso(ms) {
 }
 
 /**
- * Derive the "this month" anchors from the agent's book itself. The demo seed is
+ * Derive the "this month" anchor from the agent's book itself. The demo seed is
  * anchored to a fixed MOCK_NOW and components must not import the demo clock
  * (CLAUDE.md §4), so "this month" = the month of the latest date observed.
- * Onboarding and contribution get SEPARATE anchors so a stale dimension can't
- * skew the other; an empty dimension leaves its anchor at the epoch (→ zero).
+ *
+ * A11-007 — onboarding and contribution used to get SEPARATE anchors (each
+ * dimension's own latest date), on the theory that a stale dimension shouldn't
+ * skew the other. In practice that let the SAME phrase "this month" resolve to
+ * two different calendar months on the same dashboard (e.g. "Payments logged ·
+ * June 2026" next to "New subscribers · August 2026") — which reads as a data
+ * glitch in a demo even though each figure was individually "correct" for its
+ * own dimension. Both anchors now share ONE month: the later of the two
+ * dimensions' latest activity. A dimension with no activity in that exact
+ * month honestly shows zero for it rather than silently borrowing an older
+ * month under the same "this month" label.
  *
  * Shared by MonthlyDataCard (the tile counts) and the Home drill-down pages, so
- * a tile count always equals the length of its drill-down list.
+ * a tile count always equals the length of its drill-down list, and the
+ * drill-down pages' own month headings always agree with each other.
  *
- * @returns {{ onboardStart: number, contribStart: number }} start-of-month ms.
+ * @returns {{ onboardStart: number, contribStart: number }} start-of-month ms
+ *   (both fields always equal — kept as two fields so existing call sites,
+ *   which read one or the other by name, don't need to change).
  */
 export function deriveMonthAnchors(subscribers = []) {
   let maxReg = 0;
@@ -82,7 +94,8 @@ export function deriveMonthAnchors(subscribers = []) {
     const c = s.lastContributionDate ? new Date(s.lastContributionDate).getTime() : 0;
     if (c > maxContrib) maxContrib = c;
   }
-  return { onboardStart: monthStartMs(maxReg), contribStart: monthStartMs(maxContrib) };
+  const anchor = monthStartMs(Math.max(maxReg, maxContrib));
+  return { onboardStart: anchor, contribStart: anchor };
 }
 
 /** True if the subscriber was onboarded in (or after) the anchor month. */
@@ -107,6 +120,28 @@ export function isOnboardedSince(subscriber, onboardStart) {
 export function pendingContributors(subscribers, monthContributions = []) {
   const contributed = new Set(monthContributions.map((c) => c.subscriberId));
   return subscribers.filter((s) => !contributed.has(s.id));
+}
+
+/**
+ * Sum of `.amount` across a list of contribution transactions — the ACTUAL
+ * money collected, as opposed to computeAgentHomeSummary's `monthly` (the
+ * SCHEDULED total, from monthlyEquivalent(contributionSchedule): what members
+ * are due to save, not what they have saved).
+ *
+ * A11-003: the agent Home DESKTOP tile used to show computeAgentHomeSummary's
+ * scheduled `monthly` figure under the caption "What members saved this
+ * month" — a projection presented as a completed fact (~14% off the real
+ * number in the audit's evidence: 331K scheduled vs 291K actually collected).
+ * Mobile already computed this real figure inline; this hoists that same sum
+ * here so both viewports share one implementation.
+ *
+ * @param {Array<{amount?: number}>} contributions
+ * @returns {number}
+ */
+export function sumContributions(contributions = []) {
+  let total = 0;
+  for (const c of contributions) total += c.amount || 0;
+  return total;
 }
 
 /**

@@ -97,7 +97,7 @@ function DesktopLayout() {
     >
       <BranchSideNavDesktop collapsed={navCollapsed} onToggleCollapse={toggleCollapsed} />
 
-      <main ref={viewportRef} className={styles.viewport} id="main">
+      <main ref={viewportRef} className={styles.viewport} id="main" tabIndex={-1}>
         <AnimatePresence mode="wait" initial={false}>
           <motion.div
             key={location.pathname}
@@ -129,7 +129,7 @@ function DesktopLayout() {
             <span className={styles.askAiIcon} aria-hidden="true">{sparkIcon(18)}</span>
             Ask AI
           </button>
-          <NotificationBell role="branch" entityId={branchId} align="right" portal />
+          <NotificationBell recipientRole="branch" entityId={branchId} align="right" portal />
         </div>
       )}
     </div>

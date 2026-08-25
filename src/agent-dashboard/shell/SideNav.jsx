@@ -100,7 +100,7 @@ export default function SideNav() {
         />
         {agentId && (
           <div className={styles.brandBell}>
-            <NotificationBell role="agent" entityId={agentId} align="left" />
+            <NotificationBell recipientRole="agent" entityId={agentId} align="left" />
           </div>
         )}
       </div>

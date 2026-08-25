@@ -215,16 +215,17 @@
 }
 
 /* ── CTA collapse ── four audience tabs + sign-in + CTA need ~875px of viewport
-   (measured). The tabs are the navigation, so the CTA steps aside first; it stays
-   reachable from the drawer and the page body. ── */
+   (measured). The tabs are the navigation, so the CTA steps aside first — and
+   the burger/drawer below now activates at the same 920px breakpoint, so the
+   CTA is always reachable (from the drawer if not the page body). A16-002: this
+   used to fire at 768px, a breakpoint LandingLayout never lets this component
+   see (it swaps to LandingMobileShell at <=768px first), leaving 769-920px
+   (real iPad-portrait widths) with neither the CTA nor a menu button. ── */
 @media (max-width: 920px) {
   .cta {
     display: none;
   }
-}
 
-/* ── Mobile breakpoint ── */
-@media (max-width: 768px) {
   .links {
     display: none;
   }

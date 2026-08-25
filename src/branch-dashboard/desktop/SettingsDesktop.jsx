@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useBranchScope } from '../../contexts/BranchScopeContext';
-import { useEntity } from '../../hooks/useEntity';
+import { useEntity, useUpdateBranch } from '../../hooks/useEntity';
 import { useToast } from '../../contexts/ToastContext';
 import { PageHead, Card, SectionHead, Btn } from '../../employer-dashboard/desktop/ui';
 import ui from '../../employer-dashboard/desktop/ui.module.css';
@@ -10,6 +10,7 @@ export default function SettingsDesktop() {
   const { branchId } = useBranchScope();
   const { data: branch } = useEntity('branch', branchId);
   const { addToast } = useToast();
+  const updateBranch = useUpdateBranch();
 
   const [name, setName] = useState('');
   const [managerName, setManagerName] = useState('');
@@ -32,11 +33,27 @@ export default function SettingsDesktop() {
     setManagerPhone(branch?.managerPhone || '');
   }
 
-  function handleSave(e) {
+  async function handleSave(e) {
     e.preventDefault();
-    // Demo scope: branch-profile writes aren't wired to a backend RPC. Confirm
-    // the change locally so the flow reads end-to-end in a sales walkthrough.
-    addToast('success', 'Branch profile saved.');
+    // A12-007: this used to fire the success toast unconditionally with no
+    // mutation behind it at all — a user who edited their branch profile was
+    // told it saved when nothing was written anywhere. Route through the same
+    // real useUpdateBranch() mutation the distributor's branch-edit panel uses
+    // (src/dashboard/branch/ViewBranches.jsx handleSaveEdit) so the toast is
+    // contingent on the write actually succeeding.
+    try {
+      await updateBranch.mutateAsync({
+        id: branchId,
+        updates: {
+          name: name.trim(),
+          managerName: managerName.trim(),
+          managerPhone: managerPhone.trim(),
+        },
+      });
+      addToast('success', 'Branch profile saved.');
+    } catch (err) {
+      addToast('error', err?.message || 'Could not save the branch profile. Please try again.');
+    }
   }
 
   return (
@@ -66,8 +83,10 @@ export default function SettingsDesktop() {
               </div>
             </div>
             <div className={styles.actions}>
-              <Btn variant="secondary" onClick={reset}>Cancel</Btn>
-              <Btn variant="primary" type="submit">Save changes</Btn>
+              <Btn variant="secondary" onClick={reset} disabled={updateBranch.isPending}>Cancel</Btn>
+              <Btn variant="primary" type="submit" disabled={updateBranch.isPending}>
+                {updateBranch.isPending ? 'Saving…' : 'Save changes'}
+              </Btn>
             </div>
           </form>
         </Card>

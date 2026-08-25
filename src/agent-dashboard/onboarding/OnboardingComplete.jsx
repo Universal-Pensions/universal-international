@@ -7,10 +7,26 @@ import { formatUGX } from '../../utils/currency';
 import { useAuth } from '../../contexts/AuthContext';
 import { useSignup } from '../../signup/SignupContext';
 import * as subscriberService from '../../services/subscriber';
+import { verifyOtp } from '../../services/auth';
+import { toCanonicalUGPhone } from '../../utils/phone';
 import { formatMemberId } from '../../utils/memberId';
 import MemberCard from '../../components/MemberCard';
 import { buildPayload } from './onboardPayload';
 import styles from './OnboardingComplete.module.css';
+
+// Postgres unique-violation (23505) surfaces raw constraint text ("duplicate
+// key value violates unique constraint …") that means nothing to a field
+// agent. Map it to plain language; every other failure falls through to the
+// RPC/network error's own message (or a generic fallback). supabase-js
+// exposes the Postgres SQLSTATE via `error.code` — same field
+// `isSupabaseAuthError` (services/supabaseClient.js) already reads for
+// PGRST301/302.
+function describeCreateError(err) {
+  if (err?.code === '23505') {
+    return "This subscriber's details match someone already on record (most likely the NIN). Go back and re-check the ID — two different people can't share the same National ID number.";
+  }
+  return err?.message || "Couldn't create the subscriber. Please retry.";
+}
 
 function formatSchedule(schedule) {
   if (!schedule || !schedule.amount) return null;
@@ -58,10 +74,39 @@ export default function OnboardingComplete({ subscriberName, awareness, schedule
       // stale for up to 5 min).
       queryClient.invalidateQueries({ queryKey: ['agentSubscribers', agentId] });
       queryClient.invalidateQueries({ queryKey: ['agentContributions', agentId] });
+
+      // Stamp the member's credential so they can actually sign in.
+      //
+      // ReviewStep REQUIRES a password in this flow and tells the agent
+      // "They'll use this to sign in alongside their phone" — but nothing here
+      // ever used it. The member got no `users` row and no password, so that
+      // promise was false: they could never sign in with it.
+      //
+      // Self-signup already does this (contribution/ContributionRoute.jsx) via
+      // the same call; the backend stamps `users.password_hash` on the upsert.
+      // The difference here is that we DISCARD the returned token and never
+      // call login() — the AGENT is the signed-in user and must stay so.
+      // verifyOtp is a pure POST (services/auth.js): it touches no auth state
+      // on its own, so dropping the token is safe.
+      //
+      // Deliberately NON-FATAL and after the invalidations: the subscriber row
+      // is already committed at this point. Failing the whole onboarding over a
+      // credential write would strand the agent on an error card for a member
+      // who was in fact created — the exact A11-002 shape.
+      if (signup.password) {
+        const memberPhone = toCanonicalUGPhone(signup.phone) || signup.phone;
+        try {
+          await verifyOtp(memberPhone, '123456', 'subscriber', signup.password);
+        } catch {
+          // Member exists and can still sign in by OTP; only the password is
+          // missing. Not worth failing a completed onboarding over.
+        }
+      }
+
       setStatus('success');
     } catch (err) {
       setStatus('error');
-      setErrorMessage(err?.message || "Couldn't create the subscriber. Please retry.");
+      setErrorMessage(describeCreateError(err));
     }
   }, [agentId, signup, queryClient]);
 
@@ -94,7 +139,7 @@ export default function OnboardingComplete({ subscriberName, awareness, schedule
   const lead = saved
     ? 'The subscriber’s record is created and KYC has been submitted. They’ll receive a welcome SMS with their member ID and next steps shortly.'
     : status === 'error'
-      ? 'The payment and KYC details were captured — only the final save failed. Retry below; nothing is lost and no duplicate can be created.'
+      ? 'The payment and KYC details were captured — only the final save failed. Retrying is safe and won’t create a second copy of this member.'
       : 'Payment captured. Writing the subscriber record and submitting KYC…';
 
   return (
@@ -234,8 +279,12 @@ export default function OnboardingComplete({ subscriberName, awareness, schedule
           type="button"
           className={styles.secondaryBtn}
           onClick={onClose}
-          disabled={status !== 'success'}
-          aria-disabled={status !== 'success'}
+          // Enabled once the RPC has settled either way — only mid-flight
+          // ('pending') blocks it. Previously gated on status === 'success',
+          // which trapped the agent on the error card with no way out but the
+          // shell nav (A11-002).
+          disabled={status === 'pending'}
+          aria-disabled={status === 'pending'}
         >
           Close
         </button>

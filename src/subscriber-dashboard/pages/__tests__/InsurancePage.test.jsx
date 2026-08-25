@@ -18,12 +18,14 @@ import { formatUGX } from '../../../utils/currency';
 // ── Hoisted mock fns so the vi.mock factories can close over them. ────────────
 const {
   mockUseCurrentSubscriber, mockUseIsDesktop, mockUpdateCover, mockFundProducts, mockAddToast,
+  mockUseSubscriberNominees,
 } = vi.hoisted(() => ({
   mockUseCurrentSubscriber: vi.fn(),
   mockUseIsDesktop: vi.fn(),
   mockUpdateCover: vi.fn(),
   mockFundProducts: vi.fn(),
   mockAddToast: vi.fn(),
+  mockUseSubscriberNominees: vi.fn(),
 }));
 
 vi.mock('../../../hooks/useSubscriber', () => ({
@@ -32,6 +34,9 @@ vi.mock('../../../hooks/useSubscriber', () => ({
   // .isPending, so provide the standard TanStack mutation surface.
   useUpdateInsuranceCover: () => ({ mutate: vi.fn(), mutateAsync: mockUpdateCover, isPending: false }),
   useFundInsuranceProducts: () => ({ mutate: vi.fn(), mutateAsync: mockFundProducts, isPending: false }),
+  // A10-002: beneficiaries come from the dedicated nominees query, not
+  // `sub.nominees` (getCurrentSubscriber never populates it).
+  useSubscriberNominees: () => mockUseSubscriberNominees(),
 }));
 
 vi.mock('../../../contexts/ToastContext', () => ({
@@ -59,13 +64,16 @@ function makeSubscriber(policies = [LIFE]) {
       renewalDate: '2027-01-15', policyStart: '2026-01-15',
     },
     policies,
-    nominees: {
-      insurance: [
-        { id: 'n1', name: 'Jane Doe', relationship: 'spouse', phone: '+256711000002', share: 100 },
-      ],
-    },
   };
 }
+
+// Default beneficiary fixture — mirrors what `makeSubscriber()` used to embed
+// directly, now served through `useSubscriberNominees` (A10-002).
+const DEFAULT_NOMINEES = {
+  insurance: [
+    { id: 'n1', name: 'Jane Doe', relationship: 'spouse', phone: '+256711000002', share: 100 },
+  ],
+};
 
 function renderPage() {
   return render(
@@ -82,6 +90,7 @@ const picker = (product) => screen.getByRole('group', { name: `${product} cover 
 beforeEach(() => {
   mockUseIsDesktop.mockReturnValue(false);
   mockUseCurrentSubscriber.mockReturnValue({ data: makeSubscriber() });
+  mockUseSubscriberNominees.mockReturnValue({ data: DEFAULT_NOMINEES });
   mockUpdateCover.mockResolvedValue({});
   mockFundProducts.mockResolvedValue({});
 });
@@ -117,6 +126,8 @@ describe('InsurancePage', () => {
 
   it('renders the empty / still-loading state (sub undefined) without crashing', () => {
     mockUseCurrentSubscriber.mockReturnValue({ data: undefined });
+    // No subscriber id yet -> useSubscriberNominees would be disabled for real.
+    mockUseSubscriberNominees.mockReturnValue({ data: undefined });
     renderPage();
 
     expect(screen.getByText('No active cover')).toBeInTheDocument();
@@ -335,13 +346,16 @@ describe('InsurancePage', () => {
     });
 
     it('caps the beneficiary list at two while still reporting the true count', () => {
-      const many = makeSubscriber();
-      many.nominees.insurance = [
-        { id: 'n1', name: 'Jane Doe', relationship: 'spouse', phone: '+256711000002', share: 40 },
-        { id: 'n2', name: 'Peter Okot', relationship: 'child', phone: '+256711000003', share: 30 },
-        { id: 'n3', name: 'Mary Achan', relationship: 'parent', phone: '+256711000004', share: 30 },
-      ];
-      mockUseCurrentSubscriber.mockReturnValue({ data: many });
+      mockUseCurrentSubscriber.mockReturnValue({ data: makeSubscriber() });
+      mockUseSubscriberNominees.mockReturnValue({
+        data: {
+          insurance: [
+            { id: 'n1', name: 'Jane Doe', relationship: 'spouse', phone: '+256711000002', share: 40 },
+            { id: 'n2', name: 'Peter Okot', relationship: 'child', phone: '+256711000003', share: 30 },
+            { id: 'n3', name: 'Mary Achan', relationship: 'parent', phone: '+256711000004', share: 30 },
+          ],
+        },
+      });
       renderPage();
 
       expect(screen.getByText('3 on file')).toBeInTheDocument();
@@ -352,13 +366,16 @@ describe('InsurancePage', () => {
 
     it('still shows all three on mobile, where there is no budget pressure', () => {
       mockUseIsDesktop.mockReturnValue(false);
-      const many = makeSubscriber();
-      many.nominees.insurance = [
-        { id: 'n1', name: 'Jane Doe', relationship: 'spouse', phone: '+256711000002', share: 40 },
-        { id: 'n2', name: 'Peter Okot', relationship: 'child', phone: '+256711000003', share: 30 },
-        { id: 'n3', name: 'Mary Achan', relationship: 'parent', phone: '+256711000004', share: 30 },
-      ];
-      mockUseCurrentSubscriber.mockReturnValue({ data: many });
+      mockUseCurrentSubscriber.mockReturnValue({ data: makeSubscriber() });
+      mockUseSubscriberNominees.mockReturnValue({
+        data: {
+          insurance: [
+            { id: 'n1', name: 'Jane Doe', relationship: 'spouse', phone: '+256711000002', share: 40 },
+            { id: 'n2', name: 'Peter Okot', relationship: 'child', phone: '+256711000003', share: 30 },
+            { id: 'n3', name: 'Mary Achan', relationship: 'parent', phone: '+256711000004', share: 30 },
+          ],
+        },
+      });
       renderPage();
       expect(screen.getByText('Mary Achan')).toBeInTheDocument();
     });

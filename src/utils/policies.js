@@ -59,6 +59,53 @@ export function derivePolicyStatus({ renewalDate }, now) {
   return renew.getTime() >= now.getTime() ? 'active' : 'expired';
 }
 
+/**
+ * THE shared "is this cover active?" predicate (A06-004 / A11-005). Every
+ * surface that reads a stored insurance/product row — the subscriber's own
+ * Policies page AND the agent's member-detail cover chips — must derive
+ * status through this one function instead of trusting the stored `status`
+ * column directly. Nothing sweeps a self-funded policy from 'active' to
+ * 'expired' when its renewal date passes (migration 0072 only sweeps
+ * 'building'→'active'), so the stored flag alone goes stale; the clock is the
+ * only live truth for those rows. Reconciles the two surfaces that used to
+ * disagree on 1,284 members: the subscriber page already derived by date, the
+ * agent page trusted the raw flag — this is now the ONE rule both call.
+ *
+ * Precedence:
+ *  1. `status === 'building'` — save-to-cover premium still accruing, not yet
+ *     in force (self-funded only, migration 0072). Wins outright: a
+ *     placeholder future renewal date on a building row must not read as
+ *     active.
+ *  2. `status === 'inactive'` — this cover was never held; nothing to derive,
+ *     so the flag passes through unchanged and callers keep excluding it. An
+ *     UNSET status (the legacy subscriber shape, which has no stored `status`
+ *     column at all) is deliberately NOT caught here — it falls through to
+ *     date-derivation below, same as an explicit 'active'.
+ *  3. `fundedBy === 'employer'` — group cover kept in force by the employer's
+ *     ongoing MONTHLY premium (`transactions.type='insurance_premium',
+ *     source='employer'`). It has no annual renewal to lapse against, so a
+ *     stored/placeholder renewal_date must never be read as an expiry.
+ *     Verified live 2026-08-25: every self-funded premium transaction is
+ *     `type='premium', source='own'` (ANNUAL, 2,711 rows) and every
+ *     employer-funded premium transaction is `type='insurance_premium',
+ *     source='employer'` (MONTHLY, 697 rows) — zero rows cross that
+ *     boundary, so the 2026-07-05 annual/monthly invariant holds and this
+ *     branch is safe.
+ *  4. Otherwise (self-funded, marked active) — derive from `renewalDate` vs
+ *     `now`: self-pay cover is an ANNUAL premium that lapses if not renewed,
+ *     and this is the only branch where that can have happened.
+ *
+ * @param {{status?: string, renewalDate?: string|Date|null, fundedBy?: string}} row
+ * @param {Date} now
+ * @returns {string} 'active' | 'expired' | 'building' | the row's own stored status
+ */
+export function deriveCoverStatus({ status, renewalDate, fundedBy }, now) {
+  if (status === 'building') return 'building';
+  if (status === 'inactive') return status;
+  if (fundedBy === 'employer') return 'active';
+  return derivePolicyStatus({ renewalDate }, now);
+}
+
 function buildPolicy(base, override, now) {
   // A renewal override pushes the renewal date forward and reactivates.
   const renewalDate = override?.renewalDate ?? base.renewalDate;
@@ -68,14 +115,10 @@ function buildPolicy(base, override, now) {
   const premiumMonthly = employerPaid
     ? 0
     : (Number(base.premiumMonthly) > 0 ? Number(base.premiumMonthly) : FALLBACK_PREMIUM_MONTHLY);
-  // A 'building' policy (save-to-cover: the annual premium is still being saved
-  // up — migration 0072) is NOT yet in force. It keeps its 'building' status even
-  // though its placeholder renewal_date sits in the future, so the date-based
-  // derivation below must not read it as 'active'. The DB sweep flips it to
-  // 'active' once the accrual funds the premium. All other rows derive by date.
-  const status = base.status === 'building'
-    ? 'building'
-    : derivePolicyStatus({ renewalDate }, now);
+  // Status derives through the ONE shared predicate every surface uses (see
+  // deriveCoverStatus): 'building' wins outright, employer-funded cover
+  // doesn't lapse by date, self-funded cover does.
+  const status = deriveCoverStatus({ status: base.status, renewalDate, fundedBy: base.fundedBy }, now);
   return {
     id: base.id,
     type: base.type,

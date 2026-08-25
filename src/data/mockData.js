@@ -18,11 +18,20 @@ export { DISTRICTS };
 // consistent — "due in 5 days" should always mean 5 days from this same
 // reference, not from the wall clock. Replace with `new Date()` once real data
 // arrives from the backend.
-// Rolled forward 2026-07-01 (per ADR-006 and CLAUDE.md §10b — slide forward
-// when relative dates start looking stale; previous anchor 2026-05-26 was ~5
-// weeks stale). Manual roll-forward keeps "due in N days" math stable
-// mid-session (vs `new Date()` which would drift as the demo runs).
-export const MOCK_NOW = new Date(2026, 6, 1); // 2026-07-01
+//
+// SOURCE OF TRUTH MOVED 2026-08-25 (audit A06-003/A06-008/A06-009/A26-003) —
+// the literal now lives in `src/constants/demoClock.js`, imported and
+// re-exported here UNCHANGED (same name, same shape) so every existing
+// `import { MOCK_NOW } from '.../data/mockData'` call site keeps working
+// with no changes. Five independent copies of this constant had drifted out
+// of sync by up to 44 days: scripts/seed-supabase.mjs and
+// e2e/specs/db/invariants.spec.ts each hand-mirrored their own stale literal,
+// and public._demo_now() in Postgres was a fifth, 44 days behind. Do not
+// reintroduce a local literal here — change `src/constants/demoClock.js`
+// instead (its header explains the matching SQL-side migration that requires).
+import { MOCK_NOW, MOCK_NOW_ISO_DATE } from '../constants/demoClock';
+
+export { MOCK_NOW, MOCK_NOW_ISO_DATE };
 
 /**
  * Returns the "current time" as the rest of the codebase should treat it.

@@ -139,6 +139,13 @@
   padding: 0.75rem 1rem;
   transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
+@media (max-width: 1023.98px) {
+  .input,
+  .textarea {
+    font-size: 16px; /* was var(--text-sm) (14px) — iOS Safari zoom-on-focus fix, A18-001 */
+  }
+}
+
 
 .input:focus,
 .textarea:focus {
@@ -184,7 +191,7 @@
   text-align: center;
   gap: var(--space-4);
   padding: var(--space-8) var(--space-4);
-  color: var(--color-status-good);
+  color: var(--color-green-ink);
 }
 
 .successTitle {

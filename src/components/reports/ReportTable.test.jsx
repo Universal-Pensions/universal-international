@@ -76,3 +76,27 @@ describe('<ReportTable /> pagination clamp', () => {
     expect(scope.getByText('26–50 of 80')).toBeInTheDocument();
   });
 });
+
+// A20-005 — the horizontal scrollport must be reachable without a pointer.
+// `.tableScroll` is `overflow-x: auto`, so on a narrow viewport the columns past
+// the fold can only be reached by scrolling it. A div is not focusable by
+// default, so keyboard users could not scroll it at all.
+describe('ReportTable — scrollable region is keyboard-accessible (A20-005)', () => {
+  it('exposes the scrollport as a focusable, named region', () => {
+    const { container } = render(<ReportTable columns={columns} data={makeRows(3)} />);
+    const scrollport = container.querySelector('[aria-label]');
+
+    expect(scrollport).not.toBeNull();
+    expect(scrollport.getAttribute('tabindex')).toBe('0');
+    // Default copy, plain language per the house rule — no jargon.
+    expect(scrollport.getAttribute('aria-label')).toBe('Table, scroll sideways to see more');
+    expect(scrollport.querySelector('table')).not.toBeNull();
+  });
+
+  it('lets a caller name the region for its own table', () => {
+    const { container } = render(
+      <ReportTable columns={columns} data={makeRows(3)} ariaLabel="All withdrawals" />,
+    );
+    expect(container.querySelector('[aria-label="All withdrawals"]')).not.toBeNull();
+  });
+});

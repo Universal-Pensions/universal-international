@@ -49,8 +49,14 @@ export default function AgentDetailDesktop() {
     const gr = metrics.genderRatio || {};
     const male = gr.male || 0;
     const female = gr.female || 0;
-    return { data: [{ name: 'Male', value: male }, { name: 'Female', value: female }], total: male + female };
-  }, [metrics.genderRatio]);
+    // A12-002: male/female here are genderRatio PERCENTAGES (they sum to ~100
+    // for any agent with subscribers), not counts — `male + female` rendered a
+    // "100 subscribers" tag regardless of the real headcount. The donut slice
+    // proportions are correct as percentages; only the count label needs the
+    // real total, which is metrics.totalSubscribers (same field the "Subscribers"
+    // KPI tile above already uses).
+    return { data: [{ name: 'Male', value: male }, { name: 'Female', value: female }], total: metrics.totalSubscribers || 0 };
+  }, [metrics.genderRatio, metrics.totalSubscribers]);
 
   const ageData = useMemo(() => {
     const ad = metrics.ageDistribution || {};

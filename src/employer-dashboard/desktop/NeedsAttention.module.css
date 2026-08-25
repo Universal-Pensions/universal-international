@@ -57,7 +57,7 @@
 }
 .tintAmber { background: color-mix(in srgb, #fbbf24 18%, transparent); color: #8a6209; }
 .tintGreen { background: color-mix(in srgb, var(--color-green, #2E8B57) 13%, transparent); color: var(--color-green-ink, #1F6B41); }
-.tintTeal { background: color-mix(in srgb, var(--color-teal) 12%, transparent); color: var(--color-teal); }
+.tintTeal { background: color-mix(in srgb, var(--color-teal) 12%, transparent); color: var(--color-teal-ink); }
 .tintGray { background: color-mix(in srgb, var(--color-gray) 14%, transparent); color: var(--color-slate); }
 
 .mid { flex: 1; min-width: 0; }

@@ -135,7 +135,7 @@
 }
 
 .progressStep[data-done='true'] .progressLabel {
-  color: var(--color-green);
+  color: var(--color-green-ink);
 }
 
 .progressLine {

@@ -101,7 +101,7 @@ export default function DistributorsPage() {
     <div className={styles.page}>
       <LandingNav active="distributor" onSignIn={scrollToLogin} ctaLabel="Become a partner" ctaTo="/request-access?type=distributor" />
 
-      <main id="main">
+      <main id="main" tabIndex={-1}>
         {/* hero */}
         <section ref={heroRef} className={styles.hero} aria-labelledby="hero-title">
           <motion.div className={cx(styles.wrap, styles.heroGrid)} style={parallax ? { y: heroY, opacity: heroOpacity } : undefined}>

@@ -9,7 +9,7 @@
 // four ad-hoc rows, and the "Today's snapshot" + "Top agents" cards were removed.
 
 import React from 'react';
-import { vi, describe, it, expect } from 'vitest';
+import { vi, describe, it, expect, beforeEach } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { formatNumber } from '../../utils/currency';
@@ -39,22 +39,10 @@ vi.mock('../../contexts/AdminPanelContext', () => ({
 }));
 vi.mock('../../hooks/useEntity', () => ({
   // Platform totals — the only source of subscriber/agent/channel counts.
-  usePlatformOverview: () => ({
-    data: {
-      totalSubscribers: 5060,
-      activeSubscribers: 3959,
-      inactiveSubscribers: 1101,
-      aum: 1_889_000_000,
-      totalContributions: 1_889_000_000,
-      agents: 2043,
-      branches: 318,
-      distributors: 3,
-      employers: 7,
-      subscribersViaDistributor: 4500,
-      subscribersViaEmployer: 500,
-      subscribersDirect: 60,
-    },
-  }),
+  // A vi.fn() (not a plain arrow) so the A22-002 isLoading/isError/retry
+  // suite below can override the return value per test; the DEFAULT (reset
+  // in beforeEach) is the same fixture the pre-existing tests above rely on.
+  usePlatformOverview: vi.fn(),
   // Country rollup — only the time-series fields are read from here.
   useEntityMetrics: () => ({
     data: {
@@ -94,7 +82,38 @@ vi.mock('../../hooks/useTickets', () => ({
 }));
 vi.mock('../../dashboard/shared/MiniChart', () => ({ default: () => <div data-testid="mini-chart" /> }));
 
+const { usePlatformOverview } = await import('../../hooks/useEntity');
 const { default: AdminOverview } = await import('./AdminOverview');
+
+const PLATFORM_FIXTURE = {
+  totalSubscribers: 5060,
+  activeSubscribers: 3959,
+  inactiveSubscribers: 1101,
+  aum: 1_889_000_000,
+  totalContributions: 1_889_000_000,
+  agents: 2043,
+  branches: 318,
+  distributors: 3,
+  employers: 7,
+  subscribersViaDistributor: 4500,
+  subscribersViaEmployer: 500,
+  subscribersDirect: 60,
+};
+
+const refetchPlatform = vi.fn();
+
+// Reset to the successful-read baseline before every test — the A22-002 suite
+// below overrides this per test via mockReturnValueOnce.
+beforeEach(() => {
+  refetchPlatform.mockClear();
+  usePlatformOverview.mockReturnValue({
+    data: PLATFORM_FIXTURE,
+    isLoading: false,
+    isError: false,
+    error: null,
+    refetch: refetchPlatform,
+  });
+});
 
 const renderOverview = () => render(<MemoryRouter><AdminOverview /></MemoryRouter>);
 

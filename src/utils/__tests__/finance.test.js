@@ -32,6 +32,14 @@ describe('finance utils', () => {
       expect(parseAmount('UGX 50,000')).toBe(50000);
     });
 
+    it('accepts the money formats a real sheet carries', () => {
+      expect(parseAmount('1,000')).toBe(1000);
+      expect(parseAmount('1 000')).toBe(1000);       // space as a group separator
+      expect(parseAmount('20\u00A0000')).toBe(20000); // Excel's non-breaking space
+      expect(parseAmount('20,000/=')).toBe(20000);    // East African shilling suffix
+      expect(parseAmount('  12500  ')).toBe(12500);
+    });
+
     it('rounds decimals to whole UGX (the BL-8 footgun: no off-by-100)', () => {
       // The old implementation stripped the decimal point → "12,500.50" became
       // 1250050 (off by 100×). The canonical parser rounds instead.
@@ -58,6 +66,59 @@ describe('finance utils', () => {
       expect(parseAmount(0)).toBeNull();
       expect(parseAmount('-500')).toBeNull();
       expect(parseAmount(-500)).toBeNull();
+      expect(parseAmount('-5')).toBeNull();
+    });
+
+    // A05-011. The parser used to DELETE every character outside [\d.-] and
+    // parse whatever was left, so garbage silently became a plausible amount:
+    //   "=1+1" -> 11   "1e9" -> 19
+    // A distributor settling from a spreadsheet cannot tell UGX 11 from a row
+    // that was rejected. Reject, never coerce.
+    it('rejects a formula cell rather than coercing it into an amount', () => {
+      expect(parseAmount('=1+1')).toBeNull();      // was 11
+      expect(parseAmount('=SUM(B2:B9)')).toBeNull();
+      expect(parseAmount('=cmd|calc')).toBeNull();
+      expect(parseAmount('1+1')).toBeNull();
+    });
+
+    it('rejects scientific notation rather than coercing it into an amount', () => {
+      expect(parseAmount('1e9')).toBeNull();       // was 19
+      expect(parseAmount('1E9')).toBeNull();
+      expect(parseAmount('1.5e3')).toBeNull();
+    });
+
+    it('rejects other malformed numeric shapes', () => {
+      expect(parseAmount('12.500.50')).toBeNull(); // ambiguous separators
+      expect(parseAmount('12,500.')).toBeNull();   // trailing decimal point
+      expect(parseAmount('5,00 0abc')).toBeNull();
+      expect(parseAmount('50%')).toBeNull();
+      expect(parseAmount(NaN)).toBeNull();
+      expect(parseAmount(Infinity)).toBeNull();
+      expect(parseAmount(-Infinity)).toBeNull();
+      expect(parseAmount(true)).toBeNull();
+      expect(parseAmount({ amount: 500 })).toBeNull();
+      expect(parseAmount([500])).toBeNull();
+    });
+
+    // The positivity guard used to run BEFORE Math.round, so a sub-shilling
+    // cell returned 0 — violating the documented "whole-UGX integer > 0" and
+    // sending a 0 to the RPC, which skipped it as amount_too_low.
+    it('returns null (not 0) for an amount that rounds down to zero', () => {
+      expect(parseAmount('0.4')).toBeNull();
+      expect(parseAmount(0.4)).toBeNull();
+      expect(parseAmount('0.00')).toBeNull();
+      expect(parseAmount('0.5')).toBe(1); // rounds up to a real shilling
+    });
+
+    it('never returns a fractional or non-positive number', () => {
+      const cells = ['12500', '12,500.50', '0.4', '=1+1', '1e9', 'abc', '', '-5', 45000.49];
+      for (const cell of cells) {
+        const n = parseAmount(cell);
+        if (n !== null) {
+          expect(Number.isInteger(n)).toBe(true);
+          expect(n).toBeGreaterThan(0);
+        }
+      }
     });
   });
 

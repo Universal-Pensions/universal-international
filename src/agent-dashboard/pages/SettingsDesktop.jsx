@@ -2,7 +2,7 @@ import { useState, useCallback, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { EASE_OUT_EXPO } from '../../utils/motion';
 
-import { isValidUGPhone } from '../../utils/phone';
+import { isValidUGPhone, formatUGPhone } from '../../utils/phone';
 import { useAuth } from '../../contexts/AuthContext';
 import { useDashboard } from '../../contexts/DashboardContext';
 import { useEntity } from '../../hooks/useEntity';
@@ -10,14 +10,6 @@ import { useToast } from '../../contexts/ToastContext';
 import { getInitials } from '../../utils/dashboard';
 import formStyles from './SettingsPage.module.css';
 import styles from './SettingsDesktop.module.css';
-
-function formatPhone(raw) {
-  if (!raw) return '';
-  const digits = raw.replace(/\D/g, '');
-  if (digits.length <= 3) return digits;
-  if (digits.length <= 6) return `${digits.slice(0, 3)} ${digits.slice(3)}`;
-  return `${digits.slice(0, 3)} ${digits.slice(3, 6)} ${digits.slice(6)}`;
-}
 
 /**
  * SettingsDesktop — desktop (>=1024px) layout for the agent Settings page.
@@ -117,7 +109,7 @@ export default function SettingsDesktop() {
           </span>
           <div className={formStyles.profileInfo}>
             <span className={formStyles.profileName}>{name || agent?.name || user?.name || 'Agent'}</span>
-            <span className={formStyles.profilePhone}>+256 {formatPhone(phone || agent?.phone || user?.phone)}</span>
+            <span className={formStyles.profilePhone}>{formatUGPhone(phone || agent?.phone || user?.phone)}</span>
             {/* The static "Agent" role badge lives in the page header on desktop
                 (styles.headBadge). The profile card omits its own role badge so
                 there is exactly one exact-text "Agent" node on the page — the
@@ -160,7 +152,7 @@ export default function SettingsDesktop() {
               <input
                 type="tel"
                 className={formStyles.phoneInput}
-                value={formatPhone(phone)}
+                value={formatUGPhone(phone).replace(/^\+256 /, '')}
                 onChange={(e) => { setPhone(e.target.value.replace(/\D/g, '')); clearFieldError('phone'); }}
                 autoComplete="tel"
                 inputMode="numeric"

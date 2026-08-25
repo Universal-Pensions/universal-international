@@ -227,6 +227,14 @@
   border-radius: 10px;
   transition: border-color 160ms ease, box-shadow 160ms ease;
 }
+@media (max-width: 1023.98px) {
+  .field input,
+  .field select,
+  .field textarea {
+    font-size: 16px; /* was 0.9375rem (15.0px) — iOS Safari zoom-on-focus fix, A18-001 */
+  }
+}
+
 .field input,
 .field select { height: 44px; }
 .field textarea {
@@ -263,7 +271,7 @@
   margin-top: 5px;
 }
 .hint { color: var(--color-gray); }
-.fieldErr { color: var(--color-status-poor, #c0392b); font-weight: 500; }
+.fieldErr { color: var(--color-poor-ink); font-weight: 500; }
 
 .formErr {
   margin: 0;
@@ -333,7 +341,7 @@
   display: grid;
   place-items: center;
   border-radius: 50%;
-  color: var(--color-green);
+  color: var(--color-green-ink);
   background: color-mix(in srgb, var(--color-green) 12%, transparent);
 }
 

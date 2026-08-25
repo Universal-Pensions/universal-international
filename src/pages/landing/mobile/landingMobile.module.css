@@ -623,6 +623,7 @@
   padding: 2px 5px;
 }
 
+.stepCard h2,
 .stepCard h4 {
   font-family: var(--fd);
   font-weight: 800;
@@ -1277,7 +1278,7 @@
   text-align: center;
 }
 
-.aboutHero h3 {
+.aboutHero h1 {
   font-family: var(--fd);
   font-weight: 800;
   font-size: 22px;
@@ -1564,6 +1565,7 @@
   height: 30px;
 }
 
+.doneWrap h2,
 .doneWrap h3 {
   font-family: var(--fd);
   font-weight: 800;

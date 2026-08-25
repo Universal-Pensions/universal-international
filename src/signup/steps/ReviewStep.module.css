@@ -93,7 +93,7 @@
   font-weight: 700;
   border-radius: var(--radius-full);
   background: rgba(46, 139, 87, 0.1);
-  color: var(--color-green);
+  color: var(--color-green-ink);
 }
 
 .confidencePill[data-tone='mid'] {
@@ -154,13 +154,13 @@
   font-weight: 600;
   letter-spacing: 0.04em;
   text-transform: uppercase;
-  color: var(--color-green);
+  color: var(--color-green-ink);
   background: rgba(46, 139, 87, 0.1);
   border-radius: var(--radius-full);
 }
 
 .autoFilled svg {
-  color: var(--color-green);
+  color: var(--color-green-ink);
 }
 
 /* ── Manual section divider ──────────────────────────────────────────── */
@@ -354,9 +354,9 @@
   font-size: var(--text-xs);
   font-weight: 700;
   white-space: nowrap;
-  color: var(--color-green);
+  color: var(--color-green-ink);
 }
 
-.strengthPill[data-tone='low'] { color: var(--color-status-poor); }
+.strengthPill[data-tone='low'] { color: var(--color-poor-ink); }
 .strengthPill[data-tone='mid'] { color: var(--color-kyc-warning-dark); }
 .strengthPill[data-tone='none'] { color: var(--color-gray); }

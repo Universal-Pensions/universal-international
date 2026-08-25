@@ -20,6 +20,7 @@
 //    pattern), never a silently-zeroed page.
 
 import { useMemo, useState } from 'react';
+import { MOCK_NOW } from '../../constants/demoClock';
 import { useBranchScope } from '../../contexts/BranchScopeContext';
 import { useEntityMetrics, useChildren, useChildrenMetrics } from '../../hooks/useEntity';
 import {
@@ -166,6 +167,10 @@ export default function AnalyticsMobile() {
       pendingDuesByAgent,
       settlements,
       branchId,
+      // A12-001 — same demo-clock anchor as AnalyticsDesktop.jsx, so the trend's
+      // last month label matches the data (bucketed server-side off the SQL
+      // demo clock, which MOCK_NOW mirrors) instead of the real wall clock.
+      now: MOCK_NOW,
     }),
     [metrics, agents, commissionSummary, pendingDuesByAgent, settlements, branchId],
   );
@@ -438,7 +443,9 @@ function ContributionsSpark({ trend, kpis }) {
         <>
           <div className={styles.chartStat}>
             <b>{formatUGX(kpis.thisMonth)}</b>
-            {kpis.yoyPct !== 0 && (
+            {kpis.yoyPct == null ? (
+              <span className={`${styles.delta} ${styles.neutral}`}>Not enough history yet</span>
+            ) : kpis.yoyPct !== 0 && (
               <span className={`${styles.delta} ${kpis.yoyPct >= 0 ? styles.up : styles.down}`}>
                 {kpis.yoyPct >= 0 ? '▲' : '▼'} {Math.abs(kpis.yoyPct)}% over the year
               </span>

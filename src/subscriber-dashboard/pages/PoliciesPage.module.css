@@ -233,7 +233,7 @@
 
 .policyIcon[data-type='health'] {
   background: color-mix(in srgb, var(--color-teal) 12%, transparent);
-  color: var(--color-teal);
+  color: var(--color-teal-ink);
   border-color: color-mix(in srgb, var(--color-teal) 10%, transparent);
 }
 
@@ -281,7 +281,7 @@
 
 .statusPill[data-tone='active'] {
   background: color-mix(in srgb, var(--color-status-good) 14%, transparent);
-  color: var(--color-status-good);
+  color: var(--color-green-ink);
 }
 
 .statusPill[data-tone='active'] .statusDot {
@@ -333,7 +333,7 @@
   font-family: var(--font-display);
   font-size: var(--text-base);
   font-weight: 800;
-  color: var(--color-teal);
+  color: var(--color-teal-ink);
   font-variant-numeric: tabular-nums;
 }
 
@@ -378,7 +378,7 @@
 
 .buildingNote svg {
   flex: none;
-  color: var(--color-teal);
+  color: var(--color-teal-ink);
 }
 
 /* ── Policy meta ─────────────────────────────────────────── */

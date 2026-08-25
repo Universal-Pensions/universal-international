@@ -14,7 +14,7 @@ import {
   EarnedMonths,
   SettlementMismatchBanner,
 } from './commissions/CommissionsParts';
-import { VALID_VIEWS, Icons } from './commissions/commissionsConfig';
+import { VALID_VIEWS, Icons, commissionsErrorMessage } from './commissions/commissionsConfig';
 
 export default function CommissionsPage() {
   const { view } = useParams();
@@ -103,7 +103,7 @@ export default function CommissionsPage() {
           <div className={styles.empty}>
             <ErrorCard
               title="We couldn't load your commissions"
-              message={error}
+              message={commissionsErrorMessage(error)}
               onRetry={refetch}
             />
           </div>
@@ -126,7 +126,7 @@ export default function CommissionsPage() {
             <section className={styles.outstandingCard} aria-labelledby="outstanding-title">
               <span className={styles.outstandingEyebrow}>
                 <span className={styles.outstandingIcon} aria-hidden="true">{Icons.wallet}</span>
-                Outstanding
+                Outstanding right now
               </span>
               <h2 id="outstanding-title" className={styles.outstandingValue}>
                 {formatUGX(totals.totalDue)}

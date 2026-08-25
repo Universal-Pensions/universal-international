@@ -139,7 +139,7 @@ export default function RequestAccess() {
 
   return (
     <div className={styles.page}>
-      <main id="main" className={styles.shell}>
+      <main id="main" tabIndex={-1} className={styles.shell}>
         {/* ── Brand rail: the real logo, the pitch, and what happens next ── */}
         <motion.aside className={styles.rail} {...rise}>
           <Link to="/" className={styles.brand} aria-label="Universal Pensions home">

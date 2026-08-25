@@ -90,7 +90,7 @@
 
 .removeBtn:hover {
   background: rgba(220, 53, 69, 0.08);
-  color: var(--color-status-poor);
+  color: var(--color-poor-ink);
 }
 
 /* ── Fields grid ─────────────────────────────────────────────────────────
@@ -375,7 +375,7 @@
   padding-left: 2rem;
   font-family: var(--font-body);
   font-size: var(--text-xs);
-  color: var(--color-green);
+  color: var(--color-green-ink);
 }
 
 .sameNote svg {

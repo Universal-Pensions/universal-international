@@ -58,7 +58,7 @@
   color: var(--color-slate);
 }
 
-.req { color: var(--color-status-poor); }
+.req { color: var(--color-poor-ink); }
 
 .input,
 .select {
@@ -72,6 +72,13 @@
   background: var(--color-white);
   transition: border-color 0.14s ease, box-shadow 0.14s ease;
 }
+@media (max-width: 1023.98px) {
+  .input,
+  .select {
+    font-size: 16px; /* was var(--text-sm) (14px) — iOS Safari zoom-on-focus fix, A18-001 */
+  }
+}
+
 
 .input::placeholder { color: var(--color-gray); opacity: 0.65; }
 
@@ -131,7 +138,7 @@
 
 .error {
   font-size: var(--text-xs);
-  color: var(--color-status-poor);
+  color: var(--color-poor-ink);
 }
 
 .formActions {
@@ -147,7 +154,7 @@
 .submitError {
   margin-right: auto;
   font-size: var(--text-xs);
-  color: var(--color-status-poor);
+  color: var(--color-poor-ink);
 }
 
 /* ── Summary (sticky) ── */
@@ -332,7 +339,7 @@
 .bad {
   display: inline-flex; align-items: center; padding: 3px 9px; border-radius: var(--radius-sm);
   font-family: var(--font-display); font-weight: 700; font-size: 10.5px;
-  color: var(--color-status-poor); background: color-mix(in srgb, var(--color-status-poor) 10%, transparent);
+  color: var(--color-poor-ink); background: color-mix(in srgb, var(--color-status-poor) 10%, transparent);
 }
-.err { font-size: var(--text-sm); color: var(--color-status-poor); margin-top: var(--space-2); }
+.err { font-size: var(--text-sm); color: var(--color-poor-ink); margin-top: var(--space-2); }
 .bulkResult { font-size: var(--text-sm); color: var(--color-slate); line-height: 1.6; }

@@ -47,9 +47,9 @@ export function formatSettlementNotificationBody(amount, lineCount) {
  * Human-readable label + concrete fix for every settlement skip reason — both
  * the client-side ones from {@link normalizeUploadedRows} ('missing_agent_id',
  * 'no_amount') and the server-side ones from the `apply_settlement` RPC
- * ('no_due', 'amount_too_low'). One source of truth so the confirm modal and
- * the post-settlement toast read identically and every skip carries a fix path
- * instead of a one-word reason (BL-19).
+ * ('no_due', 'amount_too_low', 'not_your_agent'). One source of truth so the
+ * confirm modal and the post-settlement toast read identically and every skip
+ * carries a fix path instead of a one-word reason (BL-19).
  *
  * `label` is a terse noun phrase ("no Amount Paid"); `fix` is an actionable
  * sentence the distributor can follow ("Enter the amount paid in the
@@ -71,6 +71,16 @@ export const SETTLEMENT_SKIP_REASONS = {
   amount_too_low: {
     label: 'amount below the oldest due line',
     fix: "Raise 'Amount Paid (UGX)' to at least cover the agent's oldest due commission.",
+  },
+  // A05-001. Raised by migration 0109's ownership guard inside apply_settlement
+  // when a distributor uploads a row for an agent whose branch belongs to
+  // someone else — and by the confirm modal, which blocks those rows before
+  // they can be submitted at all. Also covers an Agent ID that matches nobody,
+  // deliberately: "not yours" and "doesn't exist" must read the same so the
+  // upload can't be used to probe for other distributors' agent ids.
+  not_your_agent: {
+    label: 'not one of your agents',
+    fix: 'You can only settle agents in your own branches. Remove this row, then download a fresh template.',
   },
 };
 
@@ -192,8 +202,9 @@ export function normalizeUploadedRows(rawRows) {
     }
 
     // Canonical parse → whole-UGX integer, or null for blank / zero / negative
-    // / non-numeric. `parseAmount` already rejects non-positive, so a null here
-    // means the cell can't settle.
+    // / non-numeric. `parseAmount` rejects rather than coerces (A05-011): a
+    // formula cell ("=1+1") or scientific notation ("1e9") is null here, not a
+    // plausible-looking UGX 11 / UGX 19. A null means the cell can't settle.
     const amountPaid = parseAmount(raw?.['Amount Paid (UGX)']);
     if (amountPaid == null) {
       skipped.push({ agentId, reason: 'no_amount' });
@@ -209,6 +220,48 @@ export function normalizeUploadedRows(rawRows) {
   }
 
   return { rows, skipped };
+}
+
+/**
+ * Split normalized upload rows into the ones the signed-in distributor may
+ * actually submit and the ones to refuse as 'not_your_agent' (A05-001).
+ *
+ * A settlement sheet is hand-edited in Excel, so nothing stops a distributor
+ * typing in an Agent ID that belongs to a DIFFERENT distributor. Until
+ * migration 0109, `apply_settlement` gated on the caller's role alone and
+ * settled that row: another distributor's commissions were marked paid,
+ * stamped with a payment reference they never issued, and a settlement batch
+ * landed in their branch — invisibly, because RLS then hid the rows from the
+ * person who wrote them. 0109 is the real fix. This is the front half: a
+ * foreign id is dropped from the payload and named in the confirm modal, so
+ * the distributor sees WHY instead of watching a settlement quietly do nothing.
+ *
+ * `ownAgentIds` must be every agent id the caller can settle for — the union of
+ * their pending-dues list and their commission roster, both already scoped to
+ * the caller server-side. Pass `null` when that list hasn't loaded yet: this
+ * function then blocks nothing and leaves the decision entirely to the RPC,
+ * rather than refusing legitimate rows because a fetch was still in flight.
+ *
+ * An id that matches nobody at all is also 'not_your_agent', deliberately: the
+ * upload must not double as a probe for which agent ids exist elsewhere.
+ *
+ * @param {Array<{agentId: string}>} rows normalized rows from {@link normalizeUploadedRows}
+ * @param {Iterable<string> | null | undefined} ownAgentIds ids the caller may settle, or null when unknown
+ * @returns {{ rows: Array<object>, skipped: Array<{agentId: string, reason: 'not_your_agent'}> }}
+ */
+export function partitionRowsByAgentScope(rows, ownAgentIds) {
+  const list = Array.isArray(rows) ? rows : [];
+  // Roster not loaded — pre-block nothing; the RPC's 0109 guard still holds.
+  if (ownAgentIds == null) return { rows: [...list], skipped: [] };
+
+  const own = ownAgentIds instanceof Set ? ownAgentIds : new Set(ownAgentIds);
+  const kept = [];
+  const skipped = [];
+  for (const row of list) {
+    if (own.has(row?.agentId)) kept.push(row);
+    else skipped.push({ agentId: row?.agentId ?? null, reason: 'not_your_agent' });
+  }
+  return { rows: kept, skipped };
 }
 
 // Excel's epoch is 1899-12-30; serial 25569 maps to the Unix epoch

@@ -18,6 +18,9 @@ const PAGE_SIZE_OPTIONS = [25, 50, 100];
  * @param {Function} props.onRowClick — Optional row click handler (row) => void
  * @param {string} props.rowKey — Key to use as unique row identifier (default: 'id')
  * @param {boolean} props.loading — Show loading state
+ * @param {string} props.ariaLabel — Accessible name for the horizontal scroll region
+ *   (A20-005). The region is focusable so keyboard users can scroll it; without a
+ *   name a screen reader announces only "group". Defaults to plain-language copy.
  */
 export default function ReportTable({
   columns,
@@ -27,6 +30,7 @@ export default function ReportTable({
   onRowClick,
   rowKey = 'id',
   loading = false,
+  ariaLabel = 'Table, scroll sideways to see more',
 }) {
   const reducedMotion = useReducedMotion();
   const [sortKey, setSortKey] = useState(defaultSort || columns[0]?.key);
@@ -94,7 +98,7 @@ export default function ReportTable({
 
   return (
     <div className={styles.tableWrap}>
-      <div className={styles.tableScroll}>
+      <div className={styles.tableScroll} tabIndex={0} aria-label={ariaLabel}>
         <table className={styles.table}>
           <thead>
             <tr>

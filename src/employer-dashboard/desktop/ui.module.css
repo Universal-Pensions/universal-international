@@ -154,15 +154,14 @@
   transition: transform 0.18s var(--ease-out-expo), box-shadow 0.18s var(--ease-out-expo);
 }
 
-.tile::before {
-  content: '';
-  position: absolute;
-  left: 0;
-  top: 0;
-  bottom: 0;
-  width: 3px;
-  background: var(--ac, var(--color-indigo));
-}
+/* A17-006: the left accent rail was removed to converge on the flat KPI-tile
+   treatment shared by agent/distributor/admin and the new MetricHero.Tile
+   primitive (Phase 4). --ac/--tint stay on the tile — they still drive the
+   icon chip's tint below. See docs/audits/2026-08-23/a17/design-convergence.md.
+   This file is shared by employer AND branch desktop (Tile/MetricRow are
+   imported from here into both apps), so the flattening applies everywhere
+   Tile is used, not just the two Overview screens — that shared import is
+   also why a per-screen variant isn't possible without a JSX change. */
 
 .tileInteractive { cursor: pointer; text-align: left; width: 100%; display: block; font: inherit; }
 .tileInteractive:hover { transform: translateY(-2px); box-shadow: var(--shadow-md); }
@@ -263,7 +262,7 @@
 
 .blockIcTeal {
   background: color-mix(in srgb, var(--color-teal) 12%, transparent);
-  color: var(--color-teal);
+  color: var(--color-teal-ink);
 }
 
 .blockLink {
@@ -311,9 +310,9 @@
 .st .dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; flex: 0 0 auto; }
 .stActive { color: var(--color-green-ink, #1F6B41); background: color-mix(in srgb, var(--color-green) 10%, transparent); }
 .stDone { color: var(--color-teal-ink, #1F6E7A); background: color-mix(in srgb, var(--color-teal) 10%, transparent); }
-.stOpen { color: var(--color-amber, #D97706); background: color-mix(in srgb, var(--color-amber, #D97706) 12%, transparent); }
+.stOpen { color: var(--color-amber-ink); background: color-mix(in srgb, var(--color-amber, #D97706) 12%, transparent); }
 .stInactive { color: var(--color-gray); background: var(--color-cloud); }
-.stPoor { color: var(--color-status-poor); background: color-mix(in srgb, var(--color-status-poor) 10%, transparent); }
+.stPoor { color: var(--color-poor-ink); background: color-mix(in srgb, var(--color-status-poor) 10%, transparent); }
 
 /* ── Buttons ───────────────────────────────────────────────────── */
 .btn {
@@ -353,7 +352,7 @@
 .btnGhost { background: transparent; color: var(--color-gray); }
 .btnGhost:hover:not(:disabled) { background: var(--color-cloud); color: var(--color-indigo); }
 
-.btnDanger { background: #fff; color: var(--color-status-poor); border-color: color-mix(in srgb, var(--color-status-poor) 35%, var(--color-lavender)); }
+.btnDanger { background: #fff; color: var(--color-poor-ink); border-color: color-mix(in srgb, var(--color-status-poor) 35%, var(--color-lavender)); }
 .btnDanger:hover:not(:disabled) { background: color-mix(in srgb, var(--color-status-poor) 8%, transparent); }
 
 .btnSm { height: 34px; padding: 0 12px; font-size: var(--text-xs); }
@@ -456,7 +455,7 @@
 .avatar {
   width: 34px;
   height: 34px;
-  border-radius: 50%;
+  border-radius: var(--radius-md);
   background: color-mix(in srgb, var(--color-indigo) 10%, transparent);
   color: var(--color-indigo);
   display: grid;
@@ -619,7 +618,7 @@
   font-size: var(--text-sm);
   color: var(--color-slate);
 }
-.noteIcon { color: var(--color-amber, #D97706); display: inline-flex; flex: 0 0 auto; }
+.noteIcon { color: var(--color-amber-ink); display: inline-flex; flex: 0 0 auto; }
 
 .formRow { display: flex; flex-direction: column; gap: var(--space-4); }
 .footerActions { display: flex; justify-content: flex-end; gap: var(--space-3); }

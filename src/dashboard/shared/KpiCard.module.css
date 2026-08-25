@@ -24,9 +24,9 @@
 }
 
 .kpiCard:nth-child(1) .kpiIcon { background: color-mix(in srgb, var(--color-indigo) 7%, transparent); color: var(--color-indigo); }
-.kpiCard:nth-child(2) .kpiIcon { background: rgba(47, 143, 157, 0.08); color: var(--color-teal, #2F8F9D); }
+.kpiCard:nth-child(2) .kpiIcon { background: rgba(47, 143, 157, 0.08); color: var(--color-teal-ink); }
 .kpiCard:nth-child(3) .kpiIcon { background: rgba(94, 99, 168, 0.08); color: var(--color-indigo-soft); }
-.kpiCard:nth-child(4) .kpiIcon { background: rgba(46, 139, 87, 0.08); color: var(--color-green); }
+.kpiCard:nth-child(4) .kpiIcon { background: rgba(46, 139, 87, 0.08); color: var(--color-green-ink); }
 
 .kpiLabel {
   font-family: var(--font-body);

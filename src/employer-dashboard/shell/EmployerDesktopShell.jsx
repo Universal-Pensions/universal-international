@@ -85,7 +85,7 @@ export function DesktopLayout() {
     >
       <EmployerSideNavDesktop collapsed={navCollapsed} onToggleCollapse={toggleCollapsed} />
 
-      <main ref={viewportRef} className={styles.viewport} id="main">
+      <main ref={viewportRef} className={styles.viewport} id="main" tabIndex={-1}>
         <AnimatePresence mode="wait" initial={false}>
           <motion.div
             key={location.pathname}
@@ -117,7 +117,7 @@ export function DesktopLayout() {
             <span className={styles.askAiIcon} aria-hidden="true">{sparkIcon(18)}</span>
             Ask AI
           </button>
-          <NotificationBell role="employer" entityId={employerId} align="right" portal />
+          <NotificationBell recipientRole="employer" entityId={employerId} align="right" portal />
         </div>
       )}
 

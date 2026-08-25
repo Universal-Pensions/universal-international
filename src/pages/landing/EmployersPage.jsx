@@ -60,7 +60,7 @@ export default function EmployersPage() {
     <div className={styles.page}>
       <LandingNav active="employer" onSignIn={scrollToLogin} ctaLabel="Get started" ctaTo="/request-access?type=employer" />
 
-      <main id="main">
+      <main id="main" tabIndex={-1}>
         {/* hero — employer copy + hero stats, login card on the right */}
         <section ref={heroRef} className={styles.hero} aria-labelledby="hero-title">
           <motion.div className={cx(styles.wrap, styles.heroGrid)} style={parallax ? { y: heroY, opacity: heroOpacity } : undefined}>

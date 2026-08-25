@@ -164,7 +164,7 @@
 
 .resultIcon[data-kind="error"] {
   background: rgba(220, 53, 69, 0.08);
-  color: var(--color-status-poor);
+  color: var(--color-poor-ink);
 }
 
 /* ── Retry disclosure notice ──────────────────────────────────────────── */

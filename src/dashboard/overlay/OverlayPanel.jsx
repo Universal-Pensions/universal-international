@@ -171,6 +171,12 @@ export function GlobalSearch({ onNavigate }) {
           placeholder="Region, district, branch…"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
+          // A20-009: this autoFocus is DELIBERATELY KEPT, unlike the five others the
+          // finding groups it with. This component returns null when closed (see
+          // `if (!open)` above), so the attribute fires exactly when the user opens
+          // the panel — which is correct dialog behaviour, not a focus steal.
+          // Removing it would leave focus stranded behind an open dialog, which is
+          // a worse accessibility outcome than the one the finding describes.
           autoFocus
           onBlur={handleClose}
           aria-label="Search entities"

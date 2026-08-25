@@ -26,6 +26,25 @@ import {
 import ui from './ui.module.css';
 import styles from './EmployeesDesktop.module.css';
 
+/**
+ * True when an invite is still worth chasing (A14-003). Duplicated (not
+ * imported) from desktop/OverviewDesktop.jsx's `isInviteAwaiting`, which
+ * itself duplicates kyc/usePendingKycNudge.js's module-private
+ * `splitInvitesByExpiry` — same rule, a third time, for the same reason that
+ * comment gives: no `expiresAt` means the invite never expires (still
+ * awaiting); an `expiresAt` at or before `now` means it has lapsed, and a
+ * lapsed invite can't be completed (the public `/invite/:token` route itself
+ * refuses an expired token). Before this fix, `pendingInvites.length` counted
+ * expired invites as "awaiting sign-up" here, while the Pending KYC page
+ * (which already applied this split) correctly said "0 awaiting · 4 lapsed"
+ * for the same data — a demo dead-end ("chase them" pointing at a page with
+ * nothing to chase).
+ */
+export function isInviteAwaiting(invite, now = Date.now()) {
+  const exp = invite?.expiresAt ? new Date(invite.expiresAt).getTime() : Infinity;
+  return !(Number.isFinite(exp) && exp <= now);
+}
+
 const STATUS_FILTERS = [
   { value: 'all', label: 'All' },
   { value: 'active', label: 'Active' },
@@ -68,7 +87,7 @@ export default function EmployeesDesktop() {
   const inactive = metrics.suspended != null
     ? metrics.suspended
     : employees.filter((e) => e.status === 'suspended').length;
-  const pendingKyc = pendingInvites.length;
+  const pendingKyc = pendingInvites.filter((inv) => isInviteAwaiting(inv)).length;
 
   // Inline filter (search by name/phone + status pill) — mirrors ViewEmployees.
   const q = search.trim().toLowerCase();

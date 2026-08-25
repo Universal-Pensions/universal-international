@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { useCurrentSubscriber } from '../../../hooks/useSubscriber';
+import { useCurrentSubscriber, useSubscriberTransactions } from '../../../hooks/useSubscriber';
 import { formatUGX } from '../../../utils/currency';
 
 import { formatDate } from '../../../utils/date';
@@ -17,6 +17,12 @@ function monthLabel(i, len, baseYear, baseMonth) {
 
 export default function ContributionsSummary() {
   const { data: sub, isLoading, isError, error, refetch } = useCurrentSubscriber();
+  // Same family as A10-001/A10-002: `sub.transactions` is a field mapSubscriberRow
+  // NEVER populates, so the month-axis anchor below silently fell back to the wall
+  // clock — the exact drift its own comment says it exists to avoid. Read the real
+  // per-id query instead, as AnnualStatement / AllTransactions / InsuranceStatement
+  // now do.
+  const { data: transactions = [] } = useSubscriberTransactions(sub?.id);
   const history = useMemo(() => sub?.contributionHistory || [], [sub?.contributionHistory]);
   const schedule = sub?.contributionSchedule;
   const retPct = (schedule?.retirementPct ?? 80) / 100;
@@ -29,14 +35,14 @@ export default function ContributionsSummary() {
   // wall clock when there is no dated data. Mirrors ActivityPage's data anchor.
   const [baseYear, baseMonth] = useMemo(() => {
     let latest = null;
-    (sub?.transactions || []).forEach((t) => {
+    transactions.forEach((t) => {
       if (!t.date) return;
       const d = new Date(t.date);
       if (!Number.isNaN(d.getTime()) && (latest == null || d > latest)) latest = d;
     });
     const base = latest ?? new Date();
     return [base.getFullYear(), base.getMonth()];
-  }, [sub?.transactions]);
+  }, [transactions]);
 
   const monthly = useMemo(
     () => history.map((v, i) => {

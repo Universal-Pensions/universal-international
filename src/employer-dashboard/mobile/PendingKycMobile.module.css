@@ -106,7 +106,7 @@
   border-radius: var(--radius-full);
   background: color-mix(in srgb, var(--color-status-poor) 8%, #fff);
   border: 1px solid color-mix(in srgb, var(--color-status-poor) 22%, transparent);
-  color: var(--color-status-poor);
+  color: var(--color-poor-ink);
   white-space: nowrap;
 }
 
@@ -118,7 +118,7 @@
   border-radius: var(--radius-full);
   background: color-mix(in srgb, var(--color-green) 9%, #fff);
   border: 1px solid color-mix(in srgb, var(--color-green) 22%, transparent);
-  color: var(--color-green);
+  color: var(--color-green-ink);
   white-space: nowrap;
 }
 

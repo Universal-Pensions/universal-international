@@ -111,13 +111,17 @@ describe('useEmployer hooks — queries', () => {
     expect(employer.listPendingInvites).not.toHaveBeenCalled();
   });
 
-  it('useEmployerMetrics fetches via the no-arg RPC service fn', async () => {
+  it('useEmployerMetrics threads employerId into the service call (A14-001)', async () => {
+    // getEmployerMetrics now needs employerId to recompute the run-linked
+    // contribution totals (see employer.test.js) — a regression back to the
+    // no-arg call would silently zero those figures out again.
     employer.getEmployerMetrics.mockResolvedValue({ headcount: 16, active: 14 });
     const { Wrapper } = makeWrapper();
     const { result } = renderHook(() => useEmployerMetrics('emp-001'), { wrapper: Wrapper });
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
     expect(result.current.data).toMatchObject({ headcount: 16 });
     expect(employer.getEmployerMetrics).toHaveBeenCalledTimes(1);
+    expect(employer.getEmployerMetrics).toHaveBeenCalledWith('emp-001');
   });
 
   it('useAllEmployersMetrics (admin) fetches the platform-wide rollup', async () => {

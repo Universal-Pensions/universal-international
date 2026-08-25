@@ -47,7 +47,7 @@
 .avatar {
   width: 56px;
   height: 56px;
-  border-radius: 50%;
+  border-radius: var(--radius-md);
   background: linear-gradient(135deg, var(--color-indigo) 0%, var(--color-indigo-deep) 100%);
   color: var(--color-white);
   font-family: var(--font-display);

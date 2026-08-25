@@ -14,6 +14,7 @@ import BranchHomeMobile from '../mobile/BranchHomeMobile';
 import AttentionAgentsMobile from '../mobile/AttentionAgentsMobile';
 import AgentsMobile from '../mobile/AgentsMobile';
 import AgentDetailMobile from '../mobile/AgentDetailMobile';
+import AgentSubscribersMobile from '../mobile/AgentSubscribersMobile';
 import CreateAgentMobile from '../mobile/CreateAgentMobile';
 import CommissionsMobile from '../mobile/CommissionsMobile';
 import AnalyticsMobile from '../mobile/AnalyticsMobile';
@@ -46,6 +47,13 @@ function AnimatedOutlet() {
           <Route index element={<BranchHomeMobile />} />
           <Route path="attention/:type" element={<AttentionAgentsMobile />} />
           <Route path="agents/new" element={<CreateAgentMobile />} />
+          {/* Agent-scoped subscriber drill (AUDIT A12-005) — mirrors the desktop
+              BranchDesktopShell route so "View subscribers" on AgentDetailMobile
+              resolves to a real, shareable destination instead of bouncing to
+              the catch-all (there was no mobile route here before). Declared
+              before `agents/:agentId` for readability; React Router ranks the
+              longer static segment first regardless of declaration order. */}
+          <Route path="agents/:agentId/subscribers" element={<AgentSubscribersMobile />} />
           <Route path="agents/:agentId" element={<AgentDetailMobile />} />
           <Route path="agents" element={<AgentsMobile />} />
           <Route path="commissions" element={<CommissionsMobile />} />
@@ -97,14 +105,18 @@ export default function BranchMobileShell() {
   // The real scroll container is .viewport (overflow-y: auto). Reset its
   // scrollTop on route change before paint so each page lands at top.
   useLayoutEffect(() => {
-    viewportRef.current?.scrollTo(0, 0);
+    // Double optional-chain (not just the ref) — jsdom's Element doesn't
+    // implement scrollTo, so a bare `.scrollTo(0, 0)` throws under RTL
+    // (this shell had no render test until BranchMobileShell.test.jsx).
+    // Matches DistributorMobileShell's already-safe call.
+    viewportRef.current?.scrollTo?.(0, 0);
   }, [location.pathname]);
 
   return (
     <BranchAppBarContext.Provider value={appBarValue}>
       <div className={styles.shell}>
         <BranchMobileAppBar onOpenAI={openAskAI} onOpenNotif={openNotif} />
-        <main ref={viewportRef} className={styles.viewport} id="main">
+        <main ref={viewportRef} className={styles.viewport} id="main" tabIndex={-1}>
           <AnimatedOutlet />
         </main>
         <BranchBottomTabBar />

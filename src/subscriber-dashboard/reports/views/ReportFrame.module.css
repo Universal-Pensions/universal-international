@@ -128,7 +128,7 @@
 }
 
 .pill[data-tone='ok'] {
-  color: var(--color-green);
+  color: var(--color-green-ink);
   background: color-mix(in srgb, var(--color-green) 8%, transparent);
 }
 
@@ -138,7 +138,7 @@
 }
 
 .pill[data-tone='alert'] {
-  color: var(--color-status-poor);
+  color: var(--color-poor-ink);
   background: color-mix(in srgb, var(--color-status-poor) 9%, transparent);
 }
 
@@ -163,12 +163,12 @@
 }
 
 .typeBadge[data-type='contribution'] {
-  color: var(--color-green);
+  color: var(--color-green-ink);
   background: color-mix(in srgb, var(--color-green) 8%, transparent);
 }
 
 .typeBadge[data-type='withdrawal'] {
-  color: var(--color-teal);
+  color: var(--color-teal-ink);
   background: color-mix(in srgb, var(--color-teal) 10%, transparent);
 }
 
@@ -188,7 +188,7 @@
 }
 
 .amountPositive {
-  color: var(--color-green);
+  color: var(--color-green-ink);
   font-family: var(--font-display);
   font-weight: 700;
   font-variant-numeric: tabular-nums;
