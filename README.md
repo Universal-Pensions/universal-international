@@ -91,7 +91,11 @@ npx playwright test path/to/spec.ts --project chromium
 
 ## Database
 
-Schema lives in `supabase/migrations/*.sql` (120 numbered migration files as of 2026-08-25, `0001`–`0126` with gaps — re-count before relying on this number). State-machine writes are *supposed* to flow through `SECURITY DEFINER` RPCs invoked with `supabase.rpc(name, args)`. ⚠️ **Direct table writes are NOT reliably blocked by RLS** — as of 2026-08-25 several tables still accept them (a fix is drafted in migration `0118` but not yet applied); see `CLAUDE.md §7` and `docs/audits/2026-08-23/02-rls-matrix.md §5`. RLS policies read `auth.jwt() ->> 'app_role'` (NOT `'role'`, which is the Postgres `authenticated` role — see CLAUDE.md §5 anti-pattern 7).
+Schema lives in `supabase/migrations/*.sql` (129 forward migration files as of 2026-08-25, `0001`–`0132` with gaps — re-count before relying on this number). State-machine writes flow through `SECURITY DEFINER` RPCs invoked with `supabase.rpc(name, args)`. Direct client table writes are **blocked**: migrations `0118` and `0119` are applied to live, and exactly ten write policies survive platform-wide — `transactions`, `withdrawals` and `nominees` grant the client `SELECT` only. See `docs/audits/2026-08-23/a26/rls-matrix-remeasured.md` for the current role × table × verb matrix, measured against live.
+
+⚠️ **Do not establish applied state by diffing migration filenames.** Of `0109`–`0132`, only `0127`, `0128`, `0131` and `0132` ever registered in `supabase_migrations.schema_migrations` — the rest were applied over `psql` and left no row. A version diff lies in both directions. Introspect the live objects instead (`pg_policies`, `pg_get_functiondef`, `pg_class.relrowsecurity`). `0129` and `0130` are authored and deliberately **not** applied.
+
+RLS policies read `auth.jwt() ->> 'app_role'` (NOT `'role'`, which is the Postgres `authenticated` role — see CLAUDE.md §5 anti-pattern 7).
 
 Apply migrations with the Supabase CLI:
 

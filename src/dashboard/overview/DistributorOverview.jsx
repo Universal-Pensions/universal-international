@@ -342,7 +342,7 @@ export default function DistributorOverview() {
               <div className={styles.tableTitle}><span className={styles.cardIc}>{IC.building}</span>Top branches</div>
               <button className={styles.tableLink} onClick={() => setViewBranchesOpen(true)}>View all {formatNumber(branchCount)} →</button>
             </div>
-            <div className={styles.tableScroll}>
+            <div className={styles.tableScroll} tabIndex={0} aria-label="Top branches, scroll sideways to see more">
               <table className={styles.tbl}>
                 <thead>
                   <tr><th>Branch</th><th>District</th><th className={styles.num}>Subscribers</th><th>Active rate</th><th className={styles.num}>FUM</th><th>Status</th></tr>
@@ -441,7 +441,7 @@ export default function DistributorOverview() {
               <div className={styles.tableTitle}><span className={styles.cardIc} data-tone="teal">{IC.employees}</span>Top agents</div>
               <button className={styles.tableLink} onClick={() => setViewAgentsOpen(true)}>View all →</button>
             </div>
-            <div className={styles.tableScroll}>
+            <div className={styles.tableScroll} tabIndex={0} aria-label="Top agents, scroll sideways to see more">
               <table className={styles.tbl}>
                 <thead><tr><th>Agent</th><th className={styles.num}>Subs</th><th className={styles.num}>Contributions</th></tr></thead>
                 <tbody>

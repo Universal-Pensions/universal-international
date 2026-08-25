@@ -13,6 +13,18 @@
 // itself exists, so a future edit could delete the NavLink from this
 // component (or point it at the wrong id) and every existing test would still
 // pass — the finding would silently reopen. This file closes that gap.
+//
+// AUDIT A12-004 (same phone shell, the /dashboard/reports redirect) was
+// re-verified alongside this fix and needed no change here: the audit's own
+// hypothesis — AnimatePresence handing a stale `location` into the <Routes>
+// that holds the reports <Navigate> — doesn't hold up against the code.
+// BranchMobileShell's AnimatedOutlet reads `location` from a fresh
+// useLocation() on every render, so it is never lagged. The real cause was a
+// DashboardNavContext effect (`usesReportsPanel`) intercepting
+// /dashboard/reports for role==='branch' on every viewport and racing this
+// shell's own routed redirect — fixed in DashboardNavContext.jsx (outside
+// this write-set) and already covered by BranchMobileShell.test.jsx's own
+// A12-004 case, which renders through the real DashboardNavContext.
 
 import React from 'react';
 import { describe, it, expect, vi } from 'vitest';
