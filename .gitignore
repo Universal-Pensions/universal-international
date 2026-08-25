@@ -79,3 +79,10 @@ docs/audits/**/baseline-traces/
 # the repo. Same rationale as baseline-traces/ above.
 docs/audits/**/screenshots/
 docs/audits/**/*.png
+
+# macOS folder-sync conflict copies — "Foo 2.jsx", "Bar 3.ts". This repo lives
+# under ~/Desktop; its sync process duplicates files during branch switches
+# (1,664 in one session). Byte-identical to their originals and never wanted in
+# git. Also ignored by eslint.config.js so they cannot perturb the lint gate.
+* [0-9].*
+* [0-9][0-9].*

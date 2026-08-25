@@ -102,6 +102,15 @@ const CLAUDE_MD_NO_HANDROLLED_FETCH = {
 export default defineConfig([
   globalIgnores([
     'dist', 'dist-server', 'coverage', '.claude/worktrees/**', 'playwright-report/**', 'test-results/**',
+    // macOS folder-sync conflict copies — "Foo 2.jsx", "Bar 3.ts". This repo
+    // lives under ~/Desktop, whose sync process silently duplicates files
+    // during branch switches; a single session produced 1,664 of them, 195
+    // being .js/.jsx/.ts. They are byte-identical to their originals and
+    // untracked, but ESLint linted them anyway and the warning count went
+    // 204 -> 228, breaking `npm run lint` (--max-warnings is pinned to the
+    // exact backlog). A gate that a filesystem artefact can trip is not a
+    // gate. Also .gitignore'd so they can never be committed by accident.
+    '**/* [0-9].*', '**/* [0-9][0-9].*',
     // A25-010 — flat config doesn't read .gitignore, so these untracked/
     // scratch trees (both already .gitignore'd) were being linted anyway:
     // 194 docs/** result entries + 3 .understand-anything/** in the
