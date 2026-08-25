@@ -267,6 +267,23 @@ function listColumns(level) {
   return LEVEL_LIST_COLUMNS[level] ?? '*';
 }
 
+// ─── Detail-path column projection ──────────────────────────────────────────
+// A15-001: getEntity() DETAIL reads stay `*` for every level per the
+// CONSERVATIVE RULE above — except `subscriber`. `total_balance` is not a
+// column on `subscribers` at all (it lives on `subscriber_balances`), so a
+// bare `*` left mapSubscriber() with nothing to read and `totalBalance`
+// defaulted to 0 — the mobile subscriber detail (and any other getEntity
+// caller) rendered "—" for members holding millions, even though the LIST
+// read (LEVEL_LIST_COLUMNS.subscriber, above) already carries this exact
+// embed and rendered correctly. `*` plus an embedded resource is valid
+// PostgREST syntax (mirrors LEVEL_LIST_COLUMNS.subscriber). This is a
+// single-row `.eq('id', id).maybeSingle()` read, so the embed returns at most
+// one balance row — NOT a list query, so it is not subject to the
+// db-max-rows=1000 cap that bounds the paging in getAllAtLevel() below.
+function detailColumns(level) {
+  return level === 'subscriber' ? '*, subscriber_balances(total_balance)' : '*';
+}
+
 // ─── Parent scoping for list reads ──────────────────────────────────────────
 // `getAllAtLevel(level)` returns EVERY row the caller's RLS allows. The
 // drill-down UX needs the same list narrowed to one parent — "the subscribers
@@ -354,7 +371,8 @@ export async function getCountry() {
 // ─── Reads ──────────────────────────────────────────────────────────────────
 
 /**
- * @endpoint SELECT 1 row from the level's table.
+ * @endpoint SELECT 1 row from the level's table (subscriber additionally
+ *   embeds `subscriber_balances(total_balance)` — see `detailColumns()`).
  * @param {string} level - region|district|branch|agent|subscriber
  * @param {string} id
  * @returns {Promise<Object|null>} mapped entity, or null if not found.
@@ -374,7 +392,7 @@ export async function getEntity(level, id) {
 
   const { data, error } = await supabase
     .from(table)
-    .select('*')
+    .select(detailColumns(level))
     .eq('id', id)
     .maybeSingle();
 

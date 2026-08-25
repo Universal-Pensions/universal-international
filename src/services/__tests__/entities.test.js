@@ -109,6 +109,46 @@ describe('entities service', () => {
       const result = await getEntity('region', 'r-nonexistent');
       expect(result).toBeNull();
     });
+
+    // A15-001 regression: mobile (and any other) subscriber DETAIL read
+    // rendered Balance as "—" for members holding real money because the
+    // `select('*')` on `subscribers` never embedded `subscriber_balances` —
+    // `total_balance` isn't a column on `subscribers` at all. Guards both the
+    // returned value AND the actual query shape, so a future revert back to
+    // a bare `select('*')` fails this test even if the mock still returns a
+    // balance (a query-shape assertion, not just an output assertion).
+    it('embeds subscriber_balances(total_balance) on a subscriber detail read (A15-001)', async () => {
+      supabaseMock.__queueFrom('subscribers', {
+        data: {
+          id: 'empe-001', name: 'Brian Okello', phone: '+256700000001',
+          agent_id: 'a-001', district_id: 'd-kampala', kyc_status: 'complete',
+          is_active: true, registered_date: '2025-01-05',
+          // Raw PostgREST embed shape: an array on the relation name.
+          subscriber_balances: [{ total_balance: 24786589 }],
+        },
+        error: null,
+      });
+      const sub = await getEntity('subscriber', 'empe-001');
+      expect(sub).toBeDefined();
+      expect(sub.id).toBe('empe-001');
+      // The real money figure — not the 0 default a missing embed produces.
+      expect(sub.totalBalance).toBe(24786589);
+
+      const call = supabaseMock.__getFromCalls('subscribers').at(-1);
+      expect(call.chain.select).toHaveBeenCalledWith(
+        expect.stringContaining('subscriber_balances(total_balance)'),
+      );
+    });
+
+    it('does not add the subscriber_balances embed for other levels (branch stays a bare *)', async () => {
+      supabaseMock.__queueFrom('branches', {
+        data: { id: 'b-1', name: 'Branch 1', district_id: 'd-kampala', status: 'active' },
+        error: null,
+      });
+      await getEntity('branch', 'b-1');
+      const call = supabaseMock.__getFromCalls('branches').at(-1);
+      expect(call.chain.select).toHaveBeenCalledWith('*');
+    });
   });
 
   describe('getChildren()', () => {
