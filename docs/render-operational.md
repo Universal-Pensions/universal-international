@@ -114,6 +114,32 @@ These are the 3 documented failure modes where Render keeps running but the symp
 
 ---
 
+## ⚠️ The live service has drifted from `render.yaml` (A09-006)
+
+**Verified 2026-08-25 via the Render API.** The blueprint is NOT what is deployed.
+
+| | build command |
+|---|---|
+| `render.yaml` says | `npm ci **--include=dev** && npm run build:api && npm prune --omit=dev` |
+| the live service runs | `npm ci && npm run build:api && npm prune --omit=dev` |
+
+`--include=dev` is missing. That matters because `NODE_ENV: production` IS set on the service, and
+npm honours it by skipping devDependencies — which would drop `@types/*`, `@vercel/node` and
+`tsx`, all of which `npm run build:api` needs to **compile**. (`npm prune --omit=dev` then removes
+them again afterwards, which is the point: needed to build, not to run.)
+
+It builds today, so this is a latent failure rather than a live one. The real cost is the one the
+finding names: **a blueprint-driven rebuild would not reproduce the running service**, so the
+documented disaster-recovery path rebuilds the wrong thing.
+
+**A human must fix this — the Render API exposes no way to change a build command.**
+Dashboard → `uganda-dashboard-api` → Settings → Build Command → set it to match `render.yaml`,
+then redeploy and confirm `/readyz` returns 200.
+
+Corrected while verifying: `render.yaml`'s own comment claimed "@sentry/* are devDeps". Only
+**@sentry/react** is, and it is a FRONTEND package Vercel builds — not Render. **@sentry/node**,
+the one this service uses, is a regular dependency and is unaffected either way.
+
 ## Rollback — see `docs/rollback.md` (A09-009)
 
 There was no documented rollback for the frontend, the API, or the database. There is now, and it
