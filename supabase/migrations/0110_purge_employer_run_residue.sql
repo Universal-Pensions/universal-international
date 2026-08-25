@@ -120,6 +120,18 @@ COMMENT ON TABLE public.transactions_pre_purge_20260824 IS
   'Phase 2 (A04-009) pre-purge snapshot of employer-run residue, 2026-08-25. '
   'DO NOT DROP — this is the only recovery path for 0110. See docs/rollback.md.';
 
+-- Secure the snapshot AT CREATION. `CREATE TABLE … AS SELECT` inherits NOTHING
+-- from its source — not RLS, not policies, not grants — so a copy of protected
+-- rows lands wide open, and `anon` holds SELECT on essentially every table in
+-- `public` (A02-101). Supabase's advisor flagged exactly this as CRITICAL on the
+-- snapshots that reached live on 2026-08-25. RLS with NO policies is the point:
+-- service_role and the owner bypass it, which is precisely and only who should
+-- read a recovery snapshot.
+ALTER TABLE public.transactions_pre_purge_20260824 ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.transactions_pre_purge_20260824 FORCE ROW LEVEL SECURITY;
+REVOKE ALL ON public.transactions_pre_purge_20260824 FROM anon, authenticated;
+
+
 -- Snapshot the AFFECTED BALANCES verbatim too, not just the transactions.
 -- Recomputing balances is NOT a perfect inverse of the incremental history the
 -- trigger built up over time: proven on the scratch restore, a purge->unpurge
@@ -136,6 +148,18 @@ SELECT * FROM public.subscriber_balances
 COMMENT ON TABLE public.subscriber_balances_pre_purge_20260824 IS
   'Phase 2 (A04-009) pre-purge snapshot of the 19 affected balances, 2026-08-25. '
   'DO NOT DROP — 0110_unpurge.sql restores from this verbatim.';
+
+-- Secure the snapshot AT CREATION. `CREATE TABLE … AS SELECT` inherits NOTHING
+-- from its source — not RLS, not policies, not grants — so a copy of protected
+-- rows lands wide open, and `anon` holds SELECT on essentially every table in
+-- `public` (A02-101). Supabase's advisor flagged exactly this as CRITICAL on the
+-- snapshots that reached live on 2026-08-25. RLS with NO policies is the point:
+-- service_role and the owner bypass it, which is precisely and only who should
+-- read a recovery snapshot.
+ALTER TABLE public.subscriber_balances_pre_purge_20260824 ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.subscriber_balances_pre_purge_20260824 FORCE ROW LEVEL SECURITY;
+REVOKE ALL ON public.subscriber_balances_pre_purge_20260824 FROM anon, authenticated;
+
 
 -- GUARD 2 — the snapshot must have captured exactly what we are about to delete.
 DO $$
