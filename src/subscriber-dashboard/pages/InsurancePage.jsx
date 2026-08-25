@@ -6,7 +6,7 @@ import { formatUGX } from '../../utils/currency';
 
 import { formatDate } from '../../utils/date';
 import { getInitials } from '../../utils/dashboard';
-import { useCurrentSubscriber, useUpdateInsuranceCover, useFundInsuranceProducts } from '../../hooks/useSubscriber';
+import { useCurrentSubscriber, useUpdateInsuranceCover, useFundInsuranceProducts, useSubscriberNominees } from '../../hooks/useSubscriber';
 import { useToast } from '../../contexts/ToastContext';
 import { useIsDesktop } from '../../hooks/useIsDesktop';
 import PageHeader from '../../components/PageHeader';
@@ -62,7 +62,12 @@ export default function InsurancePage() {
   const [payNonce, setPayNonce] = useState(null);
   const [payProduct, setPayProduct] = useState(null);
 
-  const insNominees = sub?.nominees?.insurance || [];
+  // `sub.nominees` does not exist — getCurrentSubscriber never selects/maps
+  // nominees (A10-002), so this always read `undefined` -> `[]` and showed
+  // "0 beneficiaries on file" even when one was on record. Read the same
+  // dedicated, id-scoped query NomineesPage/PoliciesPage already use instead.
+  const { data: nominees } = useSubscriberNominees(sub?.id);
+  const insNominees = nominees?.insurance || [];
 
   // One row per product, derived from the same `policies` array the policies
   // page reads (status is computed from the renewal date there, so a lapsed

@@ -514,22 +514,70 @@ export async function getSubscriberTransactions(id, { type, range, status } = {}
   // with mapTransactionRow if a new mapped field is added. `contribution_run_id`
   // is what lets every subscriber surface tell a payroll-deducted employee leg
   // apart from a top-up the member actually made (see mapTransactionRow).
-  let q = supabase
-    .from('transactions')
-    .select(
-      'id, subscriber_id, agent_id, type, source, amount, date, status, method, txn_ref, bucket, split_retirement, split_emergency, contribution_run_id',
-    )
-    .eq('subscriber_id', id)
-    .order('date', { ascending: false });
-  if (type) q = q.eq('type', type);
-  if (status) q = q.eq('status', status);
-  if (range) {
-    const [from, to] = range;
-    if (from) q = q.gte('date', from);
-    if (to) q = q.lte('date', to);
+  const COLUMNS =
+    'id, subscriber_id, agent_id, type, source, amount, date, status, method, txn_ref, bucket, split_retirement, split_emergency, contribution_run_id';
+
+  const applyFilters = (q) => {
+    let f = q.eq('subscriber_id', id);
+    if (type) f = f.eq('type', type);
+    if (status) f = f.eq('status', status);
+    if (range) {
+      const [from, to] = range;
+      if (from) f = f.gte('date', from);
+      if (to) f = f.lte('date', to);
+    }
+    // `id` is a secondary sort key purely to make paging below deterministic:
+    // many rows can share the same `date` (e.g. a batch contribution run), and
+    // without a tie-breaker two separate `.range()` requests are not guaranteed
+    // to agree on which same-dated row lands on which side of a page boundary.
+    return f.order('date', { ascending: false }).order('id', { ascending: false });
+  };
+
+  const PAGE_SIZE = 1000;
+  const SAFETY_CAP_ROWS = 100_000; // bounds a runaway fan-out, mirrors entities.js
+
+  // Page 0 — always serial. Every subscriber in the live seed tops out around
+  // 17 transactions today (2026-08-25), so this is normally the ONLY request.
+  // But PostgREST silently caps any single response at 1,000 rows — even when
+  // a larger `.limit()`/`.range()` is requested, with no error (AUDIT-21-101) —
+  // and this exact list is summed straight into the Annual Tax Statement and
+  // its CSV export, a figure a member could file with URA. A silent truncation
+  // here would understate real money, so this pages defensively rather than
+  // trusting one request to be enough. Mirrors the fan-out idiom in
+  // entities.js:getAllAtLevel.
+  const { data: firstData, error: firstError } = await applyFilters(
+    supabase.from('transactions').select(COLUMNS),
+  ).range(0, PAGE_SIZE - 1);
+  if (firstError) throw firstError;
+  const firstRows = firstData ?? [];
+  if (firstRows.length < PAGE_SIZE) return firstRows.map(mapTransactionRow);
+
+  // The set spans multiple pages. Learn the exact (filtered) total with a HEAD
+  // count, then fetch the remaining pages concurrently.
+  const { count, error: countError } = await applyFilters(
+    supabase.from('transactions').select(COLUMNS, { count: 'exact', head: true }),
+  );
+  if (countError) throw countError;
+
+  const total = Math.min(count ?? firstRows.length, SAFETY_CAP_ROWS);
+  const rows = [...firstRows];
+  if (total > PAGE_SIZE) {
+    const pageRequests = [];
+    for (let from = PAGE_SIZE; from < total; from += PAGE_SIZE) {
+      const to = Math.min(from + PAGE_SIZE - 1, total - 1);
+      pageRequests.push(
+        applyFilters(supabase.from('transactions').select(COLUMNS))
+          .range(from, to)
+          .then(({ data, error }) => {
+            if (error) throw error;
+            return data ?? [];
+          }),
+      );
+    }
+    const pages = await Promise.all(pageRequests);
+    for (const page of pages) rows.push(...page);
   }
-  const rows = unwrap(await q);
-  return (rows ?? []).map(mapTransactionRow);
+  return rows.map(mapTransactionRow);
 }
 
 /**

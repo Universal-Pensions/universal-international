@@ -133,6 +133,41 @@ describe('subscriber service — real (Supabase) branch', () => {
       expect(list[0].amount).toBe(-50000);
       expect(list[1].amount).toBe(30000);
     });
+
+    // AUDIT-21-101: PostgREST silently caps every response at 1,000 rows, with
+    // no error, even when a larger range is requested. A truncated list here
+    // would silently understate the Annual Tax Statement / All Transactions
+    // CSV a member could file with URA (A10-001) — so a full page must trigger
+    // a fan-out for the rest, mirroring entities.js:getAllAtLevel.
+    it('pages past the 1,000-row PostgREST cap instead of silently truncating', async () => {
+      const page0 = Array.from({ length: 1000 }, (_, i) => ({
+        id: `t-${i}`, subscriber_id: 's-1', type: 'contribution', amount: 1, date: '2026-01-01', status: 'settled',
+      }));
+      const page1 = Array.from({ length: 7 }, (_, i) => ({
+        id: `t-${1000 + i}`, subscriber_id: 's-1', type: 'contribution', amount: 1, date: '2026-01-02', status: 'settled',
+      }));
+      // FIFO order: page 0 (full -> triggers the fan-out), the exact-count
+      // probe, then the single remaining page.
+      supabaseMock.__queueFrom('transactions', { data: page0, error: null });
+      supabaseMock.__queueFrom('transactions', { data: null, error: null, count: 1007 });
+      supabaseMock.__queueFrom('transactions', { data: page1, error: null });
+
+      const list = await svc.getSubscriberTransactions('s-1');
+
+      expect(list).toHaveLength(1007);
+      expect(supabaseMock.__getFromCalls('transactions')).toHaveLength(3);
+    });
+
+    it('does not page when the first response comes back under the cap (the real, everyday case)', async () => {
+      supabaseMock.__queueFrom('transactions', {
+        data: [{ id: 't-1', subscriber_id: 's-1', type: 'contribution', amount: 100, date: '2026-01-01', status: 'settled' }],
+        error: null,
+      });
+      const list = await svc.getSubscriberTransactions('s-1');
+      expect(list).toHaveLength(1);
+      // One round-trip only — no count probe, no second page.
+      expect(supabaseMock.__getFromCalls('transactions')).toHaveLength(1);
+    });
   });
 
   describe('getSubscriberClaims', () => {

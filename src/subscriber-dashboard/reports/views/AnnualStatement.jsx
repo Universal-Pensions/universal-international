@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from 'react';
-import { useCurrentSubscriber } from '../../../hooks/useSubscriber';
+import { useCurrentSubscriber, useSubscriberTransactions } from '../../../hooks/useSubscriber';
 import { formatUGX } from '../../../utils/currency';
 import { isRunPosted } from '../../../utils/periodSettlement';
 
@@ -17,7 +17,12 @@ function txYear(isoDate) {
 
 export default function AnnualStatement() {
   const { data: sub, isLoading, isError, error, refetch } = useCurrentSubscriber();
-  const transactions = useMemo(() => sub?.transactions || [], [sub?.transactions]);
+  // `sub.transactions` does not exist — getCurrentSubscriber's single joined
+  // query never selects the transactions table, so this ALWAYS read `[]`,
+  // reporting UGX 0 contributions (and exporting a zeroed CSV) for a member
+  // who had genuinely contributed (A10-001). Read the same dedicated,
+  // id-scoped query ActivityPage/WithdrawalsHistory already use instead.
+  const { data: transactions = [], isLoading: txLoading } = useSubscriberTransactions(sub?.id);
 
   /* Build a set of years present in transactions */
   const years = useMemo(() => {
@@ -115,8 +120,11 @@ export default function AnnualStatement() {
   }
 
   // Cold-load skeleton — without this the report briefly renders a "0 of 0"
-  // year summary on a slow connection.
-  if (isLoading && !sub) {
+  // year summary on a slow connection. Waits on the transactions fetch too
+  // (`txLoading`): without it, a still-loading list renders as "No statement
+  // yet" or a UGX 0 year summary — indistinguishable from the A10-001 bug
+  // this fixes — before the real rows pop in.
+  if (!sub?.id || isLoading || txLoading) {
     return (
       <div className={frameStyles.frame}>
         <div className={frameStyles.headerRow}>
