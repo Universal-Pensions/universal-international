@@ -14,6 +14,13 @@
 
 import { formatUGX } from '../../utils/currency';
 
+// A12-008 — a YoY baseline more than this many times smaller than the current
+// month isn't a fair comparison (almost always a branch's negligible partial
+// ramp-up month, e.g. 7,904 UGX vs a mature 1,185,832 UGX month = a "14903%"
+// badge that reads as broken in a demo, not as growth). Past this multiple we
+// report "not enough history" instead of the raw ratio. See monthlyContribStat.
+const YOY_MAX_MULTIPLE = 20;
+
 /* ── Derived metrics ── */
 export function deriveMetrics(metrics = {}, agents = []) {
   const totalSubs = metrics.totalSubscribers || 0;
@@ -82,9 +89,14 @@ export function monthlyContribStat(metrics = {}) {
   const current = mc[11] || 0;
   const prev = mc[10] || 0;
   const changePct = prev ? Math.round(((current - prev) / prev) * 100) : 0;
-  // Year-over-year: first vs last month in the 12-element window.
+  // Year-over-year: first non-zero vs last month in the 12-element window.
+  // `yoyPct` is `null` (not 0, not a huge number) when there is no fair
+  // baseline to compare against — see YOY_MAX_MULTIPLE. A missing/negligible
+  // baseline must not read as "no change" (0%) or as a spike (14903%); the
+  // caller should render an explicit "not enough history" state instead.
   const first = mc.find((v) => v > 0) || 0;
-  const yoyPct = first ? Math.round(((current - first) / first) * 100) : 0;
+  const yoyUsable = first > 0 && current / first <= YOY_MAX_MULTIPLE;
+  const yoyPct = yoyUsable ? Math.round(((current - first) / first) * 100) : null;
   return { current, prev, changePct, yoyPct, series: mc };
 }
 

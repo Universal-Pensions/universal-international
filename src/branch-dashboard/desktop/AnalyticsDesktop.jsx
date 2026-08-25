@@ -22,6 +22,7 @@ import {
   PieChart, Pie, Cell,
   XAxis, YAxis, CartesianGrid, Tooltip,
 } from 'recharts';
+import { MOCK_NOW } from '../../constants/demoClock';
 import { useBranchScope } from '../../contexts/BranchScopeContext';
 import { useEntityMetrics, useChildren, useChildrenMetrics } from '../../hooks/useEntity';
 import { useEntityCommissionSummary, usePendingDuesByAgent, useSettlementsList } from '../../hooks/useCommission';
@@ -116,6 +117,12 @@ export default function AnalyticsDesktop() {
       pendingDuesByAgent,
       settlements,
       branchId,
+      // A12-001 — label the 12-month trend from the demo clock, not the real
+      // wall clock: metrics.monthlyContributions is bucketed server-side
+      // relative to the SQL demo clock (public._demo_now()), and MOCK_NOW is
+      // its JS mirror (src/constants/demoClock.js), so this keeps the last
+      // point's month label matching the month the data is actually from.
+      now: MOCK_NOW,
     }),
     [metrics, agents, commissionSummary, pendingDuesByAgent, settlements, branchId],
   );
@@ -620,8 +627,8 @@ function ContributionsTab({ view, reduceMotion }) {
           accent="green"
           icon={analyticsIcon(18)}
           label="Year on year"
-          value={`${kpis.yoyPct}%`}
-          sub="vs start of window"
+          value={kpis.yoyPct != null ? `${kpis.yoyPct}%` : '—'}
+          sub={kpis.yoyPct != null ? 'vs start of window' : 'Not enough history yet'}
         />
         <Tile
           accent="indigoSoft"

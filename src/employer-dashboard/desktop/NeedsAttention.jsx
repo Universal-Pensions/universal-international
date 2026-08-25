@@ -34,6 +34,13 @@ export default function NeedsAttention({
   pendingKyc,
   insuranceOn,
   cover,
+  // A14-004 — `cover` is the group policy's TOTAL per-member amount (life +
+  // health combined on the seed: 15.0M + 5.0M = 20.0M), not a life-only
+  // figure, so the row title must not claim "life" specifically. Optional
+  // and defaulted (not required) so the existing caller — OverviewDesktop.jsx,
+  // which does not pass this prop today — keeps working unchanged; a caller
+  // that knows its enabled products (e.g. "Life + health cover") can override it.
+  label = 'Group cover',
   onRun,
   onKyc,
   onInsurance,
@@ -62,7 +69,7 @@ export default function NeedsAttention({
     {
       key: 'ins',
       icon: shieldIcon(20),
-      title: 'Group life cover',
+      title: label,
       sub: insuranceOn ? `${formatUGX(cover, { compact: true })} per member` : 'Not set up',
       tone: insuranceOn ? 'teal' : 'off',
       status: insuranceOn ? 'On' : 'Off',

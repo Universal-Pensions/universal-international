@@ -173,6 +173,12 @@
   color: var(--color-poor-ink, #B02530);
   background: color-mix(in srgb, var(--color-status-poor) 11%, var(--color-white));
 }
+/* A12-008 — "not enough history" is neither good nor bad news, so it gets its
+   own neutral tint rather than inheriting .up's green. */
+.neutral {
+  color: var(--color-gray);
+  background: color-mix(in srgb, var(--color-gray) 12%, var(--color-white));
+}
 
 /* 3-up stat strip */
 .statStrip {

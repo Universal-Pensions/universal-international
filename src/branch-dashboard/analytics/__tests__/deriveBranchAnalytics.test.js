@@ -211,6 +211,20 @@ describe('deriveBranchAnalytics — contributionsView', () => {
     const avg = Math.round([10, 12, 11, 13, 14, 13, 15, 16, 15, 17, 18, 20].reduce((s, v) => s + v, 0) / 12);
     expect(contributionsView.kpis.monthlyAvg).toBe(avg);
   });
+
+  // A12-008 regression guard: reproduces the live "▲14903% over the year"
+  // badge (7,904 UGX ramp-up first month vs a mature 1,185,832 UGX month) —
+  // the SAME bug shape as branchOverviewDerive.test.js's guard, but for this
+  // module's independent yoyPct computation (this file feeds the Analytics
+  // page; branchOverviewDerive.js feeds the Overview page — two pure derive
+  // modules, so each needs its own guard and its own test).
+  it('yoyPct is null (not a huge percentage) when the baseline is a negligible ramp-up sliver', () => {
+    const { contributionsView } = build({
+      metrics: { ...metrics, monthlyContributions: [7904, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1_100_000, 1_185_832] },
+    });
+    expect(contributionsView.kpis.thisMonth).toBe(1_185_832);
+    expect(contributionsView.kpis.yoyPct).toBeNull();
+  });
 });
 
 describe('deriveBranchAnalytics — commissionsView', () => {
@@ -285,7 +299,9 @@ describe('deriveBranchAnalytics — empty / zero inputs', () => {
     expect(r.subscribersView.age).toHaveLength(5);
     expect(r.contributionsView.trend).toEqual([]);
     expect(r.contributionsView.cumulative).toEqual([]);
-    expect(r.contributionsView.kpis).toEqual({ thisMonth: 0, momPct: 0, yoyPct: 0, monthlyAvg: 0 });
+    // A12-008: no non-zero month anywhere → no fair YoY baseline → null, not a
+    // fabricated 0% ("no change" would be a lie when there is nothing to compare).
+    expect(r.contributionsView.kpis).toEqual({ thisMonth: 0, momPct: 0, yoyPct: null, monthlyAvg: 0 });
     expect(r.commissionsView.kpis).toEqual({ total: 0, paid: 0, due: 0, settlementRate: 0 });
     expect(r.commissionsView.duesByAgent).toEqual([]);
     expect(r.commissionsView.settlements).toEqual([]);
@@ -306,7 +322,8 @@ describe('deriveBranchAnalytics — empty / zero inputs', () => {
       metrics: { ...metrics, monthlyContributions: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0] },
     });
     expect(contributionsView.kpis.momPct).toBe(0);
-    expect(contributionsView.kpis.yoyPct).toBe(0);
+    // A12-008: an all-zero series has no non-zero baseline to compare against.
+    expect(contributionsView.kpis.yoyPct).toBeNull();
     expect(contributionsView.kpis.monthlyAvg).toBe(0);
     expect(contributionsView.cumulative[11].total).toBe(0);
   });
