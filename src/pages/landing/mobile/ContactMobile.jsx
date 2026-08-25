@@ -67,7 +67,7 @@ export default function ContactMobile() {
     <div className={styles.screen}>
       <div className={styles.sect} style={{ marginTop: '2px' }}>
         <p className={styles.eyebrow}>Talk to us</p>
-        <h2 className={styles.sectTitle}>Contact us.</h2>
+        <h1 className={styles.sectTitle}>Contact us.</h1>
         <p className={styles.sectLead}>Have a question? Reach us any way below.</p>
       </div>
 
@@ -118,7 +118,7 @@ export default function ContactMobile() {
               <path d="m5 13 4 4L19 7" />
             </svg>
           </span>
-          <h3>Message received</h3>
+          <h2>Message received</h2>
           <p>Thanks — we'll get back to you shortly.</p>
           {demo && (
             <p className={styles.demoNote}>

@@ -108,7 +108,7 @@ export default function SubscribersPage() {
     <div className={styles.page}>
       <LandingNav active="subscriber" onSignIn={openSignIn} ctaLabel="Start saving" ctaTo="/signup" />
 
-      <main id="main">
+      <main id="main" tabIndex={-1}>
         {/* hero */}
         <section ref={heroRef} className={styles.hero} aria-labelledby="hero-title">
           <motion.div className={cx(styles.wrap, styles.heroGrid)} style={parallax ? { y: heroY, opacity: heroOpacity } : undefined}>

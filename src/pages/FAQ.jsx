@@ -97,7 +97,7 @@ export default function FAQ() {
   return (
     <>
       <Navbar />
-      <main id="main" className={styles.page}>
+      <main id="main" tabIndex={-1} className={styles.page}>
         <div className={styles.container}>
           <motion.div
             className={styles.header}

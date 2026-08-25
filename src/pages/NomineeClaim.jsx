@@ -163,7 +163,7 @@ export default function NomineeClaim() {
 
   return (
     <div className={styles.page}>
-      <main id="main" className={styles.shell}>
+      <main id="main" tabIndex={-1} className={styles.shell}>
         <motion.aside className={styles.rail} {...rise}>
           <Link to="/" className={styles.brand} aria-label="Universal Pensions home">
             <img src={logo} alt="Universal Pensions" />

@@ -23,7 +23,7 @@ export default function FAQMobile() {
     <div className={styles.screen}>
       <div className={styles.sect} style={{ marginTop: 2 }}>
         <p className={styles.eyebrow}>Good questions</p>
-        <h2 className={styles.sectTitle}>Frequently asked questions.</h2>
+        <h1 className={styles.sectTitle}>Frequently asked questions.</h1>
         <p className={styles.sectLead}>Contributions, safety, and how we help you save.</p>
       </div>
       <div className={styles.card}>

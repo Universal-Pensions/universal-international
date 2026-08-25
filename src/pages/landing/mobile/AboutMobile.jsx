@@ -6,7 +6,7 @@ export default function AboutMobile() {
   return (
     <div className={styles.screen}>
       <div className={styles.aboutHero}>
-        <h3>About Universal Pensions</h3>
+        <h1>About Universal Pensions</h1>
         <p>Making long-term savings simple, accessible, and meaningful for every Ugandan.</p>
       </div>
 
@@ -24,7 +24,7 @@ export default function AboutMobile() {
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v2"/><circle cx="9.5" cy="7" r="4"/></svg>
           </span>
           <div>
-            <h4>Register</h4>
+            <h2>Register</h2>
             <p>Sign up on the app or with an agent. Just a phone number and National ID.</p>
           </div>
         </div>
@@ -34,7 +34,7 @@ export default function AboutMobile() {
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><rect x="5" y="2" width="14" height="20" rx="3"/><path d="M11 18h2"/></svg>
           </span>
           <div>
-            <h4>Contribute</h4>
+            <h2>Contribute</h2>
             <p>Pay in by mobile money, bank transfer or your employer — from UGX 5,000.</p>
           </div>
         </div>
@@ -44,7 +44,7 @@ export default function AboutMobile() {
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M3 3v18h18"/><path d="m7 14 3-3 3 3 5-6"/></svg>
           </span>
           <div>
-            <h4>Grow</h4>
+            <h2>Grow</h2>
             <p>We invest your savings professionally so they grow steadily over time.</p>
           </div>
         </div>
