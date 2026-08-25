@@ -1,31 +1,36 @@
 import { useState } from 'react';
 import { useBranchScope } from '../../contexts/BranchScopeContext';
-import { useEntity } from '../../hooks/useEntity';
+import { useEntity, useUpdateBranch } from '../../hooks/useEntity';
 import { useToast } from '../../contexts/ToastContext';
+import { changePassword } from '../../services/auth';
 import ErrorCard from '../../components/feedback/ErrorCard';
 import styles from './branchMobile.module.css';
 
 /**
  * SettingsMobile — the branch admin PHONE settings page. Mirrors the DESKTOP
- * SettingsDesktop's data wiring (useEntity('branch', branchId) prefill + the
- * demo-scope toast "save" path — branch-profile writes are NOT wired to a
- * backend RPC) and renders the approved mockup's segmented [Branch profile ·
- * Password] layout.
+ * SettingsDesktop's data wiring (useEntity('branch', branchId) prefill,
+ * useUpdateBranch() to save) and renders the approved mockup's segmented
+ * [Branch profile · Password] layout.
  *
- * Data honesty:
+ * Data honesty (A12-007):
  * - Branch ID is DISABLED — it comes straight off the entity (id) and has no
  *   editable write path. District is OMITTED (matching SettingsDesktop): the
  *   branch row stores only the district id (parentId, e.g. d-kam-015) with no
  *   human display-name field, so surfacing it read-only just showed a
  *   meaningless code.
- * - Password fields are local-only (demo scope): the platform uses mocked OTP
- *   sign-in, so "Update password" confirms via toast without a real RPC,
- *   mirroring the desktop demo-save semantics.
+ * - Profile save goes through the real useUpdateBranch() mutation (same one
+ *   the distributor's branch-edit panel uses) — the success toast now fires
+ *   only when the write actually lands.
+ * - "Update password" calls the real POST /auth/change-password endpoint
+ *   (services/auth.js changePassword — the same call subscriber, employer and
+ *   admin Settings already use). It is JWT-authenticated rather than
+ *   table-RLS-gated, so it works for any signed-in role, branch included.
  */
 export default function SettingsMobile() {
   const { branchId } = useBranchScope();
   const { data: branch, isLoading, isError, error, refetch } = useEntity('branch', branchId);
   const { addToast } = useToast();
+  const updateBranch = useUpdateBranch();
 
   const [tab, setTab] = useState('profile');
 
@@ -36,6 +41,7 @@ export default function SettingsMobile() {
   const [currentPw, setCurrentPw] = useState('');
   const [newPw, setNewPw] = useState('');
   const [confirmPw, setConfirmPw] = useState('');
+  const [pwBusy, setPwBusy] = useState(false);
 
   // Prefill from the entity once it loads — adjust state during render (guarded
   // on branch.id so it runs once per branch), the React-recommended alternative
@@ -62,14 +68,28 @@ export default function SettingsMobile() {
     return <div className={styles.loading}><div className={styles.spinner} /></div>;
   }
 
-  function handleSaveProfile(e) {
+  async function handleSaveProfile(e) {
     e.preventDefault();
-    // Demo scope: branch-profile writes aren't wired to a backend RPC. Confirm
-    // the change locally so the flow reads end-to-end in a sales walkthrough.
-    addToast('success', 'Branch profile saved.');
+    // A12-007: used to fire the success toast unconditionally with no write
+    // behind it. Route through the real useUpdateBranch() mutation (same one
+    // SettingsDesktop and the distributor's branch-edit panel use) so success
+    // is contingent on the write actually succeeding.
+    try {
+      await updateBranch.mutateAsync({
+        id: branchId,
+        updates: {
+          name: name.trim(),
+          managerName: managerName.trim(),
+          managerPhone: managerPhone.trim(),
+        },
+      });
+      addToast('success', 'Branch profile saved.');
+    } catch (err) {
+      addToast('error', err?.message || 'Could not save the branch profile. Please try again.');
+    }
   }
 
-  function handleUpdatePassword(e) {
+  async function handleUpdatePassword(e) {
     e.preventDefault();
     if (!currentPw || !newPw || !confirmPw) {
       addToast('error', 'Fill in all password fields.');
@@ -79,11 +99,23 @@ export default function SettingsMobile() {
       addToast('error', 'New passwords do not match.');
       return;
     }
-    // Demo scope: sign-in uses mocked OTP, so there's no real password RPC.
-    addToast('success', 'Password updated.');
-    setCurrentPw('');
-    setNewPw('');
-    setConfirmPw('');
+    // A12-007: this used to toast "Password updated." unconditionally. There
+    // IS a real, role-agnostic endpoint for this (POST /auth/change-password,
+    // JWT-authenticated rather than table-RLS-gated) — subscriber, employer and
+    // admin Settings already call it via services/auth.js changePassword(). Wire
+    // the branch admin's password form to the same call instead of faking it.
+    setPwBusy(true);
+    try {
+      await changePassword(currentPw, newPw);
+      addToast('success', 'Password updated.');
+      setCurrentPw('');
+      setNewPw('');
+      setConfirmPw('');
+    } catch (err) {
+      addToast('error', err?.message || 'Could not update password. Please try again.');
+    } finally {
+      setPwBusy(false);
+    }
   }
 
   return (
@@ -156,8 +188,12 @@ export default function SettingsMobile() {
             </div>
           </section>
 
-          <button type="submit" className={`${styles.btn} ${styles.btnPri} ${styles.btnBlock}`}>
-            Save changes
+          <button
+            type="submit"
+            className={`${styles.btn} ${styles.btnPri} ${styles.btnBlock}`}
+            disabled={updateBranch.isPending}
+          >
+            {updateBranch.isPending ? 'Saving…' : 'Save changes'}
           </button>
         </form>
       )}
@@ -207,8 +243,12 @@ export default function SettingsMobile() {
             </div>
           </section>
 
-          <button type="submit" className={`${styles.btn} ${styles.btnPri} ${styles.btnBlock}`}>
-            Update password
+          <button
+            type="submit"
+            className={`${styles.btn} ${styles.btnPri} ${styles.btnBlock}`}
+            disabled={pwBusy}
+          >
+            {pwBusy ? 'Updating…' : 'Update password'}
           </button>
         </form>
       )}
