@@ -270,10 +270,17 @@ export function SignupProvider({ children, flow = 'self' }) {
   // editing without an unload.
   useEffect(() => {
     if (typeof window === 'undefined') return undefined;
-    const flush = () => persist(state);
+    // storageKey, NOT the default. This flush was the one path that still wrote
+    // to the bare `self` key: an agent who refreshed or closed the tab mid-
+    // onboarding dumped the SUBSCRIBER'S name, NIN, DOB, phone and live
+    // signupNonce into the PUBLIC wizard's blob — where reset() never cleans it
+    // (it only clears the agent key) and the next /signup visitor rehydrated it.
+    // That is precisely the identity-reuse bug the namespacing exists to close,
+    // reintroduced through the one path that did not thread the key.
+    const flush = () => persist(state, storageKey);
     window.addEventListener('beforeunload', flush);
     return () => window.removeEventListener('beforeunload', flush);
-  }, [state]);
+  }, [state, storageKey]);
 
   const patch = useCallback((payload) => dispatch({ type: 'patch', payload }), []);
 

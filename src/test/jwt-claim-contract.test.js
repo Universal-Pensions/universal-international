@@ -40,8 +40,12 @@ function stripSqlComments(src) {
 }
 
 describe('JWT claim contract across migrations', () => {
+  // `!/ \d+\.sql$/` — macOS folder-sync conflict copies ("0110_purge 2.sql")
+  // also end in .sql. Left in, they are scanned as if they were migrations, and
+  // because several of these contracts use .sort() to pick the NEWEST definition
+  // of a function, a duplicate can change which body is judged.
   const files = readdirSync(MIGRATIONS_DIR)
-    .filter((f) => f.endsWith('.sql'))
+    .filter((f) => f.endsWith('.sql') && !/ \d+\.sql$/.test(f))
     .sort();
 
   it('discovers migration files', () => {

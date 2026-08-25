@@ -53,8 +53,12 @@ function stripSqlComments(src) {
 
 // Forward migrations only. A `.down.sql` deliberately restores the older body,
 // so asserting against one would fail by design.
+// `!/ \d+\.sql$/` — macOS folder-sync conflict copies ("0110_purge 2.sql")
+// also end in .sql. Left in, they are scanned as if they were migrations, and
+// because several of these contracts use .sort() to pick the NEWEST definition
+// of a function, a duplicate can change which body is judged.
 const forwardMigrations = readdirSync(MIGRATIONS_DIR)
-  .filter((f) => f.endsWith('.sql') && !f.endsWith('.down.sql'))
+  .filter((f) => f.endsWith('.sql') && !/ \d+\.sql$/.test(f) && !f.endsWith('.down.sql'))
   .sort();
 
 /**

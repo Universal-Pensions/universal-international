@@ -9,7 +9,10 @@ import { useSyncExternalStore } from 'react';
 // instead: this hook now owns [0, 767px], useIsDesktop() owns [768px, inf) —
 // adjacent, no gap, no overlap.
 // Full method + evidence: docs/audits/2026-08-23/a18/breakpoint-decision.md.
-const MQ = '(max-width: 767px)';
+// 768, matching the 45 CSS modules that use `max-width: 768px`. Still MECE
+// with useIsDesktop's `min-width: 769px` — no width is unowned, and the seam
+// now sits where the stylesheets already put it.
+const MQ = '(max-width: 768px)';
 
 function subscribeMQ(cb) {
   const mql = window.matchMedia(MQ);

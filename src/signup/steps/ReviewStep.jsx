@@ -37,9 +37,15 @@ export default function ReviewStep({ onNext }) {
   // below), NOT by fullName — an employer invite pre-fills fullName before OCR,
   // so gating on it would skip OCR and leave the OCR-only fields (card number,
   // DOB) blank, which is exactly the invite auto-fill bug we're fixing here.
-  const [ocrState, setOcrState] = useState(
-    signup.idConfidence != null ? 'done' : 'running'
+  // Must use the SAME predicate as the effect below. Gating on idConfidence
+  // alone rendered the form as 'done' while a re-scan was still running, so the
+  // PREVIOUS person's name sat on screen wearing an "Auto-filled" chip — the UI
+  // actively asserting their details had been read off this ID card.
+  const capturedThisAttempt = (
+    signup.idConfidence != null
+    && signup.idCapturedSessionId === signup.onboardingSessionId
   );
+  const [ocrState, setOcrState] = useState(capturedThisAttempt ? 'done' : 'running');
   const [ocrError, setOcrError] = useState('');
   // Bumping ocrRunId re-triggers the OCR effect — that's how the error-screen
   // "Try again" button re-invokes extractIdFields rather than hanging on a
@@ -59,9 +65,6 @@ export default function ReviewStep({ onNext }) {
    * the good half (a refresh WITHIN one attempt must not re-scan and swap the
    * person mid-wizard) while dropping a result that belongs to a finished one. */
   useEffect(() => {
-    const capturedThisAttempt =
-      signup.idConfidence != null
-      && signup.idCapturedSessionId === signup.onboardingSessionId;
     if (capturedThisAttempt) return;
     let cancelled = false;
     (async () => {
@@ -78,13 +81,36 @@ export default function ReviewStep({ onNext }) {
         // every field is empty, so this fills them all exactly as before.
         // districtId is intentionally NOT on the OCR result — Ugandan IDs don't
         // carry a district; the user picks it manually so it's never auto-filled.
-        const applied = {
-          fullName: signup.fullName || result.fullName,
-          nin: signup.nin || result.nin,
-          cardNumber: signup.cardNumber || result.cardNumber,
-          dob: signup.dob || result.dob,
-          gender: signup.gender || result.gender,
-        };
+        // Backfill-empties is RIGHT for an employer invite (it pre-fills
+        // name/nin/gender on purpose, and OCR should only top up card number +
+        // DOB). It is WRONG when the persisted fields belong to a FINISHED
+        // attempt: `signup.fullName || result.fullName` keeps the previous
+        // person's name and NIN while taking this card's number and DOB, which
+        // is a hybrid of two identities — worse than the stale-replay bug it
+        // was meant to fix, because at least that kept one person intact.
+        //
+        // A stale capture is exactly "idConfidence is set, but under a DIFFERENT
+        // session". An invite prefill has no idConfidence at all, so it still
+        // takes the backfill path untouched.
+        const staleCapture = (
+          signup.idConfidence != null
+          && signup.idCapturedSessionId !== signup.onboardingSessionId
+        );
+        const applied = staleCapture
+          ? {
+            fullName: result.fullName,
+            nin: result.nin,
+            cardNumber: result.cardNumber,
+            dob: result.dob,
+            gender: result.gender,
+          }
+          : {
+            fullName: signup.fullName || result.fullName,
+            nin: signup.nin || result.nin,
+            cardNumber: signup.cardNumber || result.cardNumber,
+            dob: signup.dob || result.dob,
+            gender: signup.gender || result.gender,
+          };
         signup.patch({
           ...applied,
           barcodeRaw: result.barcodeRaw,

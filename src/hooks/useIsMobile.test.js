@@ -57,10 +57,10 @@ describe('useIsMobile()', () => {
     window.matchMedia = originalMatchMedia;
   });
 
-  it('queries exactly "(max-width: 767px)" — locks in the A18-002 threshold', () => {
+  it('queries exactly "(max-width: 768px)" — locks in the A18-002 threshold', () => {
     installMatchMediaStub(375);
     renderHook(() => useIsMobile());
-    expect(window.matchMedia).toHaveBeenCalledWith('(max-width: 767px)');
+    expect(window.matchMedia).toHaveBeenCalledWith('(max-width: 768px)');
   });
 
   it('returns true at exactly 767px', () => {
@@ -69,8 +69,8 @@ describe('useIsMobile()', () => {
     expect(result.current).toBe(true);
   });
 
-  it('returns false at exactly 768px — no overlap with useIsDesktop()', () => {
-    installMatchMediaStub(768);
+  it('returns false at exactly 769px — no overlap with useIsDesktop()', () => {
+    installMatchMediaStub(769);
     const { result } = renderHook(() => useIsMobile());
     expect(result.current).toBe(false);
   });

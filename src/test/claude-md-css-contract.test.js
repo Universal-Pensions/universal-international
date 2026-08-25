@@ -33,6 +33,12 @@ function stripCssComments(css) {
 
 function walkCss(dir, out = []) {
   for (const entry of readdirSync(dir)) {
+    // Skip macOS folder-sync conflict copies ("foo 2.js"). This checkout
+    // lives under ~/Desktop and its sync process duplicates files during
+    // branch switches; a directory walk otherwise scans the copies, and a
+    // contract test then reports its OWN duplicate as a violation. Same
+    // exclusion vite.config.js already applies to coverage.
+    if (/ \d+\.[A-Za-z0-9]+$/.test(entry)) continue;
     const full = join(dir, entry);
     const stat = statSync(full);
     if (stat.isDirectory()) {

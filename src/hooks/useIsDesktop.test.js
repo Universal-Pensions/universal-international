@@ -61,10 +61,10 @@ describe('useIsDesktop()', () => {
     window.matchMedia = originalMatchMedia;
   });
 
-  it('queries exactly "(min-width: 768px)" — locks in the A18-002 threshold', () => {
+  it('queries exactly "(min-width: 769px)" — locks in the A18-002 threshold', () => {
     installMatchMediaStub(1280);
     renderHook(() => useIsDesktop());
-    expect(window.matchMedia).toHaveBeenCalledWith('(min-width: 768px)');
+    expect(window.matchMedia).toHaveBeenCalledWith('(min-width: 769px)');
   });
 
   it('returns false below 768px', () => {
@@ -73,8 +73,8 @@ describe('useIsDesktop()', () => {
     expect(result.current).toBe(false);
   });
 
-  it('returns true at exactly 768px', () => {
-    installMatchMediaStub(768);
+  it('returns true at exactly 769px', () => {
+    installMatchMediaStub(769);
     const { result } = renderHook(() => useIsDesktop());
     expect(result.current).toBe(true);
   });

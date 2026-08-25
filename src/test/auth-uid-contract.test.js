@@ -41,8 +41,12 @@ describe('auth.uid() trap contract across migrations', () => {
   // body (same reasoning as login-identity-contract.test.js), so asserting
   // against one would fail by design if an old body ever legitimately used
   // a now-forbidden pattern.
+  // `!/ \d+\.sql$/` — macOS folder-sync conflict copies ("0110_purge 2.sql")
+  // also end in .sql. Left in, they are scanned as if they were migrations, and
+  // because several of these contracts use .sort() to pick the NEWEST definition
+  // of a function, a duplicate can change which body is judged.
   const files = readdirSync(MIGRATIONS_DIR)
-    .filter((f) => f.endsWith('.sql') && !f.endsWith('.down.sql'))
+    .filter((f) => f.endsWith('.sql') && !/ \d+\.sql$/.test(f) && !f.endsWith('.down.sql'))
     .sort();
 
   it('discovers forward migration files', () => {

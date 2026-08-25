@@ -17,7 +17,14 @@ import { useSyncExternalStore } from 'react';
 // 767-1024px range, and (distributor/admin) both dash and map mode. Full
 // method + evidence: docs/audits/2026-08-23/a18/breakpoint-decision.md.
 // Do not move this number again without reading that file and updating it.
-const MQ = '(min-width: 768px)';
+// 769, not 768. The CSS seam in this repo is 768/769 — 45 modules use
+// `max-width: 768px` for the mobile tree and the distributor/admin rail is
+// gated on `min-width: 769px` (DashboardShell.module.css:14, Sidebar.module.css
+// hides .sidebar at max-width:768px). A JS seam at 768 mounted the DESKTOP
+// shell at exactly 768px while the CSS still applied the MOBILE rules, so the
+// whole nav rail vanished — and the dash/map toggle lives only in that rail, so
+// a persisted 'map' mode became unescapable. Classic 768x1024 iPad portrait.
+const MQ = '(min-width: 769px)';
 
 function subscribeMQ(cb) {
   const mql = window.matchMedia(MQ);
