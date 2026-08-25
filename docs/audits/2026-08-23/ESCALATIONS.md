@@ -111,3 +111,20 @@ Handed directly to `P4-branch-metrics` (it owns the files, and was still running
 | E27 | **`VITE_SENTRY_DSN` must be set in Vercel's BUILD environment.** Proven root cause of A09-005/A24-009: Vite statically folds `if (import.meta.env.VITE_SENTRY_DSN)` to `if (undefined)` and Rollup deletes Sentry *including the import*. **No source edit can fix this** — and a runtime-only value is too late. Steps in `a07/observability-notes.md`. | **user / deploy owner** | **OPEN — blocks A09-005** |
 | E28 | `@sentry/react` is a **devDependency** (A09-012/A24-005). Builds today because Vercel installs devDeps, but a build with `NODE_ENV=production` or `--omit=dev` fails to resolve the import **only at deploy time**. `package.json` holds the user's WIP. | P6-deps | OPEN |
 | E29 | **CSP is still `Report-Only` by design.** Fonts are self-hosted and the sink now exists, but enforcing needs a six-role walk on a preview deploy showing zero violations, which cannot be run from here. Flipping the header without that evidence is the demo-visible risk the plan warns about. | needs a preview deploy | **OPEN — deliberate** |
+
+## Phase 6 — remainder (2026-08-25)
+
+### Closed by decision, with the measurement
+
+| # | Item | Disposition |
+|---|---|---|
+| **A21-003** | `employerSeed.js` ships on the live-backed path because `IS_SUPABASE_ENABLED` is `String(import.meta.env.VITE_USE_SUPABASE ?? 'true').toLowerCase() !== 'false'` — a RUNTIME expression, so Rollup cannot constant-fold the mock branch away (unlike the Sentry gate, which folds because it is a bare truthiness check). | **DEFER, measured.** The cost is **7.3 KB gzipped**. The fix is 18 synchronous call sites made async — 14 of them in `src/services/employer.js`, the employer money path repaired earlier today for A14-001 and now covered by the largest test cluster in the suite. 7.3 KB does not justify an async refactor of a money service that was just rebuilt. Revisit if `VITE_USE_SUPABASE` is ever removed, which makes the branch statically dead and the fix free. |
+| **A21-004** (index drop) | The audit called `idx_subscribers_agent_id` redundant against the `(agent_id, id)` composite. | **REFUSED.** 54,840 scans in 46 h — MORE than the composite's 42,625 — because it is half the size (312 kB vs 632 kB) and the planner prefers it. A prefix is not a duplicate. Dropping it pushes 54,840 lookups onto a twice-as-wide index, silently. |
+| **A21-005** (RLS consolidation) | **EXCLUDE upheld.** Proven safe (13/13 identities row-set-identical by md5 fingerprint, including 3 negative cases) and 31% faster — and still not worth it: 6-11 ms behind a ~93 ms Singapore round trip, against a cross-tenant PII disclosure if one `CASE` branch is subtly wrong. The finding's central claim is also false on live: it says the policies read `auth.jwt()` per row; `EXPLAIN` shows every one already InitPlan-hoisted by 0008/0023, and its cited ~297 ms was a COLD run. `0130` is authored and reversible so this can be revisited with evidence. |
+
+### Still needs the user
+
+| # | Item | Why |
+|---|---|---|
+| U3 | **`SUPABASE_URL` is missing from `.env.local`** (A09-014). Add:<br>`SUPABASE_URL=https://ilkhfnoyxlxwqadebnkp.supabase.co`<br>The template at `.env.local.example:41` already carries it. Until then local `npm run dev:api` boots only via a fallback that `server/env.ts:14-16` says is scheduled for removal. | `.env.local` is the user's file and is never edited by this programme. |
+| U4 | **An unidentified third-party monitor polls `/api/health`, which does not exist**, and has been recording its 404 as "up". It is NOT the GitHub keepalive (`/readyz`) nor the cron-job.org / UptimeRobot backups (`/healthz`). Now that morgan wraps the health routes (A09-010), its next poll appears in the Render log stream with a timestamp and user-agent — the cheapest way to identify and repoint it. | Needs uptime-monitor dashboard access. |

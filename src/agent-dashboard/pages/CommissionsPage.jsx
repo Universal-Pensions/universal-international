@@ -14,7 +14,7 @@ import {
   EarnedMonths,
   SettlementMismatchBanner,
 } from './commissions/CommissionsParts';
-import { VALID_VIEWS, Icons } from './commissions/commissionsConfig';
+import { VALID_VIEWS, Icons, commissionsErrorMessage } from './commissions/commissionsConfig';
 
 export default function CommissionsPage() {
   const { view } = useParams();
@@ -103,7 +103,7 @@ export default function CommissionsPage() {
           <div className={styles.empty}>
             <ErrorCard
               title="We couldn't load your commissions"
-              message={error}
+              message={commissionsErrorMessage(error)}
               onRetry={refetch}
             />
           </div>

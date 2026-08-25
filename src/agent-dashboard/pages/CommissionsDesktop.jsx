@@ -14,7 +14,7 @@ import {
   CommissionRow,
   SettlementMismatchBanner,
 } from './commissions/CommissionsParts';
-import { VALID_VIEWS, VIEW_LABELS, Icons } from './commissions/commissionsConfig';
+import { VALID_VIEWS, VIEW_LABELS, Icons, commissionsErrorMessage } from './commissions/commissionsConfig';
 import desktopStyles from './CommissionsDesktop.module.css';
 
 const ChevronRight = (
@@ -152,7 +152,7 @@ export default function CommissionsDesktop() {
         {isError && !isLoading && (
           <ErrorCard
             title="We couldn't load your commissions"
-            message={error}
+            message={commissionsErrorMessage(error)}
             onRetry={refetch}
           />
         )}
@@ -196,7 +196,7 @@ export default function CommissionsDesktop() {
       {isError && !isLoading && (
         <ErrorCard
           title="We couldn't load your commissions"
-          message={error}
+          message={commissionsErrorMessage(error)}
           onRetry={refetch}
         />
       )}
