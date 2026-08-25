@@ -32,6 +32,11 @@ const BackIcon = (
     <path d="M15 18l-6-6 6-6" />
   </svg>
 );
+const ChevIcon = (
+  <svg viewBox="0 0 24 24" width="17" height="17" fill="none" aria-hidden="true">
+    <path d="M9 6l6 6-6 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+  </svg>
+);
 
 function initials(name = '') {
   return name.split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0]?.toUpperCase()).join('') || '?';
@@ -202,6 +207,22 @@ export default function AgentDetailMobile() {
           ))}
         </section>
       )}
+
+      {/* Drill deeper: this agent's own subscribers (AUDIT A12-005 — the branch
+          desktop shell already has this via AgentDetailDesktop; the phone shell
+          had no way to reach /dashboard/agents/:id/subscribers at all). */}
+      <NavLink
+        to={`/dashboard/agents/${agentId}/subscribers`}
+        className={styles.lrow}
+        aria-label={`View subscribers for ${agent.name}`}
+      >
+        <span className={`${styles.lIc} ${styles.tintIndigo}`} aria-hidden="true">{EnrolIcon}</span>
+        <span className={styles.lMid}>
+          <b>View subscribers</b>
+          <small>{formatNumber(totalSubs)} on this agent</small>
+        </span>
+        <span className={styles.chev}>{ChevIcon}</span>
+      </NavLink>
 
       {/* ACTIONS */}
       <div className={styles.btnRow}>

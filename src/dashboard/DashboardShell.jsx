@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback, lazy, Suspense } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef, lazy, Suspense } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { EASE_OUT_EXPO } from '../utils/motion';
@@ -250,6 +250,16 @@ function DashboardContent({ mode, mapMounted }) {
     childListParentId,
   } = useDashboard();
 
+  // Ask-AI trigger ref + a close handler that restores focus to it (AUDIT
+  // A19-006) — the bare `setCopilotOpen(false)` this used to pass left focus
+  // stranded wherever Tab last moved it in the background sidebar. Mirrors
+  // `closeCopilot` in the four routed shells (e.g. SubscriberDesktopShell).
+  const askAiRef = useRef(null);
+  const closeCopilot = useCallback(() => {
+    setCopilotOpen(false);
+    requestAnimationFrame(() => askAiRef.current?.focus());
+  }, [setCopilotOpen]);
+
   // Dashboard mode is a DESKTOP concept — mobile never mounts the map and keeps
   // its existing overlay-summary + slide-in-drawer tree unchanged.
   const dashMode = mode === 'dash' && !isMobile;
@@ -276,7 +286,7 @@ function DashboardContent({ mode, mapMounted }) {
 
   return (
     <>
-      <main className={dashMode ? `${styles.main} ${styles.mainDash}` : styles.main} id="main">
+      <main className={dashMode ? `${styles.main} ${styles.mainDash}` : styles.main} id="main" tabIndex={-1}>
         <NavAnnouncer />
         {/* Map: built lazily on the first map-mode entry, then kept mounted and
             hidden via CSS in dash mode so its Leaflet instance + drill state
@@ -343,9 +353,9 @@ function DashboardContent({ mode, mapMounted }) {
       )}
       {/* Ask-AI Network Copilot — additive FAB + slide-in drawer; the map/overlay
           are untouched. */}
-      <AskAiFab onClick={() => setCopilotOpen(true)} />
+      <AskAiFab ref={askAiRef} onClick={() => setCopilotOpen(true)} />
       {copilotOpen && (
-        <DataCopilotPanel open scope="distributor" onClose={() => setCopilotOpen(false)} />
+        <DataCopilotPanel open scope="distributor" onClose={closeCopilot} />
       )}
     </>
   );

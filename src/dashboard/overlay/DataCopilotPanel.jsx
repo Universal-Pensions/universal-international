@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { forwardRef, useEffect, useMemo, useRef, useState } from 'react';
 import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 import { EASE_OUT_EXPO } from '../../utils/motion';
 
@@ -8,6 +8,29 @@ import { getPlatformChatResponse } from '../../services/chat';
 import { buildPlatformCopilotContext, PLATFORM_COPILOT_SUGGESTIONS } from './platformCopilotContext';
 import { sparkIcon, closeIcon, sendIcon } from '../../employer-dashboard/desktop/icons';
 import styles from './DataCopilotPanel.module.css';
+
+// Matches the focusable-elements selector Modal.jsx uses (duplicated locally —
+// this panel is a fixed drawer, not a Modal.jsx portal — so the Tab trap below
+// is self-contained). Filters out disabled / tabindex="-1" / hidden elements.
+const FOCUSABLE_SELECTOR = [
+  'a[href]',
+  'button:not([disabled])',
+  'input:not([disabled]):not([type="hidden"])',
+  'select:not([disabled])',
+  'textarea:not([disabled])',
+  '[tabindex]:not([tabindex="-1"])',
+].join(',');
+
+function getFocusableElements(root) {
+  if (!root) return [];
+  return Array.from(root.querySelectorAll(FOCUSABLE_SELECTOR)).filter((el) => {
+    if (el.getAttribute('aria-hidden') === 'true') return false;
+    if (el.hasAttribute('hidden')) return false;
+    const style = el.style;
+    if (style && (style.display === 'none' || style.visibility === 'hidden')) return false;
+    return true;
+  });
+}
 
 /**
  * DataCopilotPanel — the Ask-AI slide-in copilot drawer for the map-overlay
@@ -90,6 +113,31 @@ function CopilotChat({ open, onClose, scope, title, ctx }) {
       if (e.key === 'Escape') {
         e.stopPropagation();
         onClose?.();
+        return;
+      }
+      // Focus trap (AUDIT A19-005) — this panel declares role="dialog" +
+      // aria-modal="true" but had no Tab handler, so focus walked straight
+      // into the background map-shell sidebar. Mirrors Modal.jsx's trap:
+      // Shift+Tab off the first focusable (or from outside the panel) wraps
+      // to the last; Tab off the last (or from outside) wraps to the first.
+      if (e.key !== 'Tab') return;
+      const focusables = getFocusableElements(node);
+      if (focusables.length === 0) {
+        e.preventDefault();
+        node.focus();
+        return;
+      }
+      const first = focusables[0];
+      const last = focusables[focusables.length - 1];
+      const active = document.activeElement;
+      if (e.shiftKey) {
+        if (active === first || !node.contains(active)) {
+          e.preventDefault();
+          last.focus();
+        }
+      } else if (active === last || !node.contains(active)) {
+        e.preventDefault();
+        first.focus();
       }
     }
     node.addEventListener('keydown', onKey);
@@ -159,6 +207,7 @@ function CopilotChat({ open, onClose, scope, title, ctx }) {
             aria-label={title}
             aria-hidden={open ? undefined : 'true'}
             inert={!open}
+            tabIndex={-1}
           >
             <header className={styles.head}>
               <span className={styles.headTitle}>
@@ -251,12 +300,16 @@ function CopilotChat({ open, onClose, scope, title, ctx }) {
  * Floating "Ask AI" button (bottom-right FAB) for the map-overlay shells. Sits
  * above the map/overlay chrome but below any slide-in panel + the mobile drawer,
  * and is hidden in print. Additive — it never touches the map/overlay.
+ *
+ * Forwards its ref to the underlying <button> (AUDIT A19-006) so the owning
+ * shell can return focus here when the Copilot closes — it never restored
+ * focus to the trigger before, unlike the four routed shells' Ask-AI buttons.
  */
-export function AskAiFab({ onClick, label = 'Ask AI' }) {
+export const AskAiFab = forwardRef(function AskAiFab({ onClick, label = 'Ask AI' }, ref) {
   return (
-    <button type="button" className={styles.fab} onClick={onClick} aria-label={label}>
+    <button ref={ref} type="button" className={styles.fab} onClick={onClick} aria-label={label}>
       <span className={styles.fabIcon}>{sparkIcon(18)}</span>
       <span className={styles.fabText}>{label}</span>
     </button>
   );
-}
+});

@@ -133,15 +133,16 @@ function ShellInner() {
         </div>
       </header>
 
-      <motion.div
+      <motion.main
         id="main"
+        tabIndex={-1}
         key={path}
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ duration: 0.22, ease: EASE_OUT_EXPO }}
       >
         <Screen openCalc={openCalc} />
-      </motion.div>
+      </motion.main>
 
       {showActionBar && (
         <div className={styles.footcta} data-testid="landing-actionbar">

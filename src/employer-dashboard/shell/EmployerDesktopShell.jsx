@@ -85,7 +85,7 @@ export function DesktopLayout() {
     >
       <EmployerSideNavDesktop collapsed={navCollapsed} onToggleCollapse={toggleCollapsed} />
 
-      <main ref={viewportRef} className={styles.viewport} id="main">
+      <main ref={viewportRef} className={styles.viewport} id="main" tabIndex={-1}>
         <AnimatePresence mode="wait" initial={false}>
           <motion.div
             key={location.pathname}

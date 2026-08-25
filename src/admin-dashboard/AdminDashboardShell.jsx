@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback, lazy, Suspense } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef, lazy, Suspense } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { EASE_OUT_EXPO } from '../utils/motion';
@@ -294,6 +294,17 @@ function AdminDashboardContent({ mode, mapMounted }) {
     setCopilotOpen,
     viewNavOpen,
   } = useAdminPanel();
+
+  // Ask-AI trigger ref + a close handler that restores focus to it (AUDIT
+  // A19-006) — the bare `setCopilotOpen(false)` this used to pass left focus
+  // stranded wherever Tab last moved it in the background sidebar. Mirrors
+  // `closeCopilot` in the four routed shells (e.g. SubscriberDesktopShell).
+  const askAiRef = useRef(null);
+  const closeCopilot = useCallback(() => {
+    setCopilotOpen(false);
+    requestAnimationFrame(() => askAiRef.current?.focus());
+  }, [setCopilotOpen]);
+
   // Open the employer detail panel focused on the clicked employer (from the map
   // district drill-down's Employers tab) — mirrors clicking a branch.
   const handleEmployerSelect = useCallback((id) => {
@@ -326,7 +337,7 @@ function AdminDashboardContent({ mode, mapMounted }) {
 
   return (
     <>
-      <main className={dashMode ? `${styles.main} ${styles.mainDash}` : styles.main} id="main">
+      <main className={dashMode ? `${styles.main} ${styles.mainDash}` : styles.main} id="main" tabIndex={-1}>
         <NavAnnouncer />
         {/* Map: built lazily on the first map-mode entry, then kept mounted and
             hidden via CSS in dash mode so its Leaflet instance + drill state
@@ -409,10 +420,10 @@ function AdminDashboardContent({ mode, mapMounted }) {
           scopes the read (notifications_select_admin, 0049). */}
       <div className={chrome.topRight}>
         <NotificationBell role="admin" entityId="*" align="right" portal />
-        <AskAiFab onClick={() => setCopilotOpen(true)} />
+        <AskAiFab ref={askAiRef} onClick={() => setCopilotOpen(true)} />
       </div>
       {copilotOpen && (
-        <DataCopilotPanel open scope="admin" onClose={() => setCopilotOpen(false)} />
+        <DataCopilotPanel open scope="admin" onClose={closeCopilot} />
       )}
     </>
   );

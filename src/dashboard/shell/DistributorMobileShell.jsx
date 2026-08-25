@@ -105,7 +105,7 @@ export default function DistributorMobileShell() {
     <DistributorAppBarContext.Provider value={appBarValue}>
       <div className={styles.shell}>
         <DistributorMobileAppBar onOpenAI={openAskAI} />
-        <main ref={viewportRef} className={styles.viewport} id="main" data-mobile-viewport>
+        <main ref={viewportRef} className={styles.viewport} id="main" tabIndex={-1} data-mobile-viewport>
           <AnimatedOutlet />
         </main>
         <DistributorBottomTabBar />
