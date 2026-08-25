@@ -24,8 +24,15 @@ const BellIcon = (
 /**
  * NotificationBell — a bell-icon button with an unread-count badge that toggles
  * an in-app notification popover. Self-contained + reusable for both the agent
- * (role="agent") and branch (role="branch") shells; the only inputs are the
- * recipient `role` + `entityId`.
+ * (recipientRole="agent") and branch (recipientRole="branch") shells; the only
+ * inputs are the recipient `recipientRole` + `entityId`.
+ *
+ * The prop is `recipientRole`, NOT `role` (A20-008). On a JSX element `role` is
+ * the ARIA attribute, so the previous spelling — role="agent" — made
+ * jsx-a11y/aria-role fire at all 10 call sites, because "agent" is not a valid
+ * ARIA role. The 10 warnings were never about broken ARIA; they were a
+ * prop-name collision. Renaming removes the collision at source rather than
+ * silencing the rule, so the lint stays useful for real ARIA mistakes.
  *
  * The badge reads useUnreadNotificationCount (polls every 30s); it's hidden at
  * 0 and clamps to "9+" above nine. The popover renders NotificationList.
@@ -46,7 +53,7 @@ const BellIcon = (
  *   the indigo dome instead of a light surface.
  */
 export default function NotificationBell({
-  role,
+  recipientRole,
   entityId,
   align = 'right',
   portal = false,
@@ -58,7 +65,7 @@ export default function NotificationBell({
   const wrapRef = useRef(null);
   const popoverRef = useRef(null);
   const reduceMotion = useReducedMotion();
-  const { data: unread = 0 } = useUnreadNotificationCount({ role, entityId });
+  const { data: unread = 0 } = useUnreadNotificationCount({ role: recipientRole, entityId });
 
   const close = useCallback(() => setOpen(false), []);
   // When portaled, the popover leaves `.wrap`, so a click inside it would count
@@ -97,7 +104,7 @@ export default function NotificationBell({
     };
   }, [portal, open, alignLeft]);
 
-  if (!role || !entityId) return null;
+  if (!recipientRole || !entityId) return null;
 
   const badgeLabel = unread > 9 ? '9+' : String(unread);
 
@@ -118,7 +125,7 @@ export default function NotificationBell({
           exit={reduceMotion ? { opacity: 0 } : { opacity: 0, y: -8, scale: 0.97 }}
           transition={{ duration: reduceMotion ? 0.12 : 0.2, ease: EASE_OUT_EXPO }}
         >
-          <NotificationList role={role} entityId={entityId} onClose={close} />
+          <NotificationList role={recipientRole} entityId={entityId} onClose={close} />
         </motion.div>
       )}
     </AnimatePresence>

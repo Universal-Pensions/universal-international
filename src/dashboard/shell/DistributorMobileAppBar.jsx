@@ -85,7 +85,7 @@ export default function DistributorMobileAppBar({ onOpenAI }) {
           {/* See Sidebar.jsx — mounted so admin Needs-attention escalations
               actually reach the distributor. */}
           {distributorId && (
-            <NotificationBell role="distributor" entityId={distributorId} align="right" portal />
+            <NotificationBell recipientRole="distributor" entityId={distributorId} align="right" portal />
           )}
           <button
             type="button"

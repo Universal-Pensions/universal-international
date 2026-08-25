@@ -25,6 +25,7 @@
     "test:e2e:ui": "playwright test --ui",
     "test:e2e:smoke": "playwright test e2e/specs/smoke",
     "test:e2e:flows": "playwright test e2e/specs/flows",
+    "test:e2e:delta": "node scripts/e2e-delta.mjs",
     "seed": "dotenv -e .env.local -- node scripts/seed-supabase.mjs",
     "deploy:api": "dotenv -e .env.local -- node scripts/render-deploy.mjs"
   },

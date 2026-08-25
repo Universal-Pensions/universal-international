@@ -92,7 +92,7 @@ export default function AdminMobileAppBar({ onOpenAI }) {
               drill-down are addressed to a QUEUE (ops-treasury, ops-claims, …),
               not to admin-001, so a self-id filter would show an empty bell.
               RLS still scopes the read (notifications_select_admin, 0049). */}
-          <NotificationBell role="admin" entityId="*" align="right" portal />
+          <NotificationBell recipientRole="admin" entityId="*" align="right" portal />
           <button
             type="button"
             className={styles.iconBtn}

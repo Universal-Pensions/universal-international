@@ -117,7 +117,7 @@ export function DesktopLayout() {
             <span className={styles.askAiIcon} aria-hidden="true">{sparkIcon(18)}</span>
             Ask AI
           </button>
-          <NotificationBell role="employer" entityId={employerId} align="right" portal />
+          <NotificationBell recipientRole="employer" entityId={employerId} align="right" portal />
         </div>
       )}
 

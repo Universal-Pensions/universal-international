@@ -441,7 +441,7 @@ function AdminDashboardContent({ mode, mapMounted }) {
           so filtering on the caller's own id would show an empty bell. RLS still
           scopes the read (notifications_select_admin, 0049). */}
       <div className={chrome.topRight}>
-        <NotificationBell role="admin" entityId="*" align="right" portal />
+        <NotificationBell recipientRole="admin" entityId="*" align="right" portal />
         <AskAiFab ref={askAiRef} onClick={() => setCopilotOpen(true)} active={copilotOpen} />
       </div>
       {copilotOpen && (

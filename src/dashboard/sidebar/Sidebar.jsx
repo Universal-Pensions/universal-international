@@ -677,7 +677,7 @@ export default function Sidebar({ expanded = false, onToggleExpand, mapMode = fa
             the distributor feed to its own rows in 0081. */}
         {distributorId && (
           <div className={styles.navBtn} data-bell="true">
-            <NotificationBell role="distributor" entityId={distributorId} align="left" portal />
+            <NotificationBell recipientRole="distributor" entityId={distributorId} align="left" portal />
           </div>
         )}
         {BOTTOM_ITEMS.map((item) => (

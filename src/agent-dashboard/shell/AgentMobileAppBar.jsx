@@ -112,7 +112,7 @@ export default function AgentMobileAppBar({ onOpenAI }) {
             {InboxIcon}
             {unread > 0 && <span className={styles.count} aria-hidden="true">{badgeText(unread)}</span>}
           </button>
-          {agentId && <NotificationBell role="agent" entityId={agentId} align="right" />}
+          {agentId && <NotificationBell recipientRole="agent" entityId={agentId} align="right" />}
           <button
             type="button"
             className={styles.aiBtn}

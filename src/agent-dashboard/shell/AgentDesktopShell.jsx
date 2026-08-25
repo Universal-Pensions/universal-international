@@ -131,7 +131,7 @@ export default function AgentDesktopShell() {
             <span className={styles.askAiIcon} aria-hidden="true">{SparkIcon}</span>
             Ask AI
           </button>
-          <NotificationBell role="agent" entityId={agentId} align="right" portal />
+          <NotificationBell recipientRole="agent" entityId={agentId} align="right" portal />
         </div>
       )}
 
