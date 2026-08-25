@@ -150,7 +150,6 @@ export default function CreateEmployer() {
                     value={form.name}
                     onChange={(e) => update('name', e.target.value)}
                     placeholder="e.g. Kampala Textiles Ltd"
-                    autoFocus
                   />
                 </div>
 

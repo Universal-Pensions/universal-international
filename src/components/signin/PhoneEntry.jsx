@@ -12,7 +12,16 @@ const ROLE_LABELS = {
   admin: 'Admin',
 };
 
-export default function PhoneEntry({ role, onSubmit, onBack, hideBadge = false, hideVisual = false, method = 'code', onMethodChange }) {
+export default function PhoneEntry({ role, onSubmit, onBack, hideBadge = false, hideVisual = false, method = 'code', onMethodChange, focusOnMount = false}) {
+  // A20-009: this component is used in TWO contexts — SignInModal (a dialog the
+  // user just opened, where moving focus IN is correct) and AdminLogin (a PAGE,
+  // where stealing focus on load jumps the viewport and disorients a screen-reader
+  // user). A bare `autoFocus` cannot tell them apart, so the caller decides.
+  const inputRef = useRef(null);
+  useEffect(() => {
+    if (focusOnMount) inputRef.current?.focus();
+  }, [focusOnMount]);
+
   const [phone, setPhone] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -145,7 +154,7 @@ export default function PhoneEntry({ role, onSubmit, onBack, hideBadge = false, 
             value={phone}
             onChange={handleChange}
             placeholder="7XX XXX XXX…"
-            autoFocus
+            ref={inputRef}
             aria-label="Phone number"
             name="phone"
             autoComplete="tel"

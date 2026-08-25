@@ -12,27 +12,37 @@ import { render, screen } from '@testing-library/react';
 
 vi.mock('../../../hooks/useSubscriber', () => ({
   useCurrentSubscriber: vi.fn(),
+  useSubscriberTransactions: vi.fn(),
 }));
 
-const { useCurrentSubscriber } = await import('../../../hooks/useSubscriber');
+const { useCurrentSubscriber, useSubscriberTransactions } = await import('../../../hooks/useSubscriber');
 const { default: ContributionsSummary } = await import('./ContributionsSummary');
 
+// Latest dated contribution is Mar 2026; earlier ones are older.
+const TXNS = [
+  { id: 't1', type: 'contribution', amount: 30000, date: '2026-03-12' },
+  { id: 't2', type: 'contribution', amount: 20000, date: '2026-02-10' },
+  { id: 't3', type: 'contribution', amount: 10000, date: '2026-01-08' },
+];
+
+// NOTE: transactions deliberately do NOT live on the subscriber object.
+// They used to in this fixture, which is why these tests passed while the
+// component was reading `sub.transactions` — a field mapSubscriberRow never
+// populates in production. The fixture was asserting against data the real
+// code could never receive. They now come from useSubscriberTransactions,
+// the query the component actually uses.
 function sub(overrides = {}) {
   return {
+    id: 's-0001',
     contributionHistory: [10000, 20000, 30000],
     contributionSchedule: { retirementPct: 80, emergencyPct: 20 },
-    // Latest dated contribution is Mar 2026; earlier ones are older.
-    transactions: [
-      { id: 't1', type: 'contribution', amount: 30000, date: '2026-03-12' },
-      { id: 't2', type: 'contribution', amount: 20000, date: '2026-02-10' },
-      { id: 't3', type: 'contribution', amount: 10000, date: '2026-01-08' },
-    ],
     ...overrides,
   };
 }
 
 beforeEach(() => {
   useCurrentSubscriber.mockReturnValue({ data: sub(), isLoading: false, isError: false });
+  useSubscriberTransactions.mockReturnValue({ data: TXNS, isLoading: false });
 });
 afterEach(() => { vi.resetAllMocks(); });
 
@@ -48,10 +58,11 @@ describe('<ContributionsSummary /> month axis', () => {
 
   it('falls back to the wall clock when there are no dated transactions', () => {
     useCurrentSubscriber.mockReturnValue({
-      data: sub({ transactions: [], contributionHistory: [5000] }),
+      data: sub({ contributionHistory: [5000] }),
       isLoading: false,
       isError: false,
     });
+    useSubscriberTransactions.mockReturnValue({ data: [], isLoading: false });
     render(<ContributionsSummary />);
     const now = new Date();
     const label = now.toLocaleDateString('en-UG', { month: 'short', year: 'numeric' });

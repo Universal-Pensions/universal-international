@@ -142,7 +142,6 @@ export default function CreateDistributor() {
                     value={form.name}
                     onChange={(e) => update('name', e.target.value)}
                     placeholder="e.g. Western Region Distributor"
-                    autoFocus
                   />
                 </div>
 

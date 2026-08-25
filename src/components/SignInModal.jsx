@@ -424,6 +424,7 @@ export default function SignInModal() {
                           </button>
                         </div>
                         <PhoneEntry
+                focusOnMount
                           role={role}
                           onSubmit={handlePhoneSubmit}
                           hideBadge
@@ -441,6 +442,7 @@ export default function SignInModal() {
                       </>
                     ) : (
                       <PhoneEntry
+                focusOnMount
                         role={role}
                         onSubmit={handlePhoneSubmit}
                         onBack={handlePhoneBack}

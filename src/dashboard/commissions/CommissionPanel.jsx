@@ -653,7 +653,6 @@ export default function CommissionPanel({ splitMode = false, fullPage = false })
                                   value={rateInput}
                                   onChange={(e) => setRateInput(e.target.value)}
                                   aria-label="Commission rate in UGX"
-                                  autoFocus
                                 />
                                 <button className={styles.rateSaveBtn} onClick={saveRate}>Save</button>
                                 <button className={styles.rateCancelBtn} onClick={() => setEditingRate(false)}>Cancel</button>
