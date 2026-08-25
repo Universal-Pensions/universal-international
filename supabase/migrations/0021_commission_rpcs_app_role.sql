@@ -1,4 +1,22 @@
 -- =============================================================================
+-- ⚠️ DEPRECATED / DEAD — DO NOT APPLY, RE-APPLY, OR COPY FROM THIS FILE
+-- (deprecation header added 2026-08-25, audit finding A03-005; body below is
+-- otherwise UNCHANGED and this migration is NOT being deleted)
+-- =============================================================================
+-- Every function this migration creates/replaces was DROPPED by
+-- `0029_commission_simplify.sql` and is absent from live `pg_proc` (verified
+-- 2026-08-25): `SELECT count(*) FROM pg_proc WHERE proname IN (open_run,
+-- cancel_run, release_run, ..., mark_branch_reviewed)` → 0, and no live
+-- function's `prosrc` references `commission_runs` or `commission_lines`.
+-- The run/dispute tables these functions operated on do not exist either —
+-- only `contribution_runs` / `contribution_run_uploads` do. There is no
+-- `0021...down.sql`.
+--
+-- Retained for historical/provenance reasons only (A03-005,
+-- `docs/audits/2026-08-23/findings.json`). See `0029_commission_simplify.sql`
+-- and `docs/BACKEND.md §16` for what actually runs live today.
+-- =============================================================================
+-- =============================================================================
 -- Universal Pensions Uganda — 0021: Commission RPCs `app_role` migration
 -- =============================================================================
 -- Forward-port of `0004_commission_run_rpcs.sql` with the JWT claim corrected:

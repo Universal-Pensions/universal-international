@@ -514,22 +514,70 @@ export async function getSubscriberTransactions(id, { type, range, status } = {}
   // with mapTransactionRow if a new mapped field is added. `contribution_run_id`
   // is what lets every subscriber surface tell a payroll-deducted employee leg
   // apart from a top-up the member actually made (see mapTransactionRow).
-  let q = supabase
-    .from('transactions')
-    .select(
-      'id, subscriber_id, agent_id, type, source, amount, date, status, method, txn_ref, bucket, split_retirement, split_emergency, contribution_run_id',
-    )
-    .eq('subscriber_id', id)
-    .order('date', { ascending: false });
-  if (type) q = q.eq('type', type);
-  if (status) q = q.eq('status', status);
-  if (range) {
-    const [from, to] = range;
-    if (from) q = q.gte('date', from);
-    if (to) q = q.lte('date', to);
+  const COLUMNS =
+    'id, subscriber_id, agent_id, type, source, amount, date, status, method, txn_ref, bucket, split_retirement, split_emergency, contribution_run_id';
+
+  const applyFilters = (q) => {
+    let f = q.eq('subscriber_id', id);
+    if (type) f = f.eq('type', type);
+    if (status) f = f.eq('status', status);
+    if (range) {
+      const [from, to] = range;
+      if (from) f = f.gte('date', from);
+      if (to) f = f.lte('date', to);
+    }
+    // `id` is a secondary sort key purely to make paging below deterministic:
+    // many rows can share the same `date` (e.g. a batch contribution run), and
+    // without a tie-breaker two separate `.range()` requests are not guaranteed
+    // to agree on which same-dated row lands on which side of a page boundary.
+    return f.order('date', { ascending: false }).order('id', { ascending: false });
+  };
+
+  const PAGE_SIZE = 1000;
+  const SAFETY_CAP_ROWS = 100_000; // bounds a runaway fan-out, mirrors entities.js
+
+  // Page 0 — always serial. Every subscriber in the live seed tops out around
+  // 17 transactions today (2026-08-25), so this is normally the ONLY request.
+  // But PostgREST silently caps any single response at 1,000 rows — even when
+  // a larger `.limit()`/`.range()` is requested, with no error (AUDIT-21-101) —
+  // and this exact list is summed straight into the Annual Tax Statement and
+  // its CSV export, a figure a member could file with URA. A silent truncation
+  // here would understate real money, so this pages defensively rather than
+  // trusting one request to be enough. Mirrors the fan-out idiom in
+  // entities.js:getAllAtLevel.
+  const { data: firstData, error: firstError } = await applyFilters(
+    supabase.from('transactions').select(COLUMNS),
+  ).range(0, PAGE_SIZE - 1);
+  if (firstError) throw firstError;
+  const firstRows = firstData ?? [];
+  if (firstRows.length < PAGE_SIZE) return firstRows.map(mapTransactionRow);
+
+  // The set spans multiple pages. Learn the exact (filtered) total with a HEAD
+  // count, then fetch the remaining pages concurrently.
+  const { count, error: countError } = await applyFilters(
+    supabase.from('transactions').select(COLUMNS, { count: 'exact', head: true }),
+  );
+  if (countError) throw countError;
+
+  const total = Math.min(count ?? firstRows.length, SAFETY_CAP_ROWS);
+  const rows = [...firstRows];
+  if (total > PAGE_SIZE) {
+    const pageRequests = [];
+    for (let from = PAGE_SIZE; from < total; from += PAGE_SIZE) {
+      const to = Math.min(from + PAGE_SIZE - 1, total - 1);
+      pageRequests.push(
+        applyFilters(supabase.from('transactions').select(COLUMNS))
+          .range(from, to)
+          .then(({ data, error }) => {
+            if (error) throw error;
+            return data ?? [];
+          }),
+      );
+    }
+    const pages = await Promise.all(pageRequests);
+    for (const page of pages) rows.push(...page);
   }
-  const rows = unwrap(await q);
-  return (rows ?? []).map(mapTransactionRow);
+  return rows.map(mapTransactionRow);
 }
 
 /**
@@ -1342,11 +1390,22 @@ export async function fundInsuranceProducts(
  * (only 'contribution' rows count toward balances), so renewals never touch
  * savings balances.
  *
+ * LIVE PATH: `fund_insurance_products` (0073), NOT a direct write. This used to
+ * PATCH insurance_policies / subscriber_insurance_products and POST the
+ * 'premium' row straight to /rest/v1/transactions. Migration 0118 closed that
+ * door (finding A02-001: the `transactions_insert_self` policy constrained
+ * subscriber_id but not amount, type or status, so any member could mint
+ * themselves any balance). The RPC does the same three things the two direct
+ * writes did — upsert the policy active, push renewal_date forward a year,
+ * insert ONE 'premium' transaction — plus the things they could not: it derives
+ * the charge server-side as premium × 12, refuses to touch employer-funded
+ * cover, and is idempotent on `nonce` via money_nonces.
+ *
  * @param {string} id
- * @param {{ type: 'life'|'health', method?: string }} payload
+ * @param {{ type: 'life'|'health'|'funeral', method?: string, nonce?: string }} payload
  * @returns {Promise<{ policy: object, reference: string }>}
  */
-export async function renewPolicy(id, { type, method = 'MTN Mobile Money' } = {}) {
+export async function renewPolicy(id, { type, method = 'MTN Mobile Money', nonce } = {}) {
   if (!id) throw new Error('Subscriber id required');
   if (!['life', 'health', 'funeral'].includes(type)) throw new Error('Unknown policy type');
 
@@ -1380,50 +1439,48 @@ export async function renewPolicy(id, { type, method = 'MTN Mobile Money' } = {}
 
   if (!IS_SUPABASE_ENABLED) {
     readSession(id).extraTransactions.unshift(tx);
-  } else {
-    // Supabase: persist the renewal on the real row — push the renewal date
-    // forward a year + reactivate — and record the 'premium' transaction.
-    // 'premium' rows never fire the contribution trigger, so balances are
-    // unaffected. Life lives in insurance_policies (subscriber_id); health/funeral
-    // live in subscriber_insurance_products (subscriber_id, product) — migration
-    // 0064. Direct writes are gated by the subscriber's own *_update_self RLS.
-    const dbRenewal = new Date();
-    dbRenewal.setFullYear(dbRenewal.getFullYear() + 1);
-    const renewalPatch = {
-      status: 'active',
-      renewal_date: dbRenewal.toISOString().slice(0, 10),
-      updated_at: new Date().toISOString(),
-    };
-    try {
-      if (type === 'life') {
-        await supabase.from('insurance_policies').update(renewalPatch).eq('subscriber_id', id);
-      } else {
-        await supabase
-          .from('subscriber_insurance_products')
-          .update(renewalPatch)
-          .eq('subscriber_id', id)
-          .eq('product', type);
-      }
-    } catch {
-      // Non-fatal — the session override still flips the policy active.
-    }
-    try {
-      await supabase.from('transactions').insert({
-        id: tx.id,
-        subscriber_id: id,
-        type: 'premium',
-        amount,
-        date: new Date().toISOString(),
-        status: 'settled',
-        method,
-        txn_ref: reference,
-      });
-    } catch {
-      // Non-fatal in the demo — the policy still renews via the session override.
-    }
+    return { policy, reference };
   }
 
-  return { policy, reference };
+  // Supabase: ONE atomic RPC does the whole renewal. `fund_insurance_products`
+  // routes by product itself — life to insurance_policies (subscriber_id),
+  // health/funeral to subscriber_insurance_products (subscriber_id, product),
+  // migration 0064 — upserts it active with renewal_date = now + 1 year, and
+  // inserts a single 'premium' transaction for premiumMonthly × 12, which is
+  // exactly `policy.renewalAmount`. 'premium' rows never fire the contribution
+  // trigger, so balances and AUM are unaffected, same as before.
+  //
+  // Side effect worth knowing: the RPC also stamps policy_start to today. For a
+  // renewal that is right — the new annual term starts now and ends on the
+  // renewal date it just set.
+  //
+  // The result is CHECKED, not swallowed. The two direct writes this replaced
+  // sat in try/catch blocks that could never fire (the PostgREST client returns
+  // { error }, it does not throw), so a rejected renewal used to look like a
+  // success until the member refreshed and found the policy still expired.
+  const { data, error } = await supabase.rpc('fund_insurance_products', {
+    p_nonce: nonce ?? crypto.randomUUID(),
+    p_funding_mode: 'pay_now',
+    p_products: [{
+      product: type,
+      cover: Number(policy.cover ?? 0),
+      premiumMonthly: Number(policy.premiumMonthly ?? 0),
+    }],
+    p_savings_pct: 100,
+    p_method: method,
+  });
+  if (error) {
+    // The optimistic session override was set before we knew whether the charge
+    // would land. Roll it back so the policy does not read as renewed on a
+    // failure, then let the caller surface the error toast.
+    setRenewalOverride(id, type, false);
+    throw error;
+  }
+
+  // Prefer the reference the RPC actually stamped on the transaction row, so the
+  // member's receipt matches their activity feed. Falls back to the locally
+  // minted RN- reference (the shape the mock path uses).
+  return { policy, reference: data?.reference ?? reference };
 }
 
 /**

@@ -1,9 +1,20 @@
 // POST /api/auth/verify-otp
 //
 // Validates `{ phone, otp, role, password? }`, resolves the role-scoped entity
-// ID, upserts a `users(phone, role)` row (optionally stamping a bcrypt
-// `password_hash` when the caller supplied one), and returns a signed JWT +
-// the user payload that `AuthContext.login` consumes on the frontend.
+// ID, and returns a signed JWT + the user payload that `AuthContext.login`
+// consumes on the frontend.
+//
+// `users(phone, role)` write (E18 / A06-013 — see `upsertOrTouchUser` below):
+// only touched when there is something worth persisting. A supplied
+// `password` upserts the row (bcrypt `password_hash` stamped, the row
+// created if this (phone, role) has never authenticated before — the
+// signup-completion flow depends on that). Otherwise the write is
+// UPDATE-only: `last_login_at` is bumped on a row that already exists (a
+// seeded demo account, or one that previously set a password); no row is
+// created for a phone/role this table has never seen. That is what stops the
+// route planting a fresh `entity_id`-less, `password_hash`-less breadcrumb on
+// every OTP sign-in — the defect that made A06-013 recurring even after
+// migration `0121` pruned the rows that had already piled up.
 //
 // Error vocabulary preserved from src/services/auth.js `AuthError`:
 //   - invalid_otp           — bad request shape (4xx). Unknown phones fall
@@ -49,9 +60,9 @@ const VALID_ROLES = new Set<JwtRole>([
   'admin',
 ]);
 
-// Sentinel thrown by `upsertUser` when the upsert query itself fails (as
-// opposed to a "no row" result). The handler catches it and returns a 500
-// `db_error` so ops can distinguish actual DB failures from the demo's
+// Sentinel thrown by `upsertOrTouchUser` when a `users` query itself fails
+// (as opposed to a "no row" result). The handler catches it and returns a
+// 500 `db_error` so ops can distinguish actual DB failures from the demo's
 // happy-path `invalid_otp` UX code.
 class DbError extends Error {
   readonly code: string | undefined;
@@ -64,31 +75,77 @@ class DbError extends Error {
   }
 }
 
-async function upsertUser(
+/**
+ * E18 / A06-013 (recurring). `users` has UNIQUE(phone, role) — one row per
+ * pair — and is read by `verify-password.ts` / `change-password.ts` for
+ * `password_hash`. Nothing anywhere reads `users.entity_id`: neither
+ * subscriber logins (resolved via `subscribers`) nor non-subscriber logins
+ * (resolved via `demo_personas`, see `_lib/personas.ts`) ever consult it —
+ * migration `0121`'s own investigation reached the same conclusion when it
+ * pruned the 32 entity_id-less rows that had already accumulated. Re-measured
+ * live 2026-08-25: back down to 2 (both created THIS session by ordinary demo
+ * OTP logins) — proof the old unconditional upsert kept refilling the table
+ * exactly as the escalation describes.
+ *
+ * The old code called `.upsert()` unconditionally, so EVERY OTP sign-in on a
+ * phone/role this table had never seen — the common case, since CLAUDE.md
+ * §10a's "any 6-digit code, any phone" wildcard is the point of the demo OTP
+ * route — planted a permanent, useless row (no entity_id, ever; no
+ * password_hash, when none was supplied).
+ *
+ * Fix: only INSERT when there is something worth persisting.
+ *   - A password WAS supplied → upsert as before. This must still be able to
+ *     create the row (the signup-completion flow in `ContributionRoute.jsx`
+ *     calls this route with the subscriber's chosen password on their very
+ *     first OTP verification, before any `users` row for them exists).
+ *   - No password → UPDATE-only. Bumps `last_login_at` on a row that already
+ *     exists (a seeded demo account carrying CLAUDE.md §8's `Demo1234` hash,
+ *     or one that previously set a password) and reads back its stored hash
+ *     unchanged, so `hasPassword` and the password-login path are completely
+ *     unaffected. A phone/role never seen before matches zero rows — UPDATE
+ *     is a silent no-op, not an error — and no breadcrumb is left.
+ */
+async function upsertOrTouchUser(
   phone: string,
   role: JwtRole,
   passwordHash: string | null
 ): Promise<{ hasPassword: boolean }> {
-  // `users` table has UNIQUE(phone, role) — one row per (phone, role) pair.
-  // `id` is a non-null TEXT PRIMARY KEY with no default, so the INSERT half
-  // of the upsert needs us to supply one. Deriving it deterministically from
-  // (role, phone) keeps the upsert idempotent across replays: the same JWT
-  // claims always identify the same row. The conflict target is still the
-  // (phone, role) unique constraint, so an existing row's id is preserved on
-  // the UPDATE half.
-  //
-  // When `passwordHash` is non-null we stamp it as part of the same upsert
-  // so the row always reflects the freshly-hashed credential. Passing `null`
-  // intentionally omits the column from the patch (rather than nulling out
-  // any pre-existing hash) — keeping a previously-set password through
-  // password-less re-logins is the desired demo behaviour.
+  if (!passwordHash) {
+    const { data, error } = await supabaseAdmin
+      .from('users')
+      .update({ last_login_at: new Date().toISOString() })
+      .eq('phone', phone)
+      .eq('role', role)
+      .select('password_hash')
+      .maybeSingle();
+    if (error) {
+      console.error('[verify-otp] users last_login_at update failed', error);
+      // PGRST116 = "no row" — .maybeSingle() should return null data / null
+      // error for zero matched rows rather than raise, but treat it as
+      // non-fatal defensively (no row means no stored hash to report).
+      if (error.code === 'PGRST116') {
+        return { hasPassword: false };
+      }
+      throw new DbError(error);
+    }
+    const storedHash = (data?.password_hash as string | null | undefined) ?? null;
+    return { hasPassword: Boolean(storedHash) };
+  }
+
+  // A credential IS being set — this row must exist afterwards. `id` is a
+  // non-null TEXT PRIMARY KEY with no default, so the INSERT half of the
+  // upsert needs us to supply one. Deriving it deterministically from (role,
+  // phone) keeps the upsert idempotent across replays: the same JWT claims
+  // always identify the same row. The conflict target is the (phone, role)
+  // unique constraint, so an existing row's id is preserved on the UPDATE
+  // half.
   const patch: Record<string, unknown> = {
     id: `${role}:${phone}`,
     phone,
     role,
     last_login_at: new Date().toISOString(),
+    password_hash: passwordHash,
   };
-  if (passwordHash) patch.password_hash = passwordHash;
 
   const { data, error } = await supabaseAdmin
     .from('users')
@@ -219,7 +276,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return;
     }
 
-    const { hasPassword } = await upsertUser(
+    const { hasPassword } = await upsertOrTouchUser(
       canonicalPhone,
       typedRole,
       passwordHash

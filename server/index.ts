@@ -5,7 +5,9 @@
 // spec at a glance. Reordering blocks will silently break:
 //   - Sentry capture (must initialise before any module that may throw)
 //   - rate-limit IP detection (needs trust-proxy first)
-//   - access logging (must wrap routes, not be wrapped by them)
+//   - access logging (must wrap routes, not be wrapped by them — including the
+//     health routes, which is why morgan is at block 3b and not after them;
+//     A09-010)
 //   - healthcheck reachability (must be reachable BEFORE route mounts so a
 //     misconfigured deploy can still report status via /healthz)
 //
@@ -23,6 +25,7 @@
 // when present; `environment` mirrors NODE_ENV. Init stays strictly DSN-gated —
 // a no-op when SENTRY_DSN is absent (local dev, PR previews).
 import * as Sentry from '@sentry/node';
+import { normaliseCspReports } from './cspReport.js';
 import { scrubEvent, scrubBreadcrumb } from './sentryScrub.js';
 if (process.env.SENTRY_DSN) {
   Sentry.init({
@@ -78,14 +81,105 @@ import accessRequest from '../api/access-request.js';
 import nomineeClaim from '../api/nominee-claim.js';
 import chat from '../api/chat.js';
 
+// ─── 2b. Proxy topology (A07-004) — how many hops in front of this process are
+// trusted to have written X-Forwarded-For.
+//
+// THE BUG THIS ENCODES A FIX FOR. `trust proxy: 1` tells Express the rightmost
+// XFF entry was appended by a proxy it trusts. On Render that is true: the edge
+// proxy appends the real client IP, so `req.ip` is a value the client cannot
+// forge. Run the SAME code with nothing in front of it — `npm run dev:api`, or
+// any bare `node dist-server/server/index.js` — and the setting is a lie:
+// there is no proxy, so the rightmost XFF entry is whatever the caller typed.
+// Proven locally during the audit: 12 POSTs with a rotating X-Forwarded-For all
+// returned 200 and never tripped the 5/min writeLimiter, because each forged
+// header minted a fresh rate-limit bucket.
+//
+// WHY THIS IS DERIVED AND NOT HARDCODED. The hop count is a property of the
+// deployment, not of the code, so it is read from the deployment.
+//
+// THE DEFAULT FAILS TOWARDS PRODUCTION ON PURPOSE, AND THAT DIRECTION IS THE
+// WHOLE DESIGN. If the detection is ever wrong it must be wrong harmlessly.
+//   Guessing 1 hop when there is none  → a local-dev rate-limit bypass. A
+//     nuisance, on a machine the developer already controls. This is the
+//     behaviour that shipped for months.
+//   Guessing 0 hops when there IS one  → every request keys on Render's edge
+//     proxy IP, collapsing the entire internet into one bucket and 429-ing real
+//     users off the auth routes mid-demo. Unacceptable.
+// So "assume a proxy" is the fallback, and three independent signals are OR-ed
+// rather than trusting any one of them:
+//   NODE_ENV=production   — set explicitly in render.yaml.
+//   RENDER / RENDER_SERVICE_ID — injected by the platform on every Render
+//     service. These cannot be forgotten in a dashboard edit the way a
+//     user-configured var can, which matters here: render.yaml has already
+//     drifted from the live service once (A09-006). `RENDER_GIT_COMMIT` is
+//     relied on the same way for the Sentry release at block 0.
+// Only when ALL of them are absent do we conclude nothing is in front of us.
+//
+// `TRUSTED_PROXY_HOPS` overrides the lot, for the day a CDN is put in front of
+// Render and the count becomes 2. Assert it rather than coercing NaN silently —
+// `Number('')` is 0, which is precisely the dangerous value.
+const TRUSTED_PROXY_HOPS = (() => {
+  const override = process.env.TRUSTED_PROXY_HOPS;
+  if (override !== undefined && override !== '') {
+    const n = Number(override);
+    if (!Number.isInteger(n) || n < 0) {
+      throw new Error(
+        `[env] TRUSTED_PROXY_HOPS must be a non-negative integer, got ${JSON.stringify(override)}`
+      );
+    }
+    return n;
+  }
+  const looksDeployed =
+    process.env.NODE_ENV === 'production' ||
+    !!process.env.RENDER ||
+    !!process.env.RENDER_SERVICE_ID;
+  return looksDeployed ? 1 : 0;
+})();
+
 const app = express();
+
+// A09-017 — `x-powered-by: Express` leaked on /healthz and /readyz. Helmet
+// strips it, but helmet is registered at block 6 and those two routes are
+// deliberately registered before it to protect the ~1 KB uptime-monitor
+// response budget (see block 4). Disabling the header at the app level costs
+// zero response bytes and covers every route regardless of where it sits in
+// the middleware order — which is what the health routes needed.
+app.disable('x-powered-by');
 
 // ─── 3. Trust proxy (G1) — required for express-rate-limit to read req.ip
 // correctly behind Render's edge proxy. Render forwards via X-Forwarded-For;
 // without trust-proxy, every request appears to come from 127.0.0.1 and the
 // rate limiter would either treat the whole world as one client or get
 // confused into 502s.
-app.set('trust proxy', 1);
+app.set('trust proxy', TRUSTED_PROXY_HOPS);
+
+// ─── 3b. Access log (G17, G68) — MOVED HERE FROM BLOCK 7 (A09-010).
+//
+// It used to sit after the route mounts' preamble at block 7, which put it
+// AFTER /healthz (block 4), /readyz (block 4b) and /api/csp-report (block 4c).
+// Express middleware only wraps what is registered after it, so those three
+// routes answered without ever reaching morgan and produced no log line at all:
+// over a 34-hour window the Render log stream contained exactly ONE app line
+// despite ~60 keepalive pings plus every browser warmup call. That made the two
+// signals needed to diagnose a cold-start incident — "is the keepalive running"
+// and "has /readyz been failing" — both invisible.
+//
+// Registering it here, immediately after trust-proxy and before any route,
+// makes it wrap everything. Order relative to trust-proxy is kept because the
+// format may grow an `:remote-addr` token later, and that token reads req.ip.
+//
+// THIS DOES NOT CHANGE ANY RESPONSE. morgan is a logger: it calls next()
+// immediately and writes to stdout on the response's 'finished' event. It adds
+// no header and no body byte, so the ~1 KB budget block 4 protects is intact
+// and /readyz — now the keepalive target — behaves exactly as before. It costs
+// one stdout line per ping, which is the entire point.
+//
+// Format choice: human-readable, includes :response-time (cold-start
+// regressions become visible in the access log without chasing Render's
+// metrics page). Render captures stdout, so no extra wiring is needed.
+app.use(
+  morgan(':method :url :status :response-time ms - :res[content-length]')
+);
 
 // ─── 4. /healthz — registered EARLY (before helmet) so the total response
 // stays small. Free-tier uptime monitors (cron-job.org) cap response size
@@ -144,6 +238,41 @@ app.get('/readyz', cors(corsOptions), async (_req, res) => {
   }
 });
 
+// ─── 4c. CSP violation sink (A24-002 / A09-004) ──────────────────────────────
+// vercel.json's Content-Security-Policy names this URL in `report-uri` and
+// `Reporting-Endpoints`. Without a route here those headers point at nothing, and
+// the policy would be inert in BOTH directions — blocking nothing (report-only)
+// AND reporting nowhere — which is precisely the defect A24-002 describes. The
+// header existing is not the fix; somewhere for it to report is.
+//
+// Registered BEFORE the global express.json() so it can accept the two content
+// types browsers actually send, neither of which is application/json:
+//   application/csp-report          (the older report-uri format)
+//   application/reports+json        (the newer Reporting API / report-to format)
+// A body parser that only accepts application/json silently drops every report.
+//
+// Always 204. A violation report is telemetry from an untrusted page — it must
+// never be able to make the endpoint fail, retry, or leak anything back.
+app.post(
+  '/api/csp-report',
+  cors(corsOptions),
+  express.json({ type: ['application/csp-report', 'application/reports+json', 'application/json'], limit: '64kb' }),
+  (req, res) => {
+    res.setHeader('Cache-Control', 'no-store');
+    try {
+      for (const rep of normaliseCspReports(req.body)) {
+        // Log only the fields needed to act on a violation. Deliberately NOT the
+        // whole body: `script-sample` can carry page content, and this service
+        // handles Ugandan member data.
+        console.warn('[csp]', JSON.stringify(rep));
+      }
+    } catch {
+      // Never surface a parse failure to the reporting browser.
+    }
+    res.status(204).end();
+  },
+);
+
 // ─── 5. Sentry request instrumentation — in @sentry/node v8 this is set up
 // automatically by the auto-instrumented Express integration when Sentry.init
 // runs before `express()`. The legacy `Sentry.Handlers.requestHandler()`
@@ -151,7 +280,18 @@ app.get('/readyz', cors(corsOptions), async (_req, res) => {
 // The error handler is still installed manually below, after route mounts.
 
 // ─── 6. Security + parsing middleware (G17, G3, G2, G1)
-app.use(helmet());
+//
+// `crossOriginResourcePolicy: 'cross-origin'` (A09-017) — helmet defaults CORP
+// to `same-origin`, which on this service is a header that contradicts its own
+// reason for existing: the API is deployed on a different origin from the
+// frontend precisely so it can be called cross-origin. The contradiction was
+// inert (CORP is not consulted for CORS-mode fetch, which is how every call
+// from the app is made, and all of them succeed today), so this changes no
+// behaviour — it stops the response asserting the opposite of what the service
+// is for, which would mislead the next person reading the headers. The
+// genuinely load-bearing cross-origin gate here is `corsOptions` on the next
+// line, and it is untouched.
+app.use(helmet({ crossOriginResourcePolicy: { policy: 'cross-origin' } }));
 app.use(cors(corsOptions));
 app.use(express.json({ limit: '200kb' })); // G2 — 25× smaller than the plan's draft 5mb; no handler needs more
 app.use(compression());
@@ -188,14 +328,10 @@ app.use(
   }
 );
 
-// ─── 7. Access log with pinned format (G17, G68). Render captures stdout so
-// `morgan` writing to process.stdout lands in the platform log stream with
-// no extra wiring. Format choice: human-readable, includes :response-time
-// (cold-start regressions become visible in the access log without
-// chasing Render's metrics page).
-app.use(
-  morgan(':method :url :status :response-time ms - :res[content-length]')
-);
+// ─── 7. Access log — MOVED UP to block 3b (A09-010). It has to be registered
+// before the health routes to log them, and those are at blocks 4/4b. Nothing
+// remains here; the numbering is kept so the block comments still line up with
+// the audit's middleware-order spec.
 
 // ─── 8. Rate limiters (G18) — applied per-route below, NOT globally. Only the
 // credential / side-effect routes need protection (the three /api/auth/verify*
@@ -214,6 +350,23 @@ app.use(
 // mean "per write attempt", not "per request incl. rejected non-POSTs".
 const skipNonPost = (req: Request) => req.method !== 'POST';
 
+// `limiterKey` (A07-004) — pin every limiter's bucket to a source the caller
+// cannot choose. This is the second half of the A07-004 fix; block 2b is the
+// first. It is deliberately belt-and-braces: with TRUSTED_PROXY_HOPS === 0,
+// `req.ip` already equals the socket peer, so this returns the same value the
+// library's default would. It exists so that the guarantee survives someone
+// later editing `app.set('trust proxy', …)` to something permissive — the
+// limiter would keep keying on the socket, which no header can move.
+//
+// When there IS a trusted proxy, the socket peer is that proxy (one bucket for
+// the whole world), so `req.ip` — the address the trusted hop appended — is the
+// correct and only usable source.
+//
+// The `'unknown'` fallback is a single shared bucket, which is the strict
+// reading: an unidentifiable caller is rate-limited harder, never exempted.
+const limiterKey = (req: Request): string =>
+  (TRUSTED_PROXY_HOPS > 0 ? req.ip : req.socket.remoteAddress) ?? 'unknown';
+
 const authLimiter = rateLimit({
   windowMs: 60_000,
   max: 10,
@@ -221,6 +374,7 @@ const authLimiter = rateLimit({
   legacyHeaders: false,
   message: { code: 'rate_limited' },
   skip: skipNonPost,
+  keyGenerator: limiterKey,
 });
 
 const writeLimiter = rateLimit({
@@ -230,6 +384,7 @@ const writeLimiter = rateLimit({
   legacyHeaders: false,
   message: { code: 'rate_limited' },
   skip: skipNonPost,
+  keyGenerator: limiterKey,
 });
 
 // chatLimiter (2b.5) — /api/chat is unauthenticated and runs a `.toLowerCase()/
@@ -245,6 +400,7 @@ const chatLimiter = rateLimit({
   legacyHeaders: false,
   message: { code: 'rate_limited' },
   skip: skipNonPost,
+  keyGenerator: limiterKey,
 });
 
 // ─── 9. 14 route mounts (B5) — `app.all` is REQUIRED. Every handler

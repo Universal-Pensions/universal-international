@@ -1,3 +1,38 @@
+-- ============================================================================
+-- ⚠️  DO NOT RUN THIS FILE WITHOUT READING THIS FIRST  ⚠️
+-- ----------------------------------------------------------------------------
+-- Audit 2026-08-23 · A04-006 / A05-009 · verified against live 2026-08-25.
+--
+-- This down-migration CREATE OR REPLACEs `public.trg_transactions_contribution`
+-- with the body that was current when this migration was written. That body
+-- hardcodes the unit price:
+--
+--       v_unit_price  NUMERIC := 1000;
+--
+-- The LIVE body does NOT. Since 0103-0106 (NAV pricing, 2026-08-08) it reads
+-- the admin-published fund NAV:
+--
+--       v_unit_price := public.nav_for_date(COALESCE(NEW.date::date, CURRENT_DATE));
+--
+-- Running this file therefore SILENTLY REVERTS NAV PRICING. Every contribution
+-- processed afterwards would buy units at the dead 1,000 UGX price regardless of
+-- the published NAV, corrupting units, subscriber_balances and platform AUM. The
+-- damage is arithmetically invisible — no error is raised, the numbers just stop
+-- meaning what they say. It also drops the later LEAST()/GREATEST() withdrawal
+-- guards that prevent negative unit balances.
+--
+-- `CREATE OR REPLACE` is a WHOLE-BODY REPLACE. It does not merge.
+--
+-- IF YOU ACTUALLY NEED TO REVERT THIS MIGRATION:
+--   1. Capture the CURRENT live body FIRST — never retype it from an older file:
+--        SELECT pg_get_functiondef('public.trg_transactions_contribution'::regproc);
+--   2. Strip the trg_transactions_contribution block out of this file.
+--   3. Re-apply the captured live body afterwards.
+--
+-- Retyping a function body from an older migration is the exact failure mode
+-- that shipped to production once already (0095 over 0090, 2026-08-07).
+-- ============================================================================
+
 -- 0089_per_distributor_commission_rate.down.sql
 -- Reverts to ONE platform-wide commission rate.
 -- ⚠️ Per-distributor rates are LOST: every operator falls back to the value on

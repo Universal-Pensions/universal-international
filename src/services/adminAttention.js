@@ -15,8 +15,11 @@
 //
 // CLOCK: every date comparison happens server-side against CURRENT_DATE, and the
 // RPC echoes back `asOf` plus the whole `thresholds` object. Callers must never
-// re-derive "days late" or hardcode an SLA — public._demo_now() (2026-05-18) is
-// months behind the live ledger, and JS MOCK_NOW is a third clock again.
+// re-derive "days late" or hardcode an SLA. JS now reads ONE canonical anchor
+// (src/constants/demoClock.js, MOCK_NOW = 2026-07-01); public._demo_now() is a
+// separate, necessarily-independent SQL literal that a still-unapplied migration
+// (0126) would bring into agreement — until it ships, _demo_now() stays months
+// behind. Either way: trust the RPC's `asOf`, never re-derive it client-side.
 
 import { supabase } from './supabaseClient';
 import { IS_SUPABASE_ENABLED } from './api';

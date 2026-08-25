@@ -59,8 +59,8 @@ describe('agent service — real (Supabase) branch', () => {
         'contribution_schedules(frequency, amount, retirement_pct, emergency_pct, ' +
         'include_insurance, insurance_choice_made, next_due_date), ' +
         'subscriber_balances(total_balance, retirement_balance, emergency_balance), ' +
-        'insurance_policies(cover, premium_monthly, status), ' +
-        'subscriber_insurance_products(product, status)',
+        'insurance_policies(cover, premium_monthly, status, renewal_date, funded_by), ' +
+        'subscriber_insurance_products(product, status, renewal_date, funded_by)',
     );
     expect(call.chain.eq).toHaveBeenCalledWith('agent_id', 'a-001');
   });
@@ -153,6 +153,63 @@ describe('agent service — real (Supabase) branch', () => {
     });
     const list = await getAgentSubscriberList('a-001');
     expect(list[0].policies).toEqual([{ product: 'funeral', status: 'active' }]);
+  });
+
+  // A06-004 / A11-005: the agent surface used to trust insurance_policies.status
+  // verbatim while the subscriber's own Policies page derived it from
+  // renewal_date — so a self-funded policy whose renewal date had passed still
+  // showed "Active" to the agent (e.g. live persona s-0003, renewal 2026-04-16)
+  // while the member's own app said "Expired". Both now derive through
+  // deriveCoverStatus, so they can't disagree.
+  it('shows a self-funded policy as EXPIRED once its renewal date has passed, even though the stored flag still says active', async () => {
+    supabaseMock.__queueFrom('subscribers', {
+      data: [{
+        id: 's-0003', name: 'Patrick Nsubuga',
+        insurance_policies: {
+          cover: 1000000, premium_monthly: 2000, status: 'active',
+          renewal_date: '2026-04-16', funded_by: 'self',
+        },
+        subscriber_insurance_products: [
+          { product: 'health', status: 'active', renewal_date: '2026-04-16', funded_by: 'self' },
+        ],
+      }],
+      error: null,
+    });
+    const list = await getAgentSubscriberList('a-001');
+    expect(list[0].policies).toEqual([
+      { product: 'life', status: 'expired' },
+      { product: 'health', status: 'expired' },
+    ]);
+    // The Home-card engagement signal must agree with the chips on the same page.
+    expect(list[0].insurance.status).toBe('expired');
+  });
+
+  it('keeps an employer-funded policy ACTIVE past a stale/placeholder renewal date (the annual/monthly invariant)', async () => {
+    // Employer-funded cover is kept in force by an ongoing MONTHLY premium
+    // (transactions.type='insurance_premium', source='employer') and has no
+    // annual renewal to lapse against — unlike self-funded cover, which is
+    // charged one ANNUAL premium (type='premium', source='own'). A rule that
+    // applies the date check to employer rows too would misreport this one as
+    // expired; it must stay active regardless of the stored renewal_date.
+    supabaseMock.__queueFrom('subscribers', {
+      data: [{
+        id: 'empe-001', name: 'Employer Member',
+        insurance_policies: {
+          cover: 15000000, premium_monthly: 0, status: 'active',
+          renewal_date: '2020-01-01', funded_by: 'employer',
+        },
+        subscriber_insurance_products: [
+          { product: 'health', status: 'active', renewal_date: null, funded_by: 'employer' },
+        ],
+      }],
+      error: null,
+    });
+    const list = await getAgentSubscriberList('a-001');
+    expect(list[0].policies).toEqual([
+      { product: 'life', status: 'active' },
+      { product: 'health', status: 'active' },
+    ]);
+    expect(list[0].insurance.status).toBe('active');
   });
 
   it('handles array-shape joins (Supabase to-many embed)', async () => {

@@ -25,6 +25,7 @@ import { IS_SUPABASE_ENABLED } from './api';
 import { normalizeFrequency } from '../utils/finance';
 import { groupInsurancePremiumPerMember } from '../utils/groupInsurance';
 import { deriveContributionLegs, splitEmployerLeg } from '../utils/contributionModel';
+import { deriveCoverStatus } from '../utils/policies';
 import { NUDGE_LATENCY_MS, reachableChannels } from '../constants/nudge';
 import { currentTime } from '../data/mockData';
 import {
@@ -113,6 +114,12 @@ export function mapMember(row) {
     insurancePremiumMonthly: Number(ins?.premium_monthly ?? 0),
     insuranceStatus: ins?.status ?? 'inactive',
     insuranceRenewalDate: ins?.renewal_date ?? null,
+    // E25: `insurance_policies.funded_by` ('employer' | null/'self') — already
+    // selected by MEMBER_SELECT's `insurance_policies(*)` embed but previously
+    // dropped on the floor here. getEmployerMetrics needs it to call
+    // deriveCoverStatus correctly for the live roster (an employer-funded
+    // group policy doesn't lapse by renewal_date; only a self-funded one does).
+    insuranceFundedBy: ins?.funded_by ?? null,
     nominees: Array.isArray(row.nominees) ? row.nominees : [],
   };
 }
@@ -555,33 +562,165 @@ export async function getEmployerContributions(employerId) {
       .sort(newestFirst);
   }
   if (!employerId) return [];
-  const { data, error } = await supabase
-    .from('transactions')
-    .select('*, subscribers(name)')
-    .eq('type', 'contribution')
-    .not('contribution_run_id', 'is', null)
-    .order('date', { ascending: false });
-  if (error) throw error;
-  return (data ?? []).map((t) => ({
-    ...mapTxn(t),
-    memberName: t.subscribers?.name ?? 'Former member',
-  }));
+
+  // A21-101 / defence-in-depth. Two things this query MUST do that it used not to:
+  //
+  //  1. SCOPE BY EMPLOYER EXPLICITLY. This used to select every run-linked
+  //     contribution on the platform and lean entirely on RLS to cut it down to
+  //     the caller's own. That is a single policy edit away from a cross-tenant
+  //     money leak, and A14-001 made this function the canonical source for the
+  //     employer Overview hero, Runs "funded to date" and the Analytics KPI —
+  //     so a scoping slip here shows another company's money as this one's.
+  //     `subscribers!inner(...)` makes the join an INNER join so the embedded
+  //     `subscribers.employer_id` filter actually restricts rows (with a plain
+  //     embed PostgREST would return the parent row with a null child instead).
+  //     RLS still applies; this is a second lock, not a replacement.
+  //
+  //  2. PAGE. PostgREST enforces a hard db-max-rows=1000 that a larger .limit()
+  //     or .range() does NOT override — it clamps SILENTLY, with no error. An
+  //     unpaged read of a 1000+ row set returns a truncated list that looks
+  //     complete, and every caller here SUMS it into a money figure. Today this
+  //     set is ~178 rows platform-wide so nothing is being lost, but "today's
+  //     row count" is not a safety property. Same PAGE_SIZE/exact-count idiom as
+  //     src/services/entities.js:455.
+  const PAGE_SIZE = 1000;
+  const SAFETY_CAP_ROWS = 100_000; // bound a runaway fan-out
+  const COLUMNS = '*, subscribers!inner(name, employer_id)';
+
+  const scoped = () =>
+    supabase
+      .from('transactions')
+      .select(COLUMNS)
+      .eq('type', 'contribution')
+      .not('contribution_run_id', 'is', null)
+      .eq('subscribers.employer_id', employerId)
+      .order('date', { ascending: false });
+
+  const { data: firstData, error: firstError } = await scoped().range(0, PAGE_SIZE - 1);
+  if (firstError) throw firstError;
+  const rows = firstData ?? [];
+
+  // Common case: the whole set fits in one page — one round-trip, same result.
+  if (rows.length === PAGE_SIZE) {
+    const { count, error: countError } = await supabase
+      .from('transactions')
+      .select(COLUMNS, { count: 'exact', head: true })
+      .eq('type', 'contribution')
+      .not('contribution_run_id', 'is', null)
+      .eq('subscribers.employer_id', employerId);
+    if (countError) throw countError;
+
+    const total = Math.min(count ?? rows.length, SAFETY_CAP_ROWS);
+    const pages = [];
+    for (let from = PAGE_SIZE; from < total; from += PAGE_SIZE) {
+      pages.push(
+        scoped()
+          .range(from, Math.min(from + PAGE_SIZE - 1, total - 1))
+          .then(({ data, error }) => {
+            if (error) throw error;
+            return data ?? [];
+          }),
+      );
+    }
+    for (const page of await Promise.all(pages)) rows.push(...page);
+  }
+
+  return rows
+    .map((t) => ({
+      ...mapTxn(t),
+      memberName: t.subscribers?.name ?? 'Former member',
+    }))
+    .sort(newestFirst);
 }
 
 /**
- * @endpoint RPC get_employer_metrics() — aggregates over tagged subscribers.
+ * Reduce a getEmployerContributions()-shaped list (run-linked, `type='contribution'
+ * AND contribution_run_id IS NOT NULL`) into the four aggregate contribution
+ * figures the Overview Hero, Runs "funded to date" and Analytics "total
+ * contributions" KPI all show. ONE computation so every surface that claims
+ * "total contributions" (or its employee/employer legs) means exactly the same
+ * money — pension funded THROUGH an employer run — never a member's own
+ * personal savings from before/outside employer sponsorship (A14-001).
+ * YTD uses the real wall clock (`get_employer_metrics`'s SQL twin reads
+ * `now()`), not the frozen demo `currentTime()` used elsewhere in this file for
+ * seeded mock dates.
+ */
+function summarizeRunLinkedContributions(rows) {
+  const year = new Date().getFullYear();
+  let own = 0;
+  let employerAmt = 0;
+  let ownYtd = 0;
+  let employerYtd = 0;
+  for (const t of rows) {
+    const amount = Number(t.amount ?? 0);
+    const isOwn = t.source !== 'employer';
+    if (isOwn) own += amount; else employerAmt += amount;
+    if (new Date(t.date).getFullYear() === year) {
+      if (isOwn) ownYtd += amount; else employerYtd += amount;
+    }
+  }
+  return {
+    totalContributions: own + employerAmt,
+    ownContributions: own,
+    employerContributions: employerAmt,
+    employeeYtd: ownYtd,
+    employerYtd,
+  };
+}
+
+/**
+ * @endpoint RPC get_employer_metrics() — headcount/active/suspended/totalBalance
+ *   over tagged subscribers. Three fields the RPC also returns are NOT trusted
+ *   as-is (Supabase branch only):
+ *   - totalContributions/ownContributions/employerContributions/employerYtd/
+ *     employeeYtd — A14-001: the SQL sums every type='contribution' row for a
+ *     tagged member with no `contribution_run_id` filter, so it also counts a
+ *     member's personal contribution history from before/outside employer
+ *     sponsorship, up to an 11.6x overcount on live data. Replaced with the
+ *     SAME run-linked total the leg tiles / Contributions page already
+ *     compute (getEmployerContributions), so the Hero, the leg tiles, Runs
+ *     and Analytics can never disagree again.
+ *   - insuredCount — E25 / A06-004-class: the RPC's SQL does
+ *     `WHERE ip.status = 'active'`, the same raw-stored-flag trust A06-004
+ *     already fixed for the subscriber policies page and the agent
+ *     member-detail chips (nothing sweeps a lapsed self-funded policy's
+ *     status from 'active' to 'expired', so the flag alone goes stale).
+ *     Re-derived here through the shared `deriveCoverStatus` predicate over
+ *     the roster (getEmployees), the same call shape the mock branch below
+ *     already uses.
+ *   headcount/active/suspended/totalBalance are untouched — they are not part
+ *   of either mismatch.
+ * @param {string} [employerId] - needed to recompute the run-linked figures
+ *   and the roster-derived insuredCount; the RPC itself stays JWT-scoped and
+ *   needs no argument.
  * @cache ['employerMetrics', employerId]
  */
-export async function getEmployerMetrics() {
+export async function getEmployerMetrics(employerId) {
   if (!IS_SUPABASE_ENABLED) {
     const members = mockMembers();
     const headcount = members.length;
     const active = members.filter((m) => m.status === 'active').length;
     const suspended = headcount - active;
     const totalBalance = members.reduce((s, m) => s + (m.netBalance || 0), 0);
+    // Mock members' ownContributions/employerContributions are already
+    // run-linked-only (employerSeed.js derives them as employeeLeg × monthsActive
+    // over the same tagged runs MEMBER_TRANSACTIONS carries) — no analogue of the
+    // live RPC's bug exists here, so the mock path needs no override.
     const ownContributions = members.reduce((s, m) => s + (m.ownContributions || 0), 0);
     const employerContributions = members.reduce((s, m) => s + (m.employerContributions || 0), 0);
-    const insuredCount = members.filter((m) => m.insuranceStatus === 'active').length;
+    // E25 / A06-004-class fix: derive through the SAME shared predicate the
+    // subscriber policies page and the agent member-detail chips use, instead
+    // of trusting the raw stored flag — nothing sweeps a lapsed self-funded
+    // policy's status from 'active' to 'expired', so the flag alone goes
+    // stale. `fundedBy` is deliberately omitted (not just always 'employer'):
+    // the flat per-member insurance record here doesn't carry a funding-source
+    // field, so this falls through deriveCoverStatus's default (self-funded,
+    // date-derived) branch — the conservative read for a status this file
+    // cannot independently corroborate.
+    const now = currentTime();
+    const insuredCount = members.filter(
+      (m) => deriveCoverStatus({ status: m.insuranceStatus, renewalDate: m.insuranceRenewalDate }, now) === 'active',
+    ).length;
     // No funding-shape field is returned: with one unified two-leg model there is
     // nothing to split the roster by, and every member is funded from the SAME
     // company config. `get_employer_metrics` (0092) drops the old `modeSplit` too.
@@ -594,9 +733,28 @@ export async function getEmployerMetrics() {
       employeeYtd: ownContributions,
     };
   }
-  const { data, error } = await supabase.rpc('get_employer_metrics');
+  const [{ data, error }, runLinked, employees] = await Promise.all([
+    supabase.rpc('get_employer_metrics'),
+    getEmployerContributions(employerId),
+    getEmployees(employerId),
+  ]);
   if (error) throw error;
-  return data ?? {};
+  // E25: currentTime() (the demo clock), not the real wall clock — matches
+  // every other cover-status read in this codebase (subscriber.js's
+  // derivePolicies call, and the mock branch above), since `policies.js` is a
+  // pure util that never reads the clock itself (CLAUDE.md §4.1).
+  const now = currentTime();
+  const insuredCount = employees.filter(
+    (m) => deriveCoverStatus(
+      { status: m.insuranceStatus, renewalDate: m.insuranceRenewalDate, fundedBy: m.insuranceFundedBy },
+      now,
+    ) === 'active',
+  ).length;
+  return {
+    ...(data ?? {}),
+    ...summarizeRunLinkedContributions(runLinked),
+    insuredCount,
+  };
 }
 
 /**

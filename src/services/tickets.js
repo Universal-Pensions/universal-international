@@ -1,11 +1,25 @@
 // Support-ticketing service — Phase 0 of the subscriber ⇄ agent support inbox.
 //
 // The "backend" is an in-memory session store (mirroring subscriber.js): a
-// module-level Map, lazy-seeded from seedTickets() on first access, that layers
-// demo writes over the seed and resets on refresh. Every mutation clones the
-// target ticket and writes a NEW object reference back into the store, so React
-// Query's identity-based change detection re-renders consumers (the seed objects
-// themselves are never mutated in place).
+// module-level Map, lazy-seeded on first access, that layers demo writes over
+// the seed. Every mutation clones the target ticket and writes a NEW object
+// reference back into the store, so React Query's identity-based change
+// detection re-renders consumers (the seed objects themselves are never
+// mutated in place).
+//
+// PERSISTENCE (A22-006): the store mirrors itself to sessionStorage
+// (STORAGE_KEY below) after every write, and rehydrates from that mirror —
+// instead of re-seeding — the next time store() lazy-inits after a fresh
+// module load. A same-tab refresh no longer silently drops a ticket a rep
+// just created and got a "sent" confirmation for. This does NOT make tickets
+// cross-tab or cross-device: it preserves exactly the sharing the plain
+// module-level Map already gave and nothing more — everything within one
+// tab/session (including a role logout/login, which routes through
+// react-router's client-side navigation and never unloads this module) keeps
+// seeing the same store; a genuinely separate tab/session still starts from
+// the frozen seed, same as before. If sessionStorage throws (quota, private
+// browsing) or `window` is absent, the store silently falls back to
+// in-memory-only, exactly as it always behaved.
 //
 // IS_SUPABASE_ENABLED is imported for parity with the sibling services
 // (subscriber.js / commissions.js, which branch on it). Ticketing has no
@@ -27,11 +41,47 @@ import {
   seedTickets,
 } from '../data/ticketsSeed.js';
 
-// ─── In-memory session store ─────────────────────────────────────────────────
-// Keyed by ticket id. Lazy-seeded on first access from a DEEP clone of the seed
-// so the frozen seed objects are never touched and every value in the store is
-// independently mutable.
+// ─── In-memory session store, mirrored to sessionStorage ─────────────────────
+// Keyed by ticket id. Lazy-inited on first access, either from this tab's own
+// persisted writes or (absent those) a DEEP clone of the seed, so neither the
+// frozen seed objects nor a persisted snapshot are ever mutated in place.
 let _store = null;
+
+const STORAGE_KEY = 'upensions_tickets_session';
+
+/**
+ * Read the whole store back from sessionStorage. Returns null (never throws)
+ * on a fresh tab, a missing `window` (SSR / non-browser test contexts), a
+ * quota / private-browsing error, or malformed JSON — every one of those just
+ * means "nothing persisted yet", so store() falls back to the seed.
+ */
+function readPersisted() {
+  try {
+    if (typeof window === 'undefined') return null;
+    const raw = window.sessionStorage.getItem(STORAGE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Mirror the whole store to sessionStorage after every mutation (A22-006), so
+ * a same-tab refresh rehydrates instead of silently re-seeding. Best-effort,
+ * mirroring how services/supabaseClient.js's localStorage helpers swallow a
+ * quota / private-browsing error: the tab keeps working in-memory either way,
+ * it just won't survive a refresh this particular time.
+ */
+function writePersisted() {
+  try {
+    if (typeof window === 'undefined' || !_store) return;
+    window.sessionStorage.setItem(STORAGE_KEY, JSON.stringify(Array.from(_store.values())));
+  } catch {
+    // Quota / private-browsing — non-fatal.
+  }
+}
 
 function cloneMessage(m) {
   return { ...m };
@@ -48,10 +98,14 @@ function cloneTicket(t) {
 function store() {
   if (!_store) {
     _store = new Map();
-    // `seedTickets()` already returns the demo threads sorted by updatedAt; we
-    // deep-clone each so the frozen seed objects are never mutated and the store
-    // holds independently-writable values.
-    for (const t of seedTickets()) {
+    // Prefer this tab's own persisted writes over the frozen seed — that IS
+    // the fix: a refresh must rehydrate the rep's session, not discard it.
+    // `seedTickets()` already returns the demo threads sorted by updatedAt;
+    // either source is deep-cloned so no seed/persisted object is ever
+    // mutated in place and the store holds independently-writable values.
+    const persisted = readPersisted();
+    const source = persisted && persisted.length > 0 ? persisted : seedTickets();
+    for (const t of source) {
       _store.set(t.id, cloneTicket(t));
     }
   }
@@ -527,6 +581,7 @@ export async function createTicket(subscriberId, { subject, category, priority, 
     messages: [message],
   };
   store().set(id, ticket);
+  writePersisted();
   return cloneTicket(ticket);
 }
 
@@ -579,6 +634,7 @@ export async function createAgentMessage(subscriberId, { body, subject, category
     messages: [message],
   };
   store().set(id, ticket);
+  writePersisted();
   return cloneTicket(ticket);
 }
 
@@ -628,6 +684,7 @@ export async function createEmployerTicket(employerId, { subject, category, prio
     messages: [message],
   };
   store().set(id, ticket);
+  writePersisted();
   return cloneTicket(ticket);
 }
 
@@ -647,6 +704,7 @@ export async function sendMessage(ticketId, { sender, body } = {}) {
 
   const next = appendMessage(ticket, { sender, body, at: new Date().toISOString() });
   store().set(ticketId, next);
+  writePersisted();
   return cloneTicket(next);
 }
 
@@ -668,6 +726,7 @@ export async function closeTicket(ticketId, { by } = {}) {
   next.closedAt = new Date().toISOString();
   next.closedBy = by;
   store().set(ticketId, next);
+  writePersisted();
   return cloneTicket(next);
 }
 
@@ -696,6 +755,7 @@ export async function reopenTicket(ticketId, { by } = {}) {
   reopened.closedAt = null;
   reopened.closedBy = null;
   store().set(ticketId, reopened);
+  writePersisted();
   return cloneTicket(reopened);
 }
 
@@ -714,5 +774,6 @@ export async function markRead(ticketId, { viewer } = {}) {
   else if (viewer === SENDER_ROLE.AGENT) next.unread.agent = 0;
   else if (viewer === SENDER_ROLE.EMPLOYER) next.unread.employer = 0;
   store().set(ticketId, next);
+  writePersisted();
   return cloneTicket(next);
 }

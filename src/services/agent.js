@@ -8,28 +8,51 @@
 import { supabase } from './supabaseClient';
 import { IS_SUPABASE_ENABLED } from './api';
 import { normalizeFrequency } from '../utils/finance';
-import { SUBSCRIBERS } from '../data/mockData';
+import { SUBSCRIBERS, currentTime } from '../data/mockData';
+import { deriveCoverStatus } from '../utils/policies';
 
 // Stable display order for an agent's view of a subscriber's policies.
 const POLICY_ORDER = ['life', 'health', 'funeral'];
 
+// A held row's renewal_date/funded_by, read off EITHER shape a caller might
+// pass: the live Supabase row (snake_case) or the mock row (camelCase). Only
+// two fields need this — `.product` and `.status` are already shape-agnostic.
+function renewalFieldsOf(row) {
+  return {
+    renewalDate: row.renewalDate ?? row.renewal_date ?? null,
+    fundedBy: row.fundedBy ?? row.funded_by,
+  };
+}
+
 /**
- * Build the agent-facing active-policy list for a subscriber: PRODUCT + STATUS
- * ONLY. Agents must never see cover or premium amounts, so this deliberately
- * surfaces neither — `lifeIns.cover` is read solely to mirror the `isInsured`
- * predicate (life counts only when its cover > 0). Life comes from the
- * `insurance_policies` (life) record; health/funeral from
+ * Build the agent-facing policy list for a subscriber: PRODUCT + STATUS ONLY
+ * (A06-004 / A11-005). Agents must never see cover or premium amounts, so
+ * this deliberately surfaces neither — `lifeIns.cover` is read solely to
+ * decide whether life is held at all (mirrors the `isInsured` predicate: life
+ * counts only when its cover > 0). Status is derived through the SAME
+ * `deriveCoverStatus` predicate the subscriber's own Policies page uses
+ * (utils/policies.js) instead of trusting the stored `status` column, so an
+ * agent and the member they're looking at can no longer disagree on whether a
+ * policy is active. A row whose derived status is 'building' (save-to-cover,
+ * not yet in force) is omitted — PolicyChips only renders Active/Expired.
+ * Life comes from the `insurance_policies` record; health/funeral from
  * `subscriber_insurance_products`. Works for both the live row shape
- * (snake_case product rows) and the mock shape (camelCase) — only `.product`
- * and `.status` are read off product rows.
+ * (snake_case) and the mock shape (camelCase) — see `renewalFieldsOf`.
+ *
+ * @param {object|null} lifeIns
+ * @param {Array<object>} productRows
+ * @param {Date} now
  */
-function buildAgentPolicies(lifeIns, productRows) {
+function buildAgentPolicies(lifeIns, productRows, now) {
   const out = [];
-  if (lifeIns && lifeIns.status === 'active' && Number(lifeIns.cover) > 0) {
-    out.push({ product: 'life', status: 'active' });
+  if (lifeIns && Number(lifeIns.cover) > 0) {
+    const status = deriveCoverStatus({ status: lifeIns.status, ...renewalFieldsOf(lifeIns) }, now);
+    if (status === 'active' || status === 'expired') out.push({ product: 'life', status });
   }
   for (const p of Array.isArray(productRows) ? productRows : []) {
-    if (p && p.status === 'active') out.push({ product: p.product, status: 'active' });
+    if (!p) continue;
+    const status = deriveCoverStatus({ status: p.status, ...renewalFieldsOf(p) }, now);
+    if (status === 'active' || status === 'expired') out.push({ product: p.product, status });
   }
   return out.sort((a, b) => POLICY_ORDER.indexOf(a.product) - POLICY_ORDER.indexOf(b.product));
 }
@@ -46,8 +69,12 @@ function buildAgentPolicies(lifeIns, productRows) {
  * for the net balance display, so this is consistent. `totalWithdrawals` is 0
  * for now — the AgentDashboard's analytics will overcount slightly if the
  * subscriber has many withdrawals. A future migration could add a denorm.
+ *
+ * @param {object} s - the joined Supabase row
+ * @param {Date} now - the demo clock (src/constants/demoClock.js), for
+ *   deriving policy status the same way the subscriber's own page does.
  */
-function mapAgentSubscriberRow(s) {
+function mapAgentSubscriberRow(s, now) {
   const sched = Array.isArray(s.contribution_schedules)
     ? s.contribution_schedules[0]
     : s.contribution_schedules;
@@ -91,18 +118,22 @@ function mapAgentSubscriberRow(s) {
     // No per-subscriber lifetime denorm — proxy from balance. See note above.
     totalContributions: Number(bal?.total_balance ?? 0),
     totalWithdrawals: 0,
-    // Life-cover policy, for the agent Home insurance card. RLS-filtered embed →
-    // null when the agent can't read the row; HomeDesktop treats null as uninsured.
+    // Life-cover engagement signal (subscriberMetrics.js `insured`). RLS-filtered
+    // embed → null when the agent can't read the row, treated as uninsured. The
+    // status is derived through the same shared predicate as `policies` below
+    // (A06-004 / A11-005) rather than the raw stored flag, so this can't disagree
+    // with the chips on the same page.
     insurance: ins
       ? {
           cover: Number(ins.cover) || 0,
           premiumMonthly: Number(ins.premium_monthly) || 0,
-          status: ins.status || 'inactive',
+          status: deriveCoverStatus({ status: ins.status, ...renewalFieldsOf(ins) }, now) || 'inactive',
         }
       : null,
-    // Active-policy list (product + status only — NO cover/premium) for the
-    // agent's subscriber view: which of life/health/funeral are active.
-    policies: buildAgentPolicies(ins, insProducts),
+    // Held-policy list (product + status only — NO cover/premium) for the
+    // agent's subscriber view: which of life/health/funeral are active or
+    // expired (building cover is omitted — see buildAgentPolicies).
+    policies: buildAgentPolicies(ins, insProducts, now),
   };
 }
 
@@ -119,6 +150,7 @@ function mapAgentSubscriberRow(s) {
  */
 export async function getAgentSubscriberList(agentId) {
   if (!IS_SUPABASE_ENABLED) {
+    const now = currentTime();
     return Object.values(SUBSCRIBERS)
       .filter((s) => s.parentId === agentId)
       .map((s) => {
@@ -147,11 +179,11 @@ export async function getAgentSubscriberList(agentId) {
             ? {
                 cover: Number(s.insurance.cover) || 0,
                 premiumMonthly: Number(s.insurance.premiumMonthly) || 0,
-                status: s.insurance.status || 'inactive',
+                status: deriveCoverStatus({ status: s.insurance.status, ...renewalFieldsOf(s.insurance) }, now) || 'inactive',
               }
             : null,
-          // Same product+status-only policy list as the live branch (parity).
-          policies: buildAgentPolicies(s.insurance, s.insuranceProducts),
+          // Same held-policy list (product + status only) as the live branch (parity).
+          policies: buildAgentPolicies(s.insurance, s.insuranceProducts, now),
         };
       });
   }
@@ -163,6 +195,9 @@ export async function getAgentSubscriberList(agentId) {
   // district_id, is_demo_signup, insurance_same_as_pension, consent_at,
   // current_unit_value, unit_value_as_of, created_at} and subscriber_balances.units
   // — none are referenced by the mapper or any list-page consumer.
+  // insurance_policies/subscriber_insurance_products carry renewal_date + funded_by
+  // too (A06-004 / A11-005) — deriveCoverStatus needs both to tell a stale
+  // self-funded flag from an ongoing employer-funded one.
   const { data, error } = await supabase
     .from('subscribers')
     .select(
@@ -171,12 +206,13 @@ export async function getAgentSubscriberList(agentId) {
         'contribution_schedules(frequency, amount, retirement_pct, emergency_pct, ' +
         'include_insurance, insurance_choice_made, next_due_date), ' +
         'subscriber_balances(total_balance, retirement_balance, emergency_balance), ' +
-        'insurance_policies(cover, premium_monthly, status), ' +
-        'subscriber_insurance_products(product, status)',
+        'insurance_policies(cover, premium_monthly, status, renewal_date, funded_by), ' +
+        'subscriber_insurance_products(product, status, renewal_date, funded_by)',
     )
     .eq('agent_id', agentId);
   if (error) throw error;
-  return (data ?? []).map(mapAgentSubscriberRow);
+  const now = currentTime();
+  return (data ?? []).map((row) => mapAgentSubscriberRow(row, now));
 }
 
 /**

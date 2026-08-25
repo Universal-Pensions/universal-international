@@ -267,6 +267,23 @@ function listColumns(level) {
   return LEVEL_LIST_COLUMNS[level] ?? '*';
 }
 
+// ─── Detail-path column projection ──────────────────────────────────────────
+// A15-001: getEntity() DETAIL reads stay `*` for every level per the
+// CONSERVATIVE RULE above — except `subscriber`. `total_balance` is not a
+// column on `subscribers` at all (it lives on `subscriber_balances`), so a
+// bare `*` left mapSubscriber() with nothing to read and `totalBalance`
+// defaulted to 0 — the mobile subscriber detail (and any other getEntity
+// caller) rendered "—" for members holding millions, even though the LIST
+// read (LEVEL_LIST_COLUMNS.subscriber, above) already carries this exact
+// embed and rendered correctly. `*` plus an embedded resource is valid
+// PostgREST syntax (mirrors LEVEL_LIST_COLUMNS.subscriber). This is a
+// single-row `.eq('id', id).maybeSingle()` read, so the embed returns at most
+// one balance row — NOT a list query, so it is not subject to the
+// db-max-rows=1000 cap that bounds the paging in getAllAtLevel() below.
+function detailColumns(level) {
+  return level === 'subscriber' ? '*, subscriber_balances(total_balance)' : '*';
+}
+
 // ─── Parent scoping for list reads ──────────────────────────────────────────
 // `getAllAtLevel(level)` returns EVERY row the caller's RLS allows. The
 // drill-down UX needs the same list narrowed to one parent — "the subscribers
@@ -354,7 +371,8 @@ export async function getCountry() {
 // ─── Reads ──────────────────────────────────────────────────────────────────
 
 /**
- * @endpoint SELECT 1 row from the level's table.
+ * @endpoint SELECT 1 row from the level's table (subscriber additionally
+ *   embeds `subscriber_balances(total_balance)` — see `detailColumns()`).
  * @param {string} level - region|district|branch|agent|subscriber
  * @param {string} id
  * @returns {Promise<Object|null>} mapped entity, or null if not found.
@@ -374,7 +392,7 @@ export async function getEntity(level, id) {
 
   const { data, error } = await supabase
     .from(table)
-    .select('*')
+    .select(detailColumns(level))
     .eq('id', id)
     .maybeSingle();
 
@@ -517,31 +535,49 @@ export async function getAllAtLevel(level, scope = null) {
 }
 
 /**
- * @endpoint SELECT * FROM <level-table> (paginated, filtered, sorted)
- * @param {string} level - 'subscriber' | 'agent' | 'branch'
+ * @endpoint SELECT * FROM <level-table> (paginated, filtered, sorted, scoped)
+ * @param {string} level - 'subscriber' (the only level any caller uses today)
  * @param {Object} opts
  * @param {number} [opts.offset=0]
  * @param {number} [opts.limit=1000]
  * @param {string} [opts.search=''] - matched against name/phone via ILIKE
  * @param {string} [opts.statusFilter='all'] - 'all' | 'active' | 'inactive'
  * @param {string} [opts.sortKey='balance'] - 'balance' | 'contributions' | 'name' | 'registration'
+ * @param {{agentId?: string, branchId?: string}} [opts.scope] - same shape as
+ *   `getAllAtLevel`'s scope arg. `branchId` is the two-hop case (resolve the
+ *   branch's agents first, same as `getSubscribersForBranch`) since
+ *   `subscribers` has no `branch_id` column.
  * @param {AbortSignal} [opts.signal]
  * @returns {Promise<{rows: Object[], total: number, hasMore: boolean}>}
- * @description Server-side filter + sort + paginate. For subscribers, attaches
- *   the balance row in a second id-bounded query so the `balance` sort column is
- *   a real DB column. Closes AUDIT-1-7 + AUDIT-2-1 — replaces the 30-page
- *   client-fanout with one server-side page-sized read.
+ * @description Server-side filter + sort + paginate + scope. Powers
+ *   ViewSubscribers' virtualized infinite scroll (A21-001) — the panel used to
+ *   pull the ENTIRE scoped collection (~4,600 rows / ~2.7MB raw for the
+ *   unscoped case, plus a full unscoped agents + branches pull just to label
+ *   one detail pane) via `getAllAtLevel`/`useAllEntities`, just to virtualize a
+ *   ~20-row viewport. This function was DEAD CODE until now — its only caller
+ *   (`useInfiniteEntityList`, src/hooks/useEntity.js) has no scope parameter
+ *   and no consumers, so ViewSubscribers builds its own `useInfiniteQuery`
+ *   directly over this function instead (see ViewSubscribers.jsx), threading
+ *   `scope` through.
  *
- * ⚠️ CURRENTLY UNUSED. Its only caller is `useInfiniteEntityList`
- *   (src/hooks/useEntity.js), which itself has no consumers — the subscriber
- *   list renders from `useAllEntities` + a client-side virtualizer instead.
- *   Kept because it is the correct shape if the list ever outgrows that, but
- *   note it has never run against the live schema: until now its balance query
- *   named `total_contributions` / `total_withdrawals`, which do not exist on
- *   `subscriber_balances`, so the first real call would have 400'd. Sort keys
- *   'contributions' and the `contributions` field are therefore NOT backed by
- *   real data on this path.
- * @cache ['entity-page', level, opts]
+ *   `total_balance` arrives via the SAME embed `listColumns('subscriber')`
+ *   already carries (`subscriber_balances(total_balance)`) — no second
+ *   id-bounded balance query needed. An earlier version of this function ran
+ *   one; it predated the embed landing on the list projection and is removed
+ *   here as dead weight, not a behaviour change.
+ *
+ *   'balance' sort now orders by the embedded `subscriber_balances.total_balance`
+ *   directly — PostgREST accepts `order=<table>(<col>)` for a resource
+ *   embedded in the same `select=` (verified live against PostgREST 2026-08-25:
+ *   `GET .../subscribers?select=id,subscriber_balances(total_balance)&order=
+ *   subscriber_balances(total_balance).desc` → 200, correctly ordered). This
+ *   fixes what used to be a documented gap (balance sort silently substituted
+ *   `registered_date`). 'contributions' still has no backing column
+ *   (`total_contributions`/`total_withdrawals` are `transactions` aggregates,
+ *   not a column anywhere) so it keeps the `registered_date` proxy — a
+ *   pre-existing, unrelated limitation this change doesn't touch.
+ * @cache Keyed by the caller (ViewSubscribers.jsx's `useInfiniteQuery`), not a
+ *   fixed key here — this is a plain data function, not a hook.
  */
 export async function getEntityPage(level, opts = {}) {
   const {
@@ -550,12 +586,24 @@ export async function getEntityPage(level, opts = {}) {
     search = '',
     statusFilter = 'all',
     sortKey = 'balance',
+    scope = null,
     signal,
   } = opts;
 
   if (!IS_SUPABASE_ENABLED) {
-    // Mock fallback: apply filters in-memory over the seed.
-    const all = getAllEntities(level);
+    // Mock fallback: apply scope + filters in-memory over the seed. Branch
+    // scope is the same two-hop `getSubscribersForBranch` does — `subscribers`
+    // carries no `branchId` field even in the mock shape, so `filterByScope`
+    // alone (which only knows agentId/districtId for this level) would leak
+    // every subscriber across every branch.
+    let all = getAllEntities(level);
+    if (level === 'subscriber' && scope?.branchId) {
+      const agentsInBranch = filterByScope(getAllEntities('agent'), 'agent', { branchId: scope.branchId });
+      const owned = new Set((agentsInBranch ?? []).map((a) => a.id));
+      all = (all ?? []).filter((s) => owned.has(s?.agentId));
+    } else {
+      all = filterByScope(all, level, scope);
+    }
     const trimmedSearch = search.trim().toLowerCase();
     let list = all.filter((e) => {
       if (statusFilter === 'active' && !e.isActive) return false;
@@ -578,18 +626,36 @@ export async function getEntityPage(level, opts = {}) {
   const mapper = LEVEL_MAPPERS[level];
   if (!table || !mapper) return { rows: [], total: 0, hasMore: false };
 
-  // PostgREST embedded JOIN to `subscriber_balances` was tried first but the
-  // sort-by-foreign-column path didn't return rows consistently across
-  // PostgREST versions; simplified to a flat select plus an O(N) second pass
-  // to attach balances. The pagination still wins because the second query
-  // is bounded to the page's N IDs (≤ pageSize).
+  // Branch-scoped subscriber lists are a two-hop read (branch -> agents ->
+  // subscribers) — same reasoning as `getSubscribersForBranch`. An agentless
+  // branch short-circuits to empty rather than `in(agent_id, [])`, which
+  // PostgREST answers with EVERY row.
+  let branchAgentIds = null;
+  if (level === 'subscriber' && scope?.branchId) {
+    const agents = await getAllAtLevel('agent', { branchId: scope.branchId });
+    branchAgentIds = (agents ?? []).map((a) => a.id).filter(Boolean);
+    if (branchAgentIds.length === 0) return { rows: [], total: 0, hasMore: false };
+  }
+
   // count: 'estimated' reads pg_class.reltuples (instant) instead of a
-  // 911 ms COUNT(*) with RLS overhead (AUDIT-2-1). The displayed total in
-  // the panel header drifts by < 1% across normal sessions — acceptable for
-  // a "Showing X of Y" affordance.
+  // 911 ms COUNT(*) with RLS overhead (AUDIT-2-1) — fine here because this
+  // `total` only backs "Showing X of Y" where Y is the current search/filter's
+  // matching count. The unfiltered, exact, HEADLINE scoped total (e.g. "4,602
+  // subscribers in your network") is a separate read via
+  // `get_entity_metrics_rollup` (see ViewSubscribers.jsx's `useEntityMetrics`
+  // call) — distributor-renders-data.spec.ts pins that number against the same
+  // rollup the KPI tiles use, which an *estimated* count here cannot guarantee
+  // agreement with, especially on a small scoped (single-agent) set.
   let query = supabase
     .from(table)
     .select(listColumns(level), { count: 'estimated' });
+
+  const scopeFilter = resolveScopeFilter(level, scope);
+  if (scopeFilter) {
+    query = query.eq(scopeFilter.column, scopeFilter.value);
+  } else if (branchAgentIds) {
+    query = query.in('agent_id', branchAgentIds);
+  }
 
   if (search.trim() && level === 'subscriber') {
     // ILIKE escape: PostgREST handles `%` literally inside the value. The
@@ -602,14 +668,11 @@ export async function getEntityPage(level, opts = {}) {
   if (statusFilter === 'active') query = query.eq('is_active', true);
   if (statusFilter === 'inactive') query = query.eq('is_active', false);
 
-  // Server-side sort. Subscriber "balance" + "contributions" sort columns
-  // don't exist on `subscribers` — for now we substitute `registered_date`
-  // (newest first, an honest proxy for "freshness"). A follow-up RPC can
-  // give us proper balance-sorted pagination via a JOIN-aware ORDER BY.
   const orderSpec = SUBSCRIBER_SORT_ORDER[sortKey] ?? SUBSCRIBER_SORT_ORDER.balance;
   query = query.order(orderSpec.column, {
     ascending: orderSpec.ascending,
     nullsFirst: orderSpec.nullsFirst ?? false,
+    ...(orderSpec.foreignTable ? { foreignTable: orderSpec.foreignTable } : {}),
   });
 
   query = query.range(offset, offset + limit - 1);
@@ -618,35 +681,7 @@ export async function getEntityPage(level, opts = {}) {
   const { data, error, count } = await query;
   if (error) throw error;
 
-  // Attach balances in a second query bounded by the page's IDs.
-  let balancesByEntity = null;
-  if (level === 'subscriber' && data && data.length > 0) {
-    const ids = data.map((r) => r.id);
-    // `subscriber_balances` has exactly (subscriber_id, retirement_balance,
-    // emergency_balance, total_balance, units, updated_at). This used to also
-    // name total_contributions / total_withdrawals, which do not exist — the
-    // request would have 400'd and `throw balErr` below would have surfaced it.
-    // It never fired only because this whole code path has no callers (see the
-    // note on getEntityPage). Per-subscriber contribution/withdrawal totals are
-    // aggregates over `transactions` and need their own bounded RPC.
-    const { data: balRows, error: balErr } = await supabase
-      .from('subscriber_balances')
-      .select('subscriber_id, total_balance')
-      .in('subscriber_id', ids);
-    if (balErr) throw balErr;
-    balancesByEntity = Object.fromEntries(
-      (balRows ?? []).map((b) => [b.subscriber_id, b]),
-    );
-  }
-
   const rows = (data ?? []).map((row) => {
-    if (level === 'subscriber' && balancesByEntity) {
-      const b = balancesByEntity[row.id];
-      const enriched = { ...row, total_balance: b?.total_balance ?? 0 };
-      const mapped = mapper(enriched);
-      cacheEntity(level, mapped);
-      return mapped;
-    }
     const mapped = mapper(row);
     cacheEntity(level, mapped);
     return mapped;
@@ -656,14 +691,16 @@ export async function getEntityPage(level, opts = {}) {
   return { rows, total, hasMore: offset + rows.length < total };
 }
 
-// Server-side sort column mapping. Balance + contributions sorts substitute
-// `registered_date` (newest first) because those columns live in
-// `subscriber_balances` and require an RPC for proper JOIN-aware sort.
-// Follow-up: add `get_subscriber_page` RPC that does the join + sort
-// server-side. For now, the visible list orders by registration recency
-// (acceptable for the demo; tracked as follow-up in DEFERRED.md).
+// Server-side sort column mapping. 'balance' orders by the embedded
+// `subscriber_balances.total_balance` — PostgREST accepts `order=
+// <foreignTable>(<column>)` when that table is embedded in `select=`, which
+// `listColumns('subscriber')` always does (verified live 2026-08-25).
+// 'contributions' has no backing column anywhere (those totals are
+// `transactions` aggregates) so it still substitutes `registered_date` — a
+// pre-existing, documented gap this change doesn't touch; closing it needs
+// its own RPC.
 const SUBSCRIBER_SORT_ORDER = {
-  balance:       { column: 'registered_date', ascending: false, nullsFirst: false },
+  balance:       { column: 'total_balance', foreignTable: 'subscriber_balances', ascending: false, nullsFirst: false },
   contributions: { column: 'registered_date', ascending: false, nullsFirst: false },
   registration:  { column: 'registered_date', ascending: false, nullsFirst: false },
   name:          { column: 'name',            ascending: true,  nullsFirst: false },
