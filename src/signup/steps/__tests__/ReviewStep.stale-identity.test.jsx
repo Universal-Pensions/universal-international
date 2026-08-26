@@ -115,3 +115,70 @@ describe('ReviewStep — stale identity replay', () => {
     expect(extractIdFields).toHaveBeenCalledTimes(1);
   });
 });
+
+// ---------------------------------------------------------------------------
+// EMPLOYER-INVITE PREFILL must survive the OCR merge.
+//
+// This is the case the stale-capture fix could most easily have broken. An
+// invite pre-fills fullName / nin / gender from employer_invites.prefill
+// (SignupPage.jsx:106-110) and OCR is only meant to TOP UP the gaps (card
+// number, DOB). The stale-capture branch REPLACES those same fields — so if it
+// ever fired on an invite, the employer's stated member would be silently
+// swapped for a generated one, and that member would be created against the
+// employer's roster under the wrong identity.
+//
+// It does not fire, and the reason is worth pinning: SignupPage calls
+// signup.reset() BEFORE patching the prefill, and reset() clears idConfidence.
+// staleCapture requires idConfidence != null, so an invite always takes the
+// backfill path. That ordering is load-bearing and nothing else asserts it.
+// ---------------------------------------------------------------------------
+describe('ReviewStep — employer-invite prefill', () => {
+  it('keeps the invited member’s name and NIN, and only tops up the gaps', async () => {
+    // Exactly the state SignupPage leaves after reset() + prefill patch:
+    // identity fields set, idConfidence still null.
+    localStorage.setItem(SIGNUP_STORAGE_KEY, JSON.stringify({
+      onboardingSessionId: 'session-INVITE',
+      fullName: 'Nakato Prossy',
+      nin: 'CF31050067890B',
+      gender: 'female',
+      employerInvite: { token: 'tok-1', employerId: 'emp-001', employerName: 'Nile Breweries' },
+    }));
+
+    renderStep();
+    await waitFor(() => expect(screen.getByText('Check your details')).toBeTruthy());
+
+    // OCR runs (the gaps still need filling)…
+    expect(extractIdFields).toHaveBeenCalledTimes(1);
+
+    // …but the employer's identity is untouched.
+    const values = Array.from(document.querySelectorAll('input')).map((i) => i.value);
+    expect(values).toContain('Nakato Prossy');
+    expect(values).toContain('CF31050067890B');
+    expect(values).not.toContain(OCR_OK.fullName);
+    expect(values).not.toContain(OCR_OK.nin);
+
+    // The gaps DID get filled from the scan.
+    expect(values).toContain(OCR_OK.cardNumber);
+  });
+
+  it('still replaces a SPENT capture, so the two paths do not collide', async () => {
+    // Same shape, but with a finished scan from a PREVIOUS session — this is
+    // stale, not a prefill, and must be replaced.
+    localStorage.setItem(SIGNUP_STORAGE_KEY, JSON.stringify({
+      onboardingSessionId: 'session-NEW',
+      idCapturedSessionId: 'session-OLD',
+      idConfidence: 0.94,
+      fullName: 'Someone Previous',
+      nin: 'CM9999999999ZZ',
+    }));
+
+    renderStep();
+    await waitFor(() => expect(screen.getByText('Check your details')).toBeTruthy());
+
+    const values = Array.from(document.querySelectorAll('input')).map((i) => i.value);
+    expect(values).toContain(OCR_OK.fullName);
+    expect(values).toContain(OCR_OK.nin);
+    expect(values).not.toContain('Someone Previous');
+    expect(values).not.toContain('CM9999999999ZZ');
+  });
+});
