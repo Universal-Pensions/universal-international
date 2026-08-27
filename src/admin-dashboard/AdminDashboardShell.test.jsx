@@ -40,8 +40,12 @@ vi.mock('./AdminCountryOverview', () => ({ default: () => <div data-testid="admi
 vi.mock('./overview/AdminOverview', () => ({ default: () => <div data-testid="admin-overview">National Platform</div> }));
 vi.mock('../dashboard/overlay/OverlayPanel', () => ({ default: () => <div data-testid="overlay-panel" /> }));
 vi.mock('../dashboard/overlay/Breadcrumb', () => ({ default: () => <div data-testid="breadcrumb" /> }));
-vi.mock('../dashboard/cards/MetricsRow', () => ({ default: () => <div data-testid="metrics-row" /> }));
-vi.mock('../dashboard/overlay/TopBar', () => ({ default: () => <div data-testid="top-bar" /> }));
+// NB: no MetricsRow / TopBar mocks. 65dcab5 dropped both from the distributor
+// shell when AskAiFab + DataCopilotPanel became the single AI entry point; admin
+// was their last consumer, so both components were deleted outright rather than
+// left unrendered. There is nothing to stub, and no testid assertion to make —
+// a module that does not exist cannot regress into the tree, which is a stronger
+// guard than a queryByTestId(...).toBeNull() that can only ever pass.
 // Panels are gated by their open-state booleans (all start false), so they
 // won't mount — but stub them so the import graph stays cheap regardless.
 vi.mock('../dashboard/branch/CreateBranch', () => ({ default: () => null }));
@@ -95,15 +99,13 @@ describe('<AdminDashboardShell />', () => {
     expect(screen.queryByTestId('overlay-panel')).toBeNull();
   });
 
-  it('hides the map-mode chrome (map, breadcrumb, metrics row, top bar) in the default dash mode', () => {
+  it('hides the map-mode chrome (map, breadcrumb) in the default dash mode', () => {
     renderShell();
-    // Dash mode replaces the map + overlay + metrics chrome with the full-page
-    // canvas; the map itself is lazy (mapMounted stays false until the first
-    // map-mode entry), so none of the map-mode chrome should be present.
+    // Dash mode replaces the map + overlay chrome with the full-page canvas;
+    // the map itself is lazy (mapMounted stays false until the first map-mode
+    // entry), so none of the map-mode chrome should be present.
     expect(screen.queryByTestId('uganda-map')).toBeNull();
     expect(screen.queryByTestId('breadcrumb')).toBeNull();
-    expect(screen.queryByTestId('metrics-row')).toBeNull();
-    expect(screen.queryByTestId('top-bar')).toBeNull();
   });
 
   it('does not mount any slide-in panel while every panel open-state is closed', () => {

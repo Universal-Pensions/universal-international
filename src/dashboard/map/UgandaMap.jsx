@@ -499,11 +499,18 @@ function UgandaMap({ visible = true }) {
         zoomSnap={0.5}
         wheelPxPerZoomLevel={120}
       >
-        {/* Tile layer — CartoDB Positron, very reduced */}
-        <TileLayer
-          url={MAP_TILE_URL}
-          opacity={0.2}
-        />
+        {/* Basemap tiles — opt-in, and OFF unless VITE_MAP_TILE_URL is set.
+            The old keyless CARTO default is watermarked "API KEY REQUIRED" by
+            CARTO server-side; see src/config/env.js for the full reasoning. The
+            country/district shapes below are GeoJSON and render without it.
+            NB: if you re-enable this, add the provider's required attribution —
+            `attributionControl={false}` above means none is shown today. */}
+        {MAP_TILE_URL && (
+          <TileLayer
+            url={MAP_TILE_URL}
+            opacity={0.2}
+          />
+        )}
 
         <TileOpacityController level={level} />
 

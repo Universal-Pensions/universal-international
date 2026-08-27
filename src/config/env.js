@@ -33,9 +33,18 @@ export const SUPPORT_WHATSAPP_URL = import.meta.env.VITE_SUPPORT_WHATSAPP_URL ||
 export const SUPPORT_WHATSAPP_DISPLAY = import.meta.env.VITE_SUPPORT_WHATSAPP_DISPLAY || '+256 700 123 456';
 export const SUPPORT_EMAIL = import.meta.env.VITE_SUPPORT_EMAIL || 'support@upensions.ug';
 
-/* Map tile provider — defaults to CartoDB Positron (free, light theme).
-   Override via VITE_MAP_TILE_URL if self-hosted tiles or another provider
-   is needed for regulatory or branding reasons. The placeholder tokens
-   {s}/{z}/{x}/{y}{r} are filled in by Leaflet. */
-export const MAP_TILE_URL = import.meta.env.VITE_MAP_TILE_URL
-  || 'https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png';
+/* Map basemap tiles — OFF by default; the map renders from GeoJSON alone.
+   The old default was CartoDB Positron's KEYLESS endpoint
+   (https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png).
+   CARTO now stamps "API KEY REQUIRED · carto.com/basemaps/apikey" into those
+   tiles server-side, so the watermark shipped to production — it cannot be
+   hidden with CSS because it is baked into the PNG.
+   Dropping the layer costs nothing: the tiles rendered at 0.08–0.2 opacity
+   UNDERNEATH an opaque GeoJSON Uganda fill, so all they ever contributed was a
+   faint grey wash outside the border (A/B'd on 2026-08-27 — the map reads
+   cleaner without). They also carried a CARTO/OSM attribution requirement that
+   `attributionControl={false}` in UgandaMap was suppressing.
+   Set VITE_MAP_TILE_URL to bring a basemap back — a KEYED CARTO url, self-hosted
+   tiles, or another provider. If you do, add the provider's required
+   attribution: UgandaMap currently renders none. Leaflet fills {s}/{z}/{x}/{y}{r}. */
+export const MAP_TILE_URL = import.meta.env.VITE_MAP_TILE_URL || '';

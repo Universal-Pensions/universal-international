@@ -20,8 +20,6 @@ const UgandaMap = lazy(() => import('../dashboard/map/UgandaMap'));
 import OverlayPanel from '../dashboard/overlay/OverlayPanel';
 import DataCopilotPanel, { AskAiFab } from '../dashboard/overlay/DataCopilotPanel';
 import Breadcrumb from '../dashboard/overlay/Breadcrumb';
-import MetricsRow from '../dashboard/cards/MetricsRow';
-import TopBar from '../dashboard/overlay/TopBar';
 import ViewBranches from '../dashboard/branch/ViewBranches';
 import ViewAgents from '../dashboard/agent/ViewAgents';
 import ViewSubscribers from '../dashboard/subscriber/ViewSubscribers';
@@ -378,8 +376,22 @@ function AdminDashboardContent({ mode, mapMounted }) {
         {!dashMode && (level === 'country'
           ? <AdminCountryOverview />
           : <OverlayPanel onEmployerSelect={handleEmployerSelect} />)}
-        {!dashMode && <TopBar />}
-        {!dashMode && <MetricsRow />}
+        {/* NOTE: no <MetricsRow /> here. The distributor shell dropped it in
+            65dcab5 (two-mode redesign) when AskAiFab + DataCopilotPanel became
+            the single AI entry point; admin kept it and so carried a SECOND,
+            differently-styled AI affordance ("Talk to your data") at the bottom
+            of the map alongside the Ask AI pill top-right, plus a Demographics
+            card the distributor map has never had. Demographics stays reachable
+            in both roles via the Branches/Agents panels. */}
+        {/* …and no <TopBar /> either, for the same reason: 65dcab5 dropped it
+            from the distributor alongside MetricsRow, leaving admin the only
+            consumer. Its Filters + Download buttons also sat UNDER the fixed
+            top-right cluster (bell + Ask AI) — both dock at top/right:
+            var(--space-4), cluster z-index 60 vs bar 20 — so "Filters" was
+            clipped to "Filte" and Download was invisible entirely. The component
+            and its stylesheet are deleted in this change; recover from git if a
+            map-level filter/export is wanted back, and give it a corner the
+            cluster does not already own. */}
         {/* Dash-mode canvas — the selected rail destination rendered full-page. */}
         {dashMode && (
           <div className={styles.dashHost}>
