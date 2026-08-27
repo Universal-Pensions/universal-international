@@ -480,17 +480,38 @@ const shutdown = (signal: string) => {
 process.on('SIGTERM', () => shutdown('SIGTERM'));
 process.on('SIGINT', () => shutdown('SIGINT'));
 
-// ─── 15. Crash recovery (G64) — log via Sentry then exit non-zero so Render
-// restarts cleanly. Without these, a bug in a handler can leave the process
-// in a half-dead state where /healthz still returns 200 but every other
-// route 500s — Render won't restart and ops see ghost traffic.
+// ─── 15. Crash recovery (G64). The two handlers below DELIBERATELY DIFFER —
+// one exits, one does not. Read the reasoning before making them symmetrical
+// (review 2026-08-26 §1.5).
+//
+// `uncaughtException` EXITS. A throw that escaped every handler means some
+// stack unwound mid-operation, so the process may hold half-mutated state.
+// Without the exit, a bug in a handler can leave it half-dead: /healthz still
+// returns 200 while every other route 500s, Render never restarts it, and ops
+// see ghost traffic. Exiting non-zero is the safe direction to fail in.
 process.on('uncaughtException', (err) => {
   console.error('[uncaughtException]', err);
   if (process.env.SENTRY_DSN) Sentry.captureException(err);
   process.exit(1);
 });
+
+// `unhandledRejection` does NOT exit. Different failure in kind: a stray
+// rejection can originate inside a dependency, on a path with no user waiting,
+// and it rarely implies corrupt process state — all 16 API handlers respond
+// directly and catch their own errors. Exiting turned any such rejection,
+// anywhere, into a full outage.
+//
+// The cost of that is unusually concrete FOR THIS DEPLOYMENT. This codebase
+// carries a whole apparatus built around how expensive a cold Render backend
+// is: the WarmupBanner component, a dedicated /readyz probe, a keepalive cron,
+// and an audit finding about the database auto-pausing. One stray rejection
+// mid-demo spent all of it, on a single instance, in front of a prospect.
+//
+// So: log it, ship it to Sentry, keep serving. The signal is preserved — what
+// is dropped is the self-inflicted outage. If rejections ever become frequent
+// enough to mask a real leak, add a windowed counter here rather than
+// restoring the unconditional exit.
 process.on('unhandledRejection', (reason) => {
   console.error('[unhandledRejection]', reason);
   if (process.env.SENTRY_DSN) Sentry.captureException(reason);
-  process.exit(1);
 });
