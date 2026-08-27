@@ -63,16 +63,34 @@ export default defineConfig({
     // assertions under a passing name. sentryScrub is the module that was
     // leaking Ugandan NINs into browser error reports until 2026-08-25; it is
     // the last one you want tested from a copy that can silently go stale.
-    // Spelled with an explicit `/**` while its neighbours are bare directory
-    // names: both forms measure identically today (193 files either way), but
-    // the bare form relies on vitest normalising a directory name into a
-    // recursive glob, and the whole point of this line is that a silent
-    // non-match is exactly what went unnoticed for `dist` vs `dist-server`.
-    exclude: ['node_modules', 'dist', 'dist-server/**', 'e2e/**'],
+    // Every entry is an explicit `/**` glob. The bare directory names this list
+    // used to carry ('node_modules', 'dist') match a TOP-LEVEL directory only —
+    // and that silent non-match has now bitten twice. First `dist-server` (see
+    // above). Then `node_modules`, where the bare form let a NESTED one through:
+    //   .vercel/builders/node_modules/json-schema-traverse/spec/index.spec.js
+    // — a third-party package's own spec suite, 10 tests, collected and run as
+    // part of this repo's. `.vercel/` is gitignored (.gitignore:37), so it never
+    // reached CI; it just meant a developer who had run the Vercel CLI measured
+    // a different suite (193 files / 4,592 tests) than CI did (192 / 4,582), and
+    // neither number was wrong-looking enough to notice. `.vercel/**` is listed
+    // as well because it is a 116MB build cache that has no business being
+    // walked at all, whatever a future `vercel build` drops in it.
+    exclude: ['**/node_modules/**', 'dist/**', 'dist-server/**', '.vercel/**', 'e2e/**'],
     coverage: {
       provider: 'v8',
       reporter: ['text', 'html'],
-      include: ['src/**/*.{js,jsx,ts,tsx}', 'api/**/*.ts'],
+      // `server/**/*.ts` added 2026-08-27 (review §1.4). It was absent, and the
+      // list read COMPLETE rather than partial — which is how the gap survived a
+      // coverage-focused remediation pass: an exclusion you can see gets argued
+      // with, an omission does not. The server tests RAN the whole time
+      // (`npx vitest run server/` -> 2 files, 20 tests); they were simply never
+      // MEASURED, so the four-axis ratchet below could not see 910 lines of the
+      // transport tier — 496 of them server/index.ts, whose own header warns
+      // that reordering its middleware "will silently break: Sentry capture,
+      // rate-limit IP detection, access logging, healthcheck reachability".
+      // That file plus the rate-limiter key generator and the proxy-hop
+      // derivation are the most security-load-bearing code outside SQL.
+      include: ['src/**/*.{js,jsx,ts,tsx}', 'api/**/*.ts', 'server/**/*.ts'],
       // '**/* [0-9].*' (audit A25-012, 2026-08-25): this checkout is actively
       // syncing through a tool that materialises "conflicted copy"-style
       // duplicates — e.g. `periodSettlement.test 2.js`, `policies.test 2.js`,
@@ -108,11 +126,31 @@ export default defineConfig({
       // test AND tanks coverage reports only the first, and the coverage gate
       // silently does not run on precisely the runs that most need checking.
       reportOnFailure: true,
+      // Re-floored 2026-08-27 after `server/**` joined `include` above and the
+      // exclude globs were made explicit (review §1.4). All four RISE from
+      // 38/33/31/40 — bringing 910 previously-unmeasured server lines into the
+      // denominator cost less than adding two well-tested modules to the
+      // numerator gained, and branches actually improved.
+      //
+      // MEASURED IN A CLEAN WORKTREE AT HEAD, not in the dev working tree, and
+      // that distinction is the whole reason this commit is separate. CI checks
+      // out the branch; it does not see uncommitted work. The working tree here
+      // carries an uncommitted admin-map change that DELETES two 0%-covered
+      // components, and measuring there read 40.21/34.47/33.10/41.98 — flooring
+      // to those would have pinned statements at 40 and functions at 33 against
+      // a CI actual of 39.91 and 32.84, red-lining the build on the very next
+      // run. Measure the tree CI checks out:
+      //
+      //   statements 39.91  branches 34.21  functions 32.84  lines 41.67
+      //
+      // Each floored to the integer BELOW its measured value — never above,
+      // which would red-line immediately. Raise them as coverage grows; the bulk
+      // of src/** is UI whose only real coverage is the Playwright E2E suite.
       thresholds: {
-        statements: 38,
-        branches: 33,
-        functions: 31,
-        lines: 40,
+        statements: 39,
+        branches: 34,
+        functions: 32,
+        lines: 41,
       },
     },
   },

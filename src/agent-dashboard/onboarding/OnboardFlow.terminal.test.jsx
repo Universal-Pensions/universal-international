@@ -145,5 +145,16 @@ describe('OnboardFlow — terminal manual-review path', () => {
     await clickWhenReady(user, 'schedule-continue');
 
     await waitFor(() => expect(createFromAgentOnboard).toHaveBeenCalledTimes(1));
-  });
+    // Explicit 20s budget instead of vitest's 5000ms default. This case drives
+    // TEN sequential findByText + click round-trips through the real flow, and
+    // under `--coverage` in a full 192-file parallel run the chain overran 5s
+    // and failed — measured at 5085ms and 5040ms, i.e. right ON the default.
+    // Roughly 1 run in 3, and NOT caused by any config change: it first showed
+    // up on the unmodified config, and the file passes every time in isolation.
+    // A slow test is not a broken one, but a non-deterministic coverage run
+    // makes the four-axis ratchet in vite.config.js meaningless — a flake both
+    // fails CI and drags the measured percentages down with it (39.91 -> 39.74
+    // on the run where this failed). Budget raised HERE rather than globally so
+    // every other test keeps the tight 5s default.
+  }, 20_000);
 });
