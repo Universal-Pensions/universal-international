@@ -51,7 +51,24 @@ export default defineConfig({
     css: { modules: { classNameStrategy: 'non-scoped' } },
     // The `e2e/` directory holds Playwright specs that import @playwright/test
     // — they share the `.spec.ts` extension but are not vitest tests.
-    exclude: ['node_modules', 'dist', 'e2e/**'],
+    // 'dist-server' is listed SEPARATELY because 'dist' does not match it
+    // (review 2026-08-26 §1.2). `npm run build:api` compiles server/*.ts into
+    // dist-server/server/*.js — including the two test files — so a built
+    // checkout collected server/cspReport.test.ts AND its compiled twin
+    // dist-server/server/cspReport.test.js, same for sentryScrub. Two
+    // consequences, neither of them "an extra test passed": the suite's
+    // composition depended on whether the machine had run a server build (193
+    // files fresh-cloned, 195 built), and the compiled copy exercises whatever
+    // was last COMPILED — so a source edit without a rebuild runs stale
+    // assertions under a passing name. sentryScrub is the module that was
+    // leaking Ugandan NINs into browser error reports until 2026-08-25; it is
+    // the last one you want tested from a copy that can silently go stale.
+    // Spelled with an explicit `/**` while its neighbours are bare directory
+    // names: both forms measure identically today (193 files either way), but
+    // the bare form relies on vitest normalising a directory name into a
+    // recursive glob, and the whole point of this line is that a silent
+    // non-match is exactly what went unnoticed for `dist` vs `dist-server`.
+    exclude: ['node_modules', 'dist', 'dist-server/**', 'e2e/**'],
     coverage: {
       provider: 'v8',
       reporter: ['text', 'html'],
