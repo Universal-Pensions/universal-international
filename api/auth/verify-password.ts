@@ -20,7 +20,8 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import supabaseAdmin from '../_lib/supabase-admin.js';
 import { signJwt, type JwtRole } from '../_lib/jwt.js';
-import { toCanonicalUGPhone } from '../_lib/phone.js';
+import { toCanonicalUGPhone, MAX_PHONE_INPUT_LEN } from '../_lib/phone.js';
+import { checkLen } from '../_lib/assertLen.js';
 import { verifyPassword } from './_lib/password.js';
 import {
   ROLE_DEFAULTS,
@@ -78,6 +79,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const { phone, role, password } = body;
 
   if (typeof phone !== 'string' || phone.length === 0) {
+    res.status(400).json({ code: 'invalid_request' });
+    return;
+  }
+  // Same bound as verify-otp, for the same reason: `toCanonicalUGPhone(phone)
+  // || phone` below passes an unnormalisable value through verbatim, and it
+  // reaches the JWT `phone` claim on the success path (review 2026-08-26 §1.3).
+  // `invalid_request` here, matching THIS route's own error vocabulary.
+  if (checkLen(phone, MAX_PHONE_INPUT_LEN, 'invalid_request')) {
     res.status(400).json({ code: 'invalid_request' });
     return;
   }

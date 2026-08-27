@@ -19,6 +19,10 @@ import { hashPassword } from './_lib/password.js';
 
 type CannedResult = { data: unknown; error: unknown };
 const fromQueues = new Map<string, CannedResult[]>();
+// Records every `supabaseAdmin.from(table)` the handler makes, so a guard that
+// is supposed to short-circuit BEFORE the DB can be proven to do so rather than
+// inferred from the status code. Mirrors verify-otp.test.ts's recorder.
+const fromCalls: string[] = [];
 
 function queueFrom(table: string, result: CannedResult) {
   if (!fromQueues.has(table)) fromQueues.set(table, []);
@@ -59,7 +63,12 @@ function makeChain(table: string) {
 }
 
 vi.mock('../_lib/supabase-admin.js', () => ({
-  default: { from: vi.fn((table: string) => makeChain(table)) },
+  default: {
+    from: vi.fn((table: string) => {
+      fromCalls.push(table);
+      return makeChain(table);
+    }),
+  },
 }));
 
 // ---------------------------------------------------------------------------
@@ -124,6 +133,7 @@ describe('POST /api/auth/verify-password', () => {
 
   beforeEach(() => {
     fromQueues.clear();
+    fromCalls.length = 0;
     signJwtMock.mockClear();
     signJwtMock.mockImplementation(async () => 'signed-token-fake');
     res = makeRes();
@@ -204,6 +214,47 @@ describe('POST /api/auth/verify-password', () => {
       expect(r.__getStatus(), `password=${String(password)}`).toBe(400);
       expect(r.__getPayload()).toEqual({ code: 'invalid_request' });
     }
+  });
+
+  // Review 2026-08-26 §1.3 — same unbounded-phone hole as verify-otp: line ~94
+  // falls back to the raw input (`toCanonicalUGPhone(phone) || phone`) and the
+  // result reaches the JWT `phone` claim on the success path.
+  it('returns 400 invalid_request when phone exceeds MAX_PHONE_INPUT_LEN, without touching the DB', async () => {
+    await call(
+      makeReq({
+        body: { phone: '9'.repeat(100_000), role: 'subscriber', password: 'Demo1234' },
+      }),
+      res,
+    );
+    expect(res.__getStatus()).toBe(400);
+    expect(res.__getPayload()).toEqual({ code: 'invalid_request' });
+    expect(res.__headers['Cache-Control']).toBe('no-store');
+    // The cap must sit ahead of the `users` lookup and the bcrypt compare.
+    expect(fromCalls).toEqual([]);
+    expect(signJwtMock).not.toHaveBeenCalled();
+  });
+
+  it('rejects one char over the cap and lets one char under it reach the DB lookup', async () => {
+    const over = makeRes();
+    await call(
+      makeReq({ body: { phone: '+'.padEnd(21, '2'), role: 'subscriber', password: 'Demo1234' } }),
+      over,
+    );
+    expect(over.__getStatus()).toBe(400);
+    expect(over.__getPayload()).toEqual({ code: 'invalid_request' });
+    expect(fromCalls).toEqual([]);
+
+    // 20 chars clears the LENGTH guard. No `users` row is queued for it, so the
+    // route answers `password_not_set` — the point is that it got far enough to
+    // ASK, i.e. the cap did not swallow a legitimate-length input.
+    const under = makeRes();
+    await call(
+      makeReq({ body: { phone: '+'.padEnd(20, '2'), role: 'subscriber', password: 'Demo1234' } }),
+      under,
+    );
+    expect(under.__getStatus()).toBe(401);
+    expect(under.__getPayload()).toEqual({ code: 'password_not_set' });
+    expect(fromCalls).toContain('users');
   });
 
   // -------------------------------------------------------------------------

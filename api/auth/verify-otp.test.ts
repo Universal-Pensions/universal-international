@@ -244,6 +244,49 @@ describe('POST /api/auth/verify-otp', () => {
     }
   });
 
+  // Review 2026-08-26 §1.3 — the phone is bounded BEFORE the
+  // `toCanonicalUGPhone(phone) || phone` fallback can pass an unnormalisable
+  // value through verbatim. Without the cap a ~200,000-char phone reached the
+  // JWT `phone` claim and, with a valid password alongside, `users.id` (a TEXT
+  // PRIMARY KEY). `express.json({ limit: '200kb' })` was the only ceiling.
+  it('returns 400 invalid_otp when phone exceeds MAX_PHONE_INPUT_LEN, without touching the DB', async () => {
+    await call(
+      makeReq({
+        body: { phone: '9'.repeat(100_000), otp: '123456', role: 'subscriber' },
+      }),
+      res,
+    );
+    expect(res.__getStatus()).toBe(400);
+    expect(res.__getPayload()).toEqual({ code: 'invalid_otp' });
+    expect(res.__headers['Cache-Control']).toBe('no-store');
+    // The guard must precede the identity lookup AND the JWT mint — an
+    // oversized field costs a round-trip to neither.
+    expect(fromCalls).toEqual([]);
+    expect(signJwtMock).not.toHaveBeenCalled();
+  });
+
+  it('rejects one char over the cap and accepts one char under it', async () => {
+    // Pins the boundary from both sides so the cap cannot silently tighten and
+    // start refusing real input. 21 chars fails; 20 passes the LENGTH guard and
+    // proceeds (it then falls through to the demo-persona fallback like any
+    // other non-UG number, per CLAUDE.md §8 — which is the behaviour this fix
+    // deliberately preserves).
+    const over = makeRes();
+    await call(
+      makeReq({ body: { phone: '+'.padEnd(21, '2'), otp: '123456', role: 'subscriber' } }),
+      over,
+    );
+    expect(over.__getStatus()).toBe(400);
+    expect(over.__getPayload()).toEqual({ code: 'invalid_otp' });
+
+    const under = makeRes();
+    await call(
+      makeReq({ body: { phone: '+'.padEnd(20, '2'), otp: '123456', role: 'subscriber' } }),
+      under,
+    );
+    expect(under.__getStatus()).toBe(200);
+  });
+
   it('surfaces password shape errors before role lookup', async () => {
     await call(
       makeReq({

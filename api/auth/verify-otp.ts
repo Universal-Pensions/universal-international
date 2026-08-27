@@ -34,7 +34,8 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import supabaseAdmin from '../_lib/supabase-admin.js';
 import { signJwt, type JwtRole } from '../_lib/jwt.js';
-import { toCanonicalUGPhone } from '../_lib/phone.js';
+import { toCanonicalUGPhone, MAX_PHONE_INPUT_LEN } from '../_lib/phone.js';
+import { checkLen } from '../_lib/assertLen.js';
 import {
   hashPassword,
   validatePasswordShape,
@@ -189,6 +190,20 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const { phone, otp, role, password } = body;
 
   if (typeof phone !== 'string' || phone.length === 0) {
+    res.status(400).json({ code: 'invalid_otp' });
+    return;
+  }
+  // Bound the phone BEFORE the `|| phone` fallback at the bottom of this
+  // handler can pass an unnormalisable value through verbatim (review
+  // 2026-08-26 §1.3). Same `checkLen` the five public write routes use.
+  // Reported as `invalid_otp`, not a new code: this route's documented contract
+  // is that EVERY request-shape failure surfaces `invalid_otp`, and the
+  // frontend (src/services/auth.js) both maps that code to "Invalid code" and
+  // defaults unknown codes to it — a new code would change the login
+  // vocabulary for no gain. Placed above the otp/role guards so an oversized
+  // field is rejected before any further work, and well before the Supabase
+  // lookup.
+  if (checkLen(phone, MAX_PHONE_INPUT_LEN, 'invalid_otp')) {
     res.status(400).json({ code: 'invalid_otp' });
     return;
   }
