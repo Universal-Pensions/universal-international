@@ -1,25 +1,28 @@
 // CLAUDE.md §5.6 enforcement — "Don't write raw SQL from the frontend.
 // Every money write is supposed to go through a SECURITY DEFINER RPC."
 //
-// ⚠️ THIS RULE IS ALREADY VIOLATED IN SHIPPED CODE. CLAUDE.md §5.6 itself
-// says so: "This rule is currently BREACHED: src/services/subscriber.js and
-// src/services/entities.js still .insert()/.update()/.upsert() tables
-// directly through PostgREST ... Treat this rule as the target state, not a
-// description of the code, until migration 0118 (drafted, not yet applied
-// as of 2026-08-25) closes the gap." Re-verified directly against the tree
-// 2026-08-25: 9 real call sites (5 in entities.js, 4 in subscriber.js) —
-// not the 11 the original audit finding counted; this test's baseline uses
-// the freshly-measured number.
+// STATUS (re-measured 2026-08-27): the MONEY half of this rule is closed.
+// Migrations 0118 + 0119 are applied to live — `transactions`, `withdrawals`
+// and `nominees` carry zero INSERT/UPDATE/DELETE policies, so they are
+// SELECT-only through PostgREST and genuinely RPC-or-nothing. This header
+// previously quoted a version of CLAUDE.md §5.6 that predated them ("migration
+// 0118 (drafted, not yet applied as of 2026-08-25)") and described the gap as
+// still open; it wasn't, and CLAUDE.md had already been corrected.
 //
-// Fixing those 9 sites means rewriting src/services/{entities,subscriber}.js
-// to call RPCs instead, which is a functional change to files outside this
-// task's write-set (config files + new tests only) — and is exactly what
-// migration 0118 is for. So this test is a RATCHET, not a fix: it grandfathers
-// today's 9 known sites in exactly these two files, and fails on anything
-// beyond that — either a NEW direct-write call site in the same two files,
-// or ANY direct-write call site appearing in a third services file. It is
-// the mechanical version of the CLAUDE.md §7.3 warning, scoped to catch the
-// backlog from growing while migration 0118 is still just drafted.
+// What REMAINS is not a money leak. src/services/{entities,subscriber}.js still
+// write 9 tables directly through PostgREST (5 + 4), but every one of those 9
+// lands on a non-money, ownership-scoped table that 0118 deliberately KEPT
+// writable: branches/agents/distributors management, the schedule form, the
+// free-insurance downgrade, own-profile edits. None of them touches a balance.
+//
+// So this test is a RATCHET, not a fix. It grandfathers today's 9 known sites in
+// exactly these two files and fails on anything beyond that — either a NEW
+// direct-write call site in the same two files, or ANY direct-write call site
+// appearing in a third services file. Rewriting the 9 to call RPCs would be a
+// functional change with real blast radius and no security payoff now that the
+// money tables are sealed; the ratchet exists to stop the backlog GROWING, which
+// is the part that would matter. Lower KNOWN_OFFENDERS whenever one is retired —
+// the ceiling should only ever tighten.
 
 import { describe, it, expect } from 'vitest';
 import { readdirSync, readFileSync, statSync } from 'node:fs';
@@ -75,7 +78,8 @@ function countDirectWrites(file) {
 
 const allServiceFiles = walkJs(SERVICES_DIR);
 
-// 2026-08-25 measured baseline. Ceiling only — lower these as 0118 lands.
+// 2026-08-25 baseline, re-measured 2026-08-27 (unchanged). Ceiling only —
+// lower these as call sites are retired; never raise them.
 const KNOWN_OFFENDERS = {
   'src/services/entities.js': 5,
   'src/services/subscriber.js': 4,
