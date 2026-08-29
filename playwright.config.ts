@@ -48,7 +48,19 @@ export default defineConfig({
   expect: { timeout: 25_000 },
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
-  retries: process.env.CI ? 1 : 0,
+  // 0 in CI as well as locally (2026-08-29). CI used to retry once, and that
+  // single flag is why the E2E job had never completed on main: 82 tests
+  // currently fail, and a failing test burns its full 75s `timeout` above before
+  // failing again, so the retry alone costs ~102 min on top of a ~26 min
+  // baseline. The job was cancelled at 50 min, then again at 75.
+  //
+  // Retrying buys nothing here. The delta gate
+  // (scripts/e2e-delta.mjs) is what separates a NEW failure from a known one,
+  // and re-running a test that is going to fail again spends 75s to re-learn
+  // what the allowlist already records. The cost of `0` is that a genuinely
+  // flaky test now surfaces on its first attempt instead of being papered over
+  // — which is the correct trade when the alternative is no gate at all.
+  retries: 0,
   workers: process.env.CI ? 1 : undefined,
   reporter: process.env.CI ? [['github'], ['html', { open: 'never' }]] : [['list'], ['html', { open: 'never' }]],
 
