@@ -114,7 +114,36 @@ jobs:
     # re-run below (its own fresh webServer boot), and 2 artifact uploads.
     # 50 min leaves real headroom over that realistic worst case without
     # being open-ended.
-    timeout-minutes: 50
+    # 50 -> 75 (2026-08-29). The 50 was set from a measured 24.4-26.0 min local
+    # full matrix, but that measurement was taken with ZERO retries and CI runs
+    # `retries: 1` (playwright.config.ts:51). The retry is not free: a test that
+    # is going to fail burns its full 75s `timeout` (config:47) before failing
+    # again, and the delta-gate allowlist holds 22 known-failing tests. So:
+    #
+    #   baseline (no retries)              26.0 min
+    #   + 22 known failures x 75s retry     27.5 min
+    #   = expected wall clock               53.5 min   vs a 50 min ceiling
+    #
+    # Which is exactly what happened: run 33090181309 was cancelled at 49.2 min
+    # with the matrix step still running (2,953s), the delta gate skipped as a
+    # result, and the §15-M1 guard failing because the db/ specs never finished.
+    # Setup is not the problem — checkout through browser install is 59s total.
+    #
+    # This has never once completed on main: 6 consecutive pushes cancelled, and
+    # the workflow's own comment records 41/41 before that at the old 20 min.
+    # So main has had no browser-level regression gate for a month, and the
+    # cancelled runs looked like infrastructure noise rather than a missing gate.
+    #
+    # 75 buys ~20 min of headroom over the estimate. It treats the symptom on
+    # purpose: the job has to finish ONCE before there is real data to tune with
+    # (how long the matrix truly takes, and what the delta gate actually says).
+    # Two cheaper-per-run follow-ups, once that data exists:
+    #   * shard the 4 Playwright projects across parallel jobs — same tests, same
+    #     semantics, ~4x less wall clock; needs the delta gate to merge shards.
+    #   * `retries: 0` in CI — the delta gate already separates new failures from
+    #     known ones, so retrying a KNOWN failure costs 75s to learn nothing.
+    #     Cheapest change, but it would surface genuine flakes as new failures.
+    timeout-minutes: 75
     env:
       VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
       VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
