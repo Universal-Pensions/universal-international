@@ -146,6 +146,37 @@ rollback.
 
 ## Rollback ordering, if you ever need it
 
+### Reverse the migrations in STRICT reverse order, or not at all
+
+This is not the usual boilerplate. Several of these migrations REWRITE FUNCTIONS
+THAT EARLIER ONES ALSO WROTE, so a down migration restores that function to the
+state it had at ITS point in history — undoing every later fix to the same
+function along the way, silently.
+
+Concretely, `request_withdrawal`, `price_pending_transactions`,
+`reverse_transaction` and `settle_withdrawal` are each touched more than once:
+
+| Reversing | Also silently undoes | Which reinstates |
+|---|---|---|
+| `0147.down` | 0151, 0152, 0153, 0154 | the sweep/re-mark bug, reference-matching, the withdrawal-reversal failure, the cost-basis inflation |
+| `0148.down` | 0152, 0153, 0154 | reference-matching, and both reversal defects |
+| `0151.down` | — | the sweep undoing the book re-mark |
+| `0152.down` | 0153, 0154 | both reversal defects |
+
+So: to reverse `0147`, first reverse `0155`, `0154`, `0153`, `0152`, `0151`,
+`0150`, `0149` and `0148`, in that order. Reversing one in the middle leaves a
+function body from an older era running against a newer schema, which is worse
+than either state on its own.
+
+`0147.down` already refuses to run while anything is pending or while the kill
+switch is on. It does NOT check the ordering above — nothing can — so that is on
+whoever runs it.
+
+If what you actually want is to stop forward dealing, **do not reverse anything**.
+Set `pricing_enabled = false`. That is the rollback; see the kill switch above.
+
+### Deploy and revert direction
+
 Deploy is database first, then frontend. Rollback is the exact reverse, with one
 absolute rule:
 
