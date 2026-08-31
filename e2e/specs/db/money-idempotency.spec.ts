@@ -67,6 +67,19 @@ type BalanceRow = {
   // role — so a PostgREST restore has to carry the split itself.
   retirement_units: number;
   emergency_units: number;
+  // And the six IN-FLIGHT components. With forward dealing on, a contribution
+  // books pending_contribution_* and a withdrawal books pending_redemption_*
+  // rather than moving the allocated balance — so a restore that only rewrites
+  // the allocated columns leaves that money on a live member indefinitely.
+  // Observed exactly that: an accidental flag-on run left s-0005 holding
+  // 30,000 UGX of pending contributions and emp-002-e01 a 20,000 UGX redemption
+  // hold, neither with anything to release them.
+  pending_contribution_retirement: number;
+  pending_contribution_emergency: number;
+  pending_payout_retirement: number;
+  pending_payout_emergency: number;
+  pending_redemption_retirement: number;
+  pending_redemption_emergency: number;
   // And the COST BASIS. Omitted from the first fix, and it leaked exactly the
   // same way: a contribution raises `invested`, the restore never lowered it,
   // and five test runs left live member s-0005 carrying +50,000 UGX of basis
@@ -88,7 +101,7 @@ async function subscriberClient(subscriberId: string): Promise<SupabaseClient> {
 async function readBalance(subscriberId: string): Promise<BalanceRow> {
   const { data, error } = await supabaseAdmin
     .from('subscriber_balances')
-    .select('retirement_balance, emergency_balance, total_balance, units, retirement_units, emergency_units, invested')
+    .select('retirement_balance, emergency_balance, total_balance, units, retirement_units, emergency_units, invested, pending_contribution_retirement, pending_contribution_emergency, pending_payout_retirement, pending_payout_emergency, pending_redemption_retirement, pending_redemption_emergency')
     .eq('subscriber_id', subscriberId)
     .maybeSingle();
   if (error) throw new Error(`readBalance(${subscriberId}): ${error.message}`);
@@ -100,6 +113,12 @@ async function readBalance(subscriberId: string): Promise<BalanceRow> {
     retirement_units: 0,
     emergency_units: 0,
     invested: 0,
+    pending_contribution_retirement: 0,
+    pending_contribution_emergency: 0,
+    pending_payout_retirement: 0,
+    pending_payout_emergency: 0,
+    pending_redemption_retirement: 0,
+    pending_redemption_emergency: 0,
   };
 }
 
@@ -170,6 +189,12 @@ test.describe('money RPC idempotency + atomicity (DB layer)', () => {
           retirement_units: snapshot.retirement_units,
           emergency_units: snapshot.emergency_units,
           invested: snapshot.invested,
+          pending_contribution_retirement: snapshot.pending_contribution_retirement,
+          pending_contribution_emergency: snapshot.pending_contribution_emergency,
+          pending_payout_retirement: snapshot.pending_payout_retirement,
+          pending_payout_emergency: snapshot.pending_payout_emergency,
+          pending_redemption_retirement: snapshot.pending_redemption_retirement,
+          pending_redemption_emergency: snapshot.pending_redemption_emergency,
         })
         .eq('subscriber_id', SUBSCRIBER_ID);
       // ASSERTED, not swallowed. A restore that fails silently is precisely how
