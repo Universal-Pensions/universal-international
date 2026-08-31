@@ -67,6 +67,14 @@ type BalanceRow = {
   // role — so a PostgREST restore has to carry the split itself.
   retirement_units: number;
   emergency_units: number;
+  // And the COST BASIS. Omitted from the first fix, and it leaked exactly the
+  // same way: a contribution raises `invested`, the restore never lowered it,
+  // and five test runs left live member s-0005 carrying +50,000 UGX of basis
+  // with no ledger row behind it. `invested` is the denominator of every growth
+  // figure the platform shows, so an inflated basis silently understates that
+  // member's return forever. Restore EVERY column the money triggers touch —
+  // the safe list is "all of them", not "the ones that looked important".
+  invested: number;
 };
 
 async function subscriberClient(subscriberId: string): Promise<SupabaseClient> {
@@ -80,7 +88,7 @@ async function subscriberClient(subscriberId: string): Promise<SupabaseClient> {
 async function readBalance(subscriberId: string): Promise<BalanceRow> {
   const { data, error } = await supabaseAdmin
     .from('subscriber_balances')
-    .select('retirement_balance, emergency_balance, total_balance, units, retirement_units, emergency_units')
+    .select('retirement_balance, emergency_balance, total_balance, units, retirement_units, emergency_units, invested')
     .eq('subscriber_id', subscriberId)
     .maybeSingle();
   if (error) throw new Error(`readBalance(${subscriberId}): ${error.message}`);
@@ -91,6 +99,7 @@ async function readBalance(subscriberId: string): Promise<BalanceRow> {
     units: 0,
     retirement_units: 0,
     emergency_units: 0,
+    invested: 0,
   };
 }
 
@@ -160,6 +169,7 @@ test.describe('money RPC idempotency + atomicity (DB layer)', () => {
           // constraint rejects the whole restore at COMMIT.
           retirement_units: snapshot.retirement_units,
           emergency_units: snapshot.emergency_units,
+          invested: snapshot.invested,
         })
         .eq('subscriber_id', SUBSCRIBER_ID);
       // ASSERTED, not swallowed. A restore that fails silently is precisely how

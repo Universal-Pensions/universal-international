@@ -1017,6 +1017,43 @@ async function main() {
         txBuckets.push(_isDraw ? 'emergency' : null);
       }
     }
+    // ── 0143-0149: the columns the BEFORE INSERT stamp trigger would fill ────
+    //
+    // ⚠️ THIS SCRIPT RUNS WITH `session_replication_role = 'replica'`, so EVERY
+    //    trigger is off — including trg_transactions_stamp_dealing, which is the
+    //    only thing that populates `dealing_date` and decides `pricing_status`.
+    //    Two consequences, and both are fatal rather than cosmetic:
+    //
+    //      * `dealing_date` is NOT NULL with NO default (0149), so the bulk
+    //        insert below ABORTS outright. `npm run seed` simply stops working.
+    //      * `pricing_status` falls back to its column DEFAULT of 'pending', so
+    //        all ~27,000 seeded rows would look like money still waiting for a
+    //        price. The moment anyone turned the pricing switch on, the engine
+    //        would treat the ENTIRE seeded history as an unallocated queue and
+    //        re-buy units for every one of them, on top of balances that are
+    //        already correct.
+    //
+    //    So the seed supplies both explicitly. The dealing dates are computed by
+    //    the DATABASE, in one round trip through the canonical
+    //    dealing_date_for() — never reimplemented here. The cutoff, the timezone
+    //    and the holiday calendar are live data that an admin can change without
+    //    a redeploy, and a JavaScript copy would be right the day it was written
+    //    and silently wrong afterwards.
+    const { rows: _dealingRows } = await client.query(
+      `SELECT public.dealing_date_for(d) AS dd
+         FROM unnest($1::timestamptz[]) WITH ORDINALITY AS t(d, ord)
+        ORDER BY t.ord`,
+      [txDates],
+    );
+    const txDealingDates = _dealingRows.map((r) => r.dd);
+
+    // The same rule 0144's backfill applied: a row that touches the fund is
+    // priced (the seed writes balances directly, so it IS already priced);
+    // anything else never touches units at all.
+    const MONEY_TYPES = new Set(['contribution', 'withdrawal', 'premium_sweep']);
+    const txPricingStatuses = txTypes.map((t) =>
+      (MONEY_TYPES.has(t) ? 'priced' : 'not_applicable'));
+
     await bulkInsert(
       client,
       'transactions',
@@ -1041,6 +1078,8 @@ async function main() {
         // its own receipt either way) but the audit trail should not lie about
         // seeded data any more than about real data.
         { name: 'received_at', type: 'timestamptz' },
+        { name: 'dealing_date', type: 'date' },
+        { name: 'pricing_status', type: 'text' },
       ],
       [
         txIds,
@@ -1054,6 +1093,8 @@ async function main() {
         txRefs,
         txBuckets,
         txDates,
+        txDealingDates,
+        txPricingStatuses,
       ],
       'id'
     );
