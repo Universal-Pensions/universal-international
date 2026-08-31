@@ -174,3 +174,73 @@ describe('deriveInvestmentGrowth reads ALLOCATED value, never the headline', () 
     expect(g.growth).toBe(100_000);
   });
 });
+
+// ── The balance-growth series must not double-count money in flight ──────────
+//
+// deriveSubscriberAnalytics anchors its chart as `opening = balance − Σdeltas`
+// and walks forward, so the anchor and the deltas have to describe the SAME
+// money. Forward dealing breaks that in exactly one direction:
+//
+//   a pending CONTRIBUTION is in the anchor AND in the deltas → they cancel;
+//   a pending WITHDRAWAL is in the deltas but its value has NOT left the
+//   member's total → the opening balance is inflated by the amount, and every
+//   month of the member's history shifts upward until the payout settles.
+//
+// A member would open their chart after asking for money and find that their
+// past had changed. Guarded here because nothing else would catch it: the live
+// figures are identical while the kill switch is off.
+
+describe('deriveSubscriberAnalytics — money in flight', () => {
+  const SUB = {
+    netBalance: 1_085_000,       // allocated + in-flight
+    allocatedBalance: 1_000_000, // units actually held
+    retirementBalance: 800_000,
+    emergencyBalance: 200_000,
+    unitsHeld: 630.718954,
+    invested: 900_000,
+  };
+
+  it('a withdrawal still waiting for its price does not move the historical curve', async () => {
+    const { deriveSubscriberAnalytics } = await import(
+      '../subscriber-dashboard/reports/deriveSubscriberAnalytics'
+    );
+    const settled = [
+      { type: 'contribution', amount: 400_000, date: '2026-06-10', pricingStatus: 'priced' },
+      { type: 'contribution', amount: 600_000, date: '2026-07-10', pricingStatus: 'priced' },
+    ];
+    const withHold = [
+      ...settled,
+      // Requested, not yet dealt. The units are still owned.
+      { type: 'withdrawal', amount: -300_000, date: '2026-07-20', pricingStatus: 'pending' },
+    ];
+
+    const a = deriveSubscriberAnalytics(SUB, settled);
+    const b = deriveSubscriberAnalytics(SUB, withHold);
+
+    // Same months, same values: asking for money must not rewrite the past.
+    expect(b.balanceSeries.map((p) => p.value)).toEqual(a.balanceSeries.map((p) => p.value));
+  });
+
+  it('the series is anchored on ALLOCATED money, not on the headline total', async () => {
+    const { deriveSubscriberAnalytics } = await import(
+      '../subscriber-dashboard/reports/deriveSubscriberAnalytics'
+    );
+    const feed = [
+      { type: 'contribution', amount: 400_000, date: '2026-06-10', pricingStatus: 'priced' },
+      { type: 'contribution', amount: 600_000, date: '2026-07-10', pricingStatus: 'priced' },
+    ];
+    const series = deriveSubscriberAnalytics(SUB, feed).balanceSeries;
+    // Final point closes on the allocated figure — the money actually invested —
+    // not on the 1,085,000 headline that still contains cash in transit.
+    expect(series.at(-1).value).toBe(1_000_000);
+  });
+
+  it('falls back to netBalance for a pre-0146 subscriber shape', async () => {
+    const { deriveSubscriberAnalytics } = await import(
+      '../subscriber-dashboard/reports/deriveSubscriberAnalytics'
+    );
+    const legacy = { netBalance: 1_000_000, retirementBalance: 800_000, emergencyBalance: 200_000 };
+    const feed = [{ type: 'contribution', amount: 400_000, date: '2026-06-10' }];
+    expect(deriveSubscriberAnalytics(legacy, feed).balanceSeries.at(-1).value).toBe(1_000_000);
+  });
+});

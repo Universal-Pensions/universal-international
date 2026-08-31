@@ -139,7 +139,22 @@ export function deriveSubscriberAnalytics(subscriber, transactions = []) {
     } else if (t.type === 'withdrawal') {
       // Already negative in the feed; treat defensively either way.
       const delta = amount > 0 ? -amount : amount;
-      deltaByMonth.set(ym, (deltaByMonth.get(ym) || 0) + delta);
+      // ⚠️ A WITHDRAWAL STILL WAITING FOR ITS PRICE IS NOT A DELTA YET.
+      //    Under forward dealing (0147) a requested withdrawal places a HOLD:
+      //    the member still owns the units, so `netBalance` does not move. But
+      //    the ledger row exists immediately with a negative amount, and the
+      //    series below is anchored as `opening = balance − Σdeltas`. Counting
+      //    it would inflate the opening balance by the withdrawal amount and
+      //    shift EVERY month of the member's chart upward until it settles —
+      //    their history would appear to change because they asked for money.
+      //    A pending CONTRIBUTION has no such problem: it is in the anchor and
+      //    in the deltas, so the two cancel.
+      //    `pricingStatus` is undefined on rows fetched by paths that predate
+      //    0144, and on every row while the kill switch is off, so this is a
+      //    no-op today.
+      if (t.pricingStatus !== 'pending') {
+        deltaByMonth.set(ym, (deltaByMonth.get(ym) || 0) + delta);
+      }
     }
     // 'premium' / 'claim' / anything else → no balance impact.
   }
@@ -167,8 +182,20 @@ export function deriveSubscriberAnalytics(subscriber, transactions = []) {
   // authoritative snapshot) and the per-month signed deltas, so we walk the
   // months forward from a derived opening balance such that the final month's
   // closing balance equals `netBalance`. opening = netBalance − Σ(all deltas).
+  //
+  // ANCHORED ON MONEY THAT HAS ACTUALLY BEEN STRUCK, not on the headline.
+  // `netBalance` includes two kinds of in-flight money: contributions that have
+  // not bought units yet, and redemptions that were struck but not yet paid out.
+  // The second is the problem — its ledger row is a negative delta while its
+  // value is still inside netBalance, so anchoring on netBalance double-counts
+  // it and lifts the whole curve. Anchoring on the ALLOCATED balance and
+  // excluding not-yet-priced withdrawals (above) makes the series describe
+  // exactly one thing: money that has actually been invested, over time.
+  // Falls back to netBalance for a pre-0146 subscriber shape, where the two are
+  // equal by definition.
+  const anchorBalance = Number(sub.allocatedBalance ?? sub.netBalance) || 0;
   const totalDelta = [...deltaByMonth.values()].reduce((s, v) => s + v, 0);
-  let running = netBalance - totalDelta;
+  let running = anchorBalance - totalDelta;
   const balanceSeries = months.map((ym) => {
     const [y, m] = ym.split('-');
     running += deltaByMonth.get(ym) || 0;
