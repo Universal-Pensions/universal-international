@@ -54,6 +54,19 @@ type BalanceRow = {
   emergency_balance: number;
   total_balance: number;
   units: number;
+  // ⚠️ THE DERIVED UNIT SPLIT IS PART OF THE SNAPSHOT, and leaving it out is
+  // how this file silently leaked money into the live demo DB.
+  // `subscriber_balances_bucket_units_sum` is a DEFERRABLE CONSTRAINT TRIGGER
+  // requiring retirement_units + emergency_units = units. Restoring `units`
+  // alone leaves the two bucket columns at their POST-contribution values, so
+  // the restore aborts at COMMIT with 23514 — and because the restore's error
+  // was never checked, it aborted in silence and the fixture member kept the
+  // test's money. Measured: three runs left s-0005 +30,000 UGX and +18.917
+  // units on live. The production path never hits this because every writer
+  // calls _resync_bucket_units(), which is deliberately not granted to any API
+  // role — so a PostgREST restore has to carry the split itself.
+  retirement_units: number;
+  emergency_units: number;
 };
 
 async function subscriberClient(subscriberId: string): Promise<SupabaseClient> {
@@ -67,7 +80,7 @@ async function subscriberClient(subscriberId: string): Promise<SupabaseClient> {
 async function readBalance(subscriberId: string): Promise<BalanceRow> {
   const { data, error } = await supabaseAdmin
     .from('subscriber_balances')
-    .select('retirement_balance, emergency_balance, total_balance, units')
+    .select('retirement_balance, emergency_balance, total_balance, units, retirement_units, emergency_units')
     .eq('subscriber_id', subscriberId)
     .maybeSingle();
   if (error) throw new Error(`readBalance(${subscriberId}): ${error.message}`);
@@ -76,6 +89,8 @@ async function readBalance(subscriberId: string): Promise<BalanceRow> {
     emergency_balance: 0,
     total_balance: 0,
     units: 0,
+    retirement_units: 0,
+    emergency_units: 0,
   };
 }
 
@@ -134,15 +149,23 @@ test.describe('money RPC idempotency + atomicity (DB layer)', () => {
     // Restore the balance row to its pre-test snapshot (the AFTER INSERT trigger
     // moved it; deleting the tx does not move it back).
     if (snapshot) {
-      await supabaseAdmin
+      const { error: restoreErr } = await supabaseAdmin
         .from('subscriber_balances')
         .update({
           retirement_balance: snapshot.retirement_balance,
           emergency_balance: snapshot.emergency_balance,
           total_balance: snapshot.total_balance,
           units: snapshot.units,
+          // See BalanceRow: without these two the deferrable bucket-units
+          // constraint rejects the whole restore at COMMIT.
+          retirement_units: snapshot.retirement_units,
+          emergency_units: snapshot.emergency_units,
         })
         .eq('subscriber_id', SUBSCRIBER_ID);
+      // ASSERTED, not swallowed. A restore that fails silently is precisely how
+      // a real demo member ends up carrying a test's money indefinitely, which
+      // is audit finding A25-004 in a different costume.
+      if (restoreErr) teardownErrors.push(`balance restore: ${restoreErr.message}`);
     }
     snapshot = null;
     expect(

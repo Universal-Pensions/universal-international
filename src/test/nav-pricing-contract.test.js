@@ -246,7 +246,7 @@ describe('NAV pricing contract across migrations', () => {
   });
 
   describe('reversibility', () => {
-    for (const n of ['0103', '0104', '0105', '0143', '0144', '0145', '0146', '0147']) {
+    for (const n of ['0103', '0104', '0105', '0143', '0144', '0145', '0146', '0147', '0148', '0149']) {
       it(`${n} ships a paired .down.sql`, () => {
         const files = readdirSync(MIGRATIONS_DIR);
         const forward = files.find((f) => f.startsWith(n) && f.endsWith('.sql') && !f.endsWith('.down.sql'));
