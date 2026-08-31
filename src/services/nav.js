@@ -85,6 +85,45 @@ function _rpcError(err, fnName) {
  * @scope Admin only — the RPC RAISEs for any other app_role.
  * @cache ['navOverview', fundCode], 5 min — the price changes at most once a day.
  */
+/**
+ * @endpoint RPC get_pending_pricing_summary(p_fund) — migration 0147.
+ * @description What money is waiting for a price: how many contributions and
+ *   redemptions, worth how much, how many of them the NEXT publish would
+ *   actually release (their dealing date already has a price) and how many are
+ *   still waiting on the fund. Counts and values only — no member detail — so
+ *   it is safe on a rollup surface.
+ *
+ *   Every figure is zero while fund_dealing_config.pricing_enabled is false.
+ * @param {string} [fundCode]
+ * @returns {Promise<Object>} shaped like EMPTY_PENDING_PRICING
+ * @scope Any signed-in role.
+ * @cache ['pendingPricingSummary', fundCode] — invalidated by usePublishNav,
+ *   because a publish is exactly what empties this queue.
+ */
+export async function getPendingPricingSummary(fundCode = DEFAULT_FUND) {
+  if (!IS_SUPABASE_ENABLED) return { ...EMPTY_PENDING_PRICING, fundCode };
+  const { data, error } = await supabase.rpc('get_pending_pricing_summary', { p_fund: fundCode });
+  // The queue preview must never block the page that publishes prices — that
+  // page is how the queue gets drained in the first place.
+  if (error) return { ...EMPTY_PENDING_PRICING, fundCode };
+  return { ...EMPTY_PENDING_PRICING, ...(data ?? {}) };
+}
+
+/** Safe skeleton with the RPC's exact keys, so no caller needs optional chaining. */
+export const EMPTY_PENDING_PRICING = Object.freeze({
+  fundCode: DEFAULT_FUND,
+  pendingContributions: 0,
+  pendingContributionValue: 0,
+  pendingRedemptions: 0,
+  pendingRedemptionValue: 0,
+  releasableNow: 0,
+  awaitingPrice: 0,
+  oldestDealingDate: null,
+  oldestPendingBusinessDays: 0,
+  maxPendingDays: 3,
+  pricingEnabled: false,
+});
+
 export async function getNavOverview(fundCode = DEFAULT_FUND) {
   if (!IS_SUPABASE_ENABLED) {
     // Rollback path: a flat register at the historical demo price. Returning a

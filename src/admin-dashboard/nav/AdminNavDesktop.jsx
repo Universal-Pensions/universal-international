@@ -13,7 +13,9 @@ import { useMemo, useState } from 'react';
 import {
   Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis,
 } from 'recharts';
-import { useNavOverview, useNavSnapshots, usePublishNav } from '../../hooks/useNav';
+import {
+  useNavOverview, useNavSnapshots, usePublishNav, usePendingPricingSummary,
+} from '../../hooks/useNav';
 import { useToast } from '../../contexts/ToastContext';
 import { formatNumber, formatUGX } from '../../utils/currency';
 import ErrorCard from '../../components/feedback/ErrorCard';
@@ -107,6 +109,9 @@ export default function AdminNavDesktop({ fullPage = false }) {
   const overview = useNavOverview();
   const history = useNavSnapshots({ limit: 60, status: statusFilter });
   const publish = usePublishNav();
+  // 0147: the queue this publish will release. Zero while the pricing switch
+  // is off, so the preview block below simply does not render.
+  const pending = usePendingPricingSummary();
 
   const d = overview.data;
   // A04-015 (client half): the fund's calendar is Kampala, not the browser's
@@ -317,6 +322,33 @@ export default function AdminNavDesktop({ fullPage = false }) {
             <p className={styles.notice}>
               A price of {price(duplicateRow.unitPrice)} is already recorded for this
               day. Saving will replace it.
+            </p>
+          )}
+
+          {/* 0147: what this button is about to do to members' money, not just
+              to the register. Publishing releases the pricing queue for the
+              date being published, so contributions buy units and redemptions
+              sell them at this price. Renders nothing until there is a queue —
+              which, while the pricing switch is off, is always. */}
+          {(pending.data?.pendingContributions > 0 || pending.data?.pendingRedemptions > 0) && (
+            <p className={styles.notice}>
+              Waiting on a price:{' '}
+              <strong>{pending.data.pendingContributions}</strong> payment
+              {pending.data.pendingContributions === 1 ? '' : 's'} in worth{' '}
+              <strong>{formatUGX(pending.data.pendingContributionValue, { compact: false })}</strong>
+              {pending.data.pendingRedemptions > 0 && (
+                <>
+                  , and <strong>{pending.data.pendingRedemptions}</strong> payment
+                  {pending.data.pendingRedemptions === 1 ? '' : 's'} out worth{' '}
+                  <strong>{formatUGX(pending.data.pendingRedemptionValue, { compact: false })}</strong>
+                </>
+              )}.{' '}
+              {pending.data.releasableNow > 0
+                ? `${pending.data.releasableNow} of them can be settled now.`
+                : 'None of them can be settled until their own day has a price.'}
+              {pending.data.oldestPendingBusinessDays > pending.data.maxPendingDays && (
+                <> The oldest has been waiting {pending.data.oldestPendingBusinessDays} working days.</>
+              )}
             </p>
           )}
 

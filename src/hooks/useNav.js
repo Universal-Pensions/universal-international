@@ -69,8 +69,35 @@ export function usePublishNav() {
         ['children'], ['entity-page'], ['entities'], ['entitiesMap'],
         ['allEmployersMetrics'], ['employerGeoRollup'],
         ['currentSubscriber'], ['subscriberAnalytics'],
+        // 0147: a publish now RELEASES THE PRICING QUEUE, so it changes
+        // transaction ROWS too, not only balances — a row that read "being put
+        // into savings" a second ago now carries a price, a unit count and a
+        // settled status. Without this the member's history keeps showing the
+        // pending wording after the money has actually been invested.
+        ['subscriberTransactions'], ['subscriberWithdrawals'],
+        ['pendingPricingSummary'],
         ['adminAttention'], ['adminAttentionRows'],
       ].forEach((queryKey) => queryClient.invalidateQueries({ queryKey }));
     },
+  });
+}
+
+/**
+ * What a publish is about to release: contributions and redemptions waiting for
+ * a price, and how many of them THIS publish would actually settle.
+ *
+ * Shown before the Publish button so the admin knows what pressing it does to
+ * members' money, not just to the register. Every figure is zero while the
+ * pricing switch is off, so the block renders empty and harmless until then.
+ *
+ * @param {string} [fundCode]
+ */
+export function usePendingPricingSummary(fundCode = nav.DEFAULT_FUND) {
+  return useQuery({
+    queryKey: ['pendingPricingSummary', fundCode],
+    queryFn: () => nav.getPendingPricingSummary(fundCode),
+    // Short: the queue changes whenever any member pays in or takes out, and a
+    // stale preview would misdescribe what the button is about to do.
+    staleTime: 60 * 1000,
   });
 }
