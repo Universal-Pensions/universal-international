@@ -5,6 +5,7 @@ import { formatNumber, formatUGX } from '../../utils/currency';
 import ErrorCard from '../../components/feedback/ErrorCard';
 import BottomSheet from '../../branch-dashboard/shell/BottomSheet';
 import styles from '../../dashboard/mobile/distributorMobile.module.css';
+import { kampalaToday } from '../../utils/date';
 
 /**
  * AdminNavMobile — the phone view of the fund's unit price (route /dashboard/nav).
@@ -45,7 +46,11 @@ export default function AdminNavMobile() {
   const [confirming, setConfirming] = useState(false);
 
   const d = overview.data;
-  const todayIso = new Date().toISOString().slice(0, 10);
+  // A04-015 (client half): the fund's calendar is Kampala, not the browser's
+  // UTC. Between 00:00 and 03:00 local, toISOString() still reads yesterday,
+  // so this offered the admin the wrong day and the server's future-date
+  // guard then rejected a legitimate same-day publish. Mirrors kampala_today().
+  const todayIso = kampalaToday();
   const formState = form ?? {
     navDate: todayIso,
     unitPrice: d?.currentNav != null ? String(d.currentNav) : '',

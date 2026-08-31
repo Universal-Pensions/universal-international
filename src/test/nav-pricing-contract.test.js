@@ -140,6 +140,8 @@ describe('NAV pricing contract across migrations', () => {
     const NEW_FUNCS = [
       'nav_for_date', 'latest_nav', 'publish_nav_snapshot',
       'get_nav_overview', 'list_nav_snapshots',
+      // 0145 — the strict lookup and the honest missing-day detector.
+      'nav_price_row', 'nav_missing_days',
     ];
 
     it('every NAV function is revoked from PUBLIC and anon', () => {
@@ -166,7 +168,7 @@ describe('NAV pricing contract across migrations', () => {
   });
 
   describe('reversibility', () => {
-    for (const n of ['0103', '0104', '0105']) {
+    for (const n of ['0103', '0104', '0105', '0143', '0144', '0145']) {
       it(`${n} ships a paired .down.sql`, () => {
         const files = readdirSync(MIGRATIONS_DIR);
         const forward = files.find((f) => f.startsWith(n) && f.endsWith('.sql') && !f.endsWith('.down.sql'));

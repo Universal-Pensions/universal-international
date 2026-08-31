@@ -100,3 +100,32 @@ export function formatRelativeTime(value, options = {}) {
   // Older than a month: a short date reads better than a large week count.
   return formatDate(d, { variant: 'day-month' });
 }
+
+/**
+ * Today's date on the KAMPALA calendar, as `YYYY-MM-DD`.
+ *
+ * The fund deals on Kampala time (UTC+3, no DST). `new Date().toISOString()`
+ * gives the BROWSER's UTC date, which between 00:00 and 03:00 Kampala is still
+ * YESTERDAY. Seeding a NAV publish form from that offers the admin the wrong
+ * day and, because `publish_nav_snapshot` rejects a future date, made a
+ * perfectly legitimate same-day publish look like a server error. The database
+ * side of this was fixed in migration 0116 (`kampala_today()`); this is its
+ * client half.
+ *
+ * Deliberately NOT locale-dependent: `en-CA` is used only because it formats as
+ * `YYYY-MM-DD`, and the parts are reassembled explicitly so a browser with an
+ * unusual locale cannot reorder them.
+ *
+ * @param {Date} [now] reference instant, for tests
+ * @returns {string} `YYYY-MM-DD` in Africa/Kampala
+ */
+export function kampalaToday(now = new Date()) {
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Africa/Kampala',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).formatToParts(now);
+  const get = (type) => parts.find((p) => p.type === type)?.value ?? '';
+  return `${get('year')}-${get('month')}-${get('day')}`;
+}

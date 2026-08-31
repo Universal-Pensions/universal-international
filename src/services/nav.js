@@ -53,7 +53,15 @@ export const EMPTY_NAV_OVERVIEW = Object.freeze({
   membersWithBasis: 0,
   firstNavDate: null,
   publishedCount: 0,
+  // 0145: business days in the register's range with NO published price. This
+  // used to count only nav_snapshots rows carrying status='pending', so a day
+  // the fund simply never priced was invisible; it is now the same figure the
+  // Needs-attention badge reads, so the tile and the badge cannot disagree.
   pendingDays: 0,
+  // 0145: the actual dates behind pendingDays, oldest first, as YYYY-MM-DD.
+  // A hole BEHIND the published frontier appears here — the old detector
+  // started its search at the frontier and could never see one.
+  missingDays: Object.freeze([]),
   lastPublishedDaysAgo: null,
   series: Object.freeze([]),
 });
@@ -123,9 +131,14 @@ export async function listNavSnapshots(opts = {}) {
  *   replayed or scripted call cannot skip it.
  * @param {{navDate:string, unitPrice:number, fundCode?:string, source?:string,
  *   confirmMove?:boolean}} input
+ *   Re-publishing a date no longer DESTROYS the price it replaces: since 0145
+ *   every version is kept in nav_snapshot_versions and `priceVersion` says
+ *   which one this is (1 = first publish, 2+ = a correction). That matters
+ *   because the superseded price is the one members' money was dealt at.
  * @returns {Promise<{id:string, navDate:string, unitPrice:number,
  *   previousUnitPrice:?number, changePct:?number, revalued:boolean,
- *   unitsInIssue:number, aum:number, membersPriced:number}>}
+ *   unitsInIssue:number, aum:number, membersPriced:number, priceVersion:number,
+ *   releasedContributions:number, releasedRedemptions:number}>}
  * @scope Admin only.
  */
 export async function publishNavSnapshot(input) {
@@ -138,6 +151,7 @@ export async function publishNavSnapshot(input) {
       id: 'nav-mock', fundCode, navDate, unitPrice: Number(unitPrice),
       previousUnitPrice: null, changePct: null, revalued: false,
       unitsInIssue: 0, aum: 0, membersPriced: 0,
+      priceVersion: 1, releasedContributions: 0, releasedRedemptions: 0,
     };
   }
   const { data, error } = await supabase.rpc('publish_nav_snapshot', {

@@ -24,6 +24,7 @@ import {
 import ui from '../../employer-dashboard/desktop/ui.module.css';
 import { PALETTE, axisTick, chartTooltip } from '../../employer-dashboard/reports/chartConfig';
 import styles from './AdminNavDesktop.module.css';
+import { kampalaToday } from '../../utils/date';
 
 const priceIcon = (
   <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor"
@@ -108,7 +109,11 @@ export default function AdminNavDesktop({ fullPage = false }) {
   const publish = usePublishNav();
 
   const d = overview.data;
-  const todayIso = new Date().toISOString().slice(0, 10);
+  // A04-015 (client half): the fund's calendar is Kampala, not the browser's
+  // UTC. Between 00:00 and 03:00 local, toISOString() still reads yesterday,
+  // so this offered the admin the wrong day and the server's future-date
+  // guard then rejected a legitimate same-day publish. Mirrors kampala_today().
+  const todayIso = kampalaToday();
 
   // Seed the form from the current price so the admin edits from the last value
   // rather than an empty box — the single most common cause of a fat-finger move.
