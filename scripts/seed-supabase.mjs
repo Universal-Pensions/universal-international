@@ -1031,6 +1031,16 @@ async function main() {
         { name: 'method', type: 'text' },
         { name: 'txn_ref', type: 'text' },
         { name: 'bucket', type: 'text' },
+        // 0144: the true receipt instant, and the ONLY input to the dealing
+        // date. Supplied explicitly and set to the SAME authored date as
+        // `date`, because trg_transactions_stamp_dealing defaults it to now()
+        // when it is absent — which would stamp every seeded row from 2024 and
+        // 2025 with a dealing date of the day the seed happened to run, and
+        // leave a whole synthetic history claiming it arrived this afternoon.
+        // Harmless to the money (verified: no row ends up dealing earlier than
+        // its own receipt either way) but the audit trail should not lie about
+        // seeded data any more than about real data.
+        { name: 'received_at', type: 'timestamptz' },
       ],
       [
         txIds,
@@ -1043,6 +1053,7 @@ async function main() {
         txMethods,
         txRefs,
         txBuckets,
+        txDates,
       ],
       'id'
     );
