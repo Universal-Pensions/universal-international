@@ -360,3 +360,13 @@
 .strengthPill[data-tone='low'] { color: var(--color-poor-ink); }
 .strengthPill[data-tone='mid'] { color: var(--color-kyc-warning-dark); }
 .strengthPill[data-tone='none'] { color: var(--color-gray); }
+
+/* Phase 5 (unitization): the point-of-sale note telling an agent and a member
+   when the money they are about to hand over starts working. Quiet by design —
+   it is context for the Continue button, not a warning. */
+.dealingNote {
+  margin: 0 0 12px;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--text-muted, #5b5f73);
+}

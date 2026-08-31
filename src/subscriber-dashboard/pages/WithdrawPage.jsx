@@ -16,6 +16,7 @@ import { goBackOrFallback } from '../shell/navigation';
 import ErrorCard from '../../components/feedback/ErrorCard';
 import styles from './WithdrawPage.module.css';
 import flow from './desktopFlow.module.css';
+import DealingDateNote from '../../components/contribution/DealingDateNote';
 
 // Free-text reason labels. The default value stays "medical" (preserved from
 // the prior form) — `value` is the lowercase id, `label` the free-text written
@@ -707,9 +708,29 @@ export default function WithdrawPage() {
                       </svg>
                     </div>
                     <h2 className={styles.successTitle}>Withdrawal requested</h2>
-                    <p className={styles.successSubtitle}>
-                      {formatUGX(amount, { compact: false })} will arrive via {methodLabel} within 24 hours.
-                    </p>
+                    {/* Phase 5 (unitization): the 24-hour promise assumes the
+                        amount is settled the instant it is requested. Once
+                        redemptions deal forward, the AMOUNT is fixed on the
+                        dealing date and only then does payment start — so
+                        promising 24 hours on a Friday afternoon is a promise the
+                        fund cannot keep. */}
+                    {resultWd?.pricingStatus === 'pending' ? (
+                      <>
+                        <DealingDateNote
+                          className={styles.successSubtitle}
+                          dealingDate={resultWd?.dealingDate}
+                          direction="out"
+                          received
+                        />
+                        <p className={styles.successSubtitle}>
+                          It is then paid to you via {methodLabel}.
+                        </p>
+                      </>
+                    ) : (
+                      <p className={styles.successSubtitle}>
+                        {formatUGX(amount, { compact: false })} will arrive via {methodLabel} within 24 hours.
+                      </p>
+                    )}
                     {resultWd?.reference && (
                       <div className={styles.successRef}>Reference <strong>{resultWd.reference}</strong></div>
                     )}

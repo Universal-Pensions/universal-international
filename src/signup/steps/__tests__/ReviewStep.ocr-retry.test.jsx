@@ -10,6 +10,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 import { SignupProvider } from '../../SignupContext';
 import ReviewStep from '../ReviewStep';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
 // Districts come from useAllEntities — stub it so the combobox renders without
 // touching the network / query client.
@@ -33,11 +34,20 @@ const OCR_OK = {
   confidence: 0.95,
 };
 
+// ReviewStep reads the dealing date (when money paid in now starts working) via
+// useDealingDate -> react-query, so the step needs a QueryClient. `retry: false`
+// keeps a failed fetch from stalling the test; the note renders nothing when the
+// date is unavailable, which is exactly what these OCR/identity tests expect.
 function renderStep() {
+  const queryClient = new QueryClient({
+    defaultOptions: { queries: { retry: false } },
+  });
   return render(
-    <SignupProvider>
-      <ReviewStep onNext={() => {}} />
-    </SignupProvider>,
+    <QueryClientProvider client={queryClient}>
+      <SignupProvider>
+        <ReviewStep onNext={() => {}} />
+      </SignupProvider>
+    </QueryClientProvider>,
   );
 }
 

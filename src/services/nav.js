@@ -164,3 +164,34 @@ export async function publishNavSnapshot(input) {
   if (error) throw _rpcError(error, 'publish_nav_snapshot');
   return data;
 }
+
+/**
+ * @endpoint RPC dealing_date_for(p_received_at, p_fund) — migration 0143.
+ * @description The date on which money received AT A GIVEN INSTANT starts
+ *   working: the same day if it arrives at or before the Kampala cutoff on a
+ *   business day, otherwise the next business day. Weekends and Ugandan public
+ *   holidays roll forward.
+ *
+ *   ⚠️ NEVER RE-DERIVE THIS IN JAVASCRIPT. The cutoff, the timezone and the
+ *   holiday calendar all live in the database and are changeable without a
+ *   redeploy; a second implementation here would be correct on the day it was
+ *   written and silently wrong the first time an admin moved the cutoff or
+ *   entered an Eid date. One derivation, server-side, no exceptions.
+ *
+ * @param {{receivedAt?: string|Date, fundCode?: string}} [opts] defaults to now
+ * @returns {Promise<string|null>} `YYYY-MM-DD`, or null when unavailable
+ * @scope Any signed-in role — an agent needs it at the point of sale.
+ */
+export async function getDealingDate(opts = {}) {
+  const { receivedAt = new Date(), fundCode = DEFAULT_FUND } = opts;
+  // Mock mode has no calendar; render nothing rather than invent a date.
+  if (!IS_SUPABASE_ENABLED) return null;
+  const { data, error } = await supabase.rpc('dealing_date_for', {
+    p_received_at: receivedAt instanceof Date ? receivedAt.toISOString() : receivedAt,
+    p_fund: fundCode,
+  });
+  // A missing calendar must never block taking a member's money — the note is
+  // an explanation, not a gate. Swallow and render nothing.
+  if (error) return null;
+  return data ?? null;
+}
