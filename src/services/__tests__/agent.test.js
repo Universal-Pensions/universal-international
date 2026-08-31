@@ -58,7 +58,14 @@ describe('agent service — real (Supabase) branch', () => {
         'registered_date, last_contribution_date, products_held, contribution_history, ' +
         'contribution_schedules(frequency, amount, retirement_pct, emergency_pct, ' +
         'include_insurance, insurance_choice_made, next_due_date), ' +
-        'subscriber_balances(total_balance, retirement_balance, emergency_balance), ' +
+        // 0146: the six pending_* columns are part of the member total and of
+        // the withdrawable figure. An explicit embed list that omits them makes
+        // deriveBalanceFigures() read undefined and quietly report the
+        // ALLOCATED value as the total, which is the bug this pin catches.
+        'subscriber_balances(total_balance, retirement_balance, emergency_balance, ' +
+        'pending_contribution_retirement, pending_contribution_emergency, ' +
+        'pending_payout_retirement, pending_payout_emergency, ' +
+        'pending_redemption_retirement, pending_redemption_emergency), ' +
         'insurance_policies(cover, premium_monthly, status, renewal_date, funded_by), ' +
         'subscriber_insurance_products(product, status, renewal_date, funded_by)',
     );

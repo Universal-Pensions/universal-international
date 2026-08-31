@@ -58,8 +58,25 @@ export default function WithdrawPage() {
   // §4a F-1). Reset to null on success or when the sheet closes.
   const withdrawalNonce = useRef(null);
 
-  const emergencyBalance = sub?.emergencyBalance || 0;
-  const retirementBalance = sub?.retirementBalance || 0;
+  // 0146: WITHDRAWABLE, not the displayed pot total. `emergencyBalance` and
+  // `retirementBalance` now include money that has been received but has not
+  // yet bought units, and money whose units are sold but whose cash has not yet
+  // been paid out. Neither can be taken out again — the first has not been
+  // invested yet, the second is already on its way to the member. They also do
+  // not subtract a withdrawal that is already requested and waiting for its
+  // dealing date, so keying the slider off them would let the same money be
+  // requested twice.
+  //
+  // THIS IS THE ONE FILE WHERE THE DISTINCTION IS SAFETY-CRITICAL. Every cap,
+  // every "withdraw all" affordance and every validation below must read the
+  // withdrawable figures. While the pending columns are all 0 these are exactly
+  // the previous values.
+  // The fallback is for pre-0146 shapes only (mock fixtures, a stale cache).
+  // Such a record has no pending money by definition, so the pot total IS the
+  // withdrawable figure and the two are equal. Falling back to 0 instead would
+  // fail closed — safe, but it silently disables the whole form.
+  const emergencyBalance = sub?.withdrawableEmergency ?? sub?.emergencyBalance ?? 0;
+  const retirementBalance = sub?.withdrawableRetirement ?? sub?.retirementBalance ?? 0;
 
   const retirementEligible = useMemo(() => {
     if (typeof sub?.age === 'number') return sub.age >= RETIREMENT_AGE;

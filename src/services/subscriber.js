@@ -36,6 +36,7 @@ import { SUBSCRIBERS, AGENTS, BRANCHES, currentTime } from '../data/mockData';
 // and no `compensation`. Service files are the only layer allowed to import
 // `src/data/*` (CLAUDE.md §4.1).
 import { EMPLOYER, MEMBERS } from '../data/employerSeed';
+import { deriveBalanceFigures } from '../utils/balanceComponents';
 
 // =============================================================================
 // Legacy mock fallback (used when IS_SUPABASE_ENABLED === false)
@@ -252,9 +253,14 @@ function mapSubscriberRow(row) {
     // Since migration 0104 `total_balance` is MARKET VALUE — the member's units
     // priced at the fund's current unit price — not a running cash total. It
     // moves whenever the admin publishes a new NAV.
-    netBalance: Number(bal?.total_balance ?? 0),
-    retirementBalance: Number(bal?.retirement_balance ?? 0),
-    emergencyBalance: Number(bal?.emergency_balance ?? 0),
+    // 0146: netBalance is now the member TOTAL — allocated units at the book
+    // price, PLUS money received that has not yet bought units, PLUS units
+    // already sold whose cash has not yet been paid. Money never vanishes from
+    // the headline. `withdrawable*` is the allocated part only, less anything a
+    // pending withdrawal has already spoken for; it is what every "take money
+    // out" affordance must key off. See src/utils/balanceComponents.js.
+    // While the pending columns are all 0 these equal the pre-0146 values.
+    ...deriveBalanceFigures(bal),
     unitsHeld: Number(bal?.units ?? 0),
     retirementUnits: Number(bal?.retirement_units ?? 0),
     emergencyUnits: Number(bal?.emergency_units ?? 0),
