@@ -17,6 +17,8 @@ import ErrorCard from '../../components/feedback/ErrorCard';
 import styles from './WithdrawPage.module.css';
 import flow from './desktopFlow.module.css';
 import DealingDateNote from '../../components/contribution/DealingDateNote';
+import { withdrawalReceipt, payoutEtaPhrase } from '../../utils/receiptCopy';
+import { useDealingDate } from '../../hooks/useDealingDate';
 
 // Free-text reason labels. The default value stays "medical" (preserved from
 // the prior form) — `value` is the lowercase id, `label` the free-text written
@@ -76,6 +78,9 @@ export default function WithdrawPage() {
   // Such a record has no pending money by definition, so the pot total IS the
   // withdrawable figure and the two are equal. Falling back to 0 instead would
   // fail closed — safe, but it silently disables the whole form.
+  // When money taken RIGHT NOW would actually be struck. Used by every
+  // pre-confirm surface that used to promise "within 24 hours" unconditionally.
+  const { dealingDate } = useDealingDate();
   const emergencyBalance = sub?.withdrawableEmergency ?? sub?.emergencyBalance ?? 0;
   const retirementBalance = sub?.withdrawableRetirement ?? sub?.retirementBalance ?? 0;
 
@@ -216,7 +221,7 @@ export default function WithdrawPage() {
               <p className={flow.subtitle}>
                 {locked
                   ? `Locked until age ${RETIREMENT_AGE} — your retirement savings unlock then. Use your Savings pot any time.`
-                  : `UGX ${formatUGXShort(max)} available · paid to your ${method === 'bank' ? 'bank account' : 'Mobile Money'} in 24 hours.`}
+                  : `UGX ${formatUGXShort(max)} available · paid to your ${method === 'bank' ? 'bank account' : 'Mobile Money'}. ${payoutEtaPhrase(dealingDate)}`}
               </p>
             </div>
           </header>
@@ -320,7 +325,7 @@ export default function WithdrawPage() {
                   ))}
                 </PillChipGroup>
                 <p className={styles.helperLine} style={{ marginTop: '10px' }}>
-                  Funds reach your registered account ({sub?.phone || 'your number'}) within 24 hours.
+                  Funds reach your registered account ({sub?.phone || 'your number'}). {payoutEtaPhrase(dealingDate)}
                 </p>
                 {/* The action CTA lives on the left in form view; once the user
                     advances to confirm/success the right column owns the actions,
@@ -391,7 +396,7 @@ export default function WithdrawPage() {
                     </li>
                     <li className={flow.sumRow}>
                       <span>Arrives</span>
-                      <span className={flow.sumVal}>Within 24 hours</span>
+                      <span className={flow.sumVal}>{payoutEtaPhrase(dealingDate)}</span>
                     </li>
                   </ul>
                   {bucket === 'retirement' && retirementImpact != null ? (
@@ -434,8 +439,8 @@ export default function WithdrawPage() {
                   onPay={handleConfirm}
                   onCancel={closeSheet}
                   success={{
-                    title: 'Withdrawal requested',
-                    subtitle: `${formatUGX(amount, { compact: false })} will arrive via ${methodLabel} within 24 hours.`,
+                    // Lifecycle-aware, same words as the mobile sheet.
+                    ...withdrawalReceipt({ result: resultWd, amount, methodLabel }),
                     reference: resultWd?.reference,
                   }}
                   successPrimary={{ label: 'Back to home', onClick: () => navigate('/dashboard') }}
@@ -585,7 +590,7 @@ export default function WithdrawPage() {
             ))}
           </PillChipGroup>
           <p className={styles.helperLine}>
-            Funds reach your registered account ({sub?.phone || 'your number'}) within 24 hours.
+            Funds reach your registered account ({sub?.phone || 'your number'}). {payoutEtaPhrase(dealingDate)}
           </p>
         </section>
       </div>

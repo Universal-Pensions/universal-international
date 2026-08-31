@@ -42,7 +42,9 @@ function statusLabel(status) {
 
 function pillTone(status) {
   if (status === 'paid') return 'ok';
-  if (status === 'rejected' || status === 'reversed') return 'warn';
+  // 'alert' is the tone ReportFrame.module.css actually defines; 'warn' is not
+  // one of them and renders an unstyled pill.
+  if (status === 'rejected' || status === 'reversed') return 'alert';
   return 'pending';
 }
 

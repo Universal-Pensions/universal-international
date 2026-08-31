@@ -32,6 +32,7 @@ import ErrorCard from '../../components/feedback/ErrorCard';
 import styles from './SavePage.module.css';
 import flow from './desktopFlow.module.css';
 import DealingDateNote from '../../components/contribution/DealingDateNote';
+import { contributionReceipt } from '../../utils/receiptCopy';
 
 const PRESET_AMOUNTS = MOBILE_QUICK_CONTRIBUTION_AMOUNTS;
 
@@ -463,8 +464,10 @@ export default function SavePage() {
                   onPay={handleConfirm}
                   onCancel={closeConfirm}
                   success={{
-                    title: 'Contribution added',
-                    subtitle: `${formatUGX(amount, { compact: false })} is now working for you. Your new balance is ${formatUGX(newBalance, { compact: false })}.`,
+                    // Lifecycle-aware, same words as the mobile sheet. This
+                    // branch is what every viewport >= 769px sees, and it was
+                    // the half Phase 5 missed.
+                    ...contributionReceipt({ result: resultTx, amount, newBalance }),
                     reference: resultTx?.reference,
                   }}
                   successPrimary={{ label: 'Back to home', onClick: () => navigate('/dashboard') }}

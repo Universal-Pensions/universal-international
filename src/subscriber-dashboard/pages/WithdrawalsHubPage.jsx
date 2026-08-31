@@ -45,8 +45,16 @@ export default function WithdrawalsHubPage() {
   const isDesktop = useIsDesktop();
   const { data: sub, isError, error, refetch } = useCurrentSubscriber();
 
-  const emergency = sub?.emergencyBalance || 0;
-  const retirement = sub?.retirementBalance || 0;
+  // WITHDRAWABLE, not the displayed pot totals. Since 0146 emergencyBalance and
+  // retirementBalance include money received but not yet invested, and money
+  // already sold and on its way out — neither of which can be taken out again —
+  // and neither subtracts a withdrawal already requested and waiting for its
+  // dealing date. This screen puts a number under the words "Available to
+  // withdraw", so it is the same safety-critical distinction WithdrawPage makes
+  // and it was missed here. The fallback covers pre-0146 shapes, where the two
+  // are equal by definition.
+  const emergency = sub?.withdrawableEmergency ?? sub?.emergencyBalance ?? 0;
+  const retirement = sub?.withdrawableRetirement ?? sub?.retirementBalance ?? 0;
   const available = emergency + retirement;
   // Total ACTIVE cover across all products (life + health + funeral), so the
   // claim hint matches the Policies page / Home rather than the life-only row.

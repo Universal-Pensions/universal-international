@@ -10,6 +10,7 @@ import { vi, describe, it, expect, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import userEvent from '@testing-library/user-event';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
 const addToast = vi.fn();
 const mutateAsync = vi.fn();
@@ -37,10 +38,18 @@ function renderWithdraw() {
     isError: false,
     refetch: vi.fn(),
   });
+  // WithdrawPage reads the dealing date (when money taken now is actually
+  // struck) via useDealingDate -> react-query, so it needs a QueryClient.
+  // `retry: false` keeps a failed fetch from stalling; with no date the
+  // pre-confirm copy falls back to the previous "Within 24 hours" wording,
+  // which is exactly what these error-copy assertions expect.
+  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
-    <MemoryRouter>
-      <WithdrawPage />
-    </MemoryRouter>,
+    <QueryClientProvider client={queryClient}>
+      <MemoryRouter>
+        <WithdrawPage />
+      </MemoryRouter>
+    </QueryClientProvider>,
   );
 }
 

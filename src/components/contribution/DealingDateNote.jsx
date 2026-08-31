@@ -1,4 +1,4 @@
-import { formatDate } from '../../utils/date';
+import { dealingSentence } from '../../utils/receiptCopy';
 
 // The ONE sentence that explains, in plain language, when money starts working.
 //
@@ -30,21 +30,7 @@ export default function DealingDateNote({
   received = false,
   className,
 }) {
-  if (!dealingDate) return null;
-
-  // "Monday 7 September" — a weekday name is what makes it concrete. A member
-  // reading "07/09" has to work out whether that is soon.
-  const when = formatDate(dealingDate, { variant: 'long-with-weekday' });
-  if (!when || when === '—') return null;
-
-  const text =
-    direction === 'out'
-      ? received
-        ? `We are working out your payment. The amount is set on ${when}.`
-        : `We work out your payment on ${when}.`
-      : received
-        ? `We have your money. It goes into your savings on ${when}.`
-        : `Money paid in now goes into your savings on ${when}.`;
-
+  const text = dealingSentence({ dealingDate, direction, received });
+  if (!text) return null;
   return <p className={className}>{text}</p>;
 }

@@ -640,7 +640,7 @@ export default function ReviewStep({ onNext }) {
             explanation afterwards, and it is the same sentence the member will
             later read in their own history (DealingDateNote is shared so the
             two cannot drift). Renders nothing when there is no date to show. */}
-        <DealingDateNote className={styles.dealingNote} dealingDate={dealingDate} direction="in" />
+        <DealingDateNote className={own.dealingNote} dealingDate={dealingDate} direction="in" />
 
         <div className={styles.actions}>
           <button type="submit" className={styles.submit}>Continue</button>

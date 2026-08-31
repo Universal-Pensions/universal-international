@@ -23,7 +23,7 @@
  * when it says something the payment status does not.
  *
  * @param {{status?:string, type?:string, pricingStatus?:string}} row
- * @returns {{ label:string, tone:'ok'|'pending'|'warn' }}
+ * @returns {{ label:string, tone:'ok'|'pending'|'alert' }}
  */
 export function transactionState(row) {
   const pricing = row?.pricingStatus;
@@ -34,11 +34,15 @@ export function transactionState(row) {
       ? { label: 'Working out your payment', tone: 'pending' }
       : { label: 'Being put into savings', tone: 'pending' };
   }
+  // ⚠️ 'alert', NOT 'warn'. ReportFrame.module.css defines exactly three pill
+  //    tones — ok, pending, alert — and an undefined value silently produces an
+  //    UNSTYLED badge: no background, no colour, on the one row that most needs
+  //    to stand out. CSS attribute selectors do not warn about a miss.
   if (pricing === 'rejected') {
-    return { label: 'Not completed', tone: 'warn' };
+    return { label: 'Not completed', tone: 'alert' };
   }
   if (pricing === 'reversed') {
-    return { label: 'Reversed', tone: 'warn' };
+    return { label: 'Reversed', tone: 'alert' };
   }
 
   // `priced`, `not_applicable`, or a row from before the lifecycle existed:

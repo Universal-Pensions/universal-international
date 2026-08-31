@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   useCurrentSubscriber,
@@ -25,6 +25,7 @@ import { PAYMENT_METHODS } from '../../constants/payment';
 import ErrorCard from '../../components/feedback/ErrorCard';
 import styles from './SchedulePage.module.css';
 import flow from './desktopFlow.module.css';
+import { dealingSentence } from '../../utils/receiptCopy';
 
 export default function SchedulePage() {
   const navigate = useNavigate();
@@ -41,6 +42,18 @@ export default function SchedulePage() {
   // (see the showInsurance note below), so no premium can ever ride this sheet.
   const [settle, setSettle] = useState(null);
   const [settleView, setSettleView] = useState('confirm'); // confirm | success
+  const [settleResult, setSettleResult] = useState(null);
+  // One receipt object for both the mobile PaySheet and the desktop
+  // InlinePayPanel, so the two cannot word the same payment differently.
+  const settleReceipt = useMemo(() => {
+    const pending = settleResult?.pricingStatus === 'pending';
+    if (!pending) return { title: 'Payment complete', subtitle: 'Your plan is up to date for this month.' };
+    const when = dealingSentence({ dealingDate: settleResult?.dealingDate, direction: 'in', received: true });
+    return {
+      title: 'Payment received',
+      subtitle: `${when ?? 'We have your money.'} Your plan is up to date for this month.`,
+    };
+  }, [settleResult]);
   const [settleSubmitting, setSettleSubmitting] = useState(false);
 
   // ── Employer-sponsored members ──────────────────────────────────────────────
@@ -177,12 +190,17 @@ export default function SchedulePage() {
     if (!settle || !sub) return;
     setSettleSubmitting(true);
     try {
-      await makeContribution.mutateAsync({
+      // 0147: the result carries pricingStatus + dealingDate. Without it this
+      // page cannot tell a member whether the money they just paid is actually
+      // working yet, and both of its success surfaces would keep asserting that
+      // the plan is settled "for this month" the moment forward dealing is on.
+      const _res = await makeContribution.mutateAsync({
         amount: settle.owed,
         retirementPct: settle.retirementPct,
         method: methodFull,
         nonce: settle.nonce,
       });
+      setSettleResult(_res ?? null);
       setSettleView('success');
     } catch (err) {
       addToast('error', err?.message || 'Could not complete the payment.');
@@ -217,7 +235,7 @@ export default function SchedulePage() {
       payLabel={settle ? `Pay ${formatUGX(settle.total, { compact: false })}` : undefined}
       cancelLabel="Maybe later"
       submitting={settleSubmitting}
-      success={{ title: 'Payment complete', subtitle: 'Your plan is up to date for this month.' }}
+      success={settleReceipt}
       onPay={handleSettlePay}
       onClose={closeSettle}
     />
@@ -361,7 +379,7 @@ export default function SchedulePage() {
                   cancelLabel="Maybe later"
                   onPay={handleSettlePay}
                   onCancel={closeSettle}
-                  success={{ title: 'Payment complete', subtitle: 'Your plan is up to date for this month.' }}
+                  success={settleReceipt}
                   successPrimary={{ label: 'Done', onClick: closeSettle }}
                 />
               </aside>
