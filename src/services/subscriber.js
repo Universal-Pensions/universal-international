@@ -364,6 +364,25 @@ function mapTransactionRow(row) {
     // Any row carrying a run id came out of the member's PAY — word it
     // "From your pay". Only the source='employer' leg is an "Employer top-up".
     contributionRunId: row.contribution_run_id ?? null,
+    // ── 0144 · the pricing audit trail ────────────────────────────────────
+    // `date` is the ledger date and is rewritten by re-anchoring migrations;
+    // `receivedAt` is the true, immutable receipt instant and is the ONLY
+    // input to the dealing date. They differ on every seeded row, so never
+    // substitute one for the other.
+    receivedAt: row.received_at ?? null,
+    // The date whose published price applies. Never earlier than the Kampala
+    // calendar date of receipt.
+    dealingDate: row.dealing_date ?? null,
+    // pending | priced | not_applicable | rejected | reversed.
+    // NULL-safe: rows fetched by a path that has not been widened to select
+    // the column read as undefined, and the UI must treat that as "no
+    // lifecycle information", not as "pending".
+    pricingStatus: row.pricing_status ?? null,
+    // The price actually struck. NULL on every row that predates 0144 — it was
+    // never recorded and cannot be recovered. Render "—", never 0.
+    unitPriceApplied: row.unit_price_applied == null ? null : Number(row.unit_price_applied),
+    // Signed: positive when units were allocated, negative when cancelled.
+    unitsDelta: row.units_delta == null ? null : Number(row.units_delta),
   };
 }
 
@@ -514,8 +533,12 @@ export async function getSubscriberTransactions(id, { type, range, status } = {}
   // with mapTransactionRow if a new mapped field is added. `contribution_run_id`
   // is what lets every subscriber surface tell a payroll-deducted employee leg
   // apart from a top-up the member actually made (see mapTransactionRow).
+  // 0144: the five pricing-audit columns are appended here as well as in
+  // mapTransactionRow. The mapper reads row.received_at etc., so omitting them
+  // from this list does not error — it silently yields undefined on every row,
+  // which is precisely the failure this comment block exists to prevent.
   const COLUMNS =
-    'id, subscriber_id, agent_id, type, source, amount, date, status, method, txn_ref, bucket, split_retirement, split_emergency, contribution_run_id';
+    'id, subscriber_id, agent_id, type, source, amount, date, status, method, txn_ref, bucket, split_retirement, split_emergency, contribution_run_id, received_at, dealing_date, pricing_status, unit_price_applied, units_delta';
 
   const applyFilters = (q) => {
     let f = q.eq('subscriber_id', id);
