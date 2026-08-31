@@ -29,6 +29,13 @@ const TYPE_LABELS = {
   insurance_premium: 'Employer cover premium',
   premium_sweep: 'Premium from savings',
   claim: 'Claim',
+  // 0153: the compensating row reverse_transaction() writes when an admin undoes
+  // a contribution or a withdrawal. It carries its own type rather than the
+  // original one, because a reversed WITHDRAWAL is money coming back and
+  // transactions_withdrawal_sign_chk forbids a positive row typed 'withdrawal'.
+  // "Correction" rather than "Reversal": a member needs to read that something
+  // was put right, not learn a ledger term.
+  reversal: 'Correction',
 };
 
 // The filter narrows rows by exact `type` value, so every real type gets an
