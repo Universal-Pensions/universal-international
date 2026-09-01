@@ -19,6 +19,7 @@ import { render, screen, waitFor } from '@testing-library/react';
 import { SignupProvider } from '../../SignupContext';
 import { signupStorageKey, SIGNUP_STORAGE_KEY } from '../../signupState';
 import ReviewStep from '../ReviewStep';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
 vi.mock('../../../hooks/useEntity', () => ({
   useAllEntities: () => ({ data: [{ id: 'd-1', name: 'Kampala' }] }),
@@ -39,11 +40,20 @@ const OCR_OK = {
   confidence: 0.95,
 };
 
+// ReviewStep reads the dealing date (when money paid in now starts working) via
+// useDealingDate -> react-query, so the step needs a QueryClient. `retry: false`
+// keeps a failed fetch from stalling the test; the note renders nothing when the
+// date is unavailable, which is exactly what these OCR/identity tests expect.
 function renderStep(flow = 'self') {
+  const queryClient = new QueryClient({
+    defaultOptions: { queries: { retry: false } },
+  });
   return render(
-    <SignupProvider flow={flow}>
-      <ReviewStep onNext={() => {}} />
-    </SignupProvider>,
+    <QueryClientProvider client={queryClient}>
+      <SignupProvider flow={flow}>
+        <ReviewStep onNext={() => {}} />
+      </SignupProvider>
+    </QueryClientProvider>,
   );
 }
 

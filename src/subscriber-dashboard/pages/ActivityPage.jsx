@@ -95,6 +95,14 @@ export default function ActivityPage() {
     let inflow = 0;
     let outflow = 0;
     allTx.forEach((t) => {
+      // 0147: a REJECTED redemption never happened — the engine released the
+      // hold and the member kept the money — so it must not read as money out.
+      // 'reversed' is deliberately NOT skipped here: reverse_transaction writes
+      // a compensating type='reversal' row that this same reducer counts as an
+      // inflow, so the pair already nets to zero and skipping the original
+      // would break Net in the other direction.
+      if (t.pricingStatus === 'rejected') return;
+
       if (txYear(t) !== thisYear) return;
       const signed = txDisplayAmount(t);
       if (signed > 0) inflow += signed;

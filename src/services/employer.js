@@ -36,6 +36,7 @@ import {
   EMPLOYER_UNIT_PRICE,
   LEADERBOARD_COMPETITORS,
 } from '../data/employerSeed';
+import { deriveBalanceFigures } from '../utils/balanceComponents';
 
 /** PostgREST embeds a to-one relation as an object, but can surface a single-
  *  element array depending on FK detection — normalise to the row (or null). */
@@ -106,9 +107,9 @@ export function mapMember(row) {
           emergencyPct: Number(sched.emergency_pct ?? 20),
         }
       : null,
-    retirementBalance: Number(bal?.retirement_balance ?? 0),
-    emergencyBalance: Number(bal?.emergency_balance ?? 0),
-    netBalance: Number(bal?.total_balance ?? 0),
+    // 0146: the member total (allocated + money in process), and the
+    // allocated-only figures beside it. See src/utils/balanceComponents.js.
+    ...deriveBalanceFigures(bal),
     unitsHeld: Number(bal?.units ?? 0),
     insuranceCover: Number(ins?.cover ?? 0),
     insurancePremiumMonthly: Number(ins?.premium_monthly ?? 0),

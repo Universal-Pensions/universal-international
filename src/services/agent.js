@@ -10,6 +10,7 @@ import { IS_SUPABASE_ENABLED } from './api';
 import { normalizeFrequency } from '../utils/finance';
 import { SUBSCRIBERS, currentTime } from '../data/mockData';
 import { deriveCoverStatus } from '../utils/policies';
+import { deriveBalanceFigures } from '../utils/balanceComponents';
 
 // Stable display order for an agent's view of a subscriber's policies.
 const POLICY_ORDER = ['life', 'health', 'funeral'];
@@ -112,11 +113,14 @@ function mapAgentSubscriberRow(s, now) {
           nextDueDate: sched.next_due_date,
         }
       : null,
-    netBalance: Number(bal?.total_balance ?? 0),
-    retirementBalance: Number(bal?.retirement_balance ?? 0),
-    emergencyBalance: Number(bal?.emergency_balance ?? 0),
+    // 0146: see src/utils/balanceComponents.js.
+    ...deriveBalanceFigures(bal),
     // No per-subscriber lifetime denorm — proxy from balance. See note above.
-    totalContributions: Number(bal?.total_balance ?? 0),
+    // 0146: the member TOTAL, not the allocated-only column. An agent who has
+    // just taken cash from a member would otherwise see this figure sit
+    // completely still until the fund next publishes a price, which reads as
+    // the collection having failed.
+    totalContributions: deriveBalanceFigures(bal).netBalance,
     totalWithdrawals: 0,
     // Life-cover engagement signal (subscriberMetrics.js `insured`). RLS-filtered
     // embed → null when the agent can't read the row, treated as uninsured. The
@@ -205,7 +209,14 @@ export async function getAgentSubscriberList(agentId) {
         'registered_date, last_contribution_date, products_held, contribution_history, ' +
         'contribution_schedules(frequency, amount, retirement_pct, emergency_pct, ' +
         'include_insurance, insurance_choice_made, next_due_date), ' +
-        'subscriber_balances(total_balance, retirement_balance, emergency_balance), ' +
+        // 0146: the six pending_* columns are part of the member total and of
+        // the withdrawable figure, so an explicit embed list has to carry them
+        // or deriveBalanceFigures() silently reads undefined and reports the
+        // allocated value as the total.
+        'subscriber_balances(total_balance, retirement_balance, emergency_balance, ' +
+        'pending_contribution_retirement, pending_contribution_emergency, ' +
+        'pending_payout_retirement, pending_payout_emergency, ' +
+        'pending_redemption_retirement, pending_redemption_emergency), ' +
         'insurance_policies(cover, premium_monthly, status, renewal_date, funded_by), ' +
         'subscriber_insurance_products(product, status, renewal_date, funded_by)',
     )

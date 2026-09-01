@@ -62,6 +62,44 @@ for (const fn of ['trg_transactions_contribution','request_withdrawal']) {
   check('nav-pricing', fn, 'SECURITY DEFINER', b => /SECURITY\s+DEFINER/i.test(b));
   check('nav-pricing', fn, 'pinned search_path', b => /SET\s+search_path\s*(?:TO|=)/i.test(b));
 }
+
+// ── 0147: the pricing AUTHORITY moved ──────────────────────────────────────
+// The four predicates above stay true and stay valuable, but they no longer
+// prove where a price comes from: both money functions retain a synchronous
+// fallback (used while fund_dealing_config.pricing_enabled is false) and so
+// still mention nav_for_date/latest_nav. What actually prices money now is
+// price_pending_transactions, and what it must price FROM is the strict
+// nav_price_row lookup. These check that.
+check('nav-pricing', 'price_pending_transactions', 'prices from the strict dealing-date lookup',
+  b => /public\.nav_price_row\s*\(/.test(b));
+check('nav-pricing', 'price_pending_transactions', 'resyncs bucket units after moving units',
+  b => /_resync_bucket_units/.test(b));
+check('nav-pricing', 'price_pending_transactions', 'SECURITY DEFINER',
+  b => /SECURITY\s+DEFINER/i.test(b));
+check('nav-pricing', 'price_pending_transactions', 'pinned search_path',
+  b => /SET\s+search_path\s*(?:TO|=)/i.test(b));
+
+// nav_for_date is STRICT since 0147. Each of these three fallbacks priced real
+// money at a number nobody published; the backward carry alone mispriced 5,329
+// contributions.
+check('nav-pricing', 'nav_for_date', 'no backward carry to an earlier day',
+  b => !/nav_date\s*<=/.test(b));
+check('nav-pricing', 'nav_for_date', 'no fallback chain and no 1000 literal',
+  b => !/COALESCE/i.test(b) && !/\b1000\b/.test(b));
+
+check('nav-pricing', 'publish_nav_snapshot', 'releases the pricing queue',
+  b => /price_pending_transactions/.test(b));
+check('nav-pricing', 'publish_nav_snapshot', 'releases the queue OUTSIDE the newest-day block',
+  b => {
+      // THE bug this whole phase warns about: calling the engine INSIDE the
+      // `IF v_is_newest` block means a BACK-DATED publish — the one event that
+      // makes a stalled queue priceable — releases nothing at all. The price
+      // lands, the rows stay pending, and that money never allocates.
+      const i = b.search(/IF\s+v_is_newest/i);
+      const j = b.search(/price_pending_transactions/);
+      if (i === -1 || j === -1) return false;
+      return /END\s+IF\s*;/i.test(b.slice(i, j));
+    });
 for (const fn of ['nav_for_date','latest_nav']) {
   check('nav-pricing', fn, 'STABLE', b => /\bSTABLE\b/i.test(b));
   check('nav-pricing', fn, 'SECURITY DEFINER', b => /SECURITY\s+DEFINER/i.test(b));

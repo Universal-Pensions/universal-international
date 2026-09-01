@@ -106,6 +106,74 @@ const ASSERTIONS: Assertion[] = [
     predicate: (b: string) => /p_confirm_move/i.test(b),
   },
 
+  // ── 0147: the pricing AUTHORITY moved ─────────────────────────────────
+  // The predicates above stay true and stay valuable, but they no longer
+  // prove where a price comes from: both money functions keep a synchronous
+  // fallback (live while fund_dealing_config.pricing_enabled is false) and so
+  // still mention nav_for_date/latest_nav. What prices money now is
+  // price_pending_transactions, and it must price from the STRICT
+  // nav_price_row lookup — never from a carried-forward or guessed price.
+  {
+    suite: 'nav-pricing', fn: 'price_pending_transactions',
+    label: 'prices from the strict dealing-date lookup',
+    predicate: (b: string) => /public\.nav_price_row\s*\(/.test(b),
+  },
+  {
+    suite: 'nav-pricing', fn: 'price_pending_transactions',
+    label: 'resyncs bucket units after moving units',
+    // subscriber_balances_bucket_units_sum is a DEFERRABLE constraint trigger:
+    // skip this and the whole transaction fails at COMMIT with 23514.
+    predicate: (b: string) => /_resync_bucket_units/.test(b),
+  },
+  {
+    suite: 'nav-pricing', fn: 'price_pending_transactions', label: 'SECURITY DEFINER',
+    predicate: (b: string) => /SECURITY\s+DEFINER/i.test(b),
+  },
+  {
+    suite: 'nav-pricing', fn: 'price_pending_transactions', label: 'pinned search_path',
+    predicate: (b: string) => /SET\s+search_path\s*(?:TO|=)/i.test(b),
+  },
+  {
+    suite: 'nav-pricing', fn: 'nav_for_date', label: 'no backward carry to an earlier day',
+    // `nav_date <= p_date ORDER BY nav_date DESC` is the defect that priced
+    // 5,329 weekend contributions at the previous Friday's close.
+    predicate: (b: string) => !/nav_date\s*<=/.test(b),
+  },
+  {
+    suite: 'nav-pricing', fn: 'nav_for_date', label: 'no fallback chain and no 1000 literal',
+    predicate: (b: string) => !/COALESCE/i.test(b) && !/\b1000\b/.test(b),
+  },
+  {
+    suite: 'nav-pricing', fn: 'publish_nav_snapshot', label: 'releases the pricing queue',
+    predicate: (b: string) => /price_pending_transactions/.test(b),
+  },
+  {
+    suite: 'nav-pricing', fn: 'publish_nav_snapshot',
+    label: 'releases the queue OUTSIDE the newest-day block',
+    predicate: (b: string) => {
+      // Calling the engine INSIDE `IF v_is_newest` means a BACK-DATED publish —
+      // the one event that makes a stalled queue priceable — releases nothing.
+      // The price lands, the rows stay pending, the money never allocates.
+      const i = b.search(/IF\s+v_is_newest/i);
+      const j = b.search(/price_pending_transactions/);
+      if (i === -1 || j === -1) return false;
+      // Depth-aware, not "is there an END IF somewhere in between". The naive
+      // version is satisfied by any nested IF closing INSIDE the newest-day
+      // block, so a mutant with the engine genuinely inside still passed. Walk
+      // the tokens and require the block to be closed at the call site.
+      const seg = b.slice(i, j);
+      // 0 because the slice STARTS at the opening `IF v_is_newest`, so that
+      // token is counted by the walk itself.
+      let depth = 0;
+      const tok = seg.match(/\bIF\b|\bEND\s+IF\b|\bCASE\b|\bEND\s+CASE\b/gi) || [];
+      for (const t of tok) {
+        if (/^END\s+IF$/i.test(t)) depth -= 1;
+        else if (/^IF$/i.test(t)) depth += 1;
+      }
+      return depth <= 0;
+    },
+  },
+
   // ── employer-split-contract.test.js (5) ────────────────────────────────
   {
     suite: 'employer-split', fn: 'submit_employer_contribution_run',

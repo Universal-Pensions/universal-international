@@ -254,11 +254,22 @@ export function amtToSlider(a, min, max) {
  * assumption behind `calcFV`, which is a different thing from a realised return —
  * conflating the two is what produced the bug above.
  *
- * @param {{ netBalance?: number, invested?: number }} subscriber
+ * ⚠️ 0146: THIS READS THE ALLOCATED BALANCE, NOT THE HEADLINE TOTAL. Since the
+ * unitization redesign `netBalance` also contains money that has been received
+ * but has not yet bought units, and money whose units are sold but whose cash
+ * has not yet been paid. Neither has earned anything — the first is not
+ * invested yet, the second stopped being invested when it was struck — so
+ * counting either as growth would report a return the member did not make, on
+ * money that was never in the market. `allocatedBalance` is units x price and
+ * is the only figure a growth number may be derived from. It falls back to
+ * `netBalance` for callers with a pre-0146 shape (mock fixtures, stale caches),
+ * where the two are equal by definition.
+ *
+ * @param {{ allocatedBalance?: number, netBalance?: number, invested?: number }} subscriber
  * @returns {{ invested: number, growth: number, growthPct: number }}
  */
 export function deriveInvestmentGrowth(subscriber) {
-  const balance = Number(subscriber?.netBalance) || 0;
+  const balance = Number(subscriber?.allocatedBalance ?? subscriber?.netBalance) || 0;
   if (balance <= 0) return { invested: 0, growth: 0, growthPct: 0 };
 
   const invested = Number(subscriber?.invested);

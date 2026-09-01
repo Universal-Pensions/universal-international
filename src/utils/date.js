@@ -16,6 +16,7 @@ const TIME_OPTS = Object.freeze({ hour: '2-digit', minute: '2-digit' });
 const MONTH_YEAR_OPTS = Object.freeze({ month: 'long', year: 'numeric' });
 const SHORT_MONTH_YEAR_OPTS = Object.freeze({ month: 'short', year: 'numeric' });
 const DAY_MONTH_OPTS = Object.freeze({ day: 'numeric', month: 'short' });
+const LONG_WITH_WEEKDAY_OPTS = Object.freeze({ weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
 
 const VARIANTS = {
   short: SHORT_OPTS,                       // "8 Apr 2026"
@@ -24,6 +25,11 @@ const VARIANTS = {
   'month-year': MONTH_YEAR_OPTS,           // "April 2026"
   'short-month-year': SHORT_MONTH_YEAR_OPTS, // "Apr 2026"
   'day-month': DAY_MONTH_OPTS,             // "8 Apr"
+  // Phase 5 of the unitization redesign. The WEEKDAY is the load-bearing part:
+  // a member told their money starts working on "07/09" has to work out whether
+  // that is soon; "Monday 7 September" they can act on. Used by
+  // DealingDateNote, which is the one sentence a member and an agent both read.
+  'long-with-weekday': LONG_WITH_WEEKDAY_OPTS, // "Monday 7 September 2026"
 };
 
 // A bare PG `DATE` value (`YYYY-MM-DD`, no time component): `next_due_date`,
@@ -48,7 +54,7 @@ function toDate(value) {
  * Format a date-like value.
  *
  * @param {Date | string | number | null | undefined} value
- * @param {{ variant?: 'short' | 'long' | 'time' | 'month-year' | 'day-month' }} [options]
+ * @param {{ variant?: 'short' | 'long' | 'time' | 'month-year' | 'day-month' | 'long-with-weekday' }} [options]
  * @returns {string} formatted string, or "—" when the value is unparseable
  */
 export function formatDate(value, options = {}) {
@@ -99,4 +105,33 @@ export function formatRelativeTime(value, options = {}) {
   if (diff < 4 * WEEK_MS) return `${Math.floor(diff / WEEK_MS)}w`;
   // Older than a month: a short date reads better than a large week count.
   return formatDate(d, { variant: 'day-month' });
+}
+
+/**
+ * Today's date on the KAMPALA calendar, as `YYYY-MM-DD`.
+ *
+ * The fund deals on Kampala time (UTC+3, no DST). `new Date().toISOString()`
+ * gives the BROWSER's UTC date, which between 00:00 and 03:00 Kampala is still
+ * YESTERDAY. Seeding a NAV publish form from that offers the admin the wrong
+ * day and, because `publish_nav_snapshot` rejects a future date, made a
+ * perfectly legitimate same-day publish look like a server error. The database
+ * side of this was fixed in migration 0116 (`kampala_today()`); this is its
+ * client half.
+ *
+ * Deliberately NOT locale-dependent: `en-CA` is used only because it formats as
+ * `YYYY-MM-DD`, and the parts are reassembled explicitly so a browser with an
+ * unusual locale cannot reorder them.
+ *
+ * @param {Date} [now] reference instant, for tests
+ * @returns {string} `YYYY-MM-DD` in Africa/Kampala
+ */
+export function kampalaToday(now = new Date()) {
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Africa/Kampala',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).formatToParts(now);
+  const get = (type) => parts.find((p) => p.type === type)?.value ?? '';
+  return `${get('year')}-${get('month')}-${get('day')}`;
 }

@@ -17,13 +17,34 @@ const BUCKET_OPTIONS = [
   { value: 'retirement', label: 'Retirement' },
 ];
 
+// 0147: two states a withdrawal can now end in. Without them a rejected
+// redemption sits in the member's history reading "Processing" forever.
 const STATUS_OPTIONS = [
   { value: 'paid', label: 'Paid' },
   { value: 'processing', label: 'Processing' },
+  { value: 'rejected', label: 'Not completed' },
+  { value: 'reversed', label: 'Reversed' },
 ];
+
+const STATUS_LABELS = {
+  paid: 'Paid',
+  processing: 'Processing',
+  // Plain language: a member should not have to work out what "rejected"
+  // means about their own money. It was not completed, and they can ask again.
+  rejected: 'Not completed',
+  reversed: 'Reversed',
+};
+
+function statusLabel(status) {
+  return STATUS_LABELS[status]
+    || String(status ?? '').replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
+}
 
 function pillTone(status) {
   if (status === 'paid') return 'ok';
+  // 'alert' is the tone ReportFrame.module.css actually defines; 'warn' is not
+  // one of them and renders an unstyled pill.
+  if (status === 'rejected' || status === 'reversed') return 'alert';
   return 'pending';
 }
 
@@ -44,6 +65,13 @@ export default function WithdrawalsHistory() {
   const totals = useMemo(() => {
     let total = 0, retirement = 0, emergency = 0;
     filtered.forEach((w) => {
+      // A rejected or reversed withdrawal is money the member still has. Unlike
+      // the transactions ledger there is NO compensating row in this table to
+      // net it off, so both states must come out of the totals — while the rows
+      // themselves stay visible in the table and in the status filter. Without
+      // this the KPI counts money out on the same screen where that row's own
+      // pill reads "Not completed".
+      if (w.status === 'rejected' || w.status === 'reversed') return;
       total += w.amount;
       if (w.bucket === 'retirement') retirement += w.amount;
       else emergency += w.amount;
@@ -81,7 +109,7 @@ export default function WithdrawalsHistory() {
       render: (row) => (
         <span className={frameStyles.pill} data-tone={pillTone(row.status)}>
           <span className={frameStyles.pillDot} />
-          {row.status.charAt(0).toUpperCase() + row.status.slice(1)}
+          {statusLabel(row.status)}
         </span>
       ),
     },

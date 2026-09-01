@@ -53,7 +53,15 @@ export const EMPTY_NAV_OVERVIEW = Object.freeze({
   membersWithBasis: 0,
   firstNavDate: null,
   publishedCount: 0,
+  // 0145: business days in the register's range with NO published price. This
+  // used to count only nav_snapshots rows carrying status='pending', so a day
+  // the fund simply never priced was invisible; it is now the same figure the
+  // Needs-attention badge reads, so the tile and the badge cannot disagree.
   pendingDays: 0,
+  // 0145: the actual dates behind pendingDays, oldest first, as YYYY-MM-DD.
+  // A hole BEHIND the published frontier appears here — the old detector
+  // started its search at the frontier and could never see one.
+  missingDays: Object.freeze([]),
   lastPublishedDaysAgo: null,
   series: Object.freeze([]),
 });
@@ -77,6 +85,45 @@ function _rpcError(err, fnName) {
  * @scope Admin only — the RPC RAISEs for any other app_role.
  * @cache ['navOverview', fundCode], 5 min — the price changes at most once a day.
  */
+/**
+ * @endpoint RPC get_pending_pricing_summary(p_fund) — migration 0147.
+ * @description What money is waiting for a price: how many contributions and
+ *   redemptions, worth how much, how many of them the NEXT publish would
+ *   actually release (their dealing date already has a price) and how many are
+ *   still waiting on the fund. Counts and values only — no member detail — so
+ *   it is safe on a rollup surface.
+ *
+ *   Every figure is zero while fund_dealing_config.pricing_enabled is false.
+ * @param {string} [fundCode]
+ * @returns {Promise<Object>} shaped like EMPTY_PENDING_PRICING
+ * @scope Any signed-in role.
+ * @cache ['pendingPricingSummary', fundCode] — invalidated by usePublishNav,
+ *   because a publish is exactly what empties this queue.
+ */
+export async function getPendingPricingSummary(fundCode = DEFAULT_FUND) {
+  if (!IS_SUPABASE_ENABLED) return { ...EMPTY_PENDING_PRICING, fundCode };
+  const { data, error } = await supabase.rpc('get_pending_pricing_summary', { p_fund: fundCode });
+  // The queue preview must never block the page that publishes prices — that
+  // page is how the queue gets drained in the first place.
+  if (error) return { ...EMPTY_PENDING_PRICING, fundCode };
+  return { ...EMPTY_PENDING_PRICING, ...(data ?? {}) };
+}
+
+/** Safe skeleton with the RPC's exact keys, so no caller needs optional chaining. */
+export const EMPTY_PENDING_PRICING = Object.freeze({
+  fundCode: DEFAULT_FUND,
+  pendingContributions: 0,
+  pendingContributionValue: 0,
+  pendingRedemptions: 0,
+  pendingRedemptionValue: 0,
+  releasableNow: 0,
+  awaitingPrice: 0,
+  oldestDealingDate: null,
+  oldestPendingBusinessDays: 0,
+  maxPendingDays: 3,
+  pricingEnabled: false,
+});
+
 export async function getNavOverview(fundCode = DEFAULT_FUND) {
   if (!IS_SUPABASE_ENABLED) {
     // Rollback path: a flat register at the historical demo price. Returning a
@@ -123,9 +170,14 @@ export async function listNavSnapshots(opts = {}) {
  *   replayed or scripted call cannot skip it.
  * @param {{navDate:string, unitPrice:number, fundCode?:string, source?:string,
  *   confirmMove?:boolean}} input
+ *   Re-publishing a date no longer DESTROYS the price it replaces: since 0145
+ *   every version is kept in nav_snapshot_versions and `priceVersion` says
+ *   which one this is (1 = first publish, 2+ = a correction). That matters
+ *   because the superseded price is the one members' money was dealt at.
  * @returns {Promise<{id:string, navDate:string, unitPrice:number,
  *   previousUnitPrice:?number, changePct:?number, revalued:boolean,
- *   unitsInIssue:number, aum:number, membersPriced:number}>}
+ *   unitsInIssue:number, aum:number, membersPriced:number, priceVersion:number,
+ *   releasedContributions:number, releasedRedemptions:number}>}
  * @scope Admin only.
  */
 export async function publishNavSnapshot(input) {
@@ -138,6 +190,7 @@ export async function publishNavSnapshot(input) {
       id: 'nav-mock', fundCode, navDate, unitPrice: Number(unitPrice),
       previousUnitPrice: null, changePct: null, revalued: false,
       unitsInIssue: 0, aum: 0, membersPriced: 0,
+      priceVersion: 1, releasedContributions: 0, releasedRedemptions: 0,
     };
   }
   const { data, error } = await supabase.rpc('publish_nav_snapshot', {
@@ -149,4 +202,35 @@ export async function publishNavSnapshot(input) {
   });
   if (error) throw _rpcError(error, 'publish_nav_snapshot');
   return data;
+}
+
+/**
+ * @endpoint RPC dealing_date_for(p_received_at, p_fund) — migration 0143.
+ * @description The date on which money received AT A GIVEN INSTANT starts
+ *   working: the same day if it arrives at or before the Kampala cutoff on a
+ *   business day, otherwise the next business day. Weekends and Ugandan public
+ *   holidays roll forward.
+ *
+ *   ⚠️ NEVER RE-DERIVE THIS IN JAVASCRIPT. The cutoff, the timezone and the
+ *   holiday calendar all live in the database and are changeable without a
+ *   redeploy; a second implementation here would be correct on the day it was
+ *   written and silently wrong the first time an admin moved the cutoff or
+ *   entered an Eid date. One derivation, server-side, no exceptions.
+ *
+ * @param {{receivedAt?: string|Date, fundCode?: string}} [opts] defaults to now
+ * @returns {Promise<string|null>} `YYYY-MM-DD`, or null when unavailable
+ * @scope Any signed-in role — an agent needs it at the point of sale.
+ */
+export async function getDealingDate(opts = {}) {
+  const { receivedAt = new Date(), fundCode = DEFAULT_FUND } = opts;
+  // Mock mode has no calendar; render nothing rather than invent a date.
+  if (!IS_SUPABASE_ENABLED) return null;
+  const { data, error } = await supabase.rpc('dealing_date_for', {
+    p_received_at: receivedAt instanceof Date ? receivedAt.toISOString() : receivedAt,
+    p_fund: fundCode,
+  });
+  // A missing calendar must never block taking a member's money — the note is
+  // an explanation, not a gate. Swallow and render nothing.
+  if (error) return null;
+  return data ?? null;
 }

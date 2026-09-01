@@ -10,6 +10,8 @@ import { parseUGPhoneLocal } from '../../utils/phone';
 import { PillChip, PillChipGroup } from '../../components/PillChip';
 import styles from './Step.module.css';
 import own from './ReviewStep.module.css';
+import DealingDateNote from '../../components/contribution/DealingDateNote';
+import { useDealingDate } from '../../hooks/useDealingDate';
 
 const NIN_RE = /^C[MF][A-Z0-9]{12}$/;
 
@@ -31,6 +33,7 @@ const OCCUPATIONS = [
 export default function ReviewStep({ onNext }) {
   const signup = useSignup();
   const isAgent = useOnboardAudience() === 'agent';
+  const { dealingDate } = useDealingDate();
   const { data: districts = [] } = useAllEntities('district');
 
   // "OCR already ran" is signalled by idConfidence (set only by the OCR patch
@@ -629,6 +632,15 @@ export default function ReviewStep({ onNext }) {
             </span>
           </div>
         </ReviewField>
+
+        {/* Phase 5 (unitization) — the point of sale. An agent collecting cash
+            at 3pm on a Friday needs to be able to say, before the member hands
+            it over, that the money starts working on Monday. Setting that
+            expectation at the counter is worth more than any amount of
+            explanation afterwards, and it is the same sentence the member will
+            later read in their own history (DealingDateNote is shared so the
+            two cannot drift). Renders nothing when there is no date to show. */}
+        <DealingDateNote className={own.dealingNote} dealingDate={dealingDate} direction="in" />
 
         <div className={styles.actions}>
           <button type="submit" className={styles.submit}>Continue</button>

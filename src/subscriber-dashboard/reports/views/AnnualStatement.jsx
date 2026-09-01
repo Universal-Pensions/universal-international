@@ -68,7 +68,13 @@ export default function AnnualStatement() {
       // Employer-funded 'insurance_premium' is deliberately excluded — the
       // member paid nothing toward it.
       else if (t.type === 'premium' || t.type === 'premium_sweep') premiums += Math.abs(t.amount);
-      else if (t.type === 'withdrawal') withdrawals += Math.abs(t.amount);
+      // Keyed on the LIFECYCLE, not just the type. reverse_transaction's own
+      // header warns that a total which must exclude undone money has to filter
+      // on pricing_status — a reversal writes a type='reversal' row that this
+      // reducer has no branch for, so the original would otherwise stand alone.
+      else if (t.type === 'withdrawal'
+               && t.pricingStatus !== 'rejected'
+               && t.pricingStatus !== 'reversed') withdrawals += Math.abs(t.amount);
       else if (t.type === 'claim') claimsInflow += t.amount;
     });
     const contributions = selfPaid + fromPay + fromEmployer;

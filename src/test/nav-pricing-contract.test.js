@@ -136,10 +136,98 @@ describe('NAV pricing contract across migrations', () => {
     });
   });
 
+  // ── 0147: the pricing AUTHORITY moved ──────────────────────────────────
+  // The predicates above stay true and stay valuable, but they no longer prove
+  // WHERE a price comes from: both money functions keep a synchronous fallback
+  // (live while fund_dealing_config.pricing_enabled is false) and so still
+  // mention nav_for_date/latest_nav. What prices money now is
+  // price_pending_transactions, and it must price from the STRICT
+  // nav_price_row lookup.
+  describe('price_pending_transactions — the engine', () => {
+    it('prices from the strict dealing-date lookup', () => {
+      const def = newestDefinitionOf('price_pending_transactions');
+      expect(def, 'price_pending_transactions() is not defined by any migration').not.toBeNull();
+      expect(
+        /public\.nav_price_row\s*\(/.test(def.body),
+        `${def.file} defines the pricing engine without nav_price_row(). Pricing from ` +
+          'nav_for_date()/latest_nav() would reintroduce a carried-forward price.',
+      ).toBe(true);
+    });
+
+    it('resyncs bucket units after moving units', () => {
+      const def = newestDefinitionOf('price_pending_transactions');
+      // subscriber_balances_bucket_units_sum is a DEFERRABLE constraint trigger.
+      // Skip this and the whole transaction aborts at COMMIT with 23514.
+      expect(/_resync_bucket_units/.test(def.body)).toBe(true);
+    });
+
+    it('keeps SECURITY DEFINER and a pinned search_path', () => {
+      const def = newestDefinitionOf('price_pending_transactions');
+      expect(/SECURITY\s+DEFINER/i.test(def.body)).toBe(true);
+      expect(/SET\s+search_path\s*(?:TO|=)/i.test(def.body)).toBe(true);
+    });
+  });
+
+  describe('nav_for_date is STRICT', () => {
+    it('has no backward carry to an earlier day', () => {
+      const def = newestDefinitionOf('nav_for_date');
+      // `nav_date <= p_date ORDER BY nav_date DESC` is the defect itself: it
+      // priced 5,329 weekend contributions at the previous Friday's close, a
+      // price struck before the money existed.
+      expect(
+        /nav_date\s*<=/.test(def.body),
+        `${def.file} re-emits nav_for_date() with the backward carry.`,
+      ).toBe(false);
+    });
+
+    it('has no fallback chain and no 1000 literal', () => {
+      const def = newestDefinitionOf('nav_for_date');
+      expect(/COALESCE/i.test(def.body)).toBe(false);
+      expect(/\b1000\b/.test(def.body)).toBe(false);
+    });
+  });
+
+  describe('publish_nav_snapshot releases the queue', () => {
+    it('calls the pricing engine', () => {
+      const def = newestDefinitionOf('publish_nav_snapshot');
+      expect(/price_pending_transactions/.test(def.body)).toBe(true);
+    });
+
+    it('calls it OUTSIDE the newest-day block', () => {
+      const def = newestDefinitionOf('publish_nav_snapshot');
+      // Inside `IF v_is_newest`, a BACK-DATED publish — the one event that makes
+      // a stalled queue priceable — releases nothing: the price lands, the rows
+      // stay pending, and that money never allocates.
+      const b = def.body;
+      const i = b.search(/IF\s+v_is_newest/i);
+      const j = b.search(/price_pending_transactions/);
+      expect(i, 'no v_is_newest block found').toBeGreaterThan(-1);
+      expect(j, 'the engine is never called').toBeGreaterThan(-1);
+      // Depth-aware — see the sibling predicate in
+      // e2e/specs/db/function-deployment-contract.spec.ts.
+      const seg = b.slice(i, j);
+      let depth = 0; // the slice starts at the opening IF, counted below
+      for (const t of (seg.match(/\bIF\b|\bEND\s+IF\b/gi) || [])) {
+        if (/^END\s+IF$/i.test(t)) depth -= 1; else depth += 1;
+      }
+      expect(
+        depth <= 0,
+        `${def.file} calls the pricing engine inside the newest-day block, so a ` +
+          'back-dated publish would release nothing.',
+      ).toBe(true);
+    });
+  });
+
   describe('grants', () => {
     const NEW_FUNCS = [
       'nav_for_date', 'latest_nav', 'publish_nav_snapshot',
       'get_nav_overview', 'list_nav_snapshots',
+      // 0145 — the strict lookup and the honest missing-day detector.
+      'nav_price_row', 'nav_missing_days',
+      // 0147 — the engine's admin door and its read-only summary. The engine
+      // itself is granted to NOBODY: it moves money for arbitrary members and
+      // is called only from DEFINER code.
+      'run_pending_pricing', 'get_pending_pricing_summary',
     ];
 
     it('every NAV function is revoked from PUBLIC and anon', () => {
@@ -166,7 +254,7 @@ describe('NAV pricing contract across migrations', () => {
   });
 
   describe('reversibility', () => {
-    for (const n of ['0103', '0104', '0105']) {
+    for (const n of ['0103', '0104', '0105', '0143', '0144', '0145', '0146', '0147', '0148', '0149']) {
       it(`${n} ships a paired .down.sql`, () => {
         const files = readdirSync(MIGRATIONS_DIR);
         const forward = files.find((f) => f.startsWith(n) && f.endsWith('.sql') && !f.endsWith('.down.sql'));

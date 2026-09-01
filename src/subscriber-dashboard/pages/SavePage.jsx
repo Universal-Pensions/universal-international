@@ -31,6 +31,8 @@ import { PAYMENT_METHODS } from '../../constants/payment';
 import ErrorCard from '../../components/feedback/ErrorCard';
 import styles from './SavePage.module.css';
 import flow from './desktopFlow.module.css';
+import DealingDateNote from '../../components/contribution/DealingDateNote';
+import { contributionReceipt } from '../../utils/receiptCopy';
 
 const PRESET_AMOUNTS = MOBILE_QUICK_CONTRIBUTION_AMOUNTS;
 
@@ -462,8 +464,10 @@ export default function SavePage() {
                   onPay={handleConfirm}
                   onCancel={closeConfirm}
                   success={{
-                    title: 'Contribution added',
-                    subtitle: `${formatUGX(amount, { compact: false })} is now working for you. Your new balance is ${formatUGX(newBalance, { compact: false })}.`,
+                    // Lifecycle-aware, same words as the mobile sheet. This
+                    // branch is what every viewport >= 769px sees, and it was
+                    // the half Phase 5 missed.
+                    ...contributionReceipt({ result: resultTx, amount, newBalance }),
                     reference: resultTx?.reference,
                   }}
                   successPrimary={{ label: 'Back to home', onClick: () => navigate('/dashboard') }}
@@ -664,10 +668,33 @@ export default function SavePage() {
                       <path d="M14 24l7 7 14-15" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
                     </svg>
                   </div>
-                  <h2 className={styles.successTitle}>Contribution added</h2>
-                  <p className={styles.successSubtitle}>
-                    {`${formatUGX(amount, { compact: false })} is now working for you. Your new balance is ${formatUGX(newBalance, { compact: false })}.`}
-                  </p>
+                  {/* Phase 5 (unitization): "is now working for you" is only
+                      true when the money bought savings the moment it landed.
+                      Once pricing is asynchronous, a Saturday top-up starts
+                      working on Monday, and saying otherwise is the single most
+                      misleading sentence in the app. The balance shown is the
+                      TOTAL either way — the money is theirs from the instant it
+                      arrives, so nothing appears to vanish while it waits. */}
+                  <h2 className={styles.successTitle}>
+                    {resultTx?.pricingStatus === 'pending' ? 'Money received' : 'Contribution added'}
+                  </h2>
+                  {resultTx?.pricingStatus === 'pending' ? (
+                    <>
+                      <DealingDateNote
+                        className={styles.successSubtitle}
+                        dealingDate={resultTx?.dealingDate}
+                        direction="in"
+                        received
+                      />
+                      <p className={styles.successSubtitle}>
+                        {`Your balance is now ${formatUGX(newBalance, { compact: false })}.`}
+                      </p>
+                    </>
+                  ) : (
+                    <p className={styles.successSubtitle}>
+                      {`${formatUGX(amount, { compact: false })} is now working for you. Your new balance is ${formatUGX(newBalance, { compact: false })}.`}
+                    </p>
+                  )}
                   {resultTx?.reference && (
                     <div className={styles.successRef}>
                       Reference <strong>{resultTx.reference}</strong>

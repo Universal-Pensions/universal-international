@@ -16,6 +16,9 @@ import { goBackOrFallback } from '../shell/navigation';
 import ErrorCard from '../../components/feedback/ErrorCard';
 import styles from './WithdrawPage.module.css';
 import flow from './desktopFlow.module.css';
+import DealingDateNote from '../../components/contribution/DealingDateNote';
+import { withdrawalReceipt, payoutEtaPhrase } from '../../utils/receiptCopy';
+import { useDealingDate } from '../../hooks/useDealingDate';
 
 // Free-text reason labels. The default value stays "medical" (preserved from
 // the prior form) — `value` is the lowercase id, `label` the free-text written
@@ -58,8 +61,28 @@ export default function WithdrawPage() {
   // §4a F-1). Reset to null on success or when the sheet closes.
   const withdrawalNonce = useRef(null);
 
-  const emergencyBalance = sub?.emergencyBalance || 0;
-  const retirementBalance = sub?.retirementBalance || 0;
+  // 0146: WITHDRAWABLE, not the displayed pot total. `emergencyBalance` and
+  // `retirementBalance` now include money that has been received but has not
+  // yet bought units, and money whose units are sold but whose cash has not yet
+  // been paid out. Neither can be taken out again — the first has not been
+  // invested yet, the second is already on its way to the member. They also do
+  // not subtract a withdrawal that is already requested and waiting for its
+  // dealing date, so keying the slider off them would let the same money be
+  // requested twice.
+  //
+  // THIS IS THE ONE FILE WHERE THE DISTINCTION IS SAFETY-CRITICAL. Every cap,
+  // every "withdraw all" affordance and every validation below must read the
+  // withdrawable figures. While the pending columns are all 0 these are exactly
+  // the previous values.
+  // The fallback is for pre-0146 shapes only (mock fixtures, a stale cache).
+  // Such a record has no pending money by definition, so the pot total IS the
+  // withdrawable figure and the two are equal. Falling back to 0 instead would
+  // fail closed — safe, but it silently disables the whole form.
+  // When money taken RIGHT NOW would actually be struck. Used by every
+  // pre-confirm surface that used to promise "within 24 hours" unconditionally.
+  const { dealingDate } = useDealingDate();
+  const emergencyBalance = sub?.withdrawableEmergency ?? sub?.emergencyBalance ?? 0;
+  const retirementBalance = sub?.withdrawableRetirement ?? sub?.retirementBalance ?? 0;
 
   const retirementEligible = useMemo(() => {
     if (typeof sub?.age === 'number') return sub.age >= RETIREMENT_AGE;
@@ -198,7 +221,7 @@ export default function WithdrawPage() {
               <p className={flow.subtitle}>
                 {locked
                   ? `Locked until age ${RETIREMENT_AGE} — your retirement savings unlock then. Use your Savings pot any time.`
-                  : `UGX ${formatUGXShort(max)} available · paid to your ${method === 'bank' ? 'bank account' : 'Mobile Money'} in 24 hours.`}
+                  : `UGX ${formatUGXShort(max)} available · paid to your ${method === 'bank' ? 'bank account' : 'Mobile Money'}. ${payoutEtaPhrase(dealingDate)}`}
               </p>
             </div>
           </header>
@@ -302,7 +325,7 @@ export default function WithdrawPage() {
                   ))}
                 </PillChipGroup>
                 <p className={styles.helperLine} style={{ marginTop: '10px' }}>
-                  Funds reach your registered account ({sub?.phone || 'your number'}) within 24 hours.
+                  Funds reach your registered account ({sub?.phone || 'your number'}). {payoutEtaPhrase(dealingDate)}
                 </p>
                 {/* The action CTA lives on the left in form view; once the user
                     advances to confirm/success the right column owns the actions,
@@ -373,7 +396,7 @@ export default function WithdrawPage() {
                     </li>
                     <li className={flow.sumRow}>
                       <span>Arrives</span>
-                      <span className={flow.sumVal}>Within 24 hours</span>
+                      <span className={flow.sumVal}>{payoutEtaPhrase(dealingDate)}</span>
                     </li>
                   </ul>
                   {bucket === 'retirement' && retirementImpact != null ? (
@@ -416,8 +439,8 @@ export default function WithdrawPage() {
                   onPay={handleConfirm}
                   onCancel={closeSheet}
                   success={{
-                    title: 'Withdrawal requested',
-                    subtitle: `${formatUGX(amount, { compact: false })} will arrive via ${methodLabel} within 24 hours.`,
+                    // Lifecycle-aware, same words as the mobile sheet.
+                    ...withdrawalReceipt({ result: resultWd, amount, methodLabel }),
                     reference: resultWd?.reference,
                   }}
                   successPrimary={{ label: 'Back to home', onClick: () => navigate('/dashboard') }}
@@ -567,7 +590,7 @@ export default function WithdrawPage() {
             ))}
           </PillChipGroup>
           <p className={styles.helperLine}>
-            Funds reach your registered account ({sub?.phone || 'your number'}) within 24 hours.
+            Funds reach your registered account ({sub?.phone || 'your number'}). {payoutEtaPhrase(dealingDate)}
           </p>
         </section>
       </div>
@@ -690,9 +713,29 @@ export default function WithdrawPage() {
                       </svg>
                     </div>
                     <h2 className={styles.successTitle}>Withdrawal requested</h2>
-                    <p className={styles.successSubtitle}>
-                      {formatUGX(amount, { compact: false })} will arrive via {methodLabel} within 24 hours.
-                    </p>
+                    {/* Phase 5 (unitization): the 24-hour promise assumes the
+                        amount is settled the instant it is requested. Once
+                        redemptions deal forward, the AMOUNT is fixed on the
+                        dealing date and only then does payment start — so
+                        promising 24 hours on a Friday afternoon is a promise the
+                        fund cannot keep. */}
+                    {resultWd?.pricingStatus === 'pending' ? (
+                      <>
+                        <DealingDateNote
+                          className={styles.successSubtitle}
+                          dealingDate={resultWd?.dealingDate}
+                          direction="out"
+                          received
+                        />
+                        <p className={styles.successSubtitle}>
+                          It is then paid to you via {methodLabel}.
+                        </p>
+                      </>
+                    ) : (
+                      <p className={styles.successSubtitle}>
+                        {formatUGX(amount, { compact: false })} will arrive via {methodLabel} within 24 hours.
+                      </p>
+                    )}
                     {resultWd?.reference && (
                       <div className={styles.successRef}>Reference <strong>{resultWd.reference}</strong></div>
                     )}

@@ -15,6 +15,8 @@ import ExportButton from '../../../components/reports/ExportButton';
 import SkeletonRow from '../../../components/SkeletonRow';
 import EmptyState from '../../../components/EmptyState';
 import frameStyles from './ReportFrame.module.css';
+import { transactionState, isAwaitingPricing } from '../../../utils/transactionState';
+import DealingDateNote from '../../../components/contribution/DealingDateNote';
 
 // Human labels per transaction type. Self-paid cover is ONE annual premium
 // ('premium'); employer-funded group cover is monthly ('insurance_premium');
@@ -27,6 +29,13 @@ const TYPE_LABELS = {
   insurance_premium: 'Employer cover premium',
   premium_sweep: 'Premium from savings',
   claim: 'Claim',
+  // 0153: the compensating row reverse_transaction() writes when an admin undoes
+  // a contribution or a withdrawal. It carries its own type rather than the
+  // original one, because a reversed WITHDRAWAL is money coming back and
+  // transactions_withdrawal_sign_chk forbids a positive row typed 'withdrawal'.
+  // "Correction" rather than "Reversal": a member needs to read that something
+  // was put right, not learn a ledger term.
+  reversal: 'Correction',
 };
 
 // The filter narrows rows by exact `type` value, so every real type gets an
@@ -66,11 +75,11 @@ const STATUS_OPTIONS = [
   { value: 'processing', label: 'Processing' },
 ];
 
-function pillTone(status) {
-  if (status === 'paid' || status === 'settled') return 'ok';
-  if (status === 'processing' || status === 'submitted' || status === 'under_review') return 'pending';
-  return 'ok';
-}
+// Phase 5: a transaction now has TWO states — did the money move (`status`),
+// and has it bought or sold savings yet (`pricingStatus`). transactionState()
+// is shared with the CSV export below so the download cannot word it
+// differently from the screen. Until the pricing kill switch is flipped every
+// live row is priced on arrival and this renders exactly as it did before.
 
 export default function AllTransactions() {
   const { data: sub, isLoading, isError, error, refetch } = useCurrentSubscriber();
@@ -102,6 +111,14 @@ export default function AllTransactions() {
   const totals = useMemo(() => {
     let inflow = 0, outflow = 0;
     filtered.forEach((t) => {
+      // 0147: a REJECTED redemption never happened — the engine released the
+      // hold and the member kept the money — so it must not read as money out.
+      // 'reversed' is deliberately NOT skipped here: reverse_transaction writes
+      // a compensating type='reversal' row that this same reducer counts as an
+      // inflow, so the pair already nets to zero and skipping the original
+      // would break Net in the other direction.
+      if (t.pricingStatus === 'rejected') return;
+
       // Sign from txDisplayAmount so premiums (stored positive) count as outflow.
       const signed = txDisplayAmount(t);
       if (signed > 0) inflow += signed;
@@ -161,12 +178,27 @@ export default function AllTransactions() {
       key: 'status',
       label: 'Status',
       sortable: true,
-      render: (row) => (
-        <span className={frameStyles.pill} data-tone={pillTone(row.status)}>
-          <span className={frameStyles.pillDot} />
-          {row.status.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())}
-        </span>
-      ),
+      render: (row) => {
+        const state = transactionState(row);
+        return (
+          <>
+            <span className={frameStyles.pill} data-tone={state.tone}>
+              <span className={frameStyles.pillDot} />
+              {state.label}
+            </span>
+            {/* Only while the money is genuinely in flight. A settled row needs
+                no explanation, and a note on every row is noise that stops
+                being read — which would defeat the one row that matters. */}
+            {isAwaitingPricing(row) && (
+              <DealingDateNote
+                dealingDate={row.dealingDate}
+                direction={row.type === 'withdrawal' ? 'out' : 'in'}
+                received
+              />
+            )}
+          </>
+        );
+      },
     },
   ];
 
@@ -184,7 +216,10 @@ export default function AllTransactions() {
       t.amount,
       t.method || '',
       t.reference || '',
-      t.status,
+      // The same words as the badge on screen (see transactionState). A member
+      // who downloads this and one who reads the table must not see a row
+      // described two different ways.
+      transactionState(t).label,
     ]);
     const stamp = new Date().toISOString().slice(0, 10);
     downloadCSV(`transactions-${stamp}.csv`, headers, rows);

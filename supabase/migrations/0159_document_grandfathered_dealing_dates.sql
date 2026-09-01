@@ -1,0 +1,32 @@
+-- 0159_document_grandfathered_dealing_dates.sql
+-- ============================================================================
+-- A COMMENT, not a change. Nothing here alters data or behaviour.
+--
+-- 9,290 of the 27,433 rows in `transactions` carry a `dealing_date` that is NOT
+-- a business day. Anyone who notices that — and the first person to run a
+-- sanity query over this column will — should be able to find out why without
+-- having to reconstruct it, because the obvious reading is that the dealing
+-- rule is broken.
+--
+-- It is not. Every one of those rows is grandfathered history:
+--   * all 9,290 predate 0144, and every one has dealing_date = date::date
+--     exactly, i.e. the value 0144's backfill declared;
+--   * ZERO rows written since 0144 land on a closed day;
+--   * ZERO of them are pending, so none is stuck waiting for a price that a
+--     shut market will never publish.
+--
+-- Section 9 of the plan chose this deliberately. The backfill is a DECLARATION
+-- about history ("this row was priced on this date"), not a re-derivation —
+-- 28.6% of historical contributions arrived at a weekend and were priced at the
+-- previous Friday's close, and re-dating them would mean re-striking ~5,000
+-- members' balances, which the brief forbids and assert_book_revaluable would
+-- refuse anyway.
+--
+-- So there is deliberately NO CHECK constraint requiring dealing_date to be a
+-- business day: it would be false for 9,290 rows that are correct as recorded.
+-- The invariant is enforced where it belongs — on the way in, by
+-- dealing_date_for(), which is generatively tested over 10,000 random instants.
+-- ============================================================================
+
+COMMENT ON COLUMN public.transactions.dealing_date IS
+  'The date whose published price applies to this transaction. Derived ONCE at insert from received_at by dealing_date_for(), and never earlier than the Kampala calendar date of receipt. NOTE: 9,290 GRANDFATHERED rows predating 0144 carry a non-business-day value, because 0144 declared dealing_date = date::date for history rather than re-deriving it (re-dating would mean re-striking ~5,000 member balances - see plan section 9). Zero rows written since 0144 land on a closed day, and none of the grandfathered ones is pending. There is deliberately no CHECK on this: the invariant is enforced on the way in by dealing_date_for(), not retroactively over history.';

@@ -13,7 +13,9 @@ import { useMemo, useState } from 'react';
 import {
   Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis,
 } from 'recharts';
-import { useNavOverview, useNavSnapshots, usePublishNav } from '../../hooks/useNav';
+import {
+  useNavOverview, useNavSnapshots, usePublishNav, usePendingPricingSummary,
+} from '../../hooks/useNav';
 import { useToast } from '../../contexts/ToastContext';
 import { formatNumber, formatUGX } from '../../utils/currency';
 import ErrorCard from '../../components/feedback/ErrorCard';
@@ -24,6 +26,7 @@ import {
 import ui from '../../employer-dashboard/desktop/ui.module.css';
 import { PALETTE, axisTick, chartTooltip } from '../../employer-dashboard/reports/chartConfig';
 import styles from './AdminNavDesktop.module.css';
+import { kampalaToday } from '../../utils/date';
 
 const priceIcon = (
   <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor"
@@ -106,9 +109,16 @@ export default function AdminNavDesktop({ fullPage = false }) {
   const overview = useNavOverview();
   const history = useNavSnapshots({ limit: 60, status: statusFilter });
   const publish = usePublishNav();
+  // 0147: the queue this publish will release. Zero while the pricing switch
+  // is off, so the preview block below simply does not render.
+  const pending = usePendingPricingSummary();
 
   const d = overview.data;
-  const todayIso = new Date().toISOString().slice(0, 10);
+  // A04-015 (client half): the fund's calendar is Kampala, not the browser's
+  // UTC. Between 00:00 and 03:00 local, toISOString() still reads yesterday,
+  // so this offered the admin the wrong day and the server's future-date
+  // guard then rejected a legitimate same-day publish. Mirrors kampala_today().
+  const todayIso = kampalaToday();
 
   // Seed the form from the current price so the admin edits from the last value
   // rather than an empty box — the single most common cause of a fat-finger move.
@@ -258,10 +268,40 @@ export default function AdminNavDesktop({ fullPage = false }) {
         <Tile
           accent="amber" icon={clockIcon} label="Days not priced"
           value={overview.isLoading ? '—' : formatNumber(d?.pendingDays ?? 0)}
-          sub={(d?.pendingDays ?? 0) > 0 ? 'Tap to see which days' : 'Everything is up to date'}
-          onClick={(d?.pendingDays ?? 0) > 0 ? () => setStatusFilter('pending') : undefined}
+          sub={(d?.pendingDays ?? 0) > 0 ? 'Listed below' : 'Everything is up to date'}
         />
       </MetricRow>
+
+      {/* The tile used to drill into setStatusFilter('pending'), which filters
+          the REGISTER — a table that can only ever show days that HAVE a row.
+          Most unpriced days have no row at all, so the count and the drill-down
+          disagreed structurally: 13 counted, at most 4 reachable. The dates are
+          already in the payload (get_nav_overview returns `missingDays`, and
+          since 0156 nav_missing_days reports the real per-day status), so list
+          them here instead of sending the admin to a filter that cannot hold
+          them. */}
+      {(d?.missingDays ?? []).length > 0 && (
+        <Card>
+          <SectionHead icon={clockIcon} title="Days with no published price" />
+          <p className={styles.notice}>
+            These business days have no price. Money dealing on any of them is waiting and cannot
+            be invested until it is published — publish each one for the day it belongs to.
+          </p>
+          <ul className={styles.missingDays}>
+            {(d.missingDays ?? []).map((day) => (
+              <li key={day}>
+                <button
+                  type="button"
+                  className={styles.missingDay}
+                  onClick={() => setField('navDate', day)}
+                >
+                  {longDate(day)}
+                </button>
+              </li>
+            ))}
+          </ul>
+        </Card>
+      )}
 
       <Card>
         <SectionHead icon={priceIcon} title="Set today's price" />
@@ -312,6 +352,33 @@ export default function AdminNavDesktop({ fullPage = false }) {
             <p className={styles.notice}>
               A price of {price(duplicateRow.unitPrice)} is already recorded for this
               day. Saving will replace it.
+            </p>
+          )}
+
+          {/* 0147: what this button is about to do to members' money, not just
+              to the register. Publishing releases the pricing queue for the
+              date being published, so contributions buy units and redemptions
+              sell them at this price. Renders nothing until there is a queue —
+              which, while the pricing switch is off, is always. */}
+          {(pending.data?.pendingContributions > 0 || pending.data?.pendingRedemptions > 0) && (
+            <p className={styles.notice}>
+              Waiting on a price:{' '}
+              <strong>{pending.data.pendingContributions}</strong> payment
+              {pending.data.pendingContributions === 1 ? '' : 's'} in worth{' '}
+              <strong>{formatUGX(pending.data.pendingContributionValue, { compact: false })}</strong>
+              {pending.data.pendingRedemptions > 0 && (
+                <>
+                  , and <strong>{pending.data.pendingRedemptions}</strong> payment
+                  {pending.data.pendingRedemptions === 1 ? '' : 's'} out worth{' '}
+                  <strong>{formatUGX(pending.data.pendingRedemptionValue, { compact: false })}</strong>
+                </>
+              )}.{' '}
+              {pending.data.releasableNow > 0
+                ? `${pending.data.releasableNow} of them can be settled now.`
+                : 'None of them can be settled until their own day has a price.'}
+              {pending.data.oldestPendingBusinessDays > pending.data.maxPendingDays && (
+                <> The oldest has been waiting {pending.data.oldestPendingBusinessDays} working days.</>
+              )}
             </p>
           )}
 
