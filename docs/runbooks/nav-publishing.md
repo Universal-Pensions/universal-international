@@ -49,6 +49,37 @@ today's book at a stale price.
 
 ---
 
+## Why nobody automates this — READ BEFORE "FIXING" IT
+
+**Publishing the price is manual on purpose. Do not add a cron, a scheduler, or
+a job that publishes a price on its own.**
+
+This is a deliberate decision, not a gap somebody forgot to close. In Uganda the
+fund's price does not reliably arrive on a schedule, and the alternative to a
+person publishing it is a machine inventing one — carrying yesterday's figure
+forward, interpolating, or defaulting. Every member's savings are revalued by
+whatever number gets published, so a fabricated price is not a stale dashboard;
+it is wrong money in real accounts, applied to everyone at once and difficult to
+unpick afterwards.
+
+A missed day is a visible, recoverable problem: money sits in the queue, members
+are told in plain words that it goes in on the next working day, and publishing
+late releases it at the correct price for its own dealing date. A wrong price is
+an invisible, compounding one.
+
+The safety net for a missed day already exists and is also deliberate:
+
+- `forward_dealing_readiness()` lists unpriced business days as a blocker, and
+  the admin "Unit price" page shows it.
+- The `pending_orphan` check in `v_reconciliation_exceptions` raises anything
+  that has waited longer than `fund_dealing_config.max_pending_days`, and it
+  surfaces in the admin Needs-attention reconciliation drill-down.
+
+If automation is ever genuinely wanted, the thing to automate is **ingesting a
+price the fund has actually published** — never generating one.
+
+---
+
 ## What to watch
 
 | Signal | Where | Threshold |
@@ -70,7 +101,9 @@ SELECT public.set_fund_dealing_config(p_max_pending_days := 5);
 
 ## Things you may need to do
 
-All of these are admin-only RPCs. There is no screen for them yet.
+All of these are admin-only RPCs. Two of them now have a screen — the readiness
+check and the waiting-money summary both render on the admin "Unit price" page —
+but the rest are still SQL only.
 
 **Release a stalled queue after a late publish.** Publishing does this
 automatically; this is the manual kick if you need it.
@@ -124,6 +157,10 @@ never have a price.
 
 ## Before you turn forward dealing on — ASK FIRST
 
+**This is now on the screen.** The admin "Unit price" page shows it as
+*"Is the fund safe to run?"*, directly above the publish form, on both desktop
+and phone. Read it there; the SQL below is the same thing for a terminal.
+
 ```sql
 SELECT jsonb_pretty(public.forward_dealing_readiness('UPU-BAL'));
 ```
@@ -138,9 +175,10 @@ money arrive, sit in "being put into savings", and never move. That is the desig
 working (money is never priced at a number nobody published), which is exactly
 why it will not announce itself as a fault.
 
-As of the last check this reports **not ready**: 12 business days have no
-published price, the oldest being 2026-08-04. Back-fill them, re-run the check,
-and only then flip.
+Historic note: this reported **not ready** (12 unpriced business days, oldest
+2026-08-04) until those days were published on 2026-09-01, at which point the
+switch was turned on. It now reports `ready: true` with the movable-holiday
+warning below. Do not treat that as permanent — re-read the panel each time.
 
 The warning about movable holidays is not a blocker but it is real: Eid is
 moon-sighted and cannot be computed, so without gazette entries money will
@@ -184,10 +222,17 @@ Concretely, `request_withdrawal`, `price_pending_transactions`,
 
 | Reversing | Also silently undoes | Which reinstates |
 |---|---|---|
-| `0147.down` | 0151, 0152, 0153, 0154 | the sweep/re-mark bug, reference-matching, the withdrawal-reversal failure, the cost-basis inflation |
+| `0147.down` | 0151, 0152, 0153, 0154, 0156, 0157, 0160, 0161 | the sweep/re-mark bug, reference-matching, both reversal defects, the per-bucket shortfall that created phantom money, the orphan release path, the sweep ignoring redemption holds, the stale book price under lock |
 | `0148.down` | 0152, 0153, 0154 | reference-matching, and both reversal defects |
-| `0151.down` | — | the sweep undoing the book re-mark |
-| `0152.down` | 0153, 0154 | both reversal defects |
+| `0151.down` | 0156, 0160, 0161 | the per-bucket shortfall, the redemption-hold sweep, the stale book price |
+| `0152.down` | 0153, 0154, 0156, 0157, 0160, 0161 | both reversal defects, the per-bucket shortfall, the orphan release path, the redemption-hold sweep, the stale book price |
+| `0153.down` | 0154 | the cost-basis inflation |
+
+Every migration from `0143` to `0161` now has a paired `.down.sql`. Three of them
+— `0152`, `0153`, `0154` — had none until 2026-09-01, while this table already
+described what they would undo. Their bodies are lifted verbatim from the
+migration that last defined each function before the one being reversed, so they
+restore a state that genuinely existed rather than a reconstruction of it.
 
 So: to reverse `0147`, first reverse `0155`, `0154`, `0153`, `0152`, `0151`,
 `0150`, `0149` and `0148`, in that order. Reversing one in the middle leaves a

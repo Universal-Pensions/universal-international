@@ -216,6 +216,52 @@
   margin: 0 6px;
 }
 
+/* The pricing lifecycle, for the rows where it says something. Deliberately the
+   same three tones and the same words as the desktop report's Status column
+   (ReportFrame.module.css `.pill`) — a member who checks Activity on their phone
+   and All Transactions on a laptop must not be told two different stories about
+   the same payment. Rendered ONLY when the state is not the ordinary "ok", so a
+   list of settled contributions stays as quiet as it was before. */
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3125rem;
+  align-self: flex-start;
+  font-family: var(--font-body);
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: var(--radius-full);
+}
+
+.pill[data-tone='pending'] {
+  color: var(--color-kyc-warning-amber);
+  background: color-mix(in srgb, var(--color-amber) 14%, transparent);
+}
+
+.pill[data-tone='alert'] {
+  color: var(--color-poor-ink);
+  background: color-mix(in srgb, var(--color-status-poor) 9%, transparent);
+}
+
+.pillDot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+/* "We have your money. It goes into your savings on Monday 7 September." The
+   sentence is the point — the pill alone says money is waiting but not until
+   when, and "until when" is the question a member actually has. */
+.dealingNote {
+  margin: 0;
+  font-family: var(--font-body);
+  font-size: 12px;
+  line-height: 1.35;
+  color: var(--color-gray);
+}
+
 .figures {
   display: flex;
   flex-direction: column;

@@ -226,10 +226,19 @@ jobs:
 
       - name: Run Playwright full matrix (main post-merge — chromium + webkit, smoke + flow + regression + db)
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-        # Full matrix: every project × every spec. The DB invariants run
-        # against the live `ilkhfnoyxlxwqadebnkp` project (service-role
-        # query), so this also guarantees the schema state is intact after
-        # each merge to main.
+        # Full matrix: every project × every spec.
+        #
+        # ⚠️ THE DB INVARIANTS RUN AGAINST WHATEVER THE SECRETS POINT AT, and
+        # this comment used to claim that was the live `ilkhfnoyxlxwqadebnkp`
+        # project. It was not, and had not been for months: the secrets pointed
+        # at `zengmiugieqjqzaccbqe`, the Tokyo project abandoned in the
+        # 2026-06-05 cutover, whose last migration is 20260603173045. So the
+        # suite was neither guaranteeing live's schema state nor testing
+        # anything current — see docs/runbooks/ci-database.md.
+        #
+        # CI must NOT be pointed at live to fix that: the E2E suite has leaked
+        # real money into production twice. Build a CI database with
+        # scripts/setup-ci-database.mjs instead.
         #
         # continue-on-error + --reporter=json: see the PR step above — the
         # suite is expected to exit 1 at the current baseline (§10 of

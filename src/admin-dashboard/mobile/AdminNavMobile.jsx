@@ -1,11 +1,27 @@
 import { useState } from 'react';
-import { useNavOverview, useNavSnapshots, usePublishNav } from '../../hooks/useNav';
+import {
+  useNavOverview,
+  useNavSnapshots,
+  usePublishNav,
+  usePendingPricingSummary,
+  useForwardDealingReadiness,
+} from '../../hooks/useNav';
 import { useToast } from '../../contexts/ToastContext';
 import { formatNumber, formatUGX } from '../../utils/currency';
 import ErrorCard from '../../components/feedback/ErrorCard';
 import BottomSheet from '../../branch-dashboard/shell/BottomSheet';
+import PendingPricingNote from '../../components/nav/PendingPricingNote';
+import ForwardDealingStatus from '../../components/nav/ForwardDealingStatus';
 import styles from '../../dashboard/mobile/distributorMobile.module.css';
 import { kampalaToday } from '../../utils/date';
+
+// Matches the clock the desktop page uses on its own queue copy.
+const clockIcon = (
+  <svg viewBox="0 0 24 24" width="17" height="17" fill="none" aria-hidden="true">
+    <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="1.6" />
+    <path d="M12 7v5l3 2" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+  </svg>
+);
 
 /**
  * AdminNavMobile — the phone view of the fund's unit price (route /dashboard/nav).
@@ -38,6 +54,8 @@ export default function AdminNavMobile() {
   const overview = useNavOverview();
   const history = useNavSnapshots({ limit: 30 });
   const publish = usePublishNav();
+  const pending = usePendingPricingSummary();
+  const readiness = useForwardDealingReadiness();
   const { addToast } = useToast();
 
   const [sheetOpen, setSheetOpen] = useState(false);
@@ -168,6 +186,21 @@ export default function AdminNavMobile() {
         </section>
       )}
 
+      {/* How much MEMBER money this button is holding up. Deliberately on the
+          page rather than inside the sheet: it is the fact that tells an admin
+          whether they need to publish at all, and a fact you only see after
+          tapping is one you act without. Desktop shows the same sentence at its
+          own moment of decision, immediately above Publish. */}
+      {(pending.data?.pendingContributions > 0 || pending.data?.pendingRedemptions > 0) && (
+        <div className={styles.callout} style={{ marginBottom: 12 }}>
+          <span className={styles.calloutIc} aria-hidden="true">{clockIcon}</span>
+          <div>
+            <b>Money waiting on a price</b>
+            <PendingPricingNote summary={pending.data} />
+          </div>
+        </div>
+      )}
+
       {/* The page's primary action, so it takes the primary button — NOT
           `.signout`, whose red is reserved for destructive actions (CLAUDE.md
           §6). Publishing the day's price is routine work, not a warning. */}
@@ -179,6 +212,20 @@ export default function AdminNavMobile() {
       >
         Set today&apos;s price
       </button>
+
+      {/* Same check, same words as the desktop page. An admin who only ever
+          opens this on a phone must not be the one person who cannot see
+          whether the fund is in a safe state. */}
+      <section className={styles.card}>
+        <p className={styles.eyebrow}>Is the fund safe to run?</p>
+        <ForwardDealingStatus
+          readiness={readiness.data}
+          isLoading={readiness.isLoading}
+          error={readiness.error}
+          statusClassName={styles.dealStatus}
+          className={styles.dealList}
+        />
+      </section>
 
       <section className={styles.card}>
         <p className={styles.eyebrow}>

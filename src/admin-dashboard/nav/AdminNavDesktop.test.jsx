@@ -26,11 +26,18 @@ vi.mock('recharts', () => {
   };
 });
 
+// `getPendingPricingSummary` was missing from this mock, which is worse than it
+// sounds: usePendingPricingSummary's queryFn then threw a TypeError, `pending.data`
+// stayed undefined, and the "money waiting on a price" notice silently never
+// rendered — so the block telling an admin what Publish is about to do to
+// members' money was covered by exactly nothing.
 vi.mock('../../services/nav', () => ({
   DEFAULT_FUND: 'UPU-BAL',
   getNavOverview: vi.fn(),
   listNavSnapshots: vi.fn(),
   publishNavSnapshot: vi.fn(),
+  getPendingPricingSummary: vi.fn(),
+  getForwardDealingReadiness: vi.fn(),
 }));
 
 const nav = await import('../../services/nav');
@@ -96,10 +103,34 @@ function renderPage() {
   );
 }
 
+// The empty queue is the DEFAULT because it is the ordinary state — the notice
+// must stay invisible until there is genuinely member money waiting.
+const EMPTY_PENDING = {
+  fundCode: 'UPU-BAL',
+  pendingContributions: 0, pendingContributionValue: 0,
+  pendingRedemptions: 0, pendingRedemptionValue: 0,
+  releasableNow: 0, oldestPendingBusinessDays: 0, maxPendingDays: 3,
+};
+
+// A clean readiness report is the default. It must be mocked at all: the
+// component's error branch renders role="alert", so an unmocked (therefore
+// rejecting) readiness query would hand every findByRole('alert') in this file
+// the wrong element — the safety panel instead of the form error being asserted.
+const READY = {
+  fundCode: 'UPU-BAL', pricingEnabled: true, ready: true,
+  blockers: [], warnings: [],
+  unpricedBusinessDays: 0, oldestUnpricedDay: null,
+  queuedTransactions: 0, membersHoldingInFlight: 0,
+  calendarCoverTo: '2030-12-31', movableHolidaysNext12Months: 4,
+  cutoffLocalTime: '14:00:00', timezone: 'Africa/Kampala',
+};
+
 beforeEach(() => {
   vi.clearAllMocks();
   nav.getNavOverview.mockResolvedValue(OVERVIEW);
   nav.listNavSnapshots.mockResolvedValue(ROWS);
+  nav.getPendingPricingSummary.mockResolvedValue(EMPTY_PENDING);
+  nav.getForwardDealingReadiness.mockResolvedValue(READY);
   nav.publishNavSnapshot.mockResolvedValue({
     id: 'nav-1', navDate: '2026-08-08', unitPrice: 1600, previousUnitPrice: 1565.02,
     changePct: 2.23, revalued: true, unitsInIssue: 1549835, aum: 2479736000, membersPriced: 5060,
