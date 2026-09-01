@@ -318,6 +318,17 @@ jobs:
               "money-idempotency.spec.ts": 2,
               "rls-isolation.spec.ts": 3,
               "function-deployment-contract.spec.ts": 1,
+              // Unitization redesign (0143-0157). Added because the floor above
+              // is per-FILE precisely so a whole file cannot vanish unnoticed —
+              // and these three arrived after it was written, so all three were
+              // invisible to it. pricing-engine-lifecycle is the one that
+              // matters most: it is the ONLY thing anywhere that actually
+              // executes price_pending_transactions. Every other guard on the
+              // engine is a regex over text. If it silently skips, the money
+              // path has no behavioural coverage at all and nothing says so.
+              "dealing-date-property.spec.ts": 3,
+              "unitization-surface.spec.ts": 6,
+              "pricing-engine-lifecycle.spec.ts": 7,
             };
             const ranByFile = {};
             (function walk(node) {
