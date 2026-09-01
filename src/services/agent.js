@@ -116,7 +116,11 @@ function mapAgentSubscriberRow(s, now) {
     // 0146: see src/utils/balanceComponents.js.
     ...deriveBalanceFigures(bal),
     // No per-subscriber lifetime denorm — proxy from balance. See note above.
-    totalContributions: Number(bal?.total_balance ?? 0),
+    // 0146: the member TOTAL, not the allocated-only column. An agent who has
+    // just taken cash from a member would otherwise see this figure sit
+    // completely still until the fund next publishes a price, which reads as
+    // the collection having failed.
+    totalContributions: deriveBalanceFigures(bal).netBalance,
     totalWithdrawals: 0,
     // Life-cover engagement signal (subscriberMetrics.js `insured`). RLS-filtered
     // embed → null when the agent can't read the row, treated as uninsured. The

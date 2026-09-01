@@ -148,7 +148,23 @@ function mapSubscriber(row) {
   const balRow = Array.isArray(row.subscriber_balances)
     ? row.subscriber_balances[0]
     : row.subscriber_balances;
-  const totalBalance = row.total_balance ?? balRow?.total_balance ?? 0;
+  // The member TOTAL: allocated units at the book price, plus money received
+  // that has not bought units yet, plus money already sold and not yet paid.
+  // Falls back to the flat/legacy shape, where the two are equal by definition.
+  //
+  // NOTE the 'balance' SORT (SORTS.balance below) still orders on the raw
+  // `subscriber_balances(total_balance)` column, because PostgREST cannot order
+  // by a computed sum. Ordering and display can therefore disagree slightly
+  // while money is in flight — a display concern only, and the alternative is
+  // fetching every row to sort in memory.
+  const totalBalance = row.total_balance
+    ?? (balRow
+      ? Number(balRow.total_balance ?? 0)
+        + Number(balRow.pending_contribution_retirement ?? 0)
+        + Number(balRow.pending_contribution_emergency ?? 0)
+        + Number(balRow.pending_payout_retirement ?? 0)
+        + Number(balRow.pending_payout_emergency ?? 0)
+      : 0);
   const totalContributions = row.total_contributions ?? balRow?.total_contributions ?? 0;
   const totalWithdrawals = row.total_withdrawals ?? balRow?.total_withdrawals ?? 0;
   return {
@@ -190,6 +206,10 @@ function mapDistributor(row) {
     managerPhone: row.manager_phone,
     managerEmail: row.manager_email,
     registrationNo: row.registration_no ?? null,
+    // District NAME, not districts.id — the 0140 column mirrors the
+    // employers.district contract (A06-011).
+    district: row.district ?? null,
+    physicalAddress: row.physical_address ?? null,
     status: row.status,
     createdAt: row.created_at,
     metrics: EMPTY_METRICS,
@@ -257,9 +277,19 @@ const LEVEL_LIST_COLUMNS = {
     'id, name, phone, email, gender, age, dob, nin, occupation, agent_id, ' +
     'district_id, kyc_status, is_active, registered_date, products_held, ' +
     'contribution_history, current_unit_value, unit_value_as_of, ' +
-    'subscriber_balances(total_balance)',
+    // 0146: the in-flight components too. Without them this list shows the
+    // ALLOCATED balance while the member's own dashboard shows their TOTAL, so
+    // the same person's money reads differently to an admin and to themselves
+    // for as long as anything is waiting for a price.
+    'subscriber_balances(total_balance, pending_contribution_retirement, pending_contribution_emergency, pending_payout_retirement, pending_payout_emergency)',
+  // `district` / `physical_address` (0140) are part of the LIST projection, not
+  // just the detail read: ViewDistributors renders the district on every row,
+  // and an explicit projection that omits a column returns it as undefined
+  // rather than erroring — which showed as "No district set" on rows that
+  // definitely had one.
   distributor:
-    'id, name, parent_id, manager_name, manager_phone, manager_email, status, created_at',
+    'id, name, parent_id, manager_name, manager_phone, manager_email, status, ' +
+    'created_at, district, physical_address',
 };
 
 // Column projection for a level's LIST reads; `*` for un-narrowed levels.
@@ -1269,6 +1299,8 @@ export async function createDistributor(payload) {
       manager_phone: payload.managerPhone ?? null,
       manager_email: payload.managerEmail ?? null,
       registration_no: payload.registrationNo ?? null,
+      district: payload.district ?? null,
+      physical_address: payload.physicalAddress ?? null,
       status: 'active',
       created_at: new Date().toISOString(),
     });
@@ -1280,6 +1312,8 @@ export async function createDistributor(payload) {
     p_manager_email: payload.managerEmail ?? null,
     p_parent_id: payload.parentId ?? 'ug',
     p_registration_no: payload.registrationNo ?? null,
+    p_district: payload.district ?? null,
+    p_physical_address: payload.physicalAddress ?? null,
   });
   if (error) throw error;
   const mapped = mapDistributor(data);

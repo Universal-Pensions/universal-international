@@ -288,7 +288,7 @@ export async function getCommissionSubscribers(agentId, filter) {
     // The per-subscriber contribution figure the drill renders is sourced from
     // `subscriber_balances.total_balance` — the same proxy agent.js / subscriber.js
     // use (there is no per-subscriber lifetime-contributions denorm column).
-    supabase.from('subscribers').select('id, name, registered_date, is_active, subscriber_balances(total_balance)').eq('agent_id', agentId),
+    supabase.from('subscribers').select('id, name, registered_date, is_active, subscriber_balances(total_balance, pending_contribution_retirement, pending_contribution_emergency, pending_payout_retirement, pending_payout_emergency)').eq('agent_id', agentId),
   ]);
   if (cErr) throw _rpcError(cErr, 'getCommissionSubscribers:commissions');
   if (sErr) throw _rpcError(sErr, 'getCommissionSubscribers:subscribers');
@@ -309,7 +309,14 @@ export async function getCommissionSubscribers(agentId, filter) {
       registeredDate: sub.registered_date || c.first_contribution_date,
       lastContribution: 0,           // not surfaced by current schema; left at 0 for backwards-compat
       lastContributionDate: '',      // ditto — CommissionPanel hides the "Last:" line when empty (BL-36)
-      totalContributions: Number(bal?.total_balance ?? 0),
+      // 0146: the member TOTAL, matching agent.js and the member's own view.
+      // Allocated-only would freeze this figure between a collection and the
+      // next price publish.
+      totalContributions: Number(bal?.total_balance ?? 0)
+        + Number(bal?.pending_contribution_retirement ?? 0)
+        + Number(bal?.pending_contribution_emergency ?? 0)
+        + Number(bal?.pending_payout_retirement ?? 0)
+        + Number(bal?.pending_payout_emergency ?? 0),
       isActive: !!sub.is_active,
     };
   });
