@@ -60,6 +60,12 @@ test.describe('pricing engine — the full money lifecycle (executed, not greppe
   test.skip(!hasDbUrl, 'requires SUPABASE_DB_URL in env (.env.local)');
 
   let db: PgClient;
+  // What the live config said BEFORE this spec touched anything. The teardown
+  // asserts we handed it back unchanged — hardcoding "off" would fail the day
+  // forward dealing legitimately goes live, and would then be silenced rather
+  // than fixed, which is how a safety assertion becomes noise.
+  let baseline: { pricing_enabled: boolean; cutoff: string } | null = null;
+  let basePending = 0;
 
   async function money(sub: string): Promise<Money> {
     const { rows } = await db.query(
@@ -114,6 +120,32 @@ test.describe('pricing engine — the full money lifecycle (executed, not greppe
     `SELECT set_config('request.jwt.claims',
         json_build_object('app_role','subscriber','subscriberId',$1::text)::text, true)`, [sub]);
 
+  /**
+   * Carve an unpriced business day, inside this transaction.
+   *
+   * Two tests need a hole in the register. Depending on the LIVE register having
+   * one made them silently degrade the moment somebody did their job and filled
+   * it: on 2026-09-01 the back-dated test skipped and the readiness test failed,
+   * purely because the gaps had been published. A test whose meaning depends on
+   * production being untidy is not a test. So make the hole.
+   *
+   * Picks a past business day whose register row no priced transaction points
+   * at (transactions.nav_snapshot_id is a real FK), so the delete cannot fail.
+   */
+  async function carveGap(): Promise<string> {
+    const { rows } = await db.query<{ d: string }>(`
+      SELECT n.nav_date::text AS d
+        FROM public.nav_snapshots n
+       WHERE n.fund_code = 'UPU-BAL' AND n.status = 'published'
+         AND n.nav_date < public.kampala_today()
+         AND public.is_business_day(n.nav_date)
+         AND NOT EXISTS (SELECT 1 FROM public.transactions t WHERE t.nav_snapshot_id = n.id)
+       ORDER BY n.nav_date DESC LIMIT 1`);
+    expect(rows.length, 'no deletable register row to carve a gap from').toBe(1);
+    await db.query(`DELETE FROM public.nav_snapshots WHERE fund_code='UPU-BAL' AND nav_date = $1`, [rows[0].d]);
+    return rows[0].d;
+  }
+
   const publish = (date: string, priceSql: string, confirm = false) => db.query(
     `SELECT public.publish_nav_snapshot(${date}, ${priceSql}, 'UPU-BAL', 'engine-spec', ${confirm}) AS r`);
 
@@ -121,6 +153,14 @@ test.describe('pricing engine — the full money lifecycle (executed, not greppe
     const { Client } = pgDefault as unknown as { Client: new (c: { connectionString: string }) => PgClient };
     db = new Client({ connectionString: process.env.SUPABASE_DB_URL as string });
     await db.connect();
+    const { rows } = await db.query<{ pricing_enabled: boolean; cutoff: string }>(
+      `SELECT pricing_enabled, to_char(cutoff_local_time,'HH24:MI:SS') AS cutoff
+         FROM public.fund_dealing_config WHERE fund_code = 'UPU-BAL'`);
+    baseline = rows[0];
+    const { rows: pend } = await db.query<{ n: string }>(
+      `SELECT count(*) AS n FROM public.transactions WHERE pricing_status = 'pending'`);
+    basePending = Number(pend[0].n);
+
     await db.query('BEGIN');
     // Everything below is transaction-local and dies with the ROLLBACK.
     await db.query(`UPDATE public.fund_dealing_config
@@ -137,9 +177,19 @@ test.describe('pricing engine — the full money lifecycle (executed, not greppe
               (SELECT count(*) FROM public.transactions WHERE pricing_status='pending') AS pending
          FROM public.fund_dealing_config c WHERE c.fund_code = 'UPU-BAL'`);
     await db.end();
-    expect(rows[0].pricing_enabled, 'THE KILL SWITCH WAS LEFT ON — forward dealing is live').toBe(false);
-    expect(rows[0].cutoff).toBe('14:00:00');
-    expect(Number(rows[0].pending), 'this spec leaked pending money onto live members').toBe(0);
+    // Restored to whatever it was, not to a hardcoded value.
+    expect(
+      rows[0].pricing_enabled,
+      `this spec changed the live kill switch: it was ${baseline?.pricing_enabled}, now ${rows[0].pricing_enabled}`,
+    ).toBe(baseline?.pricing_enabled);
+    expect(rows[0].cutoff, 'this spec changed the live cutoff').toBe(baseline?.cutoff);
+    // Still absolute: whatever the switch says, this spec must leave no money of
+    // its own behind. With forward dealing live a real member CAN legitimately
+    // have money pending, so compare against the baseline rather than zero.
+    expect(
+      Number(rows[0].pending),
+      'this spec leaked pending money onto live members',
+    ).toBe(basePending);
   });
 
   test('money received is visible immediately, withdrawable only once it buys units', async () => {
@@ -213,12 +263,7 @@ test.describe('pricing engine — the full money lifecycle (executed, not greppe
 
   test('a back-dated publish releases its queue, at ITS price, and leaves the member on the book', async () => {
     const sub = await pick('units > 50 AND total_balance > 200000');
-    const { rows: hole } = await db.query<{ d: string }>(
-      `SELECT m.nav_date::text AS d
-         FROM public.nav_missing_days('UPU-BAL', NULL, public.kampala_today()) m
-        WHERE m.nav_date < public.kampala_today() ORDER BY m.nav_date LIMIT 1`);
-    test.skip(!hole.length, 'no unpriced business day available to back-fill');
-    const day = hole[0].d;
+    const day = await carveGap();
 
     await db.query(
       `INSERT INTO public.transactions (id, subscriber_id, type, amount, date, received_at, status, method, txn_ref, source)
@@ -387,8 +432,9 @@ test.describe('pricing engine — the full money lifecycle (executed, not greppe
       return rows[0].r;
     };
 
+    await carveGap();
     const before = await read();
-    expect(Number(before.unpricedBusinessDays), 'fixture expects a stale register').toBeGreaterThan(0);
+    expect(Number(before.unpricedBusinessDays), 'carveGap did not produce a gap').toBeGreaterThan(0);
     expect(before.ready, 'readiness must be false while business days are unpriced').toBe(false);
     expect(JSON.stringify(before.blockers)).toMatch(/no published price/i);
 
