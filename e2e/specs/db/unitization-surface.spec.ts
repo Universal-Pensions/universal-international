@@ -42,7 +42,7 @@ const ready = !!(SUPABASE_URL && ANON_KEY);
 
 /** A client carrying a real subscriber token - the view that actually matters. */
 async function subscriberClient() {
-  const token = await mintRoleJwt('subscriber', PERSONA_FOR.subscriber);
+  const token = await mintRoleJwt('subscriber', PERSONA_FOR.subscriber.entityId);
   return createClient(SUPABASE_URL as string, ANON_KEY as string, {
     auth: { persistSession: false, autoRefreshToken: false },
     global: { headers: { Authorization: `Bearer ${token}` } },

@@ -299,7 +299,7 @@ test.describe('pricing engine — the full money lifecycle (executed, not greppe
     const { rows: drift } = await db.query<{ d: string }>(
       `SELECT total_balance - round(units * public.latest_nav()) AS d
          FROM public.subscriber_balances WHERE subscriber_id = $1`, [sub]);
-    expect(Number(drift.rows === undefined ? drift[0].d : drift[0].d)).toBe(0);
+    expect(Number(drift[0].d)).toBe(0);
 
     await guardrails('after back-dated release');
   });
