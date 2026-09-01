@@ -710,7 +710,17 @@ export async function getEmployerMetrics(employerId) {
     const headcount = members.length;
     const active = members.filter((m) => m.status === 'active').length;
     const suspended = headcount - active;
-    const totalBalance = members.reduce((s, m) => s + (m.netBalance || 0), 0);
+    // ALLOCATED, not net. The live branch below returns get_employer_metrics()'s
+    // own totalBalance, which is fund value — units × the published price — and
+    // therefore excludes money received but not yet invested. Summing netBalance
+    // here made the mock and the live path answer differently the moment anything
+    // was in flight. The figure is unrendered in the employer tree (member
+    // balances are deliberately private from the employer — see
+    // employees/MemberDetailBody.jsx), but it is re-exported to admin through
+    // getAllEmployersMetrics, so the two paths still have to mean one thing.
+    const totalBalance = members.reduce(
+      (s, m) => s + (m.allocatedBalance ?? m.netBalance ?? 0), 0,
+    );
     // Mock members' ownContributions/employerContributions are already
     // run-linked-only (employerSeed.js derives them as employeeLeg × monthsActive
     // over the same tagged runs MEMBER_TRANSACTIONS carries) — no analogue of the

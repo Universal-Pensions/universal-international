@@ -407,6 +407,11 @@ export default function ViewSubscribers({ fullPage = false, scope = null }) {
   const scopedTotal = (isUnscoped ? platformOverview?.totalSubscribers : scopeMetrics?.totalSubscribers) ?? 0;
   const totals = {
     active: scopeMetrics?.activeSubscribers ?? 0,
+    // The scope's AUM rollup: units × published price, computed server-side. It
+    // deliberately EXCLUDES money that has arrived but not yet bought units —
+    // fund value is what the units are worth, and in-flight cash has not become
+    // units yet. It is therefore NOT the sum of the balances in the rows below,
+    // and the chip is labelled "Funds under management" to say so. See the chip.
     totalBalance: scopeMetrics?.aum ?? 0,
   };
 
@@ -641,10 +646,20 @@ export default function ViewSubscribers({ fullPage = false, scope = null }) {
                     <span className={styles.summaryChipValue}>{formatNumber(totals.active)}</span>
                     <span className={styles.summaryChipLabel}>Active</span>
                   </div>
+                  {/* "Funds under management", NOT "Balance". This is the
+                      scope's AUM rollup — units × the published price — while
+                      every row below shows that member's TOTAL, which since 0146
+                      also counts money received but not yet invested. Under the
+                      old label the chip claimed to be the sum of the rows and
+                      could not equal it for as long as any money was in flight.
+                      Renaming is the honest fix: the number is right, it was
+                      just introducing itself as something else. (Summing the
+                      rows instead is not available here — this list is paged, so
+                      it would total only the page.) */}
                   <div className={styles.summaryChip}>
                     <span className={styles.summaryChipIcon}>{Icons.aum}</span>
                     <span className={styles.summaryChipValue}>{formatUGXShort(totals.totalBalance)}</span>
-                    <span className={styles.summaryChipLabel}>Balance</span>
+                    <span className={styles.summaryChipLabel}>Funds under management</span>
                   </div>
                 </div>
               </>

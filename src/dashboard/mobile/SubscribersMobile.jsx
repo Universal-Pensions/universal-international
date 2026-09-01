@@ -84,9 +84,16 @@ export default function SubscribersMobile() {
             <b className={styles.g}>{formatNumber(totals.active)}</b>
             <small>Active</small>
           </div>
+          {/* "Total savings", NOT "Balance" — and deliberately NOT the same
+              number as the desktop chip, which is the scope's AUM rollup.
+              This one sums the members actually listed (so it answers to the
+              search box, exactly like the two counts beside it) and each member's
+              figure is their TOTAL, in-flight money included. Two different
+              numbers with one shared label was the real defect; two honest
+              labels beat forcing them to agree. */}
           <div>
             <b>{formatUGXShort(totals.balance)}</b>
-            <small>Balance</small>
+            <small>Total savings</small>
           </div>
         </div>
       </section>
