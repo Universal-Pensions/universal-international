@@ -334,6 +334,45 @@ test.describe('pricing engine — the full money lifecycle (executed, not greppe
     await guardrails('after rejection');
   });
 
+  test('AUM never absorbs money that has not bought units', async () => {
+    // Plan D-10, and the reason the six pending components are separate columns
+    // rather than folded into total_balance. If in-flight cash ever reached AUM,
+    // three things break at once: subscriber_balances_bucket_sum_chk (a hard
+    // equality), assert_book_revaluable() (which derives the implied price as
+    // sum(total_balance)/sum(units) and refuses to publish on >2% drift), and
+    // the per-member nav_mismatch check. The fund would also lose the one number
+    // it must be able to defend — that AUM is units times a price it published.
+    const sub = await pick('units > 50 AND total_balance > 200000');
+    await db.query(
+      `INSERT INTO public.transactions (id, subscriber_id, type, amount, date, received_at, status, method, txn_ref, source)
+       VALUES ('tx-spec-aum', $1, 'contribution', 750000, now(),
+               (public.kampala_today() || ' 08:00:00+03')::timestamptz,
+               'settled','MTN Mobile Money','SPEC-AUM','own')`, [sub]);
+
+    const { rows } = await db.query<{ aum: string; units: string; price: string; pending: string }>(`
+      SELECT COALESCE(sum(total_balance), 0) AS aum,
+             COALESCE(sum(units), 0)         AS units,
+             public.latest_nav()             AS price,
+             COALESCE(sum(pending_contribution_retirement + pending_contribution_emergency
+                        + pending_payout_retirement + pending_payout_emergency), 0) AS pending
+        FROM public.subscriber_balances`);
+    const r = rows[0];
+    expect(Number(r.pending), 'the fixture did not actually leave money in flight').toBeGreaterThan(0);
+
+    // AUM is units x the published price, and the in-flight money is NOT in it.
+    // 1 UGX per member of rounding is the documented tolerance.
+    const implied = Number(r.units) * Number(r.price);
+    expect(Math.abs(Number(r.aum) - implied) / implied).toBeLessThan(0.0001);
+
+    // And the publish gate agrees — it is the thing that would start failing.
+    const { rows: g } = await db.query<{ r: Record<string, unknown> }>(
+      `SELECT public.assert_book_revaluable('UPU-BAL', public.latest_nav()) AS r`);
+    expect(g[0].r.checked, 'assert_book_revaluable declined to check the book').toBe(true);
+    expect(Number(g[0].r.driftPct), 'in-flight money has leaked into the book').toBeLessThan(2);
+
+    await guardrails('with money in flight');
+  });
+
   test('the kill switch genuinely gates the engine', async () => {
     await db.query(`UPDATE public.fund_dealing_config SET pricing_enabled = false WHERE fund_code = 'UPU-BAL'`);
     const sub = await pick('units > 50 AND total_balance > 200000');
