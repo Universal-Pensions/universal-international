@@ -76,6 +76,47 @@ import pgDefault from 'pg';
 import { supabaseAdmin } from '../../fixtures/db';
 import { MOCK_NOW_ISO_DATE } from '../../../src/constants/demoClock.js';
 
+/**
+ * Read an ENTIRE table through PostgREST, one page at a time.
+ *
+ * ⚠️ WHY THIS EXISTS. PostgREST caps an unbounded select at `db-max-rows`,
+ * which is 1000 on this project — verified against live:
+ *
+ *   GET /rest/v1/subscribers?select=id     -> 1000 rows, content-range 0-999/5058
+ *   GET /rest/v1/subscriber_balances?...   -> 1000 rows, content-range 0-999/5058
+ *
+ * There is no error and no warning. The client just gets the first page and a
+ * test written against it silently checks 20% of the platform while reporting
+ * on all of it.
+ *
+ * That is not hypothetical. The M1 invariant compared an unpaged `subscribers`
+ * against an unpaged `subscriber_balances` and reported 500 members with no
+ * balance row (2026-09-01). Direct SQL said the true number was ZERO. Neither
+ * page was ordered, so the two 1000-row windows covered different members and
+ * the set difference was pure artefact. It had passed for months only because
+ * both tables happened to share a physical order; a reseed rewrote the heap and
+ * the illusion broke. It would equally have hidden a REAL orphan sitting past
+ * row 1000 — which is the failure mode that actually matters.
+ *
+ * `.order()` is as important as the paging: without a stable sort, successive
+ * ranges are not guaranteed to partition the table.
+ */
+async function selectAll<T>(table: string, columns: string, orderBy: string): Promise<T[]> {
+  const PAGE = 1000;
+  const out: T[] = [];
+  for (let from = 0; ; from += PAGE) {
+    const { data, error } = await supabaseAdmin
+      .from(table)
+      .select(columns)
+      .order(orderBy, { ascending: true })
+      .range(from, from + PAGE - 1);
+    if (error) throw new Error(`selectAll(${table}) page at ${from}: ${error.message}`);
+    const rows = (data ?? []) as T[];
+    out.push(...rows);
+    if (rows.length < PAGE) return out;
+  }
+}
+
 // Seed anchor — the ONE literal `src/constants/demoClock.js` exports (audit
 // A06-003/A06-008/A06-009/A26-003: this file used to hand-copy its own
 // `MOCK_NOW_ISO = '2026-05-26'` literal, which silently drifted 36 days
@@ -341,6 +382,32 @@ test.describe('DB invariants (ilkhfnoyxlxwqadebnkp)', () => {
       ).toBe(false);
     }
 
+    // ⚠️ THIS PROBE WRITES TO PRODUCTION. The note above predicts the role gate
+    // fires and nothing happens; it does not. `supabaseAdmin` holds the service
+    // role, which satisfies the gate, so the call reaches the happy path and —
+    // even with p_rows: [] settling nothing — records its idempotency row:
+    //
+    //   settlement_uploads: nonce 'test-probe'
+    //     {"skipped": [], "totalPaid": 0, "linesSettled": 0, "agentsSettled": 0}
+    //
+    // Nothing cleaned it up, so every run of this suite left one more piece of
+    // permanent residue in the live database, and the global leak sweep failed
+    // the whole job for it (observed 2026-09-01). No money moves — linesSettled
+    // is 0 — but an idempotency ledger that accumulates test nonces is exactly
+    // the kind of debris that later makes a real replay look already-applied.
+    //
+    // Deleted here rather than in global-teardown because the spec that made the
+    // row should be the spec that removes it; distributor-apply-settlement.spec
+    // already does the same for its own row (A05-014).
+    const { error: probeCleanupErr } = await supabaseAdmin
+      .from('settlement_uploads')
+      .delete()
+      .eq('nonce', 'test-probe');
+    expect(
+      probeCleanupErr?.message ?? null,
+      'the apply_settlement probe must not leave its idempotency row in the live database',
+    ).toBeNull();
+
     const markRes = await supabaseAdmin.rpc('mark_notifications_read', {
       p_ids: ['ntf-never-exists-00000000'],
     });
@@ -436,13 +503,11 @@ test.describe('DB invariants (ilkhfnoyxlxwqadebnkp)', () => {
   // nested PostgREST embed, so this doesn't depend on the schema cache having
   // auto-detected the subscribers -> subscriber_balances relationship.
   test('every subscriber has exactly one subscriber_balances row (M1)', async () => {
-    const { data: subs, error: subErr } = await supabaseAdmin.from('subscribers').select('id');
-    expect(subErr, 'subscribers id query').toBeNull();
-
-    const { data: bals, error: balErr } = await supabaseAdmin
-      .from('subscriber_balances')
-      .select('subscriber_id');
-    expect(balErr, 'subscriber_balances id query').toBeNull();
+    // Paged. Unpaged, these two selects saw different 1000-row windows of a
+    // 5058-row table and manufactured 500 phantom orphans — see selectAll().
+    const subs = await selectAll<{ id: string }>('subscribers', 'id', 'id');
+    const bals = await selectAll<{ subscriber_id: string }>(
+      'subscriber_balances', 'subscriber_id', 'subscriber_id');
 
     const balanced = new Set((bals || []).map((r) => (r as { subscriber_id: string }).subscriber_id));
     const missing = (subs || [])
@@ -459,10 +524,10 @@ test.describe('DB invariants (ilkhfnoyxlxwqadebnkp)', () => {
   // ── M2: units reconciles with retirement_units + emergency_units (audit
   // A25-005) ──────────────────────────────────────────────────────────────
   test('subscriber_balances.units reconciles with retirement_units + emergency_units (M2)', async () => {
-    const { data, error } = await supabaseAdmin
-      .from('subscriber_balances')
-      .select('subscriber_id, units, retirement_units, emergency_units');
-    expect(error, 'subscriber_balances units query').toBeNull();
+    const data = await selectAll<Record<string, number | string>>(
+      'subscriber_balances',
+      'subscriber_id, units, retirement_units, emergency_units',
+      'subscriber_id');
 
     // Round to 4dp before comparing — the same precision the live audit probe
     // used (a25/money-invariants.md: `round(units,4) <> round(retirement_units
@@ -495,10 +560,10 @@ test.describe('DB invariants (ilkhfnoyxlxwqadebnkp)', () => {
   // | 0`) — this test is here so a future write path that updates one bucket
   // without the other (the same class of bug M2 guards) cannot regress silently.
   test('subscriber_balances.total_balance reconciles with retirement_balance + emergency_balance (M3)', async () => {
-    const { data, error } = await supabaseAdmin
-      .from('subscriber_balances')
-      .select('subscriber_id, total_balance, retirement_balance, emergency_balance');
-    expect(error, 'subscriber_balances balances query').toBeNull();
+    const data = await selectAll<Record<string, number | string>>(
+      'subscriber_balances',
+      'subscriber_id, total_balance, retirement_balance, emergency_balance',
+      'subscriber_id');
 
     type BalanceRow = {
       subscriber_id: string;
@@ -532,10 +597,10 @@ test.describe('DB invariants (ilkhfnoyxlxwqadebnkp)', () => {
   // probe found this ALREADY clean (`negative_balances | 0`); this test is the
   // guard that keeps it that way.
   test('no negative balances or units in subscriber_balances (M4)', async () => {
-    const { data, error } = await supabaseAdmin
-      .from('subscriber_balances')
-      .select('subscriber_id, total_balance, retirement_balance, emergency_balance, units, retirement_units, emergency_units');
-    expect(error, 'subscriber_balances negative-value query').toBeNull();
+    const data = await selectAll<Record<string, number | string>>(
+      'subscriber_balances',
+      'subscriber_id, total_balance, retirement_balance, emergency_balance, units, retirement_units, emergency_units',
+      'subscriber_id');
 
     type Row = {
       subscriber_id: string;

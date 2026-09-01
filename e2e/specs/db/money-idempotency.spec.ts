@@ -238,10 +238,29 @@ test.describe('money RPC idempotency + atomicity (DB layer)', () => {
     ).toBe((first.data as { id?: string })?.id);
 
     // Balance moved by exactly ONE contribution, not two (F-1).
+    //
+    // Measured on the member's TOTAL — allocated plus money still waiting for a
+    // price — not on `total_balance` alone. That column is ALLOCATED money only
+    // (units x book price), so under forward dealing a fresh contribution does
+    // not move it at all: the cash lands in pending_contribution_* and crosses
+    // into total_balance later, at allocation, without changing the total.
+    //
+    // Asserting `total_balance` alone was asserting the pre-unitization
+    // contract. It passed for as long as the kill switch was off and started
+    // failing the moment forward dealing went live (2026-09-01) — reporting
+    // "Expected 10000, Received 0" against a platform that was behaving
+    // correctly. Written this way it holds with the switch in EITHER position,
+    // which is the actual invariant: money never disappears, and a replayed
+    // nonce never credits twice.
+    const netOf = (b: BalanceRow) =>
+      b.total_balance
+      + b.pending_contribution_retirement + b.pending_contribution_emergency
+      + b.pending_payout_retirement + b.pending_payout_emergency;
+
     const after = await readBalance(SUBSCRIBER_ID);
     expect(
-      after.total_balance - before.total_balance,
-      'two same-nonce contributions credit the balance exactly once',
+      netOf(after) - netOf(before),
+      'two same-nonce contributions credit the member exactly once',
     ).toBe(CONTRIB_AMOUNT);
 
     // Exactly one money_nonces row + one transaction for this nonce.
