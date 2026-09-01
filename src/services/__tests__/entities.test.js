@@ -399,6 +399,7 @@ describe('entities service', () => {
           id: 'd-new-1', name: 'Western Region Distributor', parent_id: 'ug',
           manager_name: 'Jane Mgr', manager_phone: '+256770000000', manager_email: 'jane@x.com',
           registration_no: '80020002345678',
+          district: 'Mbarara', physical_address: 'Plot 14, High Street',
           status: 'active', created_at: '2026-06-08T00:00:00Z',
         },
         error: null,
@@ -409,6 +410,8 @@ describe('entities service', () => {
         managerPhone: '+256770000000',
         managerEmail: 'jane@x.com',
         registrationNo: '80020002345678',
+        district: 'Mbarara',
+        physicalAddress: 'Plot 14, High Street',
       });
       // Mapped (camelCase) shape with the EMPTY_METRICS placeholder.
       expect(dist).toMatchObject({
@@ -416,6 +419,11 @@ describe('entities service', () => {
         managerName: 'Jane Mgr', managerPhone: '+256770000000', managerEmail: 'jane@x.com',
         // 0095 — a distributor is a registered company in Uganda too.
         registrationNo: '80020002345678',
+        // 0140 — and it has a place, which the national map needs. The RPC
+        // stores the district NAME, never districts.id (the employers.district
+        // contract), so the mapped value is a name.
+        district: 'Mbarara',
+        physicalAddress: 'Plot 14, High Street',
         status: 'active',
       });
       expect(dist.metrics).toMatchObject({ totalSubscribers: 0, totalAgents: 0, aum: 0 });
@@ -427,6 +435,8 @@ describe('entities service', () => {
         p_manager_email: 'jane@x.com',
         p_parent_id: 'ug',
         p_registration_no: '80020002345678',
+        p_district: 'Mbarara',
+        p_physical_address: 'Plot 14, High Street',
       });
     });
 
@@ -444,6 +454,8 @@ describe('entities service', () => {
         p_manager_email: null,
         p_parent_id: 'ug',
         p_registration_no: null,
+        p_district: null,
+        p_physical_address: null,
       });
     });
 
