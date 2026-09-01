@@ -7,6 +7,8 @@ import { txDisplayAmount } from '../../utils/finance';
 import { isRunPosted } from '../../utils/periodSettlement';
 
 import { formatDate } from '../../utils/date';
+import { transactionState, isAwaitingPricing } from '../../utils/transactionState';
+import DealingDateNote from '../../components/contribution/DealingDateNote';
 import { useCurrentSubscriber, useSubscriberTransactions } from '../../hooks/useSubscriber';
 import { useIsDesktop } from '../../hooks/useIsDesktop';
 import PageHeader from '../../components/PageHeader';
@@ -213,6 +215,12 @@ export default function ActivityPage() {
                 const signed = txDisplayAmount(tx);
                 const incoming = signed > 0;
                 const method = rowMethod(tx);
+                // Only surface the lifecycle when it says something. `ok` is the
+                // ordinary settled row and already reads that way from the
+                // amount and date; badging every one of them would bury the
+                // handful that a member actually needs to notice.
+                const state = transactionState(tx);
+                const notable = state.tone !== 'ok';
                 return (
                   <li key={tx.id} className={styles.row} data-zebra={i % 2 === 1 || undefined}>
                     <div className={styles.main}>
@@ -226,6 +234,20 @@ export default function ActivityPage() {
                         )}
                         {tx.reference}
                       </span>
+                      {notable && (
+                        <span className={styles.pill} data-tone={state.tone}>
+                          <span className={styles.pillDot} aria-hidden="true" />
+                          {state.label}
+                        </span>
+                      )}
+                      {isAwaitingPricing(tx) && (
+                        <DealingDateNote
+                          dealingDate={tx.dealingDate}
+                          direction={tx.type === 'withdrawal' ? 'out' : 'in'}
+                          received
+                          className={styles.dealingNote}
+                        />
+                      )}
                     </div>
                     <div className={styles.figures}>
                       <span className={styles.amount} data-tone={incoming ? 'in' : 'out'}>
