@@ -52,52 +52,63 @@ The leak sweep is also why the delta gate fails the job on *out-of-test* errors
 its header records that a run which leaked rows into production once passed both
 gates. **Do not weaken it.**
 
-## State as of 2026-09-01
+## State as of 2026-09-01 — Tokyo is being REMOVED, not rebuilt
 
-The Tokyo project **has already been wiped** and is waiting for step 1 below:
-`DROP SCHEMA public CASCADE`, schema recreated, default grants restored, and the
-migration ledger cleared. It went from 394 MB / 27 tables / 33 recorded
-migrations to 0 / 0 / 0, and 11 MB. Nothing else in the project was touched.
+An earlier version of this runbook said to rebuild `zengmiugieqjqzaccbqe` as the
+CI database, because CI's secrets already pointed there so no rotation would be
+needed. **That advice is withdrawn.** Keeping a project named *"Uganda dashboard"*
+that is not the Uganda dashboard is what caused this in the first place: anyone
+opening the Supabase console looking for this repo's database finds the dead one,
+because the live project is called `Pension dashbaord` — misspelled, and not
+obviously this product.
 
-That was the destructive half and it is done. What remains needs the project's
-database password, which is why it stops here.
+The project has been emptied and **paused**, and holds nothing: 0 auth users,
+0 identities, 0 storage buckets, 0 storage objects, 0 public tables, 0 functions,
+0 migration records. Deleting it loses nothing. Deletion is dashboard-only:
 
-## Building the database
+> Supabase -> project `zengmiugieqjqzaccbqe` -> Settings -> General -> Delete project
 
-Either create a fresh project, or rebuild the Tokyo one. Rebuilding it is the
-cheaper path in one specific way — CI's secrets already point there, so no
-secret rotation is needed — but it currently holds 394 MB and 30,001 subscribers
-from before the cutover, and that dataset is what filled its disk in the first
-place. Drop the public schema before applying anything.
+Rename the live project at the same time. The typo plus the name collision is the
+entire trap.
 
-The organization is on the **free plan** and a project costs **$0/month**, but
-the free tier caps active projects and two already exist, so a third may need one
-paused first.
+## Nothing in the product depended on it
 
-```bash
-# 1. Apply every migration, in order. 157 files.
-SUPABASE_DB_URL='postgresql://postgres:...@db.<ref>.supabase.co:5432/postgres' \
-  node scripts/setup-ci-database.mjs
+Verified six ways on 2026-09-01, before removal:
 
-# 2. Seed it — same URL.
-SUPABASE_DB_URL='...' node scripts/seed-supabase.mjs
-```
+| Check | Result |
+|---|---|
+| Repo, every file type | Only docs and comments — no code, no config |
+| Shipped frontend (56 assets, 3.1 MB) | 0 references; exactly one Supabase host, the live one |
+| Render API | Authenticated a bcrypt hash that exists only in the live `users` table |
+| Render logs since 2026-08-25 | No mention of the old host |
+| `.env.local` | Resolves to the live project |
+| The old project itself | Empty on every schema, `auth` and `storage` included |
 
-The script refuses to run against `ilkhfnoyxlxwqadebnkp` unless given `--force`,
-takes its URL from the environment rather than reading `.env.local` (which is the
-owner's live-dev config and must not be touched for this), and wraps **one
-transaction per migration** so a failure part-way can be resumed:
+The one consumer was CI, whose four secrets were last set 2026-05-27 — nine days
+before the cutover.
 
-```bash
-node scripts/setup-ci-database.mjs --dry-run          # list, connect to nothing
-node scripts/setup-ci-database.mjs --from=0147_...sql # resume
-```
+## Choosing a CI database
+
+Two honest options:
+
+1. **A dedicated CI project.** Create one, *name it for CI*, run
+   `scripts/setup-ci-database.mjs` and then the seed against it, and repoint the
+   four secrets. Costs one rotation; CI never holds production credentials.
+2. **Point CI at live.** No new project, but the E2E suite then mutates
+   production on every PR — and it leaked into live twice during the unitization
+   work, which is why option 1 is recommended.
+
+`scripts/setup-ci-database.mjs` is target-agnostic either way: it takes
+`SUPABASE_DB_URL` from the environment, refuses the production ref without
+`--force`, and applies the 157 migrations one transaction each so a failure can
+be resumed with `--from`.
 
 ## Finishing it
 
-1. Point the four GitHub secrets at the CI project —
+1. Point the four GitHub secrets at whichever database you chose —
    `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`,
-   `SUPABASE_JWT_SECRET`. All four were last set 2026-05-27, before the cutover.
+   `SUPABASE_JWT_SECRET`. All four were last set 2026-05-27, nine days before the
+   cutover, which is why they still named Tokyo.
 2. Run the E2E suite.
 3. **Regenerate `baseline-failures.txt` from scratch.** Every surviving entry
    should be a real known bug with a reason next to it. The current file cannot
