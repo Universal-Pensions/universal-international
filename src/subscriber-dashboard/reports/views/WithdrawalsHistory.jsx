@@ -65,6 +65,13 @@ export default function WithdrawalsHistory() {
   const totals = useMemo(() => {
     let total = 0, retirement = 0, emergency = 0;
     filtered.forEach((w) => {
+      // A rejected or reversed withdrawal is money the member still has. Unlike
+      // the transactions ledger there is NO compensating row in this table to
+      // net it off, so both states must come out of the totals — while the rows
+      // themselves stay visible in the table and in the status filter. Without
+      // this the KPI counts money out on the same screen where that row's own
+      // pill reads "Not completed".
+      if (w.status === 'rejected' || w.status === 'reversed') return;
       total += w.amount;
       if (w.bucket === 'retirement') retirement += w.amount;
       else emergency += w.amount;

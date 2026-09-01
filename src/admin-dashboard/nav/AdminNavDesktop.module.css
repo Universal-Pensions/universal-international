@@ -102,3 +102,33 @@
   line-height: 1.5;
   color: var(--color-poor-ink, #B02530);
 }
+
+/* Days with no published price. Listed rather than filtered: the register table
+   can only show days that HAVE a row, and most unpriced days have none — the
+   tile counted 13 while the old drill-down could reach at most 4. Each entry
+   seeds the publish form with that date, which is the action the admin needs. */
+.missingDays {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  list-style: none;
+  margin: 12px 0 0;
+  padding: 0;
+}
+
+.missingDay {
+  appearance: none;
+  border: 1px solid var(--border, #e2e4ee);
+  background: var(--surface-2, #fbfbfe);
+  border-radius: 8px;
+  padding: 6px 10px;
+  font: inherit;
+  font-size: 13px;
+  color: var(--text, #1c1e2b);
+  cursor: pointer;
+}
+
+.missingDay:hover {
+  border-color: var(--indigo, #292867);
+  background: #fff;
+}

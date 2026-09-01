@@ -268,10 +268,40 @@ export default function AdminNavDesktop({ fullPage = false }) {
         <Tile
           accent="amber" icon={clockIcon} label="Days not priced"
           value={overview.isLoading ? '—' : formatNumber(d?.pendingDays ?? 0)}
-          sub={(d?.pendingDays ?? 0) > 0 ? 'Tap to see which days' : 'Everything is up to date'}
-          onClick={(d?.pendingDays ?? 0) > 0 ? () => setStatusFilter('pending') : undefined}
+          sub={(d?.pendingDays ?? 0) > 0 ? 'Listed below' : 'Everything is up to date'}
         />
       </MetricRow>
+
+      {/* The tile used to drill into setStatusFilter('pending'), which filters
+          the REGISTER — a table that can only ever show days that HAVE a row.
+          Most unpriced days have no row at all, so the count and the drill-down
+          disagreed structurally: 13 counted, at most 4 reachable. The dates are
+          already in the payload (get_nav_overview returns `missingDays`, and
+          since 0156 nav_missing_days reports the real per-day status), so list
+          them here instead of sending the admin to a filter that cannot hold
+          them. */}
+      {(d?.missingDays ?? []).length > 0 && (
+        <Card>
+          <SectionHead icon={clockIcon} title="Days with no published price" />
+          <p className={styles.notice}>
+            These business days have no price. Money dealing on any of them is waiting and cannot
+            be invested until it is published — publish each one for the day it belongs to.
+          </p>
+          <ul className={styles.missingDays}>
+            {(d.missingDays ?? []).map((day) => (
+              <li key={day}>
+                <button
+                  type="button"
+                  className={styles.missingDay}
+                  onClick={() => setField('navDate', day)}
+                >
+                  {longDate(day)}
+                </button>
+              </li>
+            ))}
+          </ul>
+        </Card>
+      )}
 
       <Card>
         <SectionHead icon={priceIcon} title="Set today's price" />
