@@ -328,7 +328,7 @@ jobs:
               // path has no behavioural coverage at all and nothing says so.
               "dealing-date-property.spec.ts": 3,
               "unitization-surface.spec.ts": 6,
-              "pricing-engine-lifecycle.spec.ts": 8,
+              "pricing-engine-lifecycle.spec.ts": 9,
             };
             const ranByFile = {};
             (function walk(node) {

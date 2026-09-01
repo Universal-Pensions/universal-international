@@ -373,6 +373,44 @@ test.describe('pricing engine — the full money lifecycle (executed, not greppe
     await guardrails('with money in flight');
   });
 
+  test('the readiness check refuses the flip while the register is behind', async () => {
+    // The order of operations is load-bearing and nothing else records it:
+    // publish first, flip second. Under forward dealing a contribution waits for
+    // its dealing date's price, so flipping while the fund is days behind sends
+    // every new contribution into a queue that cannot clear until somebody
+    // back-fills the gap. Members would watch their money arrive, sit in "being
+    // put into savings", and never move.
+    await asAdmin();
+    const read = async () => {
+      const { rows } = await db.query<{ r: Record<string, unknown> }>(
+        `SELECT public.forward_dealing_readiness('UPU-BAL') AS r`);
+      return rows[0].r;
+    };
+
+    const before = await read();
+    expect(Number(before.unpricedBusinessDays), 'fixture expects a stale register').toBeGreaterThan(0);
+    expect(before.ready, 'readiness must be false while business days are unpriced').toBe(false);
+    expect(JSON.stringify(before.blockers)).toMatch(/no published price/i);
+
+    // Fill every gap, and it should flip to ready.
+    const { rows: gaps } = await db.query<{ d: string }>(
+      `SELECT m.nav_date::text AS d
+         FROM public.nav_missing_days('UPU-BAL', NULL, public.kampala_today() - 1) m
+        ORDER BY m.nav_date`);
+    for (const g of gaps) {
+      // confirm=true: a bulk back-fill is exactly the deliberate, scripted
+      // action the +-10% move gate asks to be acknowledged, and an earlier test
+      // in this transaction deliberately published 30% down.
+      await publish(`DATE '${g.d}'`, 'public.latest_nav()', true);
+    }
+
+    const after = await read();
+    expect(Number(after.unpricedBusinessDays)).toBe(0);
+    expect(after.ready, `still blocked: ${JSON.stringify(after.blockers)}`).toBe(true);
+
+    await guardrails('after back-filling the register');
+  });
+
   test('the kill switch genuinely gates the engine', async () => {
     await db.query(`UPDATE public.fund_dealing_config SET pricing_enabled = false WHERE fund_code = 'UPU-BAL'`);
     const sub = await pick('units > 50 AND total_balance > 200000');

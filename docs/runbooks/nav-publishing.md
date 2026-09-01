@@ -122,6 +122,32 @@ never have a price.
 
 ---
 
+## Before you turn forward dealing on — ASK FIRST
+
+```sql
+SELECT jsonb_pretty(public.forward_dealing_readiness('UPU-BAL'));
+```
+
+`ready: false` means do not flip. The blockers say why, in sentences.
+
+**The order of operations is load-bearing: publish first, flip second.** Under
+forward dealing a contribution waits for its own dealing date's price. Flip the
+switch while the register is behind and every new contribution goes into a queue
+that cannot clear until somebody back-fills the whole gap — members watch their
+money arrive, sit in "being put into savings", and never move. That is the design
+working (money is never priced at a number nobody published), which is exactly
+why it will not announce itself as a fault.
+
+As of the last check this reports **not ready**: 12 business days have no
+published price, the oldest being 2026-08-04. Back-fill them, re-run the check,
+and only then flip.
+
+The warning about movable holidays is not a blocker but it is real: Eid is
+moon-sighted and cannot be computed, so without gazette entries money will
+eventually deal on a day the market is shut.
+
+---
+
 ## The kill switch
 
 Forward dealing is behind one row. Turning it off is instant, needs no deploy,
