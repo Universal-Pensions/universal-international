@@ -112,10 +112,21 @@ try {
     }
 
     const sql = readFileSync(join(MIGRATIONS_DIR, file), 'utf8');
+
+    // CREATE/DROP INDEX CONCURRENTLY cannot run inside a transaction block, and
+    // 0023_rls_initplan_fixes has a `DROP INDEX CONCURRENTLY`. Wrapping it in
+    // BEGIN/COMMIT fails with 25001 and stops the whole run at migration 23 of
+    // 157. Detected on the SQL with line comments stripped, so the word
+    // appearing in one of this repo's (many) explanatory headers does not
+    // needlessly drop a migration out of its transaction — 0009, 0022, 0119 and
+    // 0129 all discuss CONCURRENTLY without using it.
+    const code = sql.replace(/^[ \t]*--.*$/gm, '');
+    const nonTransactional = /\b(CREATE|DROP)\s+INDEX\s+CONCURRENTLY\b/i.test(code);
+
     // One transaction PER MIGRATION, not one for the whole run: a failure at
     // 0147 must leave 0001-0146 applied and recorded, so --from can resume
     // rather than starting the whole sequence again.
-    await client.query('BEGIN');
+    if (!nonTransactional) await client.query('BEGIN');
     try {
       await client.query(sql);
       const version = new Date().toISOString().replace(/[-:T]/g, '').slice(0, 14);
@@ -124,13 +135,18 @@ try {
          VALUES ($1, $2, ARRAY[$3])`,
         [version, name, sql],
       );
-      await client.query('COMMIT');
+      if (!nonTransactional) await client.query('COMMIT');
       applied += 1;
-      console.log(`  ok ${name}`);
+      console.log(`  ok ${name}${nonTransactional ? '  (outside a transaction — CONCURRENTLY)' : ''}`);
     } catch (err) {
-      await client.query('ROLLBACK');
+      if (!nonTransactional) await client.query('ROLLBACK');
       console.error(`\nFAILED at ${name}: ${err.message}`);
-      console.error(`Nothing from this migration was applied. Fix it, then resume with:`);
+      console.error(nonTransactional
+        // Without a transaction there is nothing to roll back, so say so rather
+        // than implying a clean failure.
+        ? 'This migration ran OUTSIDE a transaction — it may be partially applied. Check before resuming.'
+        : 'Nothing from this migration was applied.');
+      console.error(`Fix it, then resume with:`);
       console.error(`  node scripts/setup-ci-database.mjs --from=${file}`);
       process.exitCode = 1;
       break;

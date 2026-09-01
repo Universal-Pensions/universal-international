@@ -52,6 +52,16 @@ The leak sweep is also why the delta gate fails the job on *out-of-test* errors
 its header records that a run which leaked rows into production once passed both
 gates. **Do not weaken it.**
 
+## State as of 2026-09-01
+
+The Tokyo project **has already been wiped** and is waiting for step 1 below:
+`DROP SCHEMA public CASCADE`, schema recreated, default grants restored, and the
+migration ledger cleared. It went from 394 MB / 27 tables / 33 recorded
+migrations to 0 / 0 / 0, and 11 MB. Nothing else in the project was touched.
+
+That was the destructive half and it is done. What remains needs the project's
+database password, which is why it stops here.
+
 ## Building the database
 
 Either create a fresh project, or rebuild the Tokyo one. Rebuilding it is the
