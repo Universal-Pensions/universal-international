@@ -14,6 +14,28 @@ Slim entry index for this repo. Two deep specialist docs live under `docs/`: **`
 
 - **Live URL:** `uganda-dashboard.vercel.app` (auto-deploy on push to `main` — do not push without explicit approval). **Applies to both:** Vercel (frontend, automatic via the GitHub App integration) and Render (backend at `uganda-dashboard-api.onrender.com`, **manual** deploys only — `autoDeployTrigger: off` in `render.yaml`).
 - **Stack:** React 19 · Vite 6 · CSS Modules (no Tailwind) · Framer Motion 12 · React Router 7 · TanStack Query 5 / Virtual 3 · Leaflet 1.9 · Recharts 3 · Express 5 on Render (Node 22, Singapore region) · Supabase Postgres (Singapore `ap-southeast-1` — **new project, cutover 2026-06-05**; replaced the old Tokyo `ap-northeast-1` project) · custom HS256 JWT via `jose`.
+- **⚠️ WHICH SUPABASE PROJECT — identify by REF, never by name.**
+
+  | | Project ref (authoritative) | Name in the Supabase console | Region | State |
+  |---|---|---|---|---|
+  | **LIVE — the only one** | `ilkhfnoyxlxwqadebnkp` | `Uganda dashbaord 1` *(sic — "dashbaord")* | Singapore `ap-southeast-1` | active |
+  | Dead, being deleted | `zengmiugieqjqzaccbqe` | `Uganda dashboard (inactive)` | Tokyo `ap-northeast-1` | INACTIVE, emptied 2026-09-01 |
+
+  **The ref is the identifier. The name is decoration and has already changed twice.**
+  Every connection string, every `.env`, and every doc in this repo names the ref;
+  the console shows you the name. That mismatch cost three months: until
+  2026-09-01 the *dead Tokyo project* was the one called "Uganda dashboard" —
+  matching this repo — while live was called "Pension dashbaord", misspelled and
+  not obviously this product. Anyone searching the console for the Uganda
+  dashboard found the wrong database, and CI's four secrets pointed at it from
+  2026-05-27 onward. The E2E suite therefore ran against a schema frozen at
+  3 June for roughly three months, failing on columns that exist in live, and the
+  failures were absorbed as "known baseline" rather than investigated.
+
+  Before pointing anything at a Supabase project, check the **ref**, not the name.
+  `SUPABASE_DB_URL` carries it (`postgres.<ref>@…pooler…` or `db.<ref>.supabase.co`),
+  and `scripts/seed-guard.mjs` parses and enforces it for destructive runs.
+
 - **Role build status (6 of 6 built):** subscriber, agent, branch, distributor, employer, and admin are live. **Admin** (central head-office role with global rights) ships a map-theme shell at `src/admin-dashboard/` that reuses the distributor map/overlay/view panels and adds platform-wide **Distributors** and **Employers** managers (list + metrics + create). Its backend is migration `0049_admin_role` (admin `*_select_admin` RLS clones of the distributor grants + employer-family SELECT; `create_distributor` / `create_employer` / `get_all_employers_metrics` SECURITY DEFINER RPCs) — applied to the Singapore DB 2026-06-08. Admin demo login: pick **Admin** → any phone → any 6-digit code (fallback persona `admin-001`). Employer **shipped to production 2026-06-03** (merged to `main` via PR #8; Vercel frontend + Render backend deployed; desktop-first shell mirroring branch admin — see `docs/FRONTEND.md` + `docs/BACKEND.md §8`); its DB stack (migrations `0032`–`0036`) is part of the full chain on the new Singapore DB.
 
 ---

@@ -1,5 +1,12 @@
 > **Agent guide.** The deep backend reference — the Express + TypeScript routes under `api/**` (hosted on Render), the Supabase Postgres schema / RPCs / RLS in `supabase/migrations/*.sql`, the seed + utility scripts, and the hosted + local runbook. Read it whenever you touch an API route, a migration, an RPC, an RLS policy, or the auth/JWT flow; pair it with `CLAUDE.md` (the binding rules) and `FRONTEND.md` (the React side). Per repo discipline (`CLAUDE.md` §11), update this doc in the same change whenever you add a route, table, RPC, or migration.
 >
+> **Which project:** the live database is Supabase ref **`ilkhfnoyxlxwqadebnkp`**
+> (Singapore `ap-southeast-1`), shown in the console as **`Uganda dashbaord 1`** —
+> the typo is real, and the name has changed twice. **Identify it by the ref.** The
+> Tokyo project `zengmiugieqjqzaccbqe` is dead, emptied and being deleted; until
+> 2026-09-01 it was the one *called* "Uganda dashboard", which is why CI spent three
+> months testing it. See `CLAUDE.md §1`.
+>
 > **Census numbers re-verified against the live Singapore DB (`ilkhfnoyxlxwqadebnkp`) on 2026-08-25** and corrected where stale (several "verified 2026-07-08" claims below had drifted). Re-measure before relying on any count here — this platform ships migrations fast.
 
 # BACKEND.md — Universal Pensions Uganda

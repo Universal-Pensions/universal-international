@@ -59,8 +59,10 @@ CI database, because CI's secrets already pointed there so no rotation would be
 needed. **That advice is withdrawn.** Keeping a project named *"Uganda dashboard"*
 that is not the Uganda dashboard is what caused this in the first place: anyone
 opening the Supabase console looking for this repo's database finds the dead one,
-because the live project is called `Pension dashbaord` — misspelled, and not
-obviously this product.
+because until 2026-09-01 the live project was called `Pension dashbaord` —
+misspelled, and not obviously this product. It is now `Uganda dashbaord 1`
+(the typo survived the rename); the durable identifier is the ref
+`ilkhfnoyxlxwqadebnkp`, never the name.
 
 The project has been emptied and **paused**, and holds nothing: 0 auth users,
 0 identities, 0 storage buckets, 0 storage objects, 0 public tables, 0 functions,
