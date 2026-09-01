@@ -221,6 +221,27 @@ describe('deriveSubscriberAnalytics — money in flight', () => {
     expect(b.balanceSeries.map((p) => p.value)).toEqual(a.balanceSeries.map((p) => p.value));
   });
 
+  it('a rejected or reversed withdrawal is not money out', async () => {
+    const { deriveSubscriberAnalytics } = await import(
+      '../subscriber-dashboard/reports/deriveSubscriberAnalytics'
+    );
+    const settled = [
+      { type: 'contribution', amount: 400_000, date: '2026-06-10', pricingStatus: 'priced' },
+      { type: 'contribution', amount: 600_000, date: '2026-07-10', pricingStatus: 'priced' },
+    ];
+    // Rejected: the price fell and the amount could not be filled, so the hold
+    // was released. Reversed: an admin unwound it and a compensating row exists.
+    // Neither is money the member no longer has.
+    const withUndone = [
+      ...settled,
+      { type: 'withdrawal', amount: -250_000, date: '2026-07-15', pricingStatus: 'rejected' },
+      { type: 'withdrawal', amount: -150_000, date: '2026-07-18', pricingStatus: 'reversed' },
+    ];
+    const a = deriveSubscriberAnalytics(SUB, settled);
+    const b = deriveSubscriberAnalytics(SUB, withUndone);
+    expect(b.balanceSeries.map((p) => p.value)).toEqual(a.balanceSeries.map((p) => p.value));
+  });
+
   it('the series is anchored on ALLOCATED money, not on the headline total', async () => {
     const { deriveSubscriberAnalytics } = await import(
       '../subscriber-dashboard/reports/deriveSubscriberAnalytics'

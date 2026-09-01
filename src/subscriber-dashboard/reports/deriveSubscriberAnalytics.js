@@ -152,7 +152,15 @@ export function deriveSubscriberAnalytics(subscriber, transactions = []) {
       //    `pricingStatus` is undefined on rows fetched by paths that predate
       //    0144, and on every row while the kill switch is off, so this is a
       //    no-op today.
-      if (t.pricingStatus !== 'pending') {
+      // A REJECTED or REVERSED withdrawal is money that never left. Rejected
+      // means the amount could not be filled at its dealing price and the hold
+      // was released; reversed means an admin unwound it and the ledger already
+      // carries a compensating row. Counting either as money out subtracts it
+      // twice — once from the anchor and once again as a delta — and tells the
+      // member they withdrew money they still have.
+      if (t.pricingStatus !== 'pending'
+          && t.pricingStatus !== 'rejected'
+          && t.pricingStatus !== 'reversed') {
         deltaByMonth.set(ym, (deltaByMonth.get(ym) || 0) + delta);
       }
     }
