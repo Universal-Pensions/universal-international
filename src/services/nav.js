@@ -1,11 +1,16 @@
 // Fund NAV (unit price) service — Supabase-backed, with a flat-1000 fallback
 // under VITE_USE_SUPABASE=false.
 //
-// Backs the admin "Unit price" page. Three RPCs, all admin-gated (migration 0104):
+// Backs the admin "Unit price" page. Six RPCs. The first three are the original
+// register (0104); the rest arrived with forward dealing and are admin-gated too,
+// except dealing_date_for, which an agent needs at the point of sale:
 //
 //   get_nav_overview(fund)                        → header figures + inline series
 //   list_nav_snapshots(fund, limit, offset, status) → the paged valuation register
 //   publish_nav_snapshot(date, price, …)          → the ONLY write path
+//   get_pending_pricing_summary(fund)             → money waiting for a price (0147)
+//   forward_dealing_readiness(fund)               → the go/no-go pre-flight (0158)
+//   dealing_date_for(received_at, fund)           → when this money starts working (0143)
 //
 // WHY THIS MATTERS MORE THAN A NORMAL ADMIN SCREEN: since 0104 the unit price is
 // the platform's pricing authority. Contributions buy units at it, withdrawals
