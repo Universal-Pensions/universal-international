@@ -76,6 +76,11 @@ export function usePublishNav() {
         // pending wording after the money has actually been invested.
         ['subscriberTransactions'], ['subscriberWithdrawals'],
         ['pendingPricingSummary'],
+        // 0158: publishing is precisely what clears the readiness report's
+        // dominant blocker ("N business days have no published price"), so the
+        // panel must not keep saying "not ready" after the admin has just fixed
+        // the thing it was complaining about.
+        ['forwardDealingReadiness'],
         ['adminAttention'], ['adminAttentionRows'],
       ].forEach((queryKey) => queryClient.invalidateQueries({ queryKey }));
     },
@@ -99,5 +104,28 @@ export function usePendingPricingSummary(fundCode = nav.DEFAULT_FUND) {
     // Short: the queue changes whenever any member pays in or takes out, and a
     // stale preview would misdescribe what the button is about to do.
     staleTime: 60 * 1000,
+  });
+}
+
+/**
+ * Whether the fund is in a safe state to run forward dealing — the go/no-go
+ * check that lived only in a runbook telling the operator to open a SQL client.
+ *
+ * Read-only; it flips nothing. `ready` is false while any blocker stands, and
+ * the blocker that matters is a stale price register: switching on while the
+ * fund is behind sends every new contribution into a queue that cannot clear.
+ *
+ * NOT retried. This is a yes/no about the fund's safety, and quietly retrying a
+ * failing safety check in the background is how it ends up looking answered when
+ * it was never answered.
+ *
+ * @param {string} [fundCode]
+ */
+export function useForwardDealingReadiness(fundCode = nav.DEFAULT_FUND) {
+  return useQuery({
+    queryKey: ['forwardDealingReadiness', fundCode],
+    queryFn: () => nav.getForwardDealingReadiness(fundCode),
+    staleTime: 60 * 1000,
+    retry: false,
   });
 }

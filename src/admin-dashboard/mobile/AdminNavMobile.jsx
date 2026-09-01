@@ -4,12 +4,14 @@ import {
   useNavSnapshots,
   usePublishNav,
   usePendingPricingSummary,
+  useForwardDealingReadiness,
 } from '../../hooks/useNav';
 import { useToast } from '../../contexts/ToastContext';
 import { formatNumber, formatUGX } from '../../utils/currency';
 import ErrorCard from '../../components/feedback/ErrorCard';
 import BottomSheet from '../../branch-dashboard/shell/BottomSheet';
 import PendingPricingNote from '../../components/nav/PendingPricingNote';
+import ForwardDealingStatus from '../../components/nav/ForwardDealingStatus';
 import styles from '../../dashboard/mobile/distributorMobile.module.css';
 import { kampalaToday } from '../../utils/date';
 
@@ -53,6 +55,7 @@ export default function AdminNavMobile() {
   const history = useNavSnapshots({ limit: 30 });
   const publish = usePublishNav();
   const pending = usePendingPricingSummary();
+  const readiness = useForwardDealingReadiness();
   const { addToast } = useToast();
 
   const [sheetOpen, setSheetOpen] = useState(false);
@@ -209,6 +212,20 @@ export default function AdminNavMobile() {
       >
         Set today&apos;s price
       </button>
+
+      {/* Same check, same words as the desktop page. An admin who only ever
+          opens this on a phone must not be the one person who cannot see
+          whether the fund is in a safe state. */}
+      <section className={styles.card}>
+        <p className={styles.eyebrow}>Is the fund safe to run?</p>
+        <ForwardDealingStatus
+          readiness={readiness.data}
+          isLoading={readiness.isLoading}
+          error={readiness.error}
+          statusClassName={styles.dealStatus}
+          className={styles.dealList}
+        />
+      </section>
 
       <section className={styles.card}>
         <p className={styles.eyebrow}>

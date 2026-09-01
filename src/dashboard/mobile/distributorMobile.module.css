@@ -1397,3 +1397,56 @@
 @media (prefers-reduced-motion: reduce) {
   .spinner { animation-duration: 1.6s; }
 }
+
+/* ── Forward-dealing readiness, admin NAV phone view (0158) ─────────────────
+   Additive only — nothing above changes. Named `deal*` so it is obvious these
+   belong to the dealing panel and not to the distributor surfaces that own the
+   rest of this sheet. Mirrors the tones AdminNavDesktop.module.css uses for the
+   same component, because the phone and the laptop must not disagree about
+   whether the fund is safe to run. */
+.dealStatus {
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: var(--radius-md);
+  font-family: var(--font-body);
+  font-size: 11.5px;
+  line-height: 1.45;
+  border: 1px solid color-mix(in srgb, var(--color-gray, #6B7280) 25%, transparent);
+  background: color-mix(in srgb, var(--color-gray, #6B7280) 5%, var(--color-white));
+  color: var(--color-slate, #2F3550);
+}
+.dealStatus[data-kind='ok'] {
+  border-color: color-mix(in srgb, var(--color-green, #16A34A) 35%, transparent);
+  background: color-mix(in srgb, var(--color-green, #16A34A) 7%, var(--color-white));
+  color: var(--color-green-ink, #14532D);
+}
+.dealStatus[data-kind='blocker'] {
+  border-color: color-mix(in srgb, var(--color-poor-ink, #B02530) 35%, transparent);
+  background: color-mix(in srgb, var(--color-poor-ink, #B02530) 7%, var(--color-white));
+  color: var(--color-poor-ink, #B02530);
+}
+.dealList {
+  list-style: none;
+  margin: 9px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+.dealList li {
+  padding: 8px 11px;
+  border-left: 3px solid transparent;
+  border-radius: var(--radius-sm);
+  font-family: var(--font-body);
+  font-size: 11.5px;
+  line-height: 1.45;
+  color: var(--color-slate, #2F3550);
+}
+.dealList li[data-kind='blocker'] {
+  border-left-color: var(--color-poor-ink, #B02530);
+  background: color-mix(in srgb, var(--color-poor-ink, #B02530) 6%, var(--color-white));
+}
+.dealList li[data-kind='warning'] {
+  border-left-color: var(--color-amber, #FBBF24);
+  background: color-mix(in srgb, var(--color-amber, #FBBF24) 9%, var(--color-white));
+}

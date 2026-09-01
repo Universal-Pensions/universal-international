@@ -132,3 +132,63 @@
   border-color: var(--indigo, #292867);
   background: #fff;
 }
+
+/* ── Forward-dealing readiness (0158) ───────────────────────────────────────
+   The verdict carries its own tone rather than borrowing `.notice`: that box is
+   amber, and an amber panel reading "Running normally" tells the admin the
+   opposite of what the words say. Green for clear, red for a blocker. */
+.readinessStatus {
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: var(--radius-md);
+  font-family: var(--font-body);
+  font-size: var(--text-xs);
+  line-height: 1.5;
+  border: 1px solid color-mix(in srgb, var(--color-gray, #6B7280) 25%, transparent);
+  background: color-mix(in srgb, var(--color-gray, #6B7280) 5%, #fff);
+  color: var(--color-slate, #2F3550);
+}
+
+.readinessStatus[data-kind='ok'] {
+  border-color: color-mix(in srgb, var(--color-green, #16A34A) 35%, transparent);
+  background: color-mix(in srgb, var(--color-green, #16A34A) 7%, #fff);
+  color: var(--color-green-ink, #14532D);
+}
+
+.readinessStatus[data-kind='blocker'] {
+  border-color: color-mix(in srgb, var(--color-poor-ink, #B02530) 35%, transparent);
+  background: color-mix(in srgb, var(--color-poor-ink, #B02530) 7%, #fff);
+  color: var(--color-poor-ink, #B02530);
+}
+
+.readinessList {
+  list-style: none;
+  margin: 10px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* A left rule rather than a bullet: these are sentences, sometimes two lines
+   long, and a coloured edge separates "not now" from "not for long" faster than
+   reading which is which. */
+.readinessList li {
+  padding: 8px 12px;
+  border-left: 3px solid transparent;
+  border-radius: var(--radius-sm);
+  font-family: var(--font-body);
+  font-size: var(--text-xs);
+  line-height: 1.5;
+  color: var(--color-slate, #2F3550);
+}
+
+.readinessList li[data-kind='blocker'] {
+  border-left-color: var(--color-poor-ink, #B02530);
+  background: color-mix(in srgb, var(--color-poor-ink, #B02530) 6%, #fff);
+}
+
+.readinessList li[data-kind='warning'] {
+  border-left-color: var(--color-amber, #FBBF24);
+  background: color-mix(in srgb, var(--color-amber, #FBBF24) 9%, #fff);
+}

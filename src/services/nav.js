@@ -96,7 +96,10 @@ function _rpcError(err, fnName) {
  *   Every figure is zero while fund_dealing_config.pricing_enabled is false.
  * @param {string} [fundCode]
  * @returns {Promise<Object>} shaped like EMPTY_PENDING_PRICING
- * @scope Any signed-in role.
+ * @scope Admin only — 0155 revoked this from `authenticated` and added the
+ *   app_role gate. (It read "Any signed-in role" until 2026-09-01, describing
+ *   the 0147 grant that 0155 removed; a non-admin now gets the empty skeleton
+ *   via the error path below rather than a payload.)
  * @cache ['pendingPricingSummary', fundCode] — invalidated by usePublishNav,
  *   because a publish is exactly what empties this queue.
  */
@@ -122,6 +125,59 @@ export const EMPTY_PENDING_PRICING = Object.freeze({
   oldestPendingBusinessDays: 0,
   maxPendingDays: 3,
   pricingEnabled: false,
+});
+
+/**
+ * @endpoint RPC forward_dealing_readiness(p_fund) — migration 0158.
+ * @description Can forward dealing safely be switched on (or left on)? Six
+ *   checks, read-only, flipping nothing. The one that matters most is the price
+ *   register being current: turn the switch on while the fund is days behind and
+ *   every new contribution joins a queue that cannot clear until somebody
+ *   back-fills the gap, and members watch their money sit there. Publish first,
+ *   flip second — this is what says whether that order has been honoured.
+ *
+ *   `blockers` are reasons not to be in this state at all; `warnings` are things
+ *   that will bite later, chiefly the movable holidays (Eid is moon-sighted and
+ *   cannot be computed, so it can only come from the gazette).
+ * @param {string} [fundCode]
+ * @returns {Promise<Object>} shaped like EMPTY_DEALING_READINESS
+ * @scope Admin only — the RPC RAISEs P0001 for any other app_role.
+ * @cache ['forwardDealingReadiness', fundCode] — invalidated by usePublishNav,
+ *   because publishing is precisely what clears the unpriced-days blocker.
+ */
+export async function getForwardDealingReadiness(fundCode = DEFAULT_FUND) {
+  if (!IS_SUPABASE_ENABLED) return { ...EMPTY_DEALING_READINESS, fundCode };
+  const { data, error } = await supabase.rpc('forward_dealing_readiness', { p_fund: fundCode });
+  // Deliberately NOT the swallow-the-error pattern getPendingPricingSummary
+  // uses. That one is a nice-to-have preview on a page that must stay usable;
+  // this one answers "is the fund in a safe state?", and a safety check that
+  // fails silently is worse than no safety check — it reads as "all clear".
+  // The caller surfaces the error instead.
+  if (error) throw error;
+  return { ...EMPTY_DEALING_READINESS, ...(data ?? {}) };
+}
+
+/**
+ * Safe skeleton with the RPC's exact keys.
+ *
+ * `ready` defaults to FALSE. An unloaded or unavailable readiness report must
+ * never render as "good to go" — the whole point of the check is that nobody
+ * flips the switch on an assumption.
+ */
+export const EMPTY_DEALING_READINESS = Object.freeze({
+  fundCode: DEFAULT_FUND,
+  pricingEnabled: false,
+  ready: false,
+  blockers: Object.freeze([]),
+  warnings: Object.freeze([]),
+  unpricedBusinessDays: 0,
+  oldestUnpricedDay: null,
+  queuedTransactions: 0,
+  membersHoldingInFlight: 0,
+  calendarCoverTo: null,
+  movableHolidaysNext12Months: 0,
+  cutoffLocalTime: null,
+  timezone: null,
 });
 
 export async function getNavOverview(fundCode = DEFAULT_FUND) {

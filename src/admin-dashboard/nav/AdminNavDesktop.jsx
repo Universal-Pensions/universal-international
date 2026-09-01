@@ -15,12 +15,14 @@ import {
 } from 'recharts';
 import {
   useNavOverview, useNavSnapshots, usePublishNav, usePendingPricingSummary,
+  useForwardDealingReadiness,
 } from '../../hooks/useNav';
 import { useToast } from '../../contexts/ToastContext';
 import { formatNumber, formatUGX } from '../../utils/currency';
 import ErrorCard from '../../components/feedback/ErrorCard';
 import Modal from '../../components/Modal';
 import PendingPricingNote from '../../components/nav/PendingPricingNote';
+import ForwardDealingStatus from '../../components/nav/ForwardDealingStatus';
 import {
   PageHead, Hero, MetricRow, Tile, Card, SectionHead, Btn, StatusBadge,
 } from '../../employer-dashboard/desktop/ui';
@@ -113,6 +115,9 @@ export default function AdminNavDesktop({ fullPage = false }) {
   // 0147: the queue this publish will release. Zero while the pricing switch
   // is off, so the preview block below simply does not render.
   const pending = usePendingPricingSummary();
+  // 0158: the go/no-go check that used to live only in a runbook, as a SQL
+  // snippet the operator was told to run before touching the switch.
+  const readiness = useForwardDealingReadiness();
 
   const d = overview.data;
   // A04-015 (client half): the fund's calendar is Kampala, not the browser's
@@ -303,6 +308,29 @@ export default function AdminNavDesktop({ fullPage = false }) {
           </ul>
         </Card>
       )}
+
+      {/* Sits immediately above the publish form on purpose. Its dominant
+          blocker is "N business days have no published price", and the fix for
+          that is the chip list directly above and the form directly below —
+          reading the problem and acting on it should not require navigating. */}
+      <Card>
+        <SectionHead
+          icon={clockIcon}
+          title="Is the fund safe to run?"
+          tag={
+            readiness.data
+              ? readiness.data.ready ? 'All clear' : 'Needs attention'
+              : undefined
+          }
+        />
+        <ForwardDealingStatus
+          readiness={readiness.data}
+          isLoading={readiness.isLoading}
+          error={readiness.error}
+          statusClassName={styles.readinessStatus}
+          className={styles.readinessList}
+        />
+      </Card>
 
       <Card>
         <SectionHead icon={priceIcon} title="Set today's price" />

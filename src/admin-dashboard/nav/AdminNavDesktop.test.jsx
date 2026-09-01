@@ -37,6 +37,7 @@ vi.mock('../../services/nav', () => ({
   listNavSnapshots: vi.fn(),
   publishNavSnapshot: vi.fn(),
   getPendingPricingSummary: vi.fn(),
+  getForwardDealingReadiness: vi.fn(),
 }));
 
 const nav = await import('../../services/nav');
@@ -111,11 +112,25 @@ const EMPTY_PENDING = {
   releasableNow: 0, oldestPendingBusinessDays: 0, maxPendingDays: 3,
 };
 
+// A clean readiness report is the default. It must be mocked at all: the
+// component's error branch renders role="alert", so an unmocked (therefore
+// rejecting) readiness query would hand every findByRole('alert') in this file
+// the wrong element — the safety panel instead of the form error being asserted.
+const READY = {
+  fundCode: 'UPU-BAL', pricingEnabled: true, ready: true,
+  blockers: [], warnings: [],
+  unpricedBusinessDays: 0, oldestUnpricedDay: null,
+  queuedTransactions: 0, membersHoldingInFlight: 0,
+  calendarCoverTo: '2030-12-31', movableHolidaysNext12Months: 4,
+  cutoffLocalTime: '14:00:00', timezone: 'Africa/Kampala',
+};
+
 beforeEach(() => {
   vi.clearAllMocks();
   nav.getNavOverview.mockResolvedValue(OVERVIEW);
   nav.listNavSnapshots.mockResolvedValue(ROWS);
   nav.getPendingPricingSummary.mockResolvedValue(EMPTY_PENDING);
+  nav.getForwardDealingReadiness.mockResolvedValue(READY);
   nav.publishNavSnapshot.mockResolvedValue({
     id: 'nav-1', navDate: '2026-08-08', unitPrice: 1600, previousUnitPrice: 1565.02,
     changePct: 2.23, revalued: true, unitsInIssue: 1549835, aum: 2479736000, membersPriced: 5060,
