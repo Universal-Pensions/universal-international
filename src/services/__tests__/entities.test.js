@@ -118,7 +118,7 @@ describe('entities service', () => {
     // returned value AND the actual query shape, so a future revert back to
     // a bare `select('*')` fails this test even if the mock still returns a
     // balance (a query-shape assertion, not just an output assertion).
-    it('embeds subscriber_balances(total_balance) on a subscriber detail read (A15-001)', async () => {
+    it('embeds the subscriber balance on a subscriber detail read (A15-001)', async () => {
       supabaseMock.__queueFrom('subscribers', {
         data: {
           id: 'empe-001', name: 'Brian Okello', phone: '+256700000001',
@@ -137,8 +137,70 @@ describe('entities service', () => {
 
       const call = supabaseMock.__getFromCalls('subscribers').at(-1);
       expect(call.chain.select).toHaveBeenCalledWith(
-        expect.stringContaining('subscriber_balances(total_balance)'),
+        expect.stringContaining('subscriber_balances(total_balance'),
       );
+    });
+
+    // 0146 left `detailColumns()` embedding `total_balance` alone while the LIST
+    // projection gained the in-flight components, so the same member's balance
+    // was LARGER in the list than on their own detail screen — and on the mobile
+    // detail it visibly dropped, because the list hands its correct row over via
+    // router state for first paint before this fetch resolves.
+    //
+    // Asserts the QUERY SHAPE, not just the output: `mapSubscriber` sums only
+    // the columns it is handed, and a column that was never selected arrives
+    // `undefined`, which its `?? 0` reads as "nothing in flight" rather than
+    // "you forgot to ask". An output-only assertion would pass against a mock
+    // that volunteers columns the real query never requests.
+    it('asks for the in-flight columns on the detail read, and counts them in the total', async () => {
+      supabaseMock.__queueFrom('subscribers', {
+        data: {
+          id: 'empe-002', name: 'Aisha Nakato', phone: '+256700000002',
+          agent_id: 'a-001', district_id: 'd-kampala', kyc_status: 'complete',
+          is_active: true, registered_date: '2025-02-11',
+          subscriber_balances: [{
+            total_balance: 1000000,
+            pending_contribution_retirement: 100000,
+            pending_contribution_emergency: 50000,
+            pending_payout_retirement: 25000,
+            pending_payout_emergency: 0,
+          }],
+        },
+        error: null,
+      });
+      const sub = await getEntity('subscriber', 'empe-002');
+      // Allocated 1,000,000 + 175,000 still in flight. NOT 1,000,000.
+      expect(sub.totalBalance).toBe(1175000);
+
+      const select = supabaseMock.__getFromCalls('subscribers').at(-1).chain.select;
+      for (const col of [
+        'pending_contribution_retirement',
+        'pending_contribution_emergency',
+        'pending_payout_retirement',
+        'pending_payout_emergency',
+      ]) {
+        expect(select).toHaveBeenCalledWith(expect.stringContaining(col));
+      }
+    });
+
+    // The list and the detail read must ask for the SAME balance columns. When
+    // they drifted, one screen contradicted the other for as long as any money
+    // was waiting for a price.
+    it('asks for the same balance columns on the list read as on the detail read', async () => {
+      supabaseMock.__queueFrom('subscribers', {
+        data: { id: 'empe-003', name: 'Peter Ochieng', subscriber_balances: [{ total_balance: 1 }] },
+        error: null,
+      });
+      await getEntity('subscriber', 'empe-003');
+      const detailSelect = supabaseMock.__getFromCalls('subscribers').at(-1).chain.select.mock.calls[0][0];
+
+      supabaseMock.__queueFrom('subscribers', { data: [], error: null, count: 0 });
+      await getEntityPage('subscriber', { page: 1, pageSize: 10 });
+      const listSelect = supabaseMock.__getFromCalls('subscribers').at(-1).chain.select.mock.calls[0][0];
+
+      const embed = (s) => s.match(/subscriber_balances\([^)]*\)/)?.[0];
+      expect(embed(detailSelect)).toBeDefined();
+      expect(embed(detailSelect)).toBe(embed(listSelect));
     });
 
     it('does not add the subscriber_balances embed for other levels (branch stays a bare *)', async () => {

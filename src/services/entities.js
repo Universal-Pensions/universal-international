@@ -259,20 +259,35 @@ const LEVEL_MAPPERS = {
 // intentionally omits balance columns — they don't exist on `subscribers`
 // (they live in `subscriber_balances`); `getAllAtLevel` never joined them, so
 // the mapped balance fields have always defaulted to 0 on the list path.
+// The balance embed, named ONCE because it belongs on both the list and the
+// detail read and they must not drift. They did drift: 0146 added the in-flight
+// components to the list projection below and left `detailColumns()` embedding
+// `total_balance` alone, so opening a member showed a SMALLER number than the
+// row that was just clicked. On the mobile subscriber detail that was visible
+// motion — the list hands its (correct) row over via router state for first
+// paint, then this fetch resolves and the balance drops by whatever the member
+// has in flight.
+//
+// `mapSubscriber` sums allocated + in-flight, but only from the columns it is
+// given; a missing column is `undefined`, which its `?? 0` silently reads as
+// "nothing in flight" rather than "you forgot to ask for it".
+//
+// NOTE the columns named here are the only ones that may be embedded. There is
+// no `total_contributions` / `total_withdrawals` column on `subscriber_balances`
+// — naming one makes PostgREST reject the whole request with a 400. Those two
+// exist only as aggregates over `transactions` and need a bounded RPC; they stay
+// 0 on both paths. The embed is RLS-governed independently, and 0081 scopes
+// `subscriber_balances` to the same set as `subscribers`, so the two agree.
+const SUBSCRIBER_BALANCE_EMBED =
+  'subscriber_balances(total_balance, pending_contribution_retirement, ' +
+  'pending_contribution_emergency, pending_payout_retirement, pending_payout_emergency)';
+
 const LEVEL_LIST_COLUMNS = {
   region: 'id, name, parent_id, center_lng, center_lat',
   district: 'id, name, region_id, center_lng, center_lat, active',
-  // `subscriber_balances(total_balance)` is an embed, not a column on
-  // `subscribers` — without it every list row rendered UGX 0 (mapSubscriber
-  // defaults the money fields), which read as "the balances are broken".
-  // ONLY `total_balance` may be embedded: `subscriber_balances` has exactly
-  // (subscriber_id, retirement_balance, emergency_balance, total_balance,
-  // units, updated_at) — there is NO total_contributions / total_withdrawals
-  // column, and naming one makes PostgREST reject the whole request with 400.
-  // Per-subscriber contribution/withdrawal totals exist only as aggregates over
-  // `transactions` and need a bounded RPC; they stay 0 on the list path.
-  // The embed is RLS-governed independently, and 0081 scopes
-  // `subscriber_balances` to the same set as `subscribers`, so the two agree.
+  // The balance is an embed, not a column on `subscribers` — without it every
+  // list row rendered UGX 0 (mapSubscriber defaults the money fields), which
+  // read as "the balances are broken".
   subscriber:
     'id, name, phone, email, gender, age, dob, nin, occupation, agent_id, ' +
     'district_id, kyc_status, is_active, registered_date, products_held, ' +
@@ -281,7 +296,7 @@ const LEVEL_LIST_COLUMNS = {
     // ALLOCATED balance while the member's own dashboard shows their TOTAL, so
     // the same person's money reads differently to an admin and to themselves
     // for as long as anything is waiting for a price.
-    'subscriber_balances(total_balance, pending_contribution_retirement, pending_contribution_emergency, pending_payout_retirement, pending_payout_emergency)',
+    SUBSCRIBER_BALANCE_EMBED,
   // `district` / `physical_address` (0140) are part of the LIST projection, not
   // just the detail read: ViewDistributors renders the district on every row,
   // and an explicit projection that omits a column returns it as undefined
@@ -310,8 +325,11 @@ function listColumns(level) {
 // single-row `.eq('id', id).maybeSingle()` read, so the embed returns at most
 // one balance row — NOT a list query, so it is not subject to the
 // db-max-rows=1000 cap that bounds the paging in getAllAtLevel() below.
+//
+// It embeds the SAME projection as the list read (SUBSCRIBER_BALANCE_EMBED) —
+// see that constant for why the two must never diverge again.
 function detailColumns(level) {
-  return level === 'subscriber' ? '*, subscriber_balances(total_balance)' : '*';
+  return level === 'subscriber' ? `*, ${SUBSCRIBER_BALANCE_EMBED}` : '*';
 }
 
 // ─── Parent scoping for list reads ──────────────────────────────────────────
@@ -402,7 +420,8 @@ export async function getCountry() {
 
 /**
  * @endpoint SELECT 1 row from the level's table (subscriber additionally
- *   embeds `subscriber_balances(total_balance)` — see `detailColumns()`).
+ *   embeds the balance row — allocated AND in-flight; see `detailColumns()`
+ *   and `SUBSCRIBER_BALANCE_EMBED`).
  * @param {string} level - region|district|branch|agent|subscriber
  * @param {string} id
  * @returns {Promise<Object|null>} mapped entity, or null if not found.
