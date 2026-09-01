@@ -31,6 +31,7 @@
 import 'dotenv/config';
 import { register } from 'node:module';
 import pg from 'pg';
+import { evaluateDestroyRequest } from './seed-guard.mjs';
 import bcrypt from 'bcryptjs';
 
 // Register an ESM resolution hook BEFORE importing mockData. The hook
@@ -110,82 +111,23 @@ if (!DB_URL) {
 }
 
 // ─── Destructive-run guard (audit A09-003) ─────────────────────────────────
-// This script TRUNCATEs every seeded table with no undo. It has already been
-// pointed at a live project by accident once (2026-06-16 destructive live
-// reseed). Require the caller to name the exact project the TRUNCATE is
-// about to hit, and refuse — before opening any connection — if it doesn't
-// match the ref parsed out of SUPABASE_DB_URL.
+// The decision lives in scripts/seed-guard.mjs — a pure module, so it can be
+// unit-tested. It could not be tested here: this file executes on import, so
+// importing it to test the guard would run the seed.
 //
-// The project ref lives in a different part of the connection string
-// depending on which form is used:
-//   • Pooler (this repo's normal path, host like
-//     aws-1-ap-southeast-1.pooler.supabase.com): the ref is embedded in the
-//     USERNAME as "postgres.<ref>" — NOT in the hostname.
-//   • Direct (host db.<ref>.supabase.co): the ref is the hostname's first
-//     label.
-//
-// Parsed with plain regexes against the raw connection string rather than
-// `new URL()` — a password containing a character URL() treats specially
-// (e.g. "@") could otherwise misparse the userinfo/host split. Only the
-// matched ref is ever logged or compared; the password never is.
-function parseProjectRef(dbUrl) {
-  const pooler = dbUrl.match(
-    /:\/\/postgres\.([a-z0-9]+):[^@]*@[^/]*\.pooler\.supabase\.com\b/i
-  );
-  if (pooler) return pooler[1];
-
-  const direct = dbUrl.match(/:\/\/[^@]*@db\.([a-z0-9]+)\.supabase\.co\b/i);
-  if (direct) return direct[1];
-
-  return null;
-}
-
-const YES_FLAG = '--yes-destroy';
-
-/**
- * Refuse to proceed unless the caller passed `--yes-destroy <project-ref>`
- * naming the exact project SUPABASE_DB_URL resolves to. Exits the process
- * (non-zero) on any refusal path; only returns on success. Must run before
- * the first DB connection in the file — see the TRUNCATE block in main().
- */
+// Hardened 2026-09-01: production refs are named in that module and need a
+// second, differently-worded flag that no refusal message ever prints. The old
+// guard's refusal helpfully printed a copy-pasteable production wipe.
 function requireDestroyConfirmation(dbUrl, argv) {
-  const projectRef = parseProjectRef(dbUrl);
-  if (!projectRef) {
-    console.error(
-      'ERROR: could not parse a Supabase project ref out of SUPABASE_DB_URL.\n' +
-        '  Expected the pooler form (username "postgres.<ref>" on a\n' +
-        '  *.pooler.supabase.com host) or the direct form (db.<ref>.supabase.co).\n' +
-        '  Refusing to run — the destructive TRUNCATE below must never fire\n' +
-        '  against an unrecognised target.'
-    );
+  const verdict = evaluateDestroyRequest(dbUrl, argv);
+  if (!verdict.ok) {
+    console.error(verdict.message);
     process.exit(1);
   }
-
-  const flagIdx = argv.indexOf(YES_FLAG);
-  const suppliedRef = flagIdx !== -1 ? argv[flagIdx + 1] : undefined;
-
-  if (!suppliedRef) {
-    console.error(
-      'ERROR: refusing to run. This script TRUNCATEs every seeded table — ' +
-        'destructive and irreversible (audit A09-003; this repo has already ' +
-        'suffered one accidental live reseed).\n' +
-        `  SUPABASE_DB_URL currently targets project "${projectRef}".\n` +
-        '  Re-run naming that exact project to proceed:\n' +
-        `    npm run seed -- ${YES_FLAG} ${projectRef}`
-    );
-    process.exit(1);
-  }
-
-  if (suppliedRef !== projectRef) {
-    console.error(
-      `ERROR: refusing to run. ${YES_FLAG} "${suppliedRef}" does not match ` +
-        `the project ref parsed from SUPABASE_DB_URL ("${projectRef}").\n` +
-        '  Aborting before opening any connection — fix the flag or the URL.'
-    );
-    process.exit(1);
-  }
-
-  console.log(`• Destructive-run guard passed — confirmed target "${projectRef}".`);
+  console.log(
+    `• Destructive-run guard passed — confirmed target "${verdict.projectRef}"`
+    + (verdict.production ? ' (PRODUCTION, explicitly acknowledged).' : '.')
+  );
 }
 
 requireDestroyConfirmation(DB_URL, process.argv);
@@ -1104,6 +1046,25 @@ async function main() {
     const claimIds = [];
     const claimSubIds = [];
     const claimTypes = [];
+    // 0099 added `product` and made it NOT NULL behind
+    // claims_product_chk CHECK (product IN ('life','health','funeral')), while
+    // `type` stayed as the legacy incident vocabulary — the migration calls the
+    // two "both vocabularies by design". The seed only ever wrote `type`, so
+    // `npm run seed` has been ABORTING at the claims insert (23502) ever since:
+    //
+    //   null value in column "product" of relation "claims"
+    //
+    // Same shape as the 0149 break that 627aee3 fixed — a NOT NULL column added
+    // by a migration that the seed was never taught about. It fails loudly and
+    // rolls the whole transaction back, so no data was ever at risk; it just
+    // meant the seed could not run at all.
+    //
+    // 'health' for every row, matching what 0099's own backfill did
+    // (`UPDATE claims SET product = 'health' WHERE product IS NULL`) and what
+    // live actually holds — 1,907 rows, every one 'health', across four
+    // different `type` values. Hospital cash is the only product a LIVING
+    // member can claim; death benefits are nominee_claims, a separate table.
+    const claimProducts = [];
     const claimStatuses = [];
     const claimAmounts = [];
     const claimIncident = [];
@@ -1114,6 +1075,7 @@ async function main() {
         claimIds.push(c.id);
         claimSubIds.push(s.id);
         claimTypes.push(c.type);
+        claimProducts.push(c.product ?? 'health');
         claimStatuses.push(c.status);
         claimAmounts.push(c.amount);
         claimIncident.push(c.incidentDate ?? null);
@@ -1128,6 +1090,7 @@ async function main() {
         { name: 'id', type: 'text' },
         { name: 'subscriber_id', type: 'text' },
         { name: 'type', type: 'text' },
+        { name: 'product', type: 'text' },
         { name: 'status', type: 'text' },
         { name: 'amount', type: 'numeric' },
         { name: 'incident_date', type: 'date' },
@@ -1138,6 +1101,7 @@ async function main() {
         claimIds,
         claimSubIds,
         claimTypes,
+        claimProducts,
         claimStatuses,
         claimAmounts,
         claimIncident,
@@ -1300,17 +1264,28 @@ async function main() {
       // apply_settlement does (0032:174). Fail loudly rather than seed a
       // mis-stamped batch — a silently wrong branch is what caused the demo
       // persona to be shown a payout its own ledger denied.
+      // mockData's AGENTS builder stores the branch on `parentId`, NOT
+      // `branchId` — there is no `branchId` property on a mock agent at all
+      // (src/data/mockData.js: `parentId: branchId`). The agents INSERT above
+      // already reads it correctly (`agents.map((a) => a.parentId)` -> the
+      // branch_id column); this guard did not, so `seedAgent?.branchId` was
+      // undefined for every agent and the throw below fired unconditionally.
+      // A05-008 was a real fix — deriving the branch from the agent instead of
+      // hardcoding it — but it read the wrong field, so `npm run seed` has been
+      // aborting here ever since, and the abort message accused the data of
+      // being wrong rather than the lookup.
       const seedAgent = agents.find((a) => a.id === seed.agentId);
-      if (!seedAgent?.branchId) {
+      const seedAgentBranch = seedAgent?.parentId ?? seedAgent?.branchId;
+      if (!seedAgentBranch) {
         throw new Error(
-          `settlementSeeds: agent ${seed.agentId} not found or has no branchId; ` +
-          'cannot derive the settlement batch branch (A05-008).'
+          `settlementSeeds: agent ${seed.agentId} not found, or carries no branch ` +
+          '(expected `parentId`); cannot derive the settlement batch branch (A05-008).'
         );
       }
       seedBatches.push({
         id: seed.id,
         agentId: seed.agentId,
-        branchId: seedAgent.branchId,
+        branchId: seedAgentBranch,
         // pending_total == paid_amount: the batch settles exactly the lines it
         // flipped (no partial-pay / overpay in the seed).
         pendingTotal: paidAmount,
@@ -1907,6 +1882,31 @@ async function main() {
     }).filter(Boolean);
     const MEMBER_TX_ALL = [...MEMBER_TRANSACTIONS, ...memberOpenings];
     console.log('• member transactions…');
+
+    // 0143-0149, exactly as the subscriber transactions insert above — this is
+    // the SECOND transactions insert in this file and it was missed when the
+    // first one was fixed. Same trigger is off (replica mode), so the same two
+    // consequences apply and are just as fatal here: `dealing_date` is NOT NULL
+    // with no default, so this insert aborts outright; and `pricing_status`
+    // falls back to its column DEFAULT of 'pending', which would leave every
+    // seeded employer contribution looking like money still waiting for a
+    // price — ready for the engine to re-buy units against balances that are
+    // already correct the moment the switch is on.
+    //
+    // Dealing dates come from the DATABASE through the canonical
+    // dealing_date_for(), never reimplemented here, for the same reason as
+    // above: the cutoff, timezone and holiday calendar are live data.
+    const memberTxDates = MEMBER_TX_ALL.map((t) => toTimestamptz(t.date));
+    const { rows: _memberDealingRows } = await client.query(
+      `SELECT public.dealing_date_for(d) AS dd
+         FROM unnest($1::timestamptz[]) WITH ORDINALITY AS t(d, ord)
+        ORDER BY t.ord`,
+      [memberTxDates],
+    );
+    const memberDealingDates = _memberDealingRows.map((r) => r.dd);
+    const memberPricingStatuses = MEMBER_TX_ALL.map((t) =>
+      (MONEY_TYPES.has(t.type ?? 'contribution') ? 'priced' : 'not_applicable'));
+
     await bulkInsert(
       client,
       'transactions',
@@ -1922,6 +1922,9 @@ async function main() {
         { name: 'split_retirement', type: 'numeric' },
         { name: 'split_emergency', type: 'numeric' },
         { name: 'contribution_run_id', type: 'text' },
+        { name: 'received_at', type: 'timestamptz' },
+        { name: 'dealing_date', type: 'date' },
+        { name: 'pricing_status', type: 'text' },
       ],
       [
         MEMBER_TX_ALL.map((t) => t.id),
@@ -1929,12 +1932,17 @@ async function main() {
         MEMBER_TX_ALL.map((t) => t.type ?? 'contribution'),
         MEMBER_TX_ALL.map((t) => t.source ?? 'own'),
         MEMBER_TX_ALL.map((t) => t.amount ?? 0),
-        MEMBER_TX_ALL.map((t) => toTimestamptz(t.date)),
+        memberTxDates,
         MEMBER_TX_ALL.map(() => 'settled'),
         MEMBER_TX_ALL.map((t) => t.method ?? null),
         MEMBER_TX_ALL.map((t) => t.retirementAmount ?? null),
         MEMBER_TX_ALL.map((t) => t.emergencyAmount ?? null),
         MEMBER_TX_ALL.map((t) => t.contributionRunId ?? null),
+        // received_at = the authored date, not now(): otherwise a synthetic
+        // 2024/2025 history claims it arrived the afternoon the seed ran.
+        memberTxDates,
+        memberDealingDates,
+        memberPricingStatuses,
       ],
       'id'
     );
