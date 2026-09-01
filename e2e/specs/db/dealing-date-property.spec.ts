@@ -115,6 +115,41 @@ test.describe('dealing-date rule (generative, against the deployed function)', (
     expect(Number(r.max_roll_days)).toBeLessThanOrEqual(7);
   });
 
+  test('is_business_day itself is checked directly, not through the function that loops on it', async () => {
+    // ⚠️ THE GENERATIVE TEST ABOVE CANNOT SEE A BROKEN CALENDAR ORACLE.
+    //    It asserts `NOT is_business_day(dealing_date_for(ts))` is never true —
+    //    but dealing_date_for's own loop exits only when is_business_day is
+    //    true, so that count is structurally zero no matter what the predicate
+    //    believes. Reproduced: a variant that tests weekends only (ignoring the
+    //    holiday table) put 312 dealing dates on real observed holidays while
+    //    all three tests in this file stayed green.
+    //
+    //    So check the oracle WITHOUT routing through dealing_date_for. These two
+    //    queries are the only place anything asserts that is_business_day
+    //    actually consults business_holidays.
+    const { rows } = await client.query<{ holidays_open: string; weekend_open: string; observed: string }>(`
+      SELECT
+        (SELECT count(*) FROM public.business_holidays h
+          WHERE h.is_observed
+            AND h.holiday_date BETWEEN CURRENT_DATE - 365 AND CURRENT_DATE + 365
+            AND public.is_business_day(h.holiday_date))                       AS holidays_open,
+        (SELECT count(*) FROM generate_series(CURRENT_DATE, CURRENT_DATE + 364, interval '1 day') g(d)
+          WHERE EXTRACT(ISODOW FROM g.d) >= 6
+            AND public.is_business_day(g.d::date))                            AS weekend_open,
+        (SELECT count(*) FROM public.business_holidays WHERE is_observed)      AS observed;`);
+    const r = rows[0];
+    expect(Number(r.observed), 'the holiday calendar is empty — nothing is being tested').toBeGreaterThan(0);
+    expect(
+      Number(r.holidays_open),
+      'is_business_day() called an observed public holiday a business day — it has stopped ' +
+        'consulting business_holidays, and money will deal on days the market is shut.',
+    ).toBe(0);
+    expect(
+      Number(r.weekend_open),
+      'is_business_day() called a Saturday or Sunday a business day.',
+    ).toBe(0);
+  });
+
   test('the same instant expressed in Kampala and in UTC deals identically', async () => {
     // The F8 defect in one assertion: `NEW.date::date` casts in the session
     // timezone, so a 01:30 Kampala receipt (= 22:30Z the previous day) dated to

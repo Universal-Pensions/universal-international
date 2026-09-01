@@ -198,12 +198,20 @@ describe('NAV pricing contract across migrations', () => {
       // Inside `IF v_is_newest`, a BACK-DATED publish — the one event that makes
       // a stalled queue priceable — releases nothing: the price lands, the rows
       // stay pending, and that money never allocates.
-      const i = def.body.search(/IF\s+v_is_newest/i);
-      const j = def.body.search(/price_pending_transactions/);
+      const b = def.body;
+      const i = b.search(/IF\s+v_is_newest/i);
+      const j = b.search(/price_pending_transactions/);
       expect(i, 'no v_is_newest block found').toBeGreaterThan(-1);
       expect(j, 'the engine is never called').toBeGreaterThan(-1);
+      // Depth-aware — see the sibling predicate in
+      // e2e/specs/db/function-deployment-contract.spec.ts.
+      const seg = b.slice(i, j);
+      let depth = 0; // the slice starts at the opening IF, counted below
+      for (const t of (seg.match(/\bIF\b|\bEND\s+IF\b/gi) || [])) {
+        if (/^END\s+IF$/i.test(t)) depth -= 1; else depth += 1;
+      }
       expect(
-        /END\s+IF\s*;/i.test(def.body.slice(i, j)),
+        depth <= 0,
         `${def.file} calls the pricing engine inside the newest-day block, so a ` +
           'back-dated publish would release nothing.',
       ).toBe(true);

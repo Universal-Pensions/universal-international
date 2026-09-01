@@ -157,7 +157,20 @@ const ASSERTIONS: Assertion[] = [
       const i = b.search(/IF\s+v_is_newest/i);
       const j = b.search(/price_pending_transactions/);
       if (i === -1 || j === -1) return false;
-      return /END\s+IF\s*;/i.test(b.slice(i, j));
+      // Depth-aware, not "is there an END IF somewhere in between". The naive
+      // version is satisfied by any nested IF closing INSIDE the newest-day
+      // block, so a mutant with the engine genuinely inside still passed. Walk
+      // the tokens and require the block to be closed at the call site.
+      const seg = b.slice(i, j);
+      // 0 because the slice STARTS at the opening `IF v_is_newest`, so that
+      // token is counted by the walk itself.
+      let depth = 0;
+      const tok = seg.match(/\bIF\b|\bEND\s+IF\b|\bCASE\b|\bEND\s+CASE\b/gi) || [];
+      for (const t of tok) {
+        if (/^END\s+IF$/i.test(t)) depth -= 1;
+        else if (/^IF$/i.test(t)) depth += 1;
+      }
+      return depth <= 0;
     },
   },
 

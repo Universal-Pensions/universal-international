@@ -326,7 +326,7 @@ jobs:
               // executes price_pending_transactions. Every other guard on the
               // engine is a regex over text. If it silently skips, the money
               // path has no behavioural coverage at all and nothing says so.
-              "dealing-date-property.spec.ts": 3,
+              "dealing-date-property.spec.ts": 4,
               "unitization-surface.spec.ts": 6,
               "pricing-engine-lifecycle.spec.ts": 9,
             };
