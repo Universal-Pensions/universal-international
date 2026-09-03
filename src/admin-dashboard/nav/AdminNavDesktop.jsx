@@ -481,7 +481,6 @@ export default function AdminNavDesktop({ fullPage = false }) {
                 <th scope="col" className={ui.num}>Money in fund</th>
                 <th scope="col">Status</th>
                 <th scope="col">Set on</th>
-                <th scope="col">Source</th>
               </tr>
             </thead>
             <tbody>
@@ -500,12 +499,11 @@ export default function AdminNavDesktop({ fullPage = false }) {
                     </StatusBadge>
                   </td>
                   <td>{r.publishedAt ? longDate(String(r.publishedAt).slice(0, 10)) : '—'}</td>
-                  <td>{r.publishedBy || r.source || '—'}</td>
                 </tr>
               ))}
               {!history.isLoading && (history.data?.rows ?? []).length === 0 && (
                 <tr>
-                  <td colSpan={7} className={styles.empty}>
+                  <td colSpan={6} className={styles.empty}>
                     No prices yet. Set the first one above.
                   </td>
                 </tr>
