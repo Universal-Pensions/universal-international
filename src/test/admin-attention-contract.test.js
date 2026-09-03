@@ -98,10 +98,28 @@ describe('admin Needs-attention contract', () => {
     it('flags a never-run employer so the client need not infer it from nulls', () => {
       expect(/'neverRun'/.test(rows().body)).toBe(true);
     });
+
+    it('0164 keeps a restore point before it credits any units', () => {
+      // It is the one irreversible-looking step in this set: the money trigger
+      // credits units on insert and nothing recomputes balances on delete, so
+      // the down migration has to restore them wholesale. 0105's rule.
+      const files = readdirSync(MIGRATIONS_DIR);
+      const up = files.find((f) => f.startsWith('0164') && !f.endsWith('.down.sql'));
+      const down = files.find((f) => f.startsWith('0164') && f.endsWith('.down.sql'));
+      expect(up, 'no forward migration 0164').toBeDefined();
+      expect(down, 'no down migration 0164').toBeDefined();
+
+      const upBody = readFileSync(join(MIGRATIONS_DIR, up), 'utf8');
+      const downBody = readFileSync(join(MIGRATIONS_DIR, down), 'utf8');
+      expect(/subscriber_balances_pre_0164/.test(upBody)).toBe(true);
+      expect(/subscriber_balances_pre_0164/.test(downBody)).toBe(true);
+      // And the down must refuse rather than half-unwind if it is missing.
+      expect(/RAISE EXCEPTION/.test(downBody)).toBe(true);
+    });
   });
 
   describe('reversibility', () => {
-    for (const n of ['0162', '0163']) {
+    for (const n of ['0162', '0163', '0164']) {
       it(`${n} ships a paired .down.sql`, () => {
         const files = readdirSync(MIGRATIONS_DIR);
         const forward = forwardMigrations().find((f) => f.startsWith(n));
