@@ -14,9 +14,14 @@
 //              (migration 0095 closed the DB side and added the distributor
 //              column, which did not exist at all).
 //   sector   — employer only; `create_employer` stores it on the account.
-//   district — employer only; `approve_access_request` resolves the NAME to a
-//              `districts.id`, so a free-text value that isn't a real district
-//              provisions an employer with no geography.
+//   district — BOTH kinds since 0140. `approve_access_request` resolves the
+//              NAME to a `districts.id`, so a free-text value that isn't a real
+//              district provisions an account with no geography — and a
+//              distributor with no geography cannot be placed on the national
+//              map at all, which is what `distributors.district` now fixes.
+//   address  — distributor only. The office address behind the district. The
+//              employer journey has never asked for one; adding it there is a
+//              separate decision, so this is deliberately NOT symmetric yet.
 //
 // Kept as a plain module (no React) so both variants and the unit tests share
 // one definition — a field added to a form but not here would silently become
@@ -33,7 +38,7 @@ export const EMAIL_PATTERN = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
  */
 export const FIELD_ORDER = {
   employer: ['org', 'registrationNo', 'name', 'email', 'phone', 'sector', 'district'],
-  distributor: ['org', 'registrationNo', 'name', 'email', 'phone'],
+  distributor: ['org', 'registrationNo', 'name', 'email', 'phone', 'district', 'physicalAddress'],
 };
 
 /** Max lengths, matched to the `left(...)` truncation in approve_access_request. */
@@ -47,6 +52,9 @@ export const MAX_LEN = {
   phone: 32,
   sector: 80,
   district: 80,
+  // Matches the left(...,200) truncation in approve_access_request and the
+  // 200-char cap in create_distributor.
+  physicalAddress: 200,
 };
 
 const MSG = {
@@ -60,6 +68,7 @@ const MSG = {
   sector: 'Please tell us what your company does.',
   district: 'Please enter your district.',
   districtBad: 'Please pick a Uganda district from the list.',
+  physicalAddress: 'Please enter your office address.',
   tooLong: 'That is too long — please shorten it.',
 };
 
@@ -109,6 +118,11 @@ export function validateAccessRequest(form = {}, type = 'employer') {
     if (!district) errors.district = MSG.district;
     else if (!isKnownDistrict(district)) errors.district = MSG.districtBad;
   }
+  if (fields.includes('physicalAddress')) {
+    const address = v('physicalAddress');
+    if (!address) errors.physicalAddress = MSG.physicalAddress;
+    else if (address.length > MAX_LEN.physicalAddress) errors.physicalAddress = MSG.tooLong;
+  }
   return errors;
 }
 
@@ -121,6 +135,7 @@ const CODE_MESSAGES = {
   invalid_phone: MSG.phoneBad,
   invalid_sector: MSG.sector,
   invalid_district: MSG.districtBad,
+  invalid_physical_address: MSG.physicalAddress,
   invalid_type: 'That link looks wrong. Please go back and try again.',
   org_name_too_long: MSG.tooLong,
   registration_no_too_long: MSG.tooLong,
@@ -129,6 +144,7 @@ const CODE_MESSAGES = {
   contact_phone_too_long: MSG.tooLong,
   sector_too_long: MSG.tooLong,
   district_too_long: MSG.tooLong,
+  physical_address_too_long: MSG.tooLong,
 };
 
 export function messageForCode(code) {

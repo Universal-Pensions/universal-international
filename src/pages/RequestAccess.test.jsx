@@ -120,10 +120,21 @@ describe('<RequestAccess />', () => {
     expect(screen.getByRole('status').textContent).not.toMatch(/email/i);
   });
 
-  it('omits sector and district for a distributor, incl. a mixed-case type', () => {
+  it('omits sector for a distributor but still asks for geography, incl. a mixed-case type', () => {
     renderAt('?type=Distributor');
+    // Sector is the only employer-only field left. District moved out of that
+    // block in 0140 — a distributor with no district cannot be placed on the
+    // national map — and the office address behind it is distributor-only.
     expect(document.getElementById('ra-sector')).toBeNull();
-    expect(document.getElementById('ra-district')).toBeNull();
+    expect(document.getElementById('ra-district')).not.toBeNull();
+    expect(document.getElementById('ra-physicalAddress')).not.toBeNull();
     expect(document.getElementById('ra-phone')).not.toBeNull();
+  });
+
+  it('asks an employer for district but not an office address', () => {
+    renderAt('?type=employer');
+    expect(document.getElementById('ra-sector')).not.toBeNull();
+    expect(document.getElementById('ra-district')).not.toBeNull();
+    expect(document.getElementById('ra-physicalAddress')).toBeNull();
   });
 });

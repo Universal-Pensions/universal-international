@@ -51,7 +51,7 @@ const COPY = {
   },
 };
 
-const EMPTY = { org: '', registrationNo: '', name: '', email: '', phone: '', sector: '', district: '' };
+const EMPTY = { org: '', registrationNo: '', name: '', email: '', phone: '', sector: '', district: '', physicalAddress: '' };
 
 // Module scope, NOT redefined inside the component — a component identity that
 // changes every render remounts each input and steals focus on every keystroke.
@@ -120,6 +120,7 @@ export default function RequestAccess() {
         contactPhone: toCanonicalUGPhone(form.phone),
         sector: form.sector.trim(),
         district: form.district.trim(),
+        physicalAddress: form.physicalAddress.trim(),
       });
       setSubmitted(true);
       requestAnimationFrame(() => doneRef.current?.focus());
@@ -227,23 +228,38 @@ export default function RequestAccess() {
                 />
 
                 {type === 'employer' && (
-                  <>
-                    <Field
-                      id="ra-sector" label="What your company does"
-                      value={form.sector} onChange={update('sector')} error={errors.sector}
-                      autoComplete="off" placeholder="e.g. Manufacturing"
-                      maxLength={MAX_LEN.sector}
-                    />
-                    <Field
-                      id="ra-district" label="District"
-                      value={form.district} onChange={update('district')} error={errors.district}
-                      autoComplete="address-level2" placeholder="e.g. Kampala"
-                      list="ra-districts" maxLength={MAX_LEN.district}
-                    />
-                    <datalist id="ra-districts">
-                      {DISTRICT_NAMES.map((d) => <option key={d} value={d} />)}
-                    </datalist>
-                  </>
+                  <Field
+                    id="ra-sector" label="What your company does"
+                    value={form.sector} onChange={update('sector')} error={errors.sector}
+                    autoComplete="off" placeholder="e.g. Manufacturing"
+                    maxLength={MAX_LEN.sector}
+                  />
+                )}
+
+                {/* District is asked of BOTH kinds (0140). It used to be inside
+                    the employer-only block, which left every distributor — the
+                    accounts that own branches and agents across the country —
+                    with no geography at all, so the national map could not
+                    place them and the admin list could not group them. */}
+                <Field
+                  id="ra-district" label="District"
+                  value={form.district} onChange={update('district')} error={errors.district}
+                  autoComplete="address-level2" placeholder="e.g. Kampala"
+                  list="ra-districts" maxLength={MAX_LEN.district}
+                  hint={type === 'distributor' ? 'Where your head office is based.' : undefined}
+                />
+                <datalist id="ra-districts">
+                  {DISTRICT_NAMES.map((d) => <option key={d} value={d} />)}
+                </datalist>
+
+                {type === 'distributor' && (
+                  <Field
+                    id="ra-physicalAddress" label="Office address" wide
+                    value={form.physicalAddress} onChange={update('physicalAddress')}
+                    error={errors.physicalAddress}
+                    autoComplete="street-address" placeholder="e.g. Plot 14, Kampala Road"
+                    maxLength={MAX_LEN.physicalAddress}
+                  />
                 )}
               </div>
 

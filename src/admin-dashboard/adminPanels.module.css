@@ -166,6 +166,62 @@
 .statusActive { background: color-mix(in srgb, var(--color-green) 14%, transparent); color: var(--color-green-ink); }
 .statusInactive { background: color-mix(in srgb, var(--color-gray) 14%, transparent); color: var(--color-gray); }
 
+/* Kind pill — WHAT a row is (employer vs distributor), as opposed to the
+   `.statusPill` above which says HOW it is doing (active vs deactivated).
+   Deliberately a different palette from the status green/grey: on the access
+   requests panel both pills can appear on one screen, and reusing the status
+   colours for kind made a distributor read as "healthy". Indigo and teal carry
+   no status meaning anywhere in this dashboard. Sits ABOVE the row name, so it
+   is read before the org, not after the buttons. */
+.kindPill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-family: var(--font-display);
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 0.18rem 0.5rem 0.18rem 0.42rem;
+  border-radius: var(--radius-full);
+  white-space: nowrap;
+  margin-bottom: 0.3rem;
+}
+.kindDistributor {
+  background: color-mix(in srgb, var(--color-teal) 13%, transparent);
+  color: var(--color-teal-ink);
+}
+.kindEmployer {
+  background: color-mix(in srgb, var(--color-indigo) 12%, transparent);
+  color: var(--color-indigo-deep);
+}
+
+/* Kind filter (All / Employers / Distributors). Compacts the shared PillChip
+   the same way AdminCountryOverview's `.scopeFilter` does — targets the stable
+   `[role="radio"]` ARIA hook rather than PillChip's scoped class name. */
+.kindFilter {
+  flex-shrink: 0;
+  margin-bottom: var(--space-4);
+}
+.kindFilter [role='radio'] {
+  min-height: 32px;
+  padding: 0.375rem 0.6rem;
+  font-size: var(--text-xs, 0.75rem);
+}
+
+/* Inline text button — used in the "filtered to nothing" empty state to clear
+   the filter without introducing a second button weight to this panel. */
+.linkBtn {
+  background: none;
+  border: 0;
+  padding: 0;
+  font: inherit;
+  color: var(--color-indigo);
+  text-decoration: underline;
+  cursor: pointer;
+}
+.linkBtn:hover { color: var(--color-indigo-deep); }
+
 /* Metric chips inside a row */
 .rowMetrics {
   display: grid;

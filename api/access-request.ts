@@ -7,7 +7,8 @@
 // later triages the row (list/approve/deny) via the 0079 admin RPCs.
 //
 // Body: { type: 'employer' | 'distributor', orgName, registrationNo, contactName?,
-//         contactEmail?, contactPhone?, sector?, district?, message? }
+//         contactEmail?, contactPhone?, sector?, district?, physicalAddress?,
+//         message? }
 // Returns: { submitted: true, id }
 
 import type { VercelRequest, VercelResponse } from '@vercel/node';
@@ -35,6 +36,7 @@ type AccessRequestBody = {
   contactPhone?: string;
   sector?: string;
   district?: string;
+  physicalAddress?: string;
   message?: string;
 };
 
@@ -72,6 +74,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const contactPhone = str(body.contactPhone);
   const sector = str(body.sector);
   const district = str(body.district);
+  const physicalAddress = str(body.physicalAddress);
   const message = str(body.message);
 
   // EVERY field is required, and the server enforces it independently of the
@@ -93,9 +96,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (!canonicalPhone || !UG_MOBILE_RE.test(canonicalPhone)) {
     return res.status(400).json({ code: 'invalid_phone' });
   }
+  // District is required for BOTH kinds since 0140. A distributor owns
+  // branches and agents across the country, and without a district its row
+  // cannot be placed on the national map or grouped in the admin list — the
+  // same gap this route already refused to leave an employer in.
+  if (!district) return res.status(400).json({ code: 'invalid_district' });
   if (kind === 'employer') {
     if (!sector) return res.status(400).json({ code: 'invalid_sector' });
-    if (!district) return res.status(400).json({ code: 'invalid_district' });
+  } else if (!physicalAddress) {
+    return res.status(400).json({ code: 'invalid_physical_address' });
   }
 
   // Explicit per-field length caps before the RLS-bypassing insert — these fields
@@ -111,6 +120,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     checkLen(contactPhone, 32, 'contact_phone_too_long') ??
     checkLen(sector, 80, 'sector_too_long') ??
     checkLen(district, 120, 'district_too_long') ??
+    checkLen(physicalAddress, 200, 'physical_address_too_long') ??
     checkLen(message, 2000, 'message_too_long');
   if (tooLong) return res.status(400).json(tooLong);
 
@@ -138,7 +148,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     contact_email: contactEmail || null,
     contact_phone: canonicalPhone,   // the sign-in key, canonical +256XXXXXXXXX
     sector: kind === 'employer' ? (sector || null) : null,
-    district: kind === 'employer' ? (district || null) : null,
+    district: district || null,
+    physical_address: kind === 'distributor' ? (physicalAddress || null) : null,
     message: message || null,
   });
 

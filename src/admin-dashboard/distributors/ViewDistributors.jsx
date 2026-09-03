@@ -151,6 +151,11 @@ export default function ViewDistributors({ fullPage = false }) {
                         <div>
                           <div className={styles.rowName}>{d.name}</div>
                           <div className={styles.rowSub}>
+                            {/* District leads: it is the one field that says
+                                WHERE this distributor operates from, and it was
+                                unrecorded entirely before 0140. */}
+                            {d.district ? `${d.district} district` : 'No district set'}
+                            {' · '}
                             {d.managerName ? d.managerName : 'No manager set'}
                             {d.managerPhone ? ` · ${d.managerPhone}` : ''}
                           </div>

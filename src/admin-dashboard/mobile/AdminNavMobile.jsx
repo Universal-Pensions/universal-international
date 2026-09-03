@@ -240,7 +240,7 @@ export default function AdminNavMobile() {
           <div key={r.id} className={styles.lrow}>
             <div className={styles.lMid}>
               <b>{longDate(r.navDate)}</b>
-              <small>{r.status === 'published' ? (r.publishedBy || r.source || 'Priced') : 'Not priced yet'}</small>
+              <small>{r.status === 'published' ? 'Priced' : 'Not priced yet'}</small>
             </div>
             <div className={styles.lAmt}>
               <b>{r.status === 'pending' ? '—' : price(r.unitPrice)}</b>

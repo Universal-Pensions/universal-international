@@ -65,18 +65,39 @@ export default function AdminAccessRequestsMobile() {
         ) : (
           requests.map((r) => (
             <div key={r.id} style={{ padding: '12px 0', borderBottom: '1px solid var(--color-lavender)' }}>
-              <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 8 }}>
+              {/* Kind BEFORE the org name, in its own palette. `stBadge`
+                  data-status="active"/"inactive" is the green/grey status
+                  vocabulary used elsewhere on this screen — borrowing it for
+                  kind made a distributor read as "healthy" rather than as a
+                  different kind of account. */}
+              <span style={{
+                display: 'inline-flex', alignItems: 'center', gap: 4,
+                fontFamily: 'var(--font-display)', fontSize: 10.5, fontWeight: 700,
+                textTransform: 'uppercase', letterSpacing: '0.05em',
+                padding: '2px 8px', borderRadius: 999, marginBottom: 4,
+                background: r.kind === 'distributor'
+                  ? 'color-mix(in srgb, var(--color-teal) 13%, transparent)'
+                  : 'color-mix(in srgb, var(--color-indigo) 12%, transparent)',
+                color: r.kind === 'distributor' ? 'var(--color-teal-ink)' : 'var(--color-indigo-deep)',
+              }}
+              >
+                {r.kind === 'distributor' ? 'Distributor' : 'Employer'}
+              </span>
+              <div>
                 <b style={{ fontFamily: 'var(--font-display)', fontSize: 15 }}>{r.orgName}</b>
-                <span className={styles.stBadge} data-status={r.kind === 'distributor' ? 'active' : 'inactive'}>
-                  {r.kind === 'distributor' ? 'Distributor' : 'Employer'}
-                </span>
               </div>
               <div style={{ color: 'var(--color-gray)', fontSize: 12.5, marginTop: 2 }}>
                 {[r.contactName, r.contactEmail, r.contactPhone].filter(Boolean).join(' · ') || 'No contact details'}
               </div>
-              {r.kind === 'employer' && (r.sector || r.district) && (
+              {/* District rides on BOTH kinds since 0140; sector stays
+                  employer-only and the office address distributor-only. */}
+              {[r.sector, r.district, r.physicalAddress].some(Boolean) && (
                 <div style={{ color: 'var(--color-gray)', fontSize: 12.5, marginTop: 2 }}>
-                  {[r.sector, r.district].filter(Boolean).join(' · ')}
+                  {[
+                    r.kind === 'employer' ? r.sector : null,
+                    r.district,
+                    r.kind === 'distributor' ? r.physicalAddress : null,
+                  ].filter(Boolean).join(' · ')}
                 </div>
               )}
               {/* Captured for both kinds since 0095 and carried into the
