@@ -14,6 +14,7 @@ import { MemoryRouter } from 'react-router-dom';
 const setAttentionType = vi.fn();
 const addToast = vi.fn();
 const mutate = vi.fn();
+const resolveMutate = vi.fn();
 
 let attentionType = 'delayedWithdrawals';
 let rowsResult = { data: [], isLoading: false, isError: false, refetch: vi.fn() };
@@ -24,6 +25,7 @@ vi.mock('../../../contexts/AdminPanelContext', () => ({
 vi.mock('../../../contexts/ToastContext', () => ({ useToast: () => ({ addToast }) }));
 vi.mock('../../../hooks/useAdminAttention', () => ({
   useAdminAttentionRows: () => rowsResult,
+  useResolveAttentionRow: () => ({ mutate: resolveMutate, isPending: false }),
 }));
 vi.mock('../../../hooks/useNotifications', () => ({
   useSendAdminNotification: () => ({ mutate, isPending: false }),
@@ -162,5 +164,167 @@ describe('<AdminAttentionDesktop />', () => {
     // would be a lie.
     expect(screen.getAllByText('—').length).toBeGreaterThan(0);
     expect(screen.queryByText('0')).not.toBeInTheDocument();
+  });
+
+  // ── Never-run employers (0163) ────────────────────────────────────────────
+  describe('an employer that has never posted a run', () => {
+    const neverRunRow = {
+      id: 'emp-004',
+      primary: 'Jinja Steel Mills',
+      secondary: 'Monthly payroll · never run',
+      amount: null,
+      // No raised date — 0163 leaves it NULL rather than inventing one …
+      date: null,
+      neverRun: true,
+      // … but due-by and days-late ARE known, anchored on first member enrolment.
+      dueBy: '2023-12-19',
+      daysLate: 989,
+      status: 'active',
+      recipientRole: 'employer',
+      recipientId: 'emp-004',
+      recipientName: 'Jinja Steel Mills',
+      href: null,
+    };
+
+    beforeEach(() => {
+      attentionType = 'delayedEmployerTransfers';
+      rowsResult = { data: [neverRunRow], isLoading: false, isError: false, refetch: vi.fn() };
+    });
+
+    it('says "No run" instead of an em dash it cannot explain', () => {
+      renderPage();
+      expect(screen.getByText('No run')).toBeInTheDocument();
+    });
+
+    it('still shows a real due date and days late', () => {
+      // The whole defect was three empty columns on the most overdue rows.
+      renderPage();
+      expect(screen.getByText('19 Dec 2023')).toBeInTheDocument();
+      expect(screen.getByText('989')).toBeInTheDocument();
+    });
+
+    it('drafts an escalation with the real lateness, not "now due"', async () => {
+      // daysLate was null before 0163, so attentionMeta's days() fell through to
+      // "now due" — the softest possible wording for the worst case.
+      renderPage();
+      await userEvent.click(screen.getByRole('button', { name: /Notify Jinja Steel Mills/i }));
+      const textarea = await screen.findByLabelText('Message');
+      expect(textarea.value).toContain('989 days past due');
+      expect(textarea.value).not.toContain('now due');
+    });
+  });
+
+  // ── Resolve (0162) ────────────────────────────────────────────────────────
+  describe('resolving a missed NAV day', () => {
+    const navRow = (over = {}) => ({
+      id: 'nav-unpriced-20260902',
+      primary: '02 Sep 2026',
+      secondary: 'UPU-BAL · no price received',
+      amount: null,
+      date: '2026-09-02',
+      dueBy: '2026-09-02',
+      daysLate: 1,
+      status: 'unpriced',
+      resolved: false,
+      resolvedAt: null,
+      resolvedBy: null,
+      resolutionNote: null,
+      recipientRole: 'admin',
+      recipientId: 'ops-fund-admin',
+      recipientName: 'Fund Administration',
+      href: null,
+      ...over,
+    });
+
+    const showNav = (rows) => {
+      attentionType = 'delayedNav';
+      rowsResult = { data: rows, isLoading: false, isError: false, refetch: vi.fn() };
+    };
+
+    it('offers Resolve beside Escalate on an unresolved day', () => {
+      showNav([navRow()]);
+      renderPage();
+      expect(screen.getByRole('button', { name: /Escalate Fund Administration/i })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /Resolve 02 Sep 2026/i })).toBeInTheDocument();
+    });
+
+    it('never offers Resolve on a signal that has not opted in', () => {
+      // Resolving is opt-in per signal (meta.resolvable). Every other signal
+      // clears only by doing the real work, and must stay that way.
+      renderPage(); // default fixture is delayedWithdrawals
+      expect(screen.getByRole('button', { name: /Escalate Treasury Operations/i })).toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: /^Resolve/i })).not.toBeInTheDocument();
+    });
+
+    it('resolves the row with the ISO date, not the display string', async () => {
+      showNav([navRow()]);
+      renderPage();
+      await userEvent.click(screen.getByRole('button', { name: /Resolve 02 Sep 2026/i }));
+
+      const note = await screen.findByLabelText(/Why is this resolved/i);
+      await userEvent.type(note, 'Fund admin confirmed no dealing.');
+      await userEvent.click(screen.getByRole('button', { name: 'Resolve' }));
+
+      await waitFor(() => expect(resolveMutate).toHaveBeenCalledTimes(1));
+      const [payload] = resolveMutate.mock.calls[0];
+      expect(payload.note).toBe('Fund admin confirmed no dealing.');
+      // The hook maps row.date (ISO) to the RPC; row.primary is display copy.
+      expect(payload.row.date).toBe('2026-09-02');
+    });
+
+    it('resolves with no note, because the reason is optional', async () => {
+      showNav([navRow()]);
+      renderPage();
+      await userEvent.click(screen.getByRole('button', { name: /Resolve 02 Sep 2026/i }));
+      await screen.findByLabelText(/Why is this resolved/i);
+
+      const submit = screen.getByRole('button', { name: 'Resolve' });
+      expect(submit).toBeEnabled();
+      await userEvent.click(submit);
+
+      await waitFor(() => expect(resolveMutate).toHaveBeenCalledTimes(1));
+      expect(resolveMutate.mock.calls[0][0].note).toBeNull();
+    });
+
+    it('warns that resolving does not set a price', async () => {
+      showNav([navRow()]);
+      renderPage();
+      await userEvent.click(screen.getByRole('button', { name: /Resolve 02 Sep 2026/i }));
+      // The one sentence stopping an admin reading Resolve as a fix.
+      expect(await screen.findByText(/does not set a price/i)).toBeInTheDocument();
+      expect(screen.getByText(/cannot be undone/i)).toBeInTheDocument();
+    });
+
+    it('keeps a resolved day on the page as a record, with no actions left', () => {
+      showNav([navRow({
+        resolved: true, resolvedBy: 'admin', resolvedAt: '2026-09-03T09:00:00+00:00',
+      })]);
+      renderPage();
+      // The record of WHICH day was missed is the point of the feature.
+      expect(screen.getByText('02 Sep 2026')).toBeInTheDocument();
+      expect(screen.getByText('Resolved')).toBeInTheDocument();
+      expect(screen.getByText(/Resolved by admin/i)).toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: /^Resolve/i })).not.toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: /^Escalate/i })).not.toBeInTheDocument();
+    });
+
+    it('does not count a resolved day in the tiles', () => {
+      // The badge on the admin home already skips resolved days server-side, so
+      // counting them here would put a different number on the tile than on the
+      // card that opened it — the badge-vs-list drift A04-007 raised.
+      showNav([
+        navRow(),
+        navRow({
+          id: 'nav-unpriced-20260828', primary: '28 Aug 2026', date: '2026-08-28',
+          resolved: true, resolvedBy: 'admin', resolvedAt: '2026-09-03T09:00:00+00:00',
+        }),
+      ]);
+      renderPage();
+      // Two rows listed, but only one is outstanding.
+      expect(screen.getByText('02 Sep 2026')).toBeInTheDocument();
+      expect(screen.getByText('28 Aug 2026')).toBeInTheDocument();
+      expect(screen.queryByText('2')).not.toBeInTheDocument();
+      expect(screen.getAllByText('1').length).toBeGreaterThan(0);
+    });
   });
 });

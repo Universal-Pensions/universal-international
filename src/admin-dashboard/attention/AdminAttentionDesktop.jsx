@@ -8,6 +8,7 @@ import ui from '../../employer-dashboard/desktop/ui.module.css';
 import { COLUMN } from './attentionMeta';
 import { useAttentionDrill } from './useAttentionDrill';
 import NotifyComposer from './NotifyComposer';
+import ResolveComposer from './ResolveComposer';
 import styles from './AdminAttentionDesktop.module.css';
 
 const alertIcon = (
@@ -48,6 +49,11 @@ function cellFor(column, row) {
     case COLUMN.AMOUNT:
       return row.amount == null ? '—' : formatUGX(row.amount);
     case COLUMN.DATE:
+      // An employer that has never posted a run has no raised date, and 0163
+      // deliberately leaves it NULL rather than inventing one. A bare em dash
+      // there reads as missing data; "No run" is the fact. Its Due by and Days
+      // late ARE populated, anchored on when the employer first had staff.
+      if (row.neverRun) return 'No run';
       return formatDate(row.date);
     case COLUMN.DUE_BY:
       return formatDate(row.dueBy);
@@ -64,6 +70,12 @@ function cellFor(column, row) {
     case COLUMN.COUNT:
       return formatNumber(row.count ?? 0);
     case COLUMN.STATUS:
+      // A resolved row keeps its pricing status in `row.status` — the server
+      // does not overload that field — but what the admin needs to see at a
+      // glance is that it has been closed out, so resolution wins the cell.
+      if (row.resolved) {
+        return <StatusBadge tone="done">Resolved</StatusBadge>;
+      }
       return (
         <StatusBadge tone={row.status === 'active' || row.status === 'transferred' ? 'active' : 'inactive'}>
           {String(row.status || '—').replace(/_/g, ' ')}
@@ -89,6 +101,7 @@ export default function AdminAttentionDesktop() {
   const {
     meta, rows, total, isLoading, isError, refetch,
     target, openNotify, closeNotify, send, sending,
+    resolvable, resolveTarget, openResolve, closeResolve, confirmResolve, resolving,
   } = useAttentionDrill(attentionType);
 
   if (!meta) {
@@ -112,6 +125,12 @@ export default function AdminAttentionDesktop() {
   }
 
   const notifiable = rows.some((r) => r.recipientRole);
+  // The actions column has to survive every row being resolved — otherwise the
+  // column disappears and the resolved history loses its "Resolved by" caption.
+  const hasActions = notifiable || resolvable;
+  // Resolved rows are on the page as a record, not as work. They must not be
+  // counted as outstanding here any more than they are in the badge.
+  const openCount = rows.filter((r) => !r.resolved).length;
 
   return (
     <div className={ui.stack}>
@@ -121,8 +140,8 @@ export default function AdminAttentionDesktop() {
         <Tile accent="amber" icon={alertIcon} label={meta.tileLabel}
           value={formatNumber(total)} sub={meta.tileSub} />
         <Tile accent="indigo" icon={peopleIcon} label="Records to action"
-          value={formatNumber(rows.length)}
-          sub={rows.length ? 'Ranked most overdue first' : 'Nothing outstanding'} />
+          value={formatNumber(openCount)}
+          sub={openCount ? 'Ranked most overdue first' : 'Nothing outstanding'} />
       </MetricRow>
 
       <Card>
@@ -140,7 +159,7 @@ export default function AdminAttentionDesktop() {
                   {meta.columns.map((c) => (
                     <th key={c} className={NUMERIC.has(c) ? ui.num : undefined}>{HEADINGS[c]}</th>
                   ))}
-                  {notifiable && <th aria-label="Actions" />}
+                  {hasActions && <th aria-label="Actions" />}
                 </tr>
               </thead>
               <tbody>
@@ -168,13 +187,28 @@ export default function AdminAttentionDesktop() {
                     {meta.columns.map((c) => (
                       <td key={c} className={NUMERIC.has(c) ? ui.num : undefined}>{cellFor(c, row)}</td>
                     ))}
-                    {notifiable && (
+                    {hasActions && (
                       <td className={styles.actionCell}>
-                        {row.recipientRole && (
-                          <Btn variant="secondary" size="sm" onClick={() => openNotify(row)}
-                            aria-label={`${meta.notifyVerb} ${row.recipientName || row.primary}`}>
-                            {meta.notifyVerb}
-                          </Btn>
+                        {row.resolved ? (
+                          <span className={styles.resolvedBy}>
+                            {row.resolvedBy ? `Resolved by ${row.resolvedBy}` : 'Resolved'}
+                            {row.resolvedAt ? ` · ${formatDate(row.resolvedAt)}` : ''}
+                          </span>
+                        ) : (
+                          <>
+                            {row.recipientRole && (
+                              <Btn variant="secondary" size="sm" onClick={() => openNotify(row)}
+                                aria-label={`${meta.notifyVerb} ${row.recipientName || row.primary}`}>
+                                {meta.notifyVerb}
+                              </Btn>
+                            )}
+                            {resolvable && (
+                              <Btn variant="secondary" size="sm" onClick={() => openResolve(row)}
+                                aria-label={`${meta.resolveVerb} ${row.primary}`}>
+                                {meta.resolveVerb}
+                              </Btn>
+                            )}
+                          </>
                         )}
                       </td>
                     )}
@@ -193,6 +227,22 @@ export default function AdminAttentionDesktop() {
         size="sm"
       >
         <NotifyComposer key={target?.id} row={target} meta={meta} sending={sending} onSend={send} onCancel={closeNotify} />
+      </Modal>
+
+      <Modal
+        open={!!resolveTarget}
+        onClose={closeResolve}
+        title={resolveTarget && meta.resolveTitle ? meta.resolveTitle(resolveTarget) : (meta.resolveVerb || 'Resolve')}
+        size="sm"
+      >
+        <ResolveComposer
+          key={resolveTarget?.id}
+          row={resolveTarget}
+          meta={meta}
+          sending={resolving}
+          onResolve={confirmResolve}
+          onCancel={closeResolve}
+        />
       </Modal>
     </div>
   );

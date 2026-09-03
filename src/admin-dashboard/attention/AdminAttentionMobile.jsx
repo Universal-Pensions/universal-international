@@ -4,6 +4,7 @@ import ErrorCard from '../../components/feedback/ErrorCard';
 import BottomSheet from '../../branch-dashboard/shell/BottomSheet';
 import { useAttentionDrill } from './useAttentionDrill';
 import NotifyComposer from './NotifyComposer';
+import ResolveComposer from './ResolveComposer';
 import styles from '../../dashboard/mobile/distributorMobile.module.css';
 import own from './AdminAttentionMobile.module.css';
 
@@ -52,6 +53,7 @@ export default function AdminAttentionMobile() {
   const {
     meta, rows, total, isLoading, isError, refetch,
     target, openNotify, closeNotify, send, sending,
+    resolvable, resolveTarget, openResolve, closeResolve, confirmResolve, resolving,
   } = useAttentionDrill(type);
 
   // An unknown :type is a bad URL, not an error state — send them home, exactly
@@ -80,7 +82,9 @@ export default function AdminAttentionMobile() {
           <span className={own.tileLbl}>{meta.tileLabel}</span>
         </div>
         <div className={own.tile}>
-          <span className={own.tileVal}>{formatNumber(rows.length)}</span>
+          {/* Resolved rows stay in the list as a record, but they are not work
+              — counting them here would overstate what is outstanding. */}
+          <span className={own.tileVal}>{formatNumber(rows.filter((r) => !r.resolved).length)}</span>
           <span className={own.tileLbl}>Records to action</span>
         </div>
       </section>
@@ -113,15 +117,34 @@ export default function AdminAttentionMobile() {
                   </span>
                 </div>
               )}
-              {row.recipientRole && (
-                <button
-                  type="button"
-                  className={own.notify}
-                  onClick={() => openNotify(row)}
-                  aria-label={`${meta.notifyVerb} ${row.recipientName || row.primary}`}
-                >
-                  {meta.notifyVerb}
-                </button>
+              {row.resolved ? (
+                <span className={own.resolvedBy}>
+                  {row.resolvedBy ? `Resolved by ${row.resolvedBy}` : 'Resolved'}
+                  {row.resolvedAt ? ` · ${formatDate(row.resolvedAt)}` : ''}
+                </span>
+              ) : (
+                <>
+                  {row.recipientRole && (
+                    <button
+                      type="button"
+                      className={own.notify}
+                      onClick={() => openNotify(row)}
+                      aria-label={`${meta.notifyVerb} ${row.recipientName || row.primary}`}
+                    >
+                      {meta.notifyVerb}
+                    </button>
+                  )}
+                  {resolvable && (
+                    <button
+                      type="button"
+                      className={own.notify}
+                      onClick={() => openResolve(row)}
+                      aria-label={`${meta.resolveVerb} ${row.primary}`}
+                    >
+                      {meta.resolveVerb}
+                    </button>
+                  )}
+                </>
               )}
             </div>
           ))
@@ -139,6 +162,22 @@ export default function AdminAttentionMobile() {
         height="72%"
       >
         <NotifyComposer key={target?.id} row={target} meta={meta} sending={sending} onSend={send} onCancel={closeNotify} />
+      </BottomSheet>
+
+      <BottomSheet
+        open={!!resolveTarget}
+        onClose={closeResolve}
+        title={resolveTarget && meta.resolveTitle ? meta.resolveTitle(resolveTarget) : (meta.resolveVerb || 'Resolve')}
+        height="72%"
+      >
+        <ResolveComposer
+          key={resolveTarget?.id}
+          row={resolveTarget}
+          meta={meta}
+          sending={resolving}
+          onResolve={confirmResolve}
+          onCancel={closeResolve}
+        />
       </BottomSheet>
     </>
   );

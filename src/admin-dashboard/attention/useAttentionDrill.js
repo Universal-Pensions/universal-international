@@ -1,5 +1,5 @@
 import { useCallback, useMemo, useState } from 'react';
-import { useAdminAttentionRows } from '../../hooks/useAdminAttention';
+import { useAdminAttentionRows, useResolveAttentionRow } from '../../hooks/useAdminAttention';
 import { useSendAdminNotification } from '../../hooks/useNotifications';
 import { useToast } from '../../contexts/ToastContext';
 import { metaFor } from './attentionMeta';
@@ -18,6 +18,9 @@ import { metaFor } from './attentionMeta';
  *   isLoading: boolean, isError: boolean, refetch: Function,
  *   target: Object|null, openNotify: (row: Object) => void, closeNotify: () => void,
  *   send: (body: string) => void, sending: boolean,
+ *   resolvable: boolean, resolveTarget: Object|null,
+ *   openResolve: (row: Object) => void, closeResolve: () => void,
+ *   confirmResolve: (note: string) => void, resolving: boolean,
  * }}
  */
 export function useAttentionDrill(type) {
@@ -58,12 +61,44 @@ export function useAttentionDrill(type) {
     );
   }, [target, meta, type, notify, addToast]);
 
+  // Resolve — close a row out without fixing the underlying data (0162).
+  // Only signals whose meta sets `resolvable` offer this; see the RESOLVERS
+  // registry in hooks/useAdminAttention.js.
+  const [resolveTarget, setResolveTarget] = useState(null);
+  const resolveRow = useResolveAttentionRow(type);
+
+  const openResolve = useCallback((row) => setResolveTarget(row), []);
+  const closeResolve = useCallback(() => setResolveTarget(null), []);
+
+  const confirmResolve = useCallback((note) => {
+    if (!resolveTarget) return;
+    resolveRow.mutate(
+      { row: resolveTarget, note: note?.trim() ? note.trim() : null },
+      {
+        onSuccess: () => {
+          addToast('success', `${resolveTarget.primary} marked as resolved`);
+          setResolveTarget(null);
+        },
+        // Keep the dialog open on failure — the RPC refuses a day that already
+        // has a price waiting for sign-off, and that message is the whole point.
+        onError: (err) => addToast('error', err?.message || 'Could not resolve this day'),
+      },
+    );
+  }, [resolveTarget, resolveRow, addToast]);
+
   // `count` is only populated for the agent-grouped dormancy list; every other
   // signal is one row per problem.
+  //
+  // Resolved rows stay in `rows` on purpose (0162) — the record of which day was
+  // missed is the point — but they must NOT reach this tile. get_admin_attention
+  // already skips them in the badge, so counting them here would put a different
+  // number on the tile than on the card that opened it: exactly the badge-vs-list
+  // drift finding A04-007 raised and 0116 was written to end. A no-op for every
+  // signal that cannot be resolved, where `resolved` is always undefined.
   const total = useMemo(
     () => (rows.some((r) => r?.count != null)
       ? rows.reduce((sum, r) => sum + (Number(r.count) || 0), 0)
-      : rows.length),
+      : rows.filter((r) => !r?.resolved).length),
     [rows],
   );
 
@@ -79,5 +114,11 @@ export function useAttentionDrill(type) {
     closeNotify,
     send,
     sending: notify.isPending,
+    resolvable: Boolean(meta?.resolvable),
+    resolveTarget,
+    openResolve,
+    closeResolve,
+    confirmResolve,
+    resolving: resolveRow.isPending,
   };
 }

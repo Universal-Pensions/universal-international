@@ -7,6 +7,7 @@
 //   get_admin_attention()                     → every count in one round-trip
 //   get_admin_attention_rows(type, limit)     → the drill-down list for one signal
 //   admin_notify(...)                         → see services/notifications.js
+//   resolve_nav_missed_day(date, note, fund)  → close out one missing NAV day (0162)
 //
 // WHY ONE AGGREGATE CALL: the card renders on every admin home load on BOTH
 // surfaces. Nine per-signal queries × two surfaces is 18 round-trips for numbers
@@ -107,4 +108,43 @@ export async function getAdminAttentionRows(type, limit = 50) {
   });
   if (error) throw _rpcError(error, 'get_admin_attention_rows');
   return Array.isArray(data) ? data : [];
+}
+
+/**
+ * @endpoint RPC resolve_nav_missed_day(p_nav_date, p_note, p_fund_code) — 0162.
+ * @description Closes out ONE valuation day that has no published price, so it
+ *   stops counting toward the Needs-attention badge. It does NOT publish a
+ *   price: the day stays unpriced in the register, still shows on the Unit-price
+ *   page's "Days with no published price" list, and is still a forward-dealing
+ *   blocker. The date, who resolved it and when are kept, and the day remains
+ *   visible in the drill-down flagged as resolved.
+ *
+ *   The RPC refuses a date the signal is not currently flagging, refuses a
+ *   second resolution of the same day, and — importantly — refuses a day whose
+ *   status is 'pending', because a pending day already has a price awaiting
+ *   sign-off and publishing it is the real fix.
+ *
+ *   There is no reopen: resolving is final by product decision.
+ * @param {{navDate: string, note?: string|null, fundCode?: string}} params
+ * @returns {Promise<{fundCode:string, navDate:string, note:?string,
+ *   resolvedBy:string, resolvedAt:string}>}
+ * @scope Admin only — the RPC RAISEs for any other app_role.
+ */
+export async function resolveNavMissedDay({ navDate, note = null, fundCode = 'UPU-BAL' } = {}) {
+  if (!IS_SUPABASE_ENABLED) {
+    // Rollback path: getAdminAttentionRows returns [] here, so there is nothing
+    // to resolve. Echo a plausible success rather than throwing, so a caller
+    // exercising this directly does not hit a dead end.
+    return {
+      fundCode, navDate, note: note || null,
+      resolvedBy: 'admin', resolvedAt: new Date().toISOString(),
+    };
+  }
+  const { data, error } = await supabase.rpc('resolve_nav_missed_day', {
+    p_nav_date: navDate,
+    p_note: note ?? null,
+    p_fund_code: fundCode,
+  });
+  if (error) throw _rpcError(error, 'resolve_nav_missed_day');
+  return data;
 }

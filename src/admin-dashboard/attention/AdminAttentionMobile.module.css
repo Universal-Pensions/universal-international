@@ -134,6 +134,17 @@
   outline-offset: 2px;
 }
 
+/* Two actions can sit side by side (Escalate + Resolve) on a narrow row. */
+.notify + .notify { margin-left: var(--space-2); }
+
+/* Replaces both once the day is closed out: the record of who did it. */
+.resolvedBy {
+  flex: 0 0 auto;
+  font-size: var(--text-xs);
+  color: var(--color-gray);
+  text-align: right;
+}
+
 .msg {
   margin: 0;
   padding: var(--space-6) var(--space-4, 1rem);

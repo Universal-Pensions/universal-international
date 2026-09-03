@@ -35,6 +35,14 @@ export const COLUMN = Object.freeze({
  *                               for an internal queue.
  * @property {(row: Object) => string} draft  Prefilled notification body.
  * @property {(row: Object) => string} subject Notification title.
+ * @property {boolean} [resolvable] Opt in to the Resolve action. Absent on every
+ *   signal that can only be cleared by doing the real work — which is all of
+ *   them but NAV. A signal opting in must also join the RESOLVERS registry in
+ *   hooks/useAdminAttention.js; without both it cannot be resolved.
+ * @property {string} [resolveVerb] Button label for the resolve action.
+ * @property {(row: Object) => string} [resolveTitle] Confirm-dialog heading.
+ * @property {(row: Object) => string} [resolveBody]  Confirm-dialog explanation.
+ *   Must say plainly what resolving does NOT do, so nobody reads it as a fix.
  */
 
 const days = (row) => {
@@ -85,6 +93,10 @@ export const ATTENTION_META = Object.freeze({
     columns: [COLUMN.AMOUNT, COLUMN.DAYS_LATE, COLUMN.STATUS],
     empty: 'All clear — every valuation day is signed off.',
     notifyVerb: 'Escalate',
+    resolvable: true,
+    resolveVerb: 'Resolve',
+    resolveTitle: (row) => `Mark ${row.primary} as resolved?`,
+    resolveBody: (row) => `This stops ${row.primary} showing under Needs attention. It does not set a price — the day stays unpriced on the Unit price page. The date and who resolved it are kept, and this cannot be undone.`,
     subject: () => 'NAV not published',
     draft: (row) => `The unit price for ${row.primary} has not been published — ${days(row)}. Please confirm the fund administrator feed and sign off the valuation.`,
   },
