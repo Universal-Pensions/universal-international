@@ -65,11 +65,34 @@ describe('validateAccessRequest', () => {
     });
   });
 
-  it('does not require sector or district for a distributor', () => {
-    const rest = { ...VALID_EMPLOYER, sector: '', district: '' };
-    expect(validateAccessRequest(rest, 'distributor')).toEqual({});
+  it('does not require sector for a distributor', () => {
+    const valid = { ...VALID_EMPLOYER, sector: '', physicalAddress: 'Plot 14, Kampala Road' };
+    expect(validateAccessRequest(valid, 'distributor')).toEqual({});
     expect(FIELD_ORDER.distributor).not.toContain('sector');
-    expect(FIELD_ORDER.distributor).not.toContain('district');
+  });
+
+  // 0140. A distributor owns branches and agents across the country; without a
+  // district its row cannot be placed on the national map. This was the last
+  // field where the two journeys still diverged.
+  it('requires a real district AND an office address for a distributor', () => {
+    const missing = { ...VALID_EMPLOYER, sector: '', district: '', physicalAddress: '' };
+    expect(validateAccessRequest(missing, 'distributor')).toEqual({
+      district: 'Please enter your district.',
+      physicalAddress: 'Please enter your office address.',
+    });
+
+    const bogus = { ...VALID_EMPLOYER, sector: '', district: 'Atlantis', physicalAddress: 'Plot 14' };
+    expect(validateAccessRequest(bogus, 'distributor').district)
+      .toBe('Please pick a Uganda district from the list.');
+
+    expect(FIELD_ORDER.distributor).toContain('district');
+    expect(FIELD_ORDER.distributor).toContain('physicalAddress');
+  });
+
+  it('caps the distributor office address at the length create_distributor accepts', () => {
+    const long = { ...VALID_EMPLOYER, sector: '', physicalAddress: 'x'.repeat(201) };
+    expect(validateAccessRequest(long, 'distributor').physicalAddress)
+      .toBe('That is too long — please shorten it.');
   });
 
   // The phone is the sign-in key — the whole reason it became mandatory.

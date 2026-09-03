@@ -79,6 +79,8 @@ describe('<CreateDistributor />', () => {
 
     await user.type(screen.getByLabelText(/distributor name/i), '  Western Region Distributor  ');
     await user.type(screen.getByLabelText(/registration no/i), '  80020002345678  ');
+    await user.type(screen.getByLabelText(/^district/i), '  Mbarara  ');
+    await user.type(screen.getByLabelText(/office address/i), '  Plot 14, High Street  ');
     await user.type(screen.getByLabelText(/manager name/i), '  Jane Mgr  ');
     await user.click(screen.getByRole('button', { name: /create distributor/i }));
 
@@ -87,10 +89,47 @@ describe('<CreateDistributor />', () => {
       name: 'Western Region Distributor',
       // 0095 — parity with the public request-access form, which requires it.
       registrationNo: '80020002345678',
+      // 0140 — same parity argument, for geography.
+      district: 'Mbarara',
+      physicalAddress: 'Plot 14, High Street',
       managerName: 'Jane Mgr',
       // Empty optional fields collapse to the documented null defaults.
       managerPhone: null,
       managerEmail: null,
     });
+  });
+
+  // The drift guard for 0140: the admin door must not be able to create a
+  // distributor the public request-access form could not, and vice versa.
+  it('refuses to submit without a district, and without a real one', async () => {
+    const user = userEvent.setup();
+    renderPanel();
+    await screen.findByRole('heading', { name: /new distributor/i });
+
+    await user.type(screen.getByLabelText(/distributor name/i), 'No Geography Ltd');
+    await user.type(screen.getByLabelText(/office address/i), 'Plot 14, High Street');
+    await user.click(screen.getByRole('button', { name: /create distributor/i }));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(/district is required/i);
+    expect(entities.createDistributor).not.toHaveBeenCalled();
+
+    await user.type(screen.getByLabelText(/^district/i), 'Atlantis');
+    await user.click(screen.getByRole('button', { name: /create distributor/i }));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(/pick a uganda district/i);
+    expect(entities.createDistributor).not.toHaveBeenCalled();
+  });
+
+  it('refuses to submit without an office address', async () => {
+    const user = userEvent.setup();
+    renderPanel();
+    await screen.findByRole('heading', { name: /new distributor/i });
+
+    await user.type(screen.getByLabelText(/distributor name/i), 'No Address Ltd');
+    await user.type(screen.getByLabelText(/^district/i), 'Mbarara');
+    await user.click(screen.getByRole('button', { name: /create distributor/i }));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(/office address is required/i);
+    expect(entities.createDistributor).not.toHaveBeenCalled();
   });
 });

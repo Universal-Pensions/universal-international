@@ -1,0 +1,18 @@
+-- 0141_distributor_geography_revoke_anon.sql
+-- ============================================================================
+-- 0140 had to DROP + CREATE `create_distributor` (adding defaulted parameters
+-- makes a second OVERLOAD, not a replacement, and the 6-arg call inside
+-- approve_access_request would then be ambiguous). The DROP reset the function's
+-- ACL, and Supabase's DEFAULT PRIVILEGES on schema public re-granted EXECUTE to
+-- `anon`. The 6-arg version 0140 replaced did NOT carry that grant — 0128
+-- stripped it — so 0140 silently widened it back.
+--
+-- Not exploitable on its own: the body RAISEs for any role that is not 'admin',
+-- so an anon caller gets 'role <NULL> cannot create a distributor'. But an
+-- anon-executable admin RPC is the exact finding class of the 2026-07-08 deep
+-- audit, and this is cheaper than re-litigating it there.
+--
+-- Split out of 0140 rather than folded into it because 0140 was already applied
+-- when the ACL was checked — the ledger has to keep telling the truth.
+-- ============================================================================
+REVOKE ALL ON FUNCTION public.create_distributor(text, text, text, text, text, text, text, text) FROM anon;

@@ -8,11 +8,53 @@ import {
   useApproveAccessRequest,
   useDenyAccessRequest,
 } from '../../hooks/useAccessRequests';
+import { PillChip, PillChipGroup } from '../../components/PillChip';
 import { useToast } from '../../contexts/ToastContext';
 import { formatNumber } from '../../utils/currency';
 import { formatDate } from '../../utils/date';
 import Modal from '../../components/Modal';
 import styles from '../adminPanels.module.css';
+
+// Employer and distributor requests sit in ONE list and are provisioned by two
+// different RPCs into two different managers, so telling them apart is the
+// first thing the admin has to do on this screen. Previously the only signal
+// was a pill reusing `.statusActive` / `.statusInactive` — the ACTIVE/DEACTIVATED
+// green-vs-grey used everywhere else in this panel — parked at the far right
+// next to Deny/Approve. Green read as "healthy", not "distributor".
+//
+// So kind gets its own vocabulary: an icon + a stated word, in indigo vs teal
+// (neither of which means "status" anywhere in this dashboard), rendered at the
+// START of the row where the eye lands first.
+const KIND_META = {
+  distributor: {
+    label: 'Distributor',
+    blurb: 'Network operator — branches & agents',
+    icon: (
+      <svg aria-hidden="true" viewBox="0 0 24 24" width="13" height="13" fill="none"
+        stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
+        <circle cx="12" cy="5" r="2.4" /><circle cx="5" cy="19" r="2.4" /><circle cx="19" cy="19" r="2.4" />
+        <path d="M12 7.4v4.2M12 11.6L6.4 16.8M12 11.6l5.6 5.2" />
+      </svg>
+    ),
+  },
+  employer: {
+    label: 'Employer',
+    blurb: 'Company enrolling its staff',
+    icon: (
+      <svg aria-hidden="true" viewBox="0 0 24 24" width="13" height="13" fill="none"
+        stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
+        <rect x="3" y="8" width="18" height="12" rx="1.8" />
+        <path d="M8 8V5.6A1.6 1.6 0 019.6 4h4.8A1.6 1.6 0 0116 5.6V8M3 13h18" />
+      </svg>
+    ),
+  },
+};
+
+const KIND_FILTERS = [
+  { id: 'all', label: 'All' },
+  { id: 'employer', label: 'Employers' },
+  { id: 'distributor', label: 'Distributors' },
+];
 
 /**
  * Admin: pending employer/distributor access requests. These come from the
@@ -29,6 +71,7 @@ export default function ViewAccessRequests({ fullPage = false }) {
   const { addToast } = useToast();
   // The request awaiting a decision: { request, action: 'approve' | 'deny' }.
   const [confirmTarget, setConfirmTarget] = useState(null);
+  const [kindFilter, setKindFilter] = useState('all');
   const busy = approve.isPending || deny.isPending;
 
   useEffect(() => {
@@ -69,6 +112,7 @@ export default function ViewAccessRequests({ fullPage = false }) {
     { label: 'Employers', value: formatNumber(pendingEmployers) },
     { label: 'Distributors', value: formatNumber(pendingDistributors) },
   ];
+  const visible = kindFilter === 'all' ? requests : requests.filter((r) => r.kind === kindFilter);
 
   return (
     <>
@@ -122,6 +166,21 @@ export default function ViewAccessRequests({ fullPage = false }) {
                 ))}
               </div>
 
+              {!isLoading && requests.length > 0 && (
+                <PillChipGroup label="Request type" layout="row" className={styles.kindFilter}>
+                  {KIND_FILTERS.map((f) => (
+                    <PillChip
+                      key={f.id}
+                      selected={kindFilter === f.id}
+                      onClick={() => setKindFilter(f.id)}
+                    >
+                      {f.label}
+                      {f.id !== 'all' && ` (${f.id === 'employer' ? pendingEmployers : pendingDistributors})`}
+                    </PillChip>
+                  ))}
+                </PillChipGroup>
+              )}
+
               {isLoading ? (
                 <div className={styles.loading}><div className={styles.spinner} /></div>
               ) : requests.length === 0 ? (
@@ -134,23 +193,41 @@ export default function ViewAccessRequests({ fullPage = false }) {
                   </span>
                   <p className={styles.emptyText}>No pending access requests. New employer &amp; distributor requests will appear here.</p>
                 </div>
+              ) : visible.length === 0 ? (
+                /* Filtered to nothing — distinct from "nothing pending at all",
+                   which would otherwise read as an empty inbox. */
+                <div className={styles.empty}>
+                  <p className={styles.emptyText}>
+                    No pending {kindFilter === 'distributor' ? 'distributor' : 'employer'} requests.
+                    {' '}
+                    <button type="button" className={styles.linkBtn} onClick={() => setKindFilter('all')}>
+                      Show all {requests.length}
+                    </button>
+                  </p>
+                </div>
               ) : (
                 <div className={styles.list}>
-                  {requests.map((r) => (
+                  {visible.map((r) => {
+                    const kind = KIND_META[r.kind] ?? KIND_META.employer;
+                    return (
                     <div className={styles.row} key={r.id}>
                       <div className={styles.rowHead}>
                         <div>
+                          {/* Kind leads the row — see KIND_META. */}
+                          <span className={`${styles.kindPill} ${r.kind === 'distributor' ? styles.kindDistributor : styles.kindEmployer}`}>
+                            {kind.icon}
+                            {kind.label}
+                          </span>
                           <div className={styles.rowName}>{r.orgName}</div>
                           <div className={styles.rowSub}>
+                            {kind.blurb}
+                            {' · '}
                             {r.contactName ? r.contactName : 'No contact name'}
                             {r.contactEmail ? ` · ${r.contactEmail}` : ''}
                             {r.contactPhone ? ` · ${r.contactPhone}` : ''}
                           </div>
                         </div>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', flexShrink: 0 }}>
-                          <span className={`${styles.statusPill} ${r.kind === 'distributor' ? styles.statusActive : styles.statusInactive}`}>
-                            {r.kind === 'distributor' ? 'Distributor' : 'Employer'}
-                          </span>
                           <button
                             type="button"
                             className={styles.deactivateBtn}
@@ -183,10 +260,18 @@ export default function ViewAccessRequests({ fullPage = false }) {
                             <span className={styles.metricLabel}>Sector</span>
                           </div>
                         )}
-                        {r.kind === 'employer' && (
+                        {/* District now rides on BOTH kinds (0140). A "—" on a
+                            distributor means the request predates the form
+                            field — approve still works, it just provisions
+                            without geography. */}
+                        <div className={styles.metric}>
+                          <span className={styles.metricVal}>{r.district || '—'}</span>
+                          <span className={styles.metricLabel}>District</span>
+                        </div>
+                        {r.kind === 'distributor' && (
                           <div className={styles.metric}>
-                            <span className={styles.metricVal}>{r.district || '—'}</span>
-                            <span className={styles.metricLabel}>District</span>
+                            <span className={styles.metricVal}>{r.physicalAddress || '—'}</span>
+                            <span className={styles.metricLabel}>Office address</span>
                           </div>
                         )}
                         <div className={styles.metric}>
@@ -199,7 +284,8 @@ export default function ViewAccessRequests({ fullPage = false }) {
                         </div>
                       </div>
                     </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </div>

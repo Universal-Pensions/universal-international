@@ -2,12 +2,16 @@ import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { EASE_OUT_EXPO } from '../../utils/motion';
 
+import { DISTRICT_NAMES, isKnownDistrict } from '../../constants/districts';
 import { useAdminPanel } from '../../contexts/AdminPanelContext';
 import { useCreateDistributor } from '../../hooks/useEntity';
 import { useToast } from '../../contexts/ToastContext';
 import styles from '../adminPanels.module.css';
 
-const EMPTY = { name: '', registrationNo: '', managerName: '', managerPhone: '', managerEmail: '' };
+const EMPTY = {
+  name: '', registrationNo: '', managerName: '', managerPhone: '', managerEmail: '',
+  district: '', physicalAddress: '',
+};
 
 /**
  * Map a raw Supabase/Postgres error to a friendly local message. Mirrors the
@@ -65,6 +69,24 @@ export default function CreateDistributor() {
       addToast('error', msg);
       return;
     }
+    // District is required here for the same reason the public request-access
+    // form requires it (0140): a distributor with no district cannot be placed
+    // on the national map. Validated against the SAME name list the public form
+    // uses, so neither door can create a row the other could not.
+    if (!isKnownDistrict(form.district)) {
+      const msg = form.district.trim()
+        ? 'Pick a Uganda district from the list.'
+        : 'District is required.';
+      setError(msg);
+      addToast('error', msg);
+      return;
+    }
+    if (!form.physicalAddress.trim()) {
+      const msg = 'Office address is required.';
+      setError(msg);
+      addToast('error', msg);
+      return;
+    }
     try {
       await createDistributor.mutateAsync({
         name: form.name.trim(),
@@ -72,6 +94,8 @@ export default function CreateDistributor() {
         managerName: form.managerName.trim() || null,
         managerPhone: form.managerPhone.trim() || null,
         managerEmail: form.managerEmail.trim() || null,
+        district: form.district.trim(),
+        physicalAddress: form.physicalAddress.trim(),
       });
       addToast('success', `Distributor "${form.name.trim()}" created.`);
       setCreateDistributorOpen(false);
@@ -158,6 +182,44 @@ export default function CreateDistributor() {
                     onChange={(e) => update('registrationNo', e.target.value)}
                     placeholder="Company reg. number"
                     maxLength={64}
+                  />
+                </div>
+
+                {/* Geography (0140). The public request-access form asks a
+                    distributor for both of these, so the admin door asks too —
+                    the admin-vs-self-signup deviation 0095 closed for the
+                    registration number, closed again for the address. */}
+                <div className={styles.field}>
+                  <label className={styles.label} htmlFor="cd-district">
+                    District<span className={styles.req}>*</span>
+                  </label>
+                  <input
+                    id="cd-district"
+                    className={styles.input}
+                    value={form.district}
+                    onChange={(e) => update('district', e.target.value)}
+                    placeholder="e.g. Kampala"
+                    list="cd-districts"
+                    maxLength={80}
+                    autoComplete="address-level2"
+                  />
+                  <datalist id="cd-districts">
+                    {DISTRICT_NAMES.map((d) => <option key={d} value={d} />)}
+                  </datalist>
+                </div>
+
+                <div className={styles.field}>
+                  <label className={styles.label} htmlFor="cd-address">
+                    Office address<span className={styles.req}>*</span>
+                  </label>
+                  <input
+                    id="cd-address"
+                    className={styles.input}
+                    value={form.physicalAddress}
+                    onChange={(e) => update('physicalAddress', e.target.value)}
+                    placeholder="e.g. Plot 14, Kampala Road"
+                    maxLength={200}
+                    autoComplete="street-address"
                   />
                 </div>
 

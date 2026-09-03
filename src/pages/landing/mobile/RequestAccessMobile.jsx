@@ -37,7 +37,7 @@ export default function RequestAccessMobile() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
   const [errors, setErrors] = useState({});
-  const [form, setForm] = useState({ name: '', org: '', registrationNo: '', email: '', phone: '', sector: '', district: '' });
+  const [form, setForm] = useState({ name: '', org: '', registrationNo: '', email: '', phone: '', sector: '', district: '', physicalAddress: '' });
 
   const update = (key) => (e) => {
     if (error) setError('');
@@ -71,6 +71,7 @@ export default function RequestAccessMobile() {
         contactPhone: toCanonicalUGPhone(form.phone),
         sector: form.sector.trim(),
         district: form.district.trim(),
+        physicalAddress: form.physicalAddress.trim(),
       });
       setSubmitted(true);
     } catch (err) {
@@ -149,23 +150,38 @@ export default function RequestAccessMobile() {
             </div>
 
             {type === 'employer' && (
-              <>
-                <div className={styles.fgroup}>
-              <label className={styles.flabel} htmlFor="ra-sector">What your company does</label>
-              <input className={styles.finput} id="ra-sector" value={form.sector} onChange={update('sector')} placeholder="e.g. Manufacturing" maxLength={MAX_LEN.sector} disabled={submitting}
-                aria-invalid={errors.sector ? true : undefined}
-                aria-describedby={errors.sector ? 'ra-sector-err' : undefined} />
-              {errors.sector && <span className={styles.ferr} id="ra-sector-err">{errors.sector}</span>}
-            </div>
-                <div className={styles.fgroup}>
+              <div className={styles.fgroup}>
+                <label className={styles.flabel} htmlFor="ra-sector">What your company does</label>
+                <input className={styles.finput} id="ra-sector" value={form.sector} onChange={update('sector')} placeholder="e.g. Manufacturing" maxLength={MAX_LEN.sector} disabled={submitting}
+                  aria-invalid={errors.sector ? true : undefined}
+                  aria-describedby={errors.sector ? 'ra-sector-err' : undefined} />
+                {errors.sector && <span className={styles.ferr} id="ra-sector-err">{errors.sector}</span>}
+              </div>
+            )}
+
+            {/* District is asked of BOTH kinds (0140) — see the desktop
+                variant's comment. Kept in step with `FIELD_ORDER` so the
+                focus-first-invalid order still matches the DOM order. */}
+            <div className={styles.fgroup}>
               <label className={styles.flabel} htmlFor="ra-district">District</label>
               <input className={styles.finput} id="ra-district" value={form.district} onChange={update('district')} placeholder="e.g. Kampala" list="ra-districts-m" maxLength={MAX_LEN.district} disabled={submitting}
                 aria-invalid={errors.district ? true : undefined}
-                aria-describedby={errors.district ? 'ra-district-err' : undefined} />
+                aria-describedby={errors.district ? 'ra-district-err' : type === 'distributor' ? 'ra-district-hint' : undefined} />
+              {type === 'distributor' && !errors.district && (
+                <span className={styles.fhint} id="ra-district-hint">Where your head office is based.</span>
+              )}
               {errors.district && <span className={styles.ferr} id="ra-district-err">{errors.district}</span>}
             </div>
-                <datalist id="ra-districts-m">{DISTRICT_NAMES.map((d) => <option key={d} value={d} />)}</datalist>
-              </>
+            <datalist id="ra-districts-m">{DISTRICT_NAMES.map((d) => <option key={d} value={d} />)}</datalist>
+
+            {type === 'distributor' && (
+              <div className={styles.fgroup}>
+                <label className={styles.flabel} htmlFor="ra-physicalAddress">Office address</label>
+                <input className={styles.finput} id="ra-physicalAddress" value={form.physicalAddress} onChange={update('physicalAddress')} placeholder="e.g. Plot 14, Kampala Road" autoComplete="street-address" maxLength={MAX_LEN.physicalAddress} disabled={submitting}
+                  aria-invalid={errors.physicalAddress ? true : undefined}
+                  aria-describedby={errors.physicalAddress ? 'ra-physicalAddress-err' : undefined} />
+                {errors.physicalAddress && <span className={styles.ferr} id="ra-physicalAddress-err">{errors.physicalAddress}</span>}
+              </div>
             )}
 
             <p className={styles.regNote}>All fields are required. An admin approves employer and distributor accounts — usually within 24 hours.</p>

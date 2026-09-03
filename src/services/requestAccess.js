@@ -19,8 +19,9 @@ import { api, IS_SUPABASE_ENABLED } from './api';
  *   contactName?: string,
  *   contactEmail?: string,
  *   contactPhone?: string,
- *   sector?: string,     // employer only
- *   district?: string,   // employer only
+ *   sector?: string,           // employer only
+ *   district?: string,         // BOTH kinds since 0140
+ *   physicalAddress?: string,  // distributor only
  * }} payload
  * @returns {Promise<{ ok: true, demo: boolean, id?: string }>}
  */
@@ -38,6 +39,7 @@ export async function submitAccessRequest(payload) {
       contactPhone: payload.contactPhone,
       sector: payload.sector,
       district: payload.district,
+      physicalAddress: payload.physicalAddress,
     });
     // Backend contract: { submitted: true, id }
     return { ok: true, demo: false, id: res?.id };
