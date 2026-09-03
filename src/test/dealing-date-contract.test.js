@@ -202,9 +202,10 @@ describe('dealing-date contract across migrations', () => {
   describe('reversibility', () => {
     it('0143 ships a paired .down.sql', () => {
       const files = readdirSync(MIGRATIONS_DIR);
-      const forward = files.find(
-        (f) => f.startsWith('0143') && f.endsWith('.sql') && !f.endsWith('.down.sql'),
-      );
+      // Via forwardMigrations(), not a raw readdir scan — see the helper above.
+      // A folder-sync copy ("0143_dealing_calendar 2.sql") satisfies the raw
+      // predicate, and readdir order is unsorted, so which one won was luck.
+      const forward = forwardMigrations().find((f) => f.startsWith('0143'));
       expect(forward, 'no forward migration 0143').toBeDefined();
       expect(files.includes(forward.replace(/\.sql$/, '.down.sql'))).toBe(true);
     });

@@ -257,7 +257,13 @@ describe('NAV pricing contract across migrations', () => {
     for (const n of ['0103', '0104', '0105', '0143', '0144', '0145', '0146', '0147', '0148', '0149']) {
       it(`${n} ships a paired .down.sql`, () => {
         const files = readdirSync(MIGRATIONS_DIR);
-        const forward = files.find((f) => f.startsWith(n) && f.endsWith('.sql') && !f.endsWith('.down.sql'));
+        // Via forwardMigrations(), not a raw readdir scan: a folder-sync copy
+        // like "0145_nav_register_integrity.down 2.sql" ends in .sql and NOT in
+        // .down.sql, so the raw predicate mistakes it for a forward migration
+        // and then looks for a ".down 2.down.sql" that cannot exist. readdir
+        // order is unsorted, so which file won was luck — adding an unrelated
+        // migration to the directory was enough to flip it and turn this red.
+        const forward = forwardMigrations().find((f) => f.startsWith(n));
         expect(forward, `no forward migration ${n}`).toBeDefined();
         const down = forward.replace(/\.sql$/, '.down.sql');
         expect(files.includes(down), `${forward} has no ${down}`).toBe(true);
@@ -272,6 +278,90 @@ describe('NAV pricing contract across migrations', () => {
       // migration has nothing to restore from.
       expect(/subscriber_balances_pre_nav/.test(body)).toBe(true);
       expect(/subscribers_unit_value_pre_nav/.test(body)).toBe(true);
+    });
+
+    it('0162 ships a paired .down.sql', () => {
+      const files = readdirSync(MIGRATIONS_DIR);
+      const forward = forwardMigrations().find((f) => f.startsWith('0162'));
+      expect(forward, 'no forward migration 0162').toBeDefined();
+      expect(files.includes(forward.replace(/\.sql$/, '.down.sql'))).toBe(true);
+    });
+  });
+
+  // ── 0162: resolving a missed valuation day ────────────────────────────────
+  //
+  // Resolving silences a day in the Needs-attention badge WITHOUT publishing a
+  // price. That is only safe while the raw detectors stay raw, so these guard
+  // the seam the feature rests on.
+  describe('resolve_nav_missed_day', () => {
+    const def = () => newestDefinitionOf('resolve_nav_missed_day');
+
+    it('is admin-gated on app_role, never on the postgres role', () => {
+      const { body } = def();
+      expect(/app_role/.test(body)).toBe(true);
+      // ->> 'role' is always the literal 'authenticated' for every caller, so
+      // gating on it would let any signed-in user resolve.
+      expect(/->>\s*'role'/.test(body)).toBe(false);
+    });
+
+    it('refuses a day that is not currently flagged', () => {
+      // Without this the resolution is keyed on a bare date, so an admin could
+      // pre-resolve arbitrary future days and blind the signal permanently.
+      const { body } = def();
+      expect(/nav_unsigned_days/.test(body)).toBe(true);
+    });
+
+    it('refuses a day that already has a price waiting for sign-off', () => {
+      // A 'pending' day is not a missing price — fund administration already
+      // sent one. Publishing fixes it; resolving would bury the single case
+      // where the signal was pointing at real, actionable work.
+      const { body } = def();
+      expect(/'pending'/.test(body)).toBe(true);
+      expect(/publish it instead/i.test(body)).toBe(true);
+    });
+
+    it('is revoked from PUBLIC before anon, then granted to authenticated', () => {
+      const all = forwardMigrations()
+        .map((f) => stripSqlComments(readFileSync(join(MIGRATIONS_DIR, f), 'utf8')))
+        .join('\n');
+      // A bare REVOKE FROM anon is a silent no-op against the default PUBLIC
+      // grant — 0094 measured 7 of 20 functions still anon-executable after
+      // exactly that mistake.
+      expect(
+        /REVOKE\s+ALL\s+ON\s+FUNCTION\s+public\.resolve_nav_missed_day\s*\(/i.test(all),
+      ).toBe(true);
+      expect(
+        /GRANT\s+EXECUTE\s+ON\s+FUNCTION\s+public\.resolve_nav_missed_day\s*\([^)]*\)\s+TO\s+authenticated/i
+          .test(all),
+      ).toBe(true);
+    });
+
+    it('leaves the raw detectors alone, so the register cannot be misreported', () => {
+      // THE seam. get_nav_overview's "no published price" list and
+      // forward_dealing_readiness both read nav_missing_days(); only the two
+      // get_admin_attention* functions may become resolution-aware. If a future
+      // refactor "simplifies" the JOIN down into nav_missing_days() or
+      // nav_unsigned_days(), genuinely unpriced days go invisible to the pages
+      // that gate real money movement.
+      for (const fn of ['nav_missing_days', 'nav_unsigned_days']) {
+        const found = newestDefinitionOf(fn);
+        expect(found, `no definition of ${fn}`).toBeTruthy();
+        expect(
+          /nav_missed_day_resolutions/.test(found.body),
+          `${fn}() must not know about resolutions — it is the raw truth`,
+        ).toBe(false);
+      }
+    });
+
+    it('excludes resolved days from the badge but not from the drill-down', () => {
+      const count = newestDefinitionOf('get_admin_attention');
+      const rows = newestDefinitionOf('get_admin_attention_rows');
+      // The badge filters them out …
+      expect(/nav_missed_day_resolutions/.test(count.body)).toBe(true);
+      expect(/r\.nav_date\s+IS\s+NULL/i.test(count.body)).toBe(true);
+      // … while the list keeps them, flagged, as the durable record.
+      expect(/nav_missed_day_resolutions/.test(rows.body)).toBe(true);
+      expect(/'resolved'/.test(rows.body)).toBe(true);
     });
   });
 });
